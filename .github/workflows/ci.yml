@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release -warnaserror
+      - run: dotnet format --verify-no-changes
+      - run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage"
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: src/ElTejido.Web/package-lock.json
+      - working-directory: src/ElTejido.Web
+        run: npm ci
+      - working-directory: src/ElTejido.Web
+        run: npm run lint
+      - working-directory: src/ElTejido.Web
+        run: npm run test -- --watch=false
+      - working-directory: src/ElTejido.Web
+        run: npm run build -- --configuration production

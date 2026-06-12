@@ -1,0 +1,75 @@
+/* ============================================================
+   Aliado TI — Typography tokens
+   Four voices:
+     · display  (Garet Heavy)  — punchy headlines
+     · title    (Poiret One)   — airy, refined section titles
+     · script   (Borel)        — warm handwritten accent word
+     · body     (Mulish)       — workhorse for everything readable
+   ============================================================ */
+
+:root {
+  /* Families */
+  --font-display: "Garet", "Mulish", system-ui, sans-serif;
+  --font-title:   "Poiret One", "Garet", system-ui, sans-serif;
+  --font-script:  "Borel", "Segoe Script", cursive;
+  --font-body:    "Mulish", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Weights (Mulish carries the full ramp; Garet is fixed Heavy) */
+  --weight-light:    300;
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-extra:    800;
+  --weight-heavy:    900;
+
+  /* Type scale — fluid-ish steps (px) */
+  --text-2xs:  11px;
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-md:   18px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  30px;
+  --text-3xl:  38px;
+  --text-4xl:  48px;
+  --text-5xl:  64px;
+  --text-6xl:  84px;
+
+  /* Line heights */
+  --leading-tight:   1.08;
+  --leading-snug:    1.22;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.65;
+
+  /* Letter spacing */
+  --tracking-tighter: -0.02em;
+  --tracking-tight:   -0.01em;
+  --tracking-normal:  0em;
+  --tracking-wide:    0.04em;
+  --tracking-wider:   0.12em;   /* eyebrow / overline caps */
+  --tracking-widest:  0.22em;
+
+  /* Semantic roles */
+  --display-font: var(--font-display);
+  --display-weight: var(--weight-heavy);
+  --display-tracking: var(--tracking-tight);
+  --display-leading: var(--leading-tight);
+
+  --title-font: var(--font-title);
+  --title-weight: var(--weight-regular);
+  --title-tracking: var(--tracking-normal);
+
+  --script-font: var(--font-script);
+
+  --body-font: var(--font-body);
+  --body-weight: var(--weight-regular);
+  --body-leading: var(--leading-relaxed);
+
+  --eyebrow-font: var(--font-body);
+  --eyebrow-weight: var(--weight-bold);
+  --eyebrow-tracking: var(--tracking-wider);
+  --eyebrow-size: var(--text-xs);
+}

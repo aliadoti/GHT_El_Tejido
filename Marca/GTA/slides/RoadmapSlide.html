@@ -1,0 +1,87 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Roadmap timeline" subtitle="Phased sprint roadmap with objective, activities and deliverables" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<link rel="stylesheet" href="./slide.css" />
+<style>
+  body { margin: 0; background: var(--ink-950); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  /* Phase palette — a curated, muted multi-hue set. Cool jewel tones that
+     sit calmly on warm cream. Swap to the mono-blue set per deck if needed. */
+  .rm { --phase-1: #1576C5; --phase-2: #1C8C86; --phase-3: #5A55B0;
+        --phase-1-soft: rgba(21,118,197,.12); --phase-2-soft: rgba(28,140,134,.12); --phase-3-soft: rgba(90,85,176,.12); }
+  .rm { padding: 58px 64px 0; }
+  .rm__head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 26px; }
+  .rm .script { font-size: 32px; margin-bottom: -2px; }
+  .rm .heavy { font-size: 44px; }
+  .rm__pill { display: inline-flex; align-items: center; gap: 8px; background: var(--ink-900); color: var(--cream-50); border-radius: var(--radius-pill); padding: 8px 16px; font-weight: 700; font-size: 13px; }
+  .rm__track { display: flex; gap: 10px; margin-bottom: 24px; }
+  .rm__sprint { flex: 1; text-align: center; font-family: var(--font-body); font-weight: 700; font-size: 12px; letter-spacing: .04em; color: var(--text-muted); padding: 9px 0; background: var(--surface-sunken); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
+  .rm__sprint.on { color: var(--cream-50); border-color: transparent; }
+  .rm__sprint.s1 { background: var(--phase-1); }
+  .rm__sprint.s2 { background: var(--phase-2); }
+  .rm__sprint.s3 { background: var(--phase-3); }
+  .rm__cols { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 16px; }
+  .rm__col { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: var(--shadow-sm); border-top: 3px solid var(--accent, var(--brand-blue)); }
+  .rm__col.c1 { --accent: var(--phase-1); }
+  .rm__col.c2 { --accent: var(--phase-2); }
+  .rm__col.c3 { --accent: var(--phase-3); }
+  .rm__col .k { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-body); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 11px; color: var(--accent); margin-bottom: 9px; }
+  .rm__col .k::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .rm__col h3 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 900; font-size: 19px; color: var(--text-primary); }
+  .rm__col p { margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+  .rm__col ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .rm__col li { position: relative; padding-left: 16px; font-size: 12.5px; line-height: 1.4; color: var(--text-secondary); }
+  .rm__col li::before { content: ""; position: absolute; left: 0; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, var(--brand-blue)); }
+</style>
+</head>
+<body>
+  <div class="slide rm">
+    <div class="rm__head">
+      <div class="lockup">
+        <span class="script">Roadmap</span>
+        <span class="heavy">de implementación</span>
+      </div>
+      <span class="rm__pill">Fase 1 · Sprints 1–3 · 7 épicas</span>
+    </div>
+    <div class="rm__track">
+      <div class="rm__sprint on s1">Sprint 1</div>
+      <div class="rm__sprint on s2">Sprint 2</div>
+      <div class="rm__sprint on s3">Sprint 3</div>
+      <div class="rm__sprint">Sprint 4</div>
+      <div class="rm__sprint">Sprint 5</div>
+      <div class="rm__sprint">S6</div>
+    </div>
+    <div class="rm__cols">
+      <div class="rm__col c1">
+        <div class="k">Objetivo</div>
+        <h3>Infraestructura y formulario de inscripción</h3>
+        <p>Construir la base técnica completa y el flujo de inscripción con formulario dinámico, firma DocuSign y soporte bilingüe.</p>
+      </div>
+      <div class="rm__col c2">
+        <div class="k">Actividades</div>
+        <ul>
+          <li>BD normalizada (45 tablas) · Angular + .NET 10 API</li>
+          <li>Autenticación JWT por NIT y SSO con app legacy</li>
+          <li>Wizard de inscripción de 9 pasos dinámicos</li>
+          <li>PDF condicional e integración DocuSign con webhooks</li>
+        </ul>
+      </div>
+      <div class="rm__col c3">
+        <div class="k">Entregables</div>
+        <ul>
+          <li>API .NET 10 con autenticación y endpoints</li>
+          <li>App Angular con wizard y cargue seguro</li>
+          <li>Integración DocuSign end-to-end</li>
+          <li>Pipeline CI/CD para QA y producción</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide__footer">
+      <div class="slide__brand"><img src="../assets/logos/brand-mark.png" alt="Brand mark" /></div>
+      <span>Información Confidencial</span>
+    </div>
+  </div>
+</body>
+</html>

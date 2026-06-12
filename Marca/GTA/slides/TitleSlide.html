@@ -1,0 +1,47 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Title slide" subtitle="Cover — photographic cream background, logo, script+heavy lockup" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<link rel="stylesheet" href="./slide.css" />
+<style>
+  body { margin: 0; background: var(--ink-950); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .cover { background:
+      linear-gradient(90deg, rgba(251,250,246,.96) 0%, rgba(251,250,246,.88) 42%, rgba(251,250,246,.30) 78%, rgba(251,250,246,.05) 100%),
+      url(../assets/imagery/cream-wall-shadow.png);
+    background-size: cover; background-position: center right; }
+  .cover__body { position: absolute; left: 84px; top: 188px; max-width: 760px; }
+  .cover .lockup { line-height: 1; }
+  .cover .script { font-size: 50px; line-height: 1.15; margin-bottom: 12px; padding-left: 4px; }
+  .cover .heavy { font-size: 84px; line-height: 1; }
+  .cover__sub { margin-top: 30px; font-family: var(--font-title); font-weight: 400; font-size: 26px; color: var(--text-secondary); max-width: 560px; line-height: 1.35; }
+  .cover__client { position: absolute; left: 84px; top: 96px; display: flex; align-items: center; gap: 14px; }
+  .cover__client .label { font-family: var(--font-body); font-weight: 700; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; color: var(--text-muted); }
+  .rule { width: 54px; height: 2px; background: var(--metal); }
+</style>
+</head>
+<body>
+  <div class="slide cover">
+    <div class="cover__client">
+      <span class="label">Propuesta</span>
+      <span class="rule"></span>
+      <span class="label">Gestiones y Representaciones Chía</span>
+    </div>
+    <div class="cover__body">
+      <div class="slide__eyebrow" style="margin-bottom:18px;">Portal de Proveedores</div>
+      <div class="lockup">
+        <span class="script">Evolución del</span>
+        <span class="heavy">Portal</span>
+      </div>
+      <p class="cover__sub">Una plataforma más clara para el proveedor, más eficiente para la operación y mejor preparada para crecer en el tiempo.</p>
+    </div>
+    <div class="slide__footer">
+      <div class="slide__brand">
+        <img src="../assets/logos/brand-mark.png" alt="Brand mark" />
+      </div>
+      <span>Información Confidencial</span>
+    </div>
+  </div>
+</body>
+</html>

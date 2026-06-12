@@ -1,0 +1,46 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Capabilities grid" subtitle="Numbered 01–06 capability cards — the deck's workhorse content layout" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<link rel="stylesheet" href="./slide.css" />
+<style>
+  body { margin: 0; background: var(--ink-950); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .cap { padding: 60px 64px 0; }
+  .cap__head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 34px; }
+  .cap .script { font-size: 34px; margin-bottom: -2px; }
+  .cap .heavy { font-size: 46px; }
+  .cap__head p { margin: 0; max-width: 360px; font-size: 14px; line-height: 1.55; color: var(--text-secondary); text-align: right; }
+  .cap__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .cap__item { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: var(--shadow-sm); position: relative; }
+  .cap__item .n { font-family: var(--font-display); font-weight: 900; font-size: 18px; color: var(--metal); }
+  .cap__item h3 { margin: 8px 0 7px; font-family: var(--font-body); font-weight: 800; font-size: 16px; color: var(--text-primary); }
+  .cap__item p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+  .cap__item .bar { position: absolute; left: 22px; top: 20px; width: 26px; height: 3px; border-radius: 2px; background: var(--gradient-metal); opacity: 0; }
+</style>
+</head>
+<body>
+  <div class="slide cap">
+    <div class="cap__head">
+      <div class="lockup">
+        <span class="script">Lo que esta solución</span>
+        <span class="heavy">resuelve y habilita</span>
+      </div>
+      <p>Seis capacidades de negocio que reorganizan el portal y reducen el reproceso.</p>
+    </div>
+    <div class="cap__grid">
+      <div class="cap__item"><div class="n">01</div><h3>Vinculación y actualización</h3><p>Ingreso para proveedores nuevos y vinculados, autenticación por identificación y formularios dinámicos por tipo de persona.</p></div>
+      <div class="cap__item"><div class="n">02</div><h3>Formulario y firma electrónica</h3><p>Diligenciamiento y cargue documental coordinados, revisión previa y firma con actualización automática del estado.</p></div>
+      <div class="cap__item"><div class="n">03</div><h3>Gestión y control documental</h3><p>Aceptación o rechazo por documento, observaciones, devoluciones controladas y trazabilidad completa.</p></div>
+      <div class="cap__item"><div class="n">04</div><h3>Áreas y responsables</h3><p>Administración de áreas, asignación de responsables, escalamiento y control de tiempos de respuesta.</p></div>
+      <div class="cap__item"><div class="n">05</div><h3>ANS y reportes</h3><p>Días hábiles, festivos, reglas condicionales, indicadores operativos y reportes exportables.</p></div>
+      <div class="cap__item"><div class="n">06</div><h3>Extensión sobre la misma base</h3><p>Arquitectura preparada para radicación de facturas y aportes, conectada con WorkManager.</p></div>
+    </div>
+    <div class="slide__footer">
+      <div class="slide__brand"><img src="../assets/logos/brand-mark.png" alt="Brand mark" /></div>
+      <span>Información Confidencial</span>
+    </div>
+  </div>
+</body>
+</html>

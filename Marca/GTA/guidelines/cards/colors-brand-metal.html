@@ -1,0 +1,42 @@
+<!-- @dsCard group="Colors" viewport="700x250" name="Brand accents" subtitle="Neutral metal for warm/editorial decks · logo-blue tones for everything else." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; padding: 20px 24px; background: var(--surface-page); display: flex; flex-direction: column; gap: 16px; }
+  .group { display: flex; flex-direction: column; gap: 7px; }
+  .glabel { font-family: var(--font-body); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 10.5px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+  .glabel em { font-style: normal; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 11px; color: var(--text-muted); opacity: .8; }
+  .row { display: flex; gap: 10px; }
+  .chip { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 11px 12px; height: 74px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .chip .n { font-family: var(--font-body); font-weight: 700; font-size: 11.5px; }
+  .chip .h { font-family: var(--font-mono); font-size: 10.5px; opacity: .72; }
+  .light .n, .light .h { color: var(--ink-900); }
+  .dark .n, .dark .h { color: var(--cream-50); }
+  .grad { flex: 1.5; }
+</style>
+</head>
+<body>
+  <div class="group">
+    <div class="glabel">Neutral metal <em>· warm, editorial presentations</em></div>
+    <div class="row">
+      <div class="chip light" style="flex:1; background:var(--metal-light)"><div class="n">metal-light</div><div class="h">#A2A4A7</div></div>
+      <div class="chip dark" style="flex:1; background:var(--metal)"><div class="n">metal</div><div class="h">#7C7E81</div></div>
+      <div class="chip dark" style="flex:1; background:var(--metal-dark)"><div class="n">metal-dark</div><div class="h">#5C5E60</div></div>
+      <div class="chip dark grad" style="background:var(--gradient-metal)"><div class="n">gradient-metal</div><div class="h">135°</div></div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="glabel">Brand blue <em>· tones of the logo, for everything else</em></div>
+    <div class="row">
+      <div class="chip dark" style="flex:1; background:var(--brand-cyan)"><div class="n">brand-cyan</div><div class="h">#11A0E2</div></div>
+      <div class="chip dark" style="flex:1; background:var(--brand-blue)"><div class="n">brand-blue</div><div class="h">#1378C6</div></div>
+      <div class="chip dark" style="flex:1; background:var(--brand-blue-deep)"><div class="n">brand-blue-deep</div><div class="h">#155FAE</div></div>
+      <div class="chip dark" style="flex:1; background:var(--brand-indigo)"><div class="n">brand-indigo</div><div class="h">#2A3C9B</div></div>
+      <div class="chip dark grad" style="background:var(--gradient-brand)"><div class="n">gradient-brand</div><div class="h">145° · matches the mark</div></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!-- @dsCard group="Colors" viewport="700x210" name="Status" subtitle="Muted info / success / warning / danger — fg, tint, solid." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; padding: 22px 24px; background: var(--surface-page); display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .name { font-family: var(--font-body); font-weight: 700; font-size: 12px; color: var(--text-secondary); text-transform: capitalize; }
+  .tint { border-radius: var(--radius-sm); padding: 10px 12px; font-family: var(--font-body); font-weight: 700; font-size: 13px; }
+  .solid { border-radius: var(--radius-sm); height: 34px; display: flex; align-items: center; padding: 0 12px; color: #fff; font-family: var(--font-mono); font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <div class="name">info</div>
+    <div class="tint" style="background:var(--status-info-bg); color:var(--status-info-fg)">Solicitud enviada</div>
+    <div class="solid" style="background:var(--status-info-solid)">info-solid</div>
+  </div>
+  <div class="col">
+    <div class="name">success</div>
+    <div class="tint" style="background:var(--status-success-bg); color:var(--status-success-fg)">Firmado</div>
+    <div class="solid" style="background:var(--status-success-solid)">success-solid</div>
+  </div>
+  <div class="col">
+    <div class="name">warning</div>
+    <div class="tint" style="background:var(--status-warning-bg); color:var(--status-warning-fg)">En revisión</div>
+    <div class="solid" style="background:var(--status-warning-solid)">warning-solid</div>
+  </div>
+  <div class="col">
+    <div class="name">danger</div>
+    <div class="tint" style="background:var(--status-danger-bg); color:var(--status-danger-fg)">Devuelto</div>
+    <div class="solid" style="background:var(--status-danger-solid)">danger-solid</div>
+  </div>
+</body>
+</html>

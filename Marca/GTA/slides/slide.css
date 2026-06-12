@@ -1,0 +1,51 @@
+/* Shared slide foundation — 1280×720 frame, Aliado TI brand.
+   Each slide is a standalone .html that links ../styles.css then this file. */
+
+.slide {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  background: var(--surface-page);
+  overflow: hidden;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+}
+
+/* Confidential footer + logo, present on every slide */
+.slide__footer {
+  position: absolute;
+  left: 64px;
+  right: 64px;
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.slide__brand { display: flex; align-items: center; gap: 9px; }
+.slide__brand img { height: 30px; width: auto; }
+.slide__brand b { font-family: var(--font-display); font-weight: 900; font-size: 15px; color: var(--text-secondary); letter-spacing: -0.01em; }
+
+.slide__eyebrow {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* The signature heavy + script lockup */
+.lockup { display: flex; flex-direction: column; line-height: 0.92; }
+.lockup .script { font-family: var(--font-script); color: var(--text-brand); }
+.lockup .heavy { font-family: var(--font-display); font-weight: 900; letter-spacing: -0.02em; color: var(--text-primary); }
+
+.slide__num {
+  font-family: var(--font-display);
+  font-weight: 900;
+  color: var(--cream-300);
+  line-height: 1;
+}

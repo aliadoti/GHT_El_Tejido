@@ -1,0 +1,53 @@
+/* ============================================================
+   Aliado TI — base layer
+   Lightweight, token-bound element defaults. Components don't
+   depend on this, but specimen cards & UI kits pick it up.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-base);
+  line-height: var(--body-leading);
+  color: var(--text-primary);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 { margin: 0; line-height: var(--leading-snug); }
+
+/* Utility text roles */
+.ds-display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--display-tracking);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+.ds-title {
+  font-family: var(--font-title);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-snug);
+  color: var(--text-primary);
+}
+.ds-script {
+  font-family: var(--font-script);
+  font-weight: var(--weight-regular);
+  color: var(--text-brand);
+  line-height: 1.3;
+}
+.ds-eyebrow {
+  font-family: var(--eyebrow-font);
+  font-weight: var(--eyebrow-weight);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  font-size: var(--eyebrow-size);
+  color: var(--text-muted);
+}
+.ds-body { font-family: var(--font-body); color: var(--text-secondary); }
+
+::selection { background: rgba(42,42,44,0.12); }

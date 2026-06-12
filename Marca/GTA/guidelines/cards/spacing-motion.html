@@ -1,0 +1,22 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Motion" subtitle="Calm ease-out, no bounce. Hover a bar to feel it." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; padding: 22px 24px; background: var(--surface-page); display: flex; gap: 18px; }
+  .col { flex: 1; }
+  .track { background: var(--surface-sunken); border-radius: var(--radius-pill); height: 34px; padding: 4px; overflow: hidden; }
+  .fill { height: 26px; width: 26px; background: var(--gradient-metal); border-radius: var(--radius-pill); transition: width var(--d) var(--ease-out); }
+  .col:hover .fill { width: 100%; }
+  .lbl { margin-top: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+  .lbl b { color: var(--text-primary); font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="col" style="--d:var(--duration-fast)"><div class="track"><div class="fill"></div></div><div class="lbl"><b>fast</b> · 140ms</div></div>
+  <div class="col" style="--d:var(--duration-normal)"><div class="track"><div class="fill"></div></div><div class="lbl"><b>normal</b> · 220ms</div></div>
+  <div class="col" style="--d:var(--duration-slow)"><div class="track"><div class="fill"></div></div><div class="lbl"><b>slow</b> · 400ms · ease-out</div></div>
+</body>
+</html>

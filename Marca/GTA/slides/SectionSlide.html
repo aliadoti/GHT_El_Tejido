@@ -1,0 +1,38 @@
+<!-- @dsCard group="Slides" viewport="1280x720" name="Section divider" subtitle="Chapter break — oversized index number with script+heavy lockup" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<link rel="stylesheet" href="./slide.css" />
+<style>
+  body { margin: 0; background: var(--ink-950); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .sec { background: var(--surface-inverse); }
+  .sec .slide__eyebrow { color: var(--warm-gray-500); }
+  .sec__num { position: absolute; right: 60px; top: 40px; font-family: var(--font-display); font-weight: 900; font-size: 360px; line-height: 1; color: rgba(255,255,255,0.05); }
+  .sec__body { position: absolute; left: 84px; top: 250px; }
+  .sec .script { font-size: 58px; color: var(--metal-light); margin-bottom: 4px; padding-left: 4px; }
+  .sec .heavy { font-size: 96px; color: var(--cream-50); }
+  .sec__lead { margin-top: 26px; max-width: 620px; font-family: var(--font-body); font-size: 19px; line-height: 1.6; color: var(--warm-gray-400); }
+  .sec .slide__footer { color: var(--warm-gray-600); }
+  .sec .slide__brand b { color: var(--warm-gray-400); }
+</style>
+</head>
+<body>
+  <div class="slide sec">
+    <div class="sec__num">01</div>
+    <div class="sec__body">
+      <div class="slide__eyebrow" style="margin-bottom:20px;">Resumen ejecutivo</div>
+      <div class="lockup">
+        <span class="script">Lo que esta solución</span>
+        <span class="heavy">resuelve</span>
+      </div>
+      <p class="sec__lead">Concentramos el proyecto en los frentes que generan mayor valor operativo y mayor impacto en trazabilidad, tiempos de gestión y experiencia del proveedor.</p>
+    </div>
+    <div class="slide__footer">
+      <div class="slide__brand"><img src="../assets/logos/brand-mark.png" alt="Brand mark" /></div>
+      <span>Información Confidencial</span>
+    </div>
+  </div>
+</body>
+</html>
