@@ -5,13 +5,13 @@
 
 ## Estado global
 - Fase actual: **Fase 1 - Dominio y persistencia (iniciada)**
-- Ultima actualizacion: 2026-06-12T18:59:38Z por Codex
+- Ultima actualizacion: 2026-06-12T19:23:13Z por Codex
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
-- Branch de trabajo: **n/a** (esta carpeta no contiene `.git`; por instruccion del usuario se avanza sin commit hasta agregar Git mas adelante)
+- Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Continuar Fase 1 con puertos de repositorio en dominio/aplicacion para los contenedores iniciales (`users`, luego `campaigns`) segun `03_Modelo_de_Datos_Cosmos.md` seccion 2.
-- Como continuar: leer `03` secciones 2, 3.1 y 3.2; definir interfaces pequenas para persistir/consultar `Usuario` y `Tag` sin Cosmos todavia. Reutilizar `NumeroWhatsApp` en busquedas por numero. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
+- [ ] Continuar Fase 1 con entidad/puerto inicial del contenedor `campaigns` para `Campania` con mensajes iniciales y preguntas embebidos segun `03_Modelo_de_Datos_Cosmos.md` seccion 3.3 y `07_Backend_Campanas_y_Configuracion.md` seccion 2.
+- Como continuar: leer `03` secciones 2 y 3.3, `07` secciones 2.1-2.5; modelar dominio puro de `Campania` y un puerto pequeno en `Application` para guardar/consultar por id/listar por estado. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -23,7 +23,8 @@
 | 0 | Workflow CI | DONE | pendiente: sin .git | no ejecutado en GitHub | `.github/workflows/ci.yml` con backend + frontend |
 | 1 | Normalizacion E.164 centralizada | DONE | pendiente: sin .git | verde | `NumeroWhatsApp`, `INormalizadorNumero`, `NormalizadorNumero`; REQ 10.2, 12.2.2 / ARQ 16 |
 | 1 | Entidades Usuario y Tag | DONE | pendiente: sin .git | verde | `Usuario`, `Tag`, `RolUsuario`, `EstadoRegistro`; REQ 12, 13 |
-| 1 | Puertos de repositorio por contenedor | TODO | - | - | `03` seccion 2 |
+| 1 | Puerto `users` para Usuario/Tag | DONE | pendiente | verde | `IRepositorioUsuarios`, filtros `FiltroUsuarios`/`FiltroTags`; REQ 12, 13, 26.3 / ARQ 8-9 |
+| 1 | Entidad y puerto `campaigns` | TODO | - | - | `Campania` con mensajes/preguntas embebidos; `03` seccion 3.3 |
 | 1 | Implementacion Cosmos inicial | TODO | - | - | `Infrastructure`; con emulador/mock en pruebas |
 | 1 | Idempotencia WebhookDedupe/leases | TODO | - | - | `03` secciones 3.16 y 4 |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
@@ -41,6 +42,7 @@
 - 2026-06-12 - SDET/Frontend - `npm run lint` usa Prettier check en Fase 0 porque Angular CLI 22 no genero target ESLint por defecto. Ref: `SUPUESTOS.md#fase0-frontend-lint`.
 - 2026-06-12 - Backend/AppSec - Normalizacion E.164 centralizada como dominio puro; validacion plausible por longitud 8-15, solo digitos ASCII y primer digito distinto de 0. Ref: `SUPUESTOS.md#fase1-normalizacion-e164`.
 - 2026-06-12 - Backend - `Usuario` y `Tag` se modelaron como dominio puro sin atributos Cosmos/API; el mapeo JSON queda para infraestructura para no acoplar persistencia al dominio. Ref: `03` secciones 3.1-3.2.
+- 2026-06-12 - Arquitecto/Backend - Los puertos de persistencia se ubican en `ElTejido.Application` e `Infrastructure` los implementara; `Domain` permanece libre de I/O. Ref: `SUPUESTOS.md#fase1-puertos-persistencia-application`.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -60,12 +62,11 @@
   - Cosmos emulator, Azurite, `dotnet user-secrets`, Key Vault y proxy Angular quedan pendientes para las fases que consuman infraestructura real.
 
 ## Deuda tecnica / pendientes conocidos
-- No hay commit porque no existe `.git` en la carpeta de trabajo y el usuario pidio avanzar sin commit por ahora. Impacto: no hay hash de trazabilidad todavia.
+- Existen cambios no relacionados en el working tree (`.obsidian/` y `Propuesta_Comercial/`) que no pertenecen a Fase 1 y no se tocaron.
 - El Node global local (`v22.17.0`) no cumple el minimo de Angular CLI 22 (`22.22.3+`). Impacto: usar Node temporal o actualizar Node antes de correr `npm run build` directamente.
 - El lint frontend inicial es Prettier check; agregar ESLint cuando entren reglas/componentes reales del portal.
 
 ## Riesgos / bloqueos
-- BLOCKED parcial: commit/rama no ejecutables hasta que exista un repositorio Git.
 - Los flujos E2E reales (Fase 9) requieren recursos Azure y plantillas WhatsApp aprobadas. El desarrollo y CI pueden avanzar con mocks/emuladores.
 
 ## Log cronologico (append-only)
@@ -73,3 +74,4 @@
 - 2026-06-12T18:07:16Z - Codex - Ejecutada Fase 0: solucion .NET 8, proyectos backend, proyectos de prueba, endpoint `/health`, scaffold Angular 22 y workflow CI. Build/test/format backend y lint/test/build frontend verificados. Commit pendiente por ausencia de `.git`.
 - 2026-06-12T18:56:38Z - Codex - Iniciada Fase 1 con normalizacion E.164 centralizada en dominio (`NumeroWhatsApp`, `INormalizadorNumero`, `NormalizadorNumero`) y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T18:59:38Z - Codex - Agregadas entidades de dominio `Usuario` y `Tag` con validaciones, roles/estados y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
+- 2026-06-12T19:23:13Z - Codex - Agregado puerto `IRepositorioUsuarios` en Application para el contenedor `users`, filtros normalizados para Usuario/Tag y pruebas unitarias. Backend build/test/format verde. Commit pendiente.
