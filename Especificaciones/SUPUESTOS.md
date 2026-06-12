@@ -33,7 +33,7 @@
 - Impacto / reversibilidad: afecta solo el value object de dominio; se puede endurecer luego agregando un catalogo/configuracion de prefijos sin cambiar contratos de API o Cosmos.
 
 ### fase1-puertos-persistencia-application - Ubicacion de puertos de repositorio
-- Fecha: 2026-06-12 - Agente/Rol: Codex - Arquitecto/Backend - Commit: pendiente
+- Fecha: 2026-06-12 - Agente/Rol: Codex - Arquitecto/Backend - Commit: a36bd2f
 - Contexto: `01_Convenciones_para_Agentes.md` seccion 2 menciona interfaces en Domain para algunos modulos, mientras `02_Arquitectura_y_Stack.md` seccion 3 define que Application expone puertos e Infrastructure los implementa. REQ 31.8 / ARQ 1.1, 8, 9.
 - Decision: ubicar los puertos de persistencia en `ElTejido.Application`, manteniendo `ElTejido.Domain` como capa pura de entidades/value objects sin contratos de I/O.
 - Alternativa(s) descartada(s): poner repositorios en `ElTejido.Domain`; acopla el dominio a necesidades de aplicacion/persistencia y complica mantenerlo como nucleo puro.
