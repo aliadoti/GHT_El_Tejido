@@ -5,13 +5,13 @@
 
 ## Estado global
 - Fase actual: **Fase 1 - Dominio y persistencia (iniciada)**
-- Ultima actualizacion: 2026-06-13T02:23:01Z por Codex
+- Ultima actualizacion: 2026-06-13T02:37:56Z por Codex
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Continuar Fase 1 con idempotencia `WebhookDedupe`/`leases`, modelando el documento de `03_Modelo_de_Datos_Cosmos.md` seccion 3.16 y el mecanismo create-if-not-exists de `03` seccion 4 / `05` seccion 2.4.
-- Como continuar: leer `03` secciones 2, 3.16, 4 y 5; leer `05` seccion 2.4 y `10` seccion 3. Crear puerto pequeno de idempotencia en Application y adaptador Cosmos en Infrastructure para `leases` con TTL 604800; cubrir con pruebas de caso nuevo/repetido usando mock o emulador. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
+- [ ] Continuar Fase 1 con adaptador Cosmos del contenedor `users` para `Usuario` y `Tag`, consumiendo el puerto `IRepositorioUsuarios` y los contratos de `03_Modelo_de_Datos_Cosmos.md` secciones 3.1, 3.2 y 5.
+- Como continuar: leer `03` secciones 2, 3.1, 3.2 y 5; revisar `src/ElTejido.Application/Usuarios/IRepositorioUsuarios.cs` y el patron de `RepositorioCampaniasCosmos`. Crear documentos/mappers y wrapper de contenedor `users`, cubrir guardado/lectura/busqueda por numero y tags con fake container. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -26,7 +26,7 @@
 | 1 | Puerto `users` para Usuario/Tag | DONE | a36bd2f | verde | `IRepositorioUsuarios`, filtros `FiltroUsuarios`/`FiltroTags`; REQ 12, 13, 26.3 / ARQ 8-9 |
 | 1 | Entidad y puerto `campaigns` | DONE | 03c9277 | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
 | 1 | Implementacion Cosmos inicial | DONE | 93ac9b7 | verde | `RepositorioCampaniasCosmos` para `campaigns`, mapping JSON `Campania`, pruebas con fake container |
-| 1 | Idempotencia WebhookDedupe/leases | TODO | - | - | `03` secciones 3.16 y 4 |
+| 1 | Idempotencia WebhookDedupe/leases | DONE | 0556c8c | verde | `IRegistroWebhookDedupe`, `RepositorioWebhookDedupeCosmos`, TTL 604800 |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
 | 3 | Identidad y Auth | TODO | - | - | 06 |
 | 4 | Configuracion | TODO | - | - | 07 |
@@ -45,6 +45,7 @@
 - 2026-06-12 - Arquitecto/Backend - Los puertos de persistencia se ubican en `ElTejido.Application` e `Infrastructure` los implementara; `Domain` permanece libre de I/O. Ref: `SUPUESTOS.md#fase1-puertos-persistencia-application`.
 - 2026-06-13 - Arquitecto/Backend - `Campania` y sus embebidos se modelaron como dominio puro sin atributos Cosmos/API; el adaptador de `Infrastructure` mapeara nombres JSON y discriminador `type`. Ref: `03` seccion 3.3, `07` seccion 2.
 - 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `campaigns` usa DTOs internos con `Newtonsoft.Json` y `Microsoft.Azure.Cosmos`; el dominio sigue sin atributos de persistencia. Ref: `03` secciones 2, 3.3 y 5 / ARQ 8-9.
+- 2026-06-13 - Arquitecto/Backend - La idempotencia de webhooks se expone como puerto booleano `IRegistroWebhookDedupe`: `true` permite procesar y `false` descarta reintentos por conflicto Cosmos. Ref: `03` secciones 3.16 y 4, `05` seccion 2.4 / ARQ 4.2.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -79,3 +80,4 @@
 - 2026-06-12T19:23:13Z - Codex - Agregado puerto `IRepositorioUsuarios` en Application para el contenedor `users`, filtros normalizados para Usuario/Tag y pruebas unitarias. Backend build/test/format verde. Commit a36bd2f.
 - 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit 03c9277.
 - 2026-06-13T02:23:01Z - Codex - Implementado adaptador Cosmos inicial de `campaigns` en Infrastructure (`RepositorioCampaniasCosmos`) con mapping a contrato JSON de `Campania`, paquetes Cosmos/Newtonsoft y pruebas unitarias de repositorio/mapping con fake container. Backend build/test/format verde. Commit 93ac9b7.
+- 2026-06-13T02:37:56Z - Codex - Implementada idempotencia `WebhookDedupe`/`leases`: puerto `IRegistroWebhookDedupe`, adaptador Cosmos create-if-not-exists con manejo de conflicto, documento con `ttl` 604800 y pruebas unitarias de nuevo/repetido/validacion. Backend build/test/format verde. Commit 0556c8c.
