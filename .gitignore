@@ -14,3 +14,7 @@ dist/
 *.rsuser
 
 src/ElTejido.Api/wwwroot/
+
+/jdocs
+/Propuesta_Comercial
+/Marca

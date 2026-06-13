@@ -37,14 +37,14 @@
 > Nombres con reglas: la **cuenta de Storage** debe ser global única, 3–24 caracteres, solo minúsculas y números (sin guiones). La **cuenta Cosmos**, el **Key Vault** y la **Web App** también deben ser únicos globalmente.
 
 ### 0.3 Secretos que cargarás en Key Vault (§5)
-| Nombre del secreto (exacto) | Contenido | De dónde sale |
-|---|---|---|
-| `llm-key` | API key del proveedor LLM | Azure OpenAI (§8) u OpenAI |
-| `wa-token` | Access token de WhatsApp Cloud API | Guía de Meta |
-| `wa-appsec` | App Secret de la app de Meta (firma webhook) | Guía de Meta |
-| `wa-verify-token` | Token de verificación del webhook (lo inventas tú) | Tú lo defines |
-| `jwt-sign` | Clave para firmar sesiones (cadena aleatoria larga) | Genérala tú |
-| `otp-salt` | Sal para el hash de los OTP (cadena aleatoria larga) | Genérala tú |
+| Nombre del secreto (exacto) | Contenido                                            | De dónde sale              |
+| --------------------------- | ---------------------------------------------------- | -------------------------- |
+| `llm-key`                   | API key del proveedor LLM                            | Azure OpenAI (§8) u OpenAI |
+| `wa-token`                  | Access token de WhatsApp Cloud API                   | Guía de Meta               |
+| `wa-appsec`                 | App Secret de la app de Meta (firma webhook)         | Guía de Meta               |
+| `wa-verify-token`           | Token de verificación del webhook (lo inventas tú)   | Tú lo defines              |
+| `jwt-sign`                  | Clave para firmar sesiones (cadena aleatoria larga)  | Genérala tú                |
+| `otp-salt`                  | Sal para el hash de los OTP (cadena aleatoria larga) | Genérala tú                |
 
 > Para `jwt-sign` y `otp-salt` genera cadenas aleatorias de 32+ bytes (p. ej. en PowerShell: `[Convert]::ToBase64String((1..48|%{Get-Random -Max 256}))`).
 
