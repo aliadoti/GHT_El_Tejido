@@ -1,3 +1,4 @@
+using ElTejido.Api.Auth;
 using ElTejido.Api.Errores;
 using ElTejido.Api.Observabilidad;
 using ElTejido.Api.Seguridad;
@@ -10,9 +11,13 @@ var builder = WebApplication.CreateBuilder(args);
 var opcionesSeguridad = new OpcionesSeguridad();
 builder.Configuration.GetSection(OpcionesSeguridad.Seccion).Bind(opcionesSeguridad);
 
-// Composition root: secretos (10 §4), persistencia Cosmos guardada (02 §6) y rate limiter.
+// Composition root: secretos (10 §4), persistencia Cosmos guardada (02 §6), autenticacion
+// admin/identidad (06) y rate limiter.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IProveedorCorrelacion, ProveedorCorrelacionHttp>();
 builder.Services.AgregarSeguridad(builder.Configuration);
 builder.Services.AgregarInfraestructura(builder.Configuration);
+builder.Services.AgregarAutenticacion(builder.Configuration);
 builder.Services.AgregarLimitadorTasa(opcionesSeguridad);
 
 var app = builder.Build();
@@ -33,6 +38,9 @@ app.UseRateLimiter();
 app.MapGet("/health", () => Results.Ok(new HealthResponse("ok")))
     .WithName("Health")
     .WithSummary("Liveness endpoint for App Service and CI smoke tests.");
+
+// Identidad y autenticacion admin (04 §4, 06).
+app.MapearEndpointsAuth();
 
 if (app.Environment.IsDevelopment())
 {
