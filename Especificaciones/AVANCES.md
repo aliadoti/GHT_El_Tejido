@@ -5,13 +5,13 @@
 
 ## Estado global
 - Fase actual: **Fase 1 - Dominio y persistencia (iniciada)**
-- Ultima actualizacion: 2026-06-13T02:37:56Z por Codex
+- Ultima actualizacion: 2026-06-13T03:30:37Z por Codex
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Continuar Fase 1 con adaptador Cosmos del contenedor `users` para `Usuario` y `Tag`, consumiendo el puerto `IRepositorioUsuarios` y los contratos de `03_Modelo_de_Datos_Cosmos.md` secciones 3.1, 3.2 y 5.
-- Como continuar: leer `03` secciones 2, 3.1, 3.2 y 5; revisar `src/ElTejido.Application/Usuarios/IRepositorioUsuarios.cs` y el patron de `RepositorioCampaniasCosmos`. Crear documentos/mappers y wrapper de contenedor `users`, cubrir guardado/lectura/busqueda por numero y tags con fake container. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
+- [ ] Continuar Fase 1 con dominio y puerto del contenedor `participants` para `ParticipanteCampania` y `EnvioMensaje`, consumiendo `03_Modelo_de_Datos_Cosmos.md` secciones 3.4, 3.5, 4 y 5.
+- Como continuar: leer `03` secciones 2, 3.4, 3.5, 4 y 5; revisar los patrones de `IRepositorioUsuarios`, `IRepositorioCampanias`, `RepositorioUsuariosCosmos` y `RepositorioCampaniasCosmos`. Crear entidades/puerto primero, cubrir reglas de estado/envio/respuesta e idempotencia de envio saliente. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -27,6 +27,7 @@
 | 1 | Entidad y puerto `campaigns` | DONE | 03c9277 | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
 | 1 | Implementacion Cosmos inicial | DONE | 93ac9b7 | verde | `RepositorioCampaniasCosmos` para `campaigns`, mapping JSON `Campania`, pruebas con fake container |
 | 1 | Idempotencia WebhookDedupe/leases | DONE | 0556c8c | verde | `IRegistroWebhookDedupe`, `RepositorioWebhookDedupeCosmos`, TTL 604800 |
+| 1 | Adaptador Cosmos `users` | DONE | 5ff1024 | verde | `RepositorioUsuariosCosmos` para `Usuario`/`Tag`, mapping JSON, particiones `usuario`/`tag`, busqueda por numero y filtros con fake container |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
 | 3 | Identidad y Auth | TODO | - | - | 06 |
 | 4 | Configuracion | TODO | - | - | 07 |
@@ -46,6 +47,7 @@
 - 2026-06-13 - Arquitecto/Backend - `Campania` y sus embebidos se modelaron como dominio puro sin atributos Cosmos/API; el adaptador de `Infrastructure` mapeara nombres JSON y discriminador `type`. Ref: `03` seccion 3.3, `07` seccion 2.
 - 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `campaigns` usa DTOs internos con `Newtonsoft.Json` y `Microsoft.Azure.Cosmos`; el dominio sigue sin atributos de persistencia. Ref: `03` secciones 2, 3.3 y 5 / ARQ 8-9.
 - 2026-06-13 - Arquitecto/Backend - La idempotencia de webhooks se expone como puerto booleano `IRegistroWebhookDedupe`: `true` permite procesar y `false` descarta reintentos por conflicto Cosmos. Ref: `03` secciones 3.16 y 4, `05` seccion 2.4 / ARQ 4.2.
+- 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `users` usa documentos internos separados para `Usuario` y `Tag`, con `pk` fija `usuario`/`tag`; busqueda por numero normalizado se resuelve por query contra `whatsappNormalizado`. Ref: `03` secciones 2, 3.1, 3.2 y 5 / ARQ 8-9.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -53,7 +55,7 @@
 ## Como construir y probar (comandos verificados)
 - Backend:
   - `dotnet build -c Release -warnaserror`
-  - `dotnet test -c Release`
+  - `dotnet test -c Release --no-build`
   - `dotnet format --verify-no-changes`
 - Frontend:
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
@@ -81,3 +83,4 @@
 - 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit 03c9277.
 - 2026-06-13T02:23:01Z - Codex - Implementado adaptador Cosmos inicial de `campaigns` en Infrastructure (`RepositorioCampaniasCosmos`) con mapping a contrato JSON de `Campania`, paquetes Cosmos/Newtonsoft y pruebas unitarias de repositorio/mapping con fake container. Backend build/test/format verde. Commit 93ac9b7.
 - 2026-06-13T02:37:56Z - Codex - Implementada idempotencia `WebhookDedupe`/`leases`: puerto `IRegistroWebhookDedupe`, adaptador Cosmos create-if-not-exists con manejo de conflicto, documento con `ttl` 604800 y pruebas unitarias de nuevo/repetido/validacion. Backend build/test/format verde. Commit 0556c8c.
+- 2026-06-13T03:30:37Z - Codex - Implementado adaptador Cosmos de `users`: documentos/mappers `Usuario` y `Tag`, wrapper de contenedor, repositorio `RepositorioUsuariosCosmos`, busqueda por numero normalizado y filtros de usuarios/tags; 7 pruebas unitarias nuevas con fake container. Backend build/test/format verde. Commit 5ff1024.
