@@ -4,7 +4,7 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fase 2 - Contratos de API y seguridad transversal (iniciada)**
+- Fase actual: **Fase 1 COMPLETA - siguiente: Fase 2 (Contratos de API y seguridad transversal, sin iniciar)**
 - Ultima actualizacion: 2026-06-13T00:00:00Z por Claude Code
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
