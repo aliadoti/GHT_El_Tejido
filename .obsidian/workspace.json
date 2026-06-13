@@ -11,14 +11,12 @@
             "id": "cf237a9effa01525",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "pdf",
               "state": {
-                "file": "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
-                "mode": "source",
-                "source": false
+                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf"
               },
-              "icon": "lucide-file",
-              "title": "Guia_Azure_Portal_Paso_a_Paso"
+              "icon": "lucide-file-text",
+              "title": "Propuesta_Economica_El_Tejido"
             }
           }
         ]
@@ -78,8 +76,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 509.5
   },
   "right": {
     "id": "1e371abced1fb1bf",
@@ -95,7 +92,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
+                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -105,7 +102,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Guia_Azure_Portal_Paso_a_Paso"
+              "title": "Backlinks for Propuesta_Economica_El_Tejido"
             }
           },
           {
@@ -114,12 +111,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
+                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Guia_Azure_Portal_Paso_a_Paso"
+              "title": "Outgoing links from Propuesta_Economica_El_Tejido"
             }
           },
           {
@@ -157,13 +154,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
+                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Guia_Azure_Portal_Paso_a_Paso"
+              "title": "Outline of Propuesta_Economica_El_Tejido"
             }
           }
         ]
@@ -186,17 +183,21 @@
   },
   "active": "cf237a9effa01525",
   "lastOpenFiles": [
-    "tests/ElTejido.UnitTests/Campanas/PreguntaTests.cs",
-    "tests/ElTejido.UnitTests/Campanas/MensajeInicialTests.cs",
-    "tests/ElTejido.UnitTests/Campanas/FiltroCampaniasTests.cs",
-    "tests/ElTejido.UnitTests/Campanas/CampaniaTests.cs",
-    "tests/ElTejido.UnitTests/Campanas",
-    "src/ElTejido.Application/Campanas/IRepositorioCampanias.cs",
-    "src/ElTejido.Application/Campanas/FiltroCampanias.cs",
-    "src/ElTejido.Application/Campanas",
-    "src/ElTejido.Domain/Campanas/TipoArtefactoMarkdown.cs",
-    "src/ElTejido.Domain/Campanas/Pregunta.cs",
-    "src/ElTejido.Domain/Campanas/PlantillaWhatsApp.cs",
+    "Propuesta_Comercial/Propuesta_Aliado_Digital_GHT_v2_final.pdf",
+    "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
+    "Propuesta_Comercial/Propuesta_Aliado_Digital_GHT_v3_final.pptx",
+    "Propuesta_Comercial/real/msoB9BA.tmp",
+    "Propuesta_Comercial/real/msoB2D3.tmp",
+    "Propuesta_Comercial/real/~$Propuesta_Aliado_Digital_GHT_v3_final.tmp",
+    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT_v3_final.pptx",
+    "Propuesta_Comercial/real/~$Propuesta_Economica_El_Tejido.tmp",
+    "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
+    "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pptx",
+    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.md",
+    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.pdf",
+    "Propuesta_Comercial/real/Evaluacion_Rubricas.md",
+    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.pptx",
+    "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.md",
     "src/ElTejido.Web/node_modules/@babel/helper-compilation-targets/node_modules/semver/README.md",
     "src/ElTejido.Web/node_modules/@babel/core/node_modules/semver/README.md",
     "src/ElTejido.Web/node_modules/@asamuzakjp/dom-selector/node_modules/lru-cache/LICENSE.md",
@@ -218,10 +219,6 @@
     "src/ElTejido.Web/node_modules/log-update/node_modules/slice-ansi/readme.md",
     "src/ElTejido.Web/node_modules/cacache/node_modules/lru-cache/LICENSE.md",
     "src/ElTejido.Web/node_modules/cacache/node_modules/lru-cache/README.md",
-    "Propuesta_Comercial/Propuesta_Aliado_Digital_GHT.md",
-    "src/ElTejido.Web/node_modules/vite/node_modules/@esbuild/win32-x64/README.md",
-    "src/ElTejido.Web/node_modules/socks/docs/examples/typescript/bindExample.md",
-    "src/ElTejido.Web/node_modules/socks/docs/examples/typescript/connectExample.md",
     "Marca/GTA/Aliado TI Design System/assets/logos/aliadoti-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/logos/brand-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/imagery/cream-wall-shadow.png",
