@@ -1,3 +1,4 @@
+using ElTejido.Api.Admin;
 using ElTejido.Api.Auth;
 using ElTejido.Api.Errores;
 using ElTejido.Api.Observabilidad;
@@ -62,6 +63,10 @@ if (app.Environment.IsDevelopment())
 
     diagnostico.MapGet("/limitado", () => Results.Ok(new HealthResponse("ok")))
         .RequireRateLimiting(PoliticasRateLimiting.Demo);
+
+    // Guard comun de /api/admin/* (04 §5, 06 §4.4) ejercitado con endpoints minimos
+    // solo en Development; los CRUD reales de Fase 4 reutilizaran este filtro.
+    app.MapearEndpointsAdminDiagnostico();
 }
 
 app.Run();

@@ -4,14 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fase 3 COMPLETA - siguiente: Fase 4 (Configuracion, sin iniciar)**
-- Ultima actualizacion: 2026-06-13T00:00:00Z por Claude Code
-- Repo compilable y en verde: **si** (backend build/test/format verificados; 121 pruebas en verde: 111 unit + 10 integration; frontend sin cambios desde Fase 0)
+- Fase actual: **Fase 4 WIP - Configuracion**
+- Ultima actualizacion: 2026-06-13T23:48:49Z por Codex
+- Repo compilable y en verde: **si** (backend build/test/format verificados; 127 pruebas en verde: 111 unit + 16 integration; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Implementar Fase 4 - Configuracion (`07`): CRUD de usuarios, tags, campanias (+ mensajes y preguntas embebidos), rubricas (versionadas), prompts (versionados + aprobacion), ConfigLLM (API key write-only a Key Vault via `ISecretProvider`). Endpoints `/api/admin/*` (04 §5) con sesion + rol.
-- Como continuar: implementar el **enforcement de `/api/admin/*`** (sesion valida + rol `admin` para mutaciones / `admin`|`visor` para GET + `X-CSRF-Token`) reutilizando `IServicioSesion.ValidarAsync` (Fase 3) y el claim `csrf`; consumir los repos `users`/`campaigns` (Fase 1) y `ISecretProvider` para escribir la API key del LLM. Leer `07`, `04 §5`. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes`.
+- [ ] Implementar CRUD inicial de Fase 4 para `usuarios` y `tags` (`07 §1`, `04 §5.1-5.2`, REQ §12-13) reutilizando el guard comun de `/api/admin/*`.
+- Como continuar: crear endpoints `/api/admin/usuarios` y `/api/admin/tags` en `ElTejido.Api`, casos de uso/DTOs en `Application` si aplica, validar normalizacion E.164 con `INormalizadorNumero`, unicidad con `IRepositorioUsuarios`, estados soft-delete y errores `04 §3`. Usar `AutorizacionAdminEndpointFilter` para sesion/rol/CSRF. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -40,7 +40,10 @@
 | 3 | Identidad/matricula (`IResolutorParticipante`) | DONE | pendiente | verde | `ResolutorParticipante` (numero->participante, rechazo neutral + LogSeguridad); pregunta vigente = primera activa por orden (MVP). 06 §3 |
 | 3 | OTP request/verify (bcrypt + sesion JWT) | DONE | pendiente | verde | `AuthAdminService`; `HasherOtpBcrypt` (pepper `otp-salt`), `GeneradorCodigoOtpCsprng`, `LimitadorOtpMemoria`, `ServicioSesionJwt` (HS256 `jwt-sign`), `NotificadorOtpLog` (seam Fase 5). 06 §4, 10 §5 |
 | 3 | Endpoints `/api/auth/*` + cookie sesion | DONE | pendiente | verde | `request-code`/`verify-code`/`logout`/`me`; respuestas neutrales; cookie `httpOnly/Secure/SameSite=Strict`; rate limit `publico`. 04 §4 |
-| 4 | Configuracion | TODO | - | - | 07 |
+| 4 | Guard comun `/api/admin/*` (sesion, rol, CSRF) | DONE | pendiente | verde | `AutorizacionAdminEndpointFilter`; endpoints minimos solo `Development`; 6 pruebas integration nuevas. 04 §1/§5, 06 §4.4 |
+| 4 | CRUD usuarios/tags | TODO | - | - | 07 §1, 04 §5.1-5.2 |
+| 4 | Campanias + mensajes/preguntas + participantes | TODO | - | - | 07 §2, 04 §5.3 |
+| 4 | Rubricas/prompts/config LLM | TODO | - | - | 07 §3-5, 04 §5.5-5.7 |
 | 5 | WhatsApp Gateway + Orquestador | TODO | - | - | 05 |
 | 6 | Evaluacion LLM | TODO | - | - | 08 |
 | 7 | Markdown | TODO | - | - | 09 |
@@ -68,6 +71,7 @@
 - 2026-06-13 - Backend (Claude Code) - Fase 3: `IResolutorParticipante`/`ResolutorParticipante` resuelven numero->participante validando matricula/estado/rol/campania activa; rechazos neutrales registrados en `LogSeguridad` (motivo solo interno). Pregunta vigente = primera activa por orden (MVP, sin conversaciones aun). Ref: `06 §3`, REQ §26.3, `SUPUESTOS.md#fase3-identidad-auth-impl`.
 - 2026-06-13 - AppSec (Claude Code) - Fase 3: `AuthAdminService` orquesta OTP con respuestas neutrales (solo admin activo recibe codigo, un solo uso, expiracion/intentos, sin codigo en claro ni en logs). Puertos `IHasherOtp`/`IGeneradorCodigoOtp`/`INotificadorOtp`/`ILimitadorOtp`/`IServicioSesion` con impls en Infrastructure (bcrypt, CSPRNG, stub WhatsApp, ventana en memoria, JWT HS256). Ref: `06 §4`, `10 §2/§5`.
 - 2026-06-13 - Backend/Edge (Claude Code) - Fase 3: endpoints `/api/auth/{request-code,verify-code,logout,me}` (04 §4) con cookie de sesion `httpOnly/Secure/SameSite=Strict` y `IProveedorCorrelacion` (sobre `IHttpContextAccessor`) para propagar correlationId a `LogSeguridad`. Los orquestadores estan guardados tras `Cosmos:AccountEndpoint`; `request-code`/`verify-code` resuelven `IAuthAdminService` desde `RequestServices` para no romper la inferencia de minimal API. Ref: `04 §4`, `10 §6.2`, `SUPUESTOS.md#fase3-identidad-auth-impl`.
+- 2026-06-13 - Backend/AppSec (Codex) - Fase 4: el enforcement de `/api/admin/*` queda como `IEndpointFilter`: cookie `eltejido_sesion` + `IServicioSesion.ValidarAsync`; GET permite `admin`/`visor`; mutaciones exigen rol `admin` y `X-CSRF-Token` igual al claim `csrf`. Ref: `04 §1/§5`, `06 §4.4`, `SUPUESTOS.md#fase4-admin-enforcement`.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -75,7 +79,7 @@
 ## Como construir y probar (comandos verificados)
 - Backend:
   - `dotnet build -c Release -warnaserror`
-  - `dotnet test -c Release --no-build`
+  - `dotnet test -c Release --no-build` (127 pruebas: 111 unit + 16 integration)
   - `dotnet format --verify-no-changes`
 - Frontend:
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
@@ -107,3 +111,4 @@
 - 2026-06-13 - Claude Code - Cerrada Fase 1: contenedor `participants` (dominio `ParticipanteCampania`/`EnvioMensaje` + enums, puerto `IRepositorioParticipantes`, `RepositorioParticipantesCosmos` con idempotencia de envio saliente) y contenedor `security` (dominio `CodigoAuthAdmin`/`LogSeguridad` + `TipoEventoSeguridad`, puertos `IRepositorioCodigosAuth`/`IRepositorioLogSeguridad`, repos Cosmos). 13 pruebas unitarias nuevas (66 unit + 1 integration en verde). Backend build/test/format verde.
 - 2026-06-13 - Claude Code - Completada Fase 3 (Identidad y Auth, `06`): identidad/matricula (`IResolutorParticipante`/`ResolutorParticipante`) y autenticacion admin por OTP (`IAuthAdminService`/`AuthAdminService`). Puertos en `Application/Auth` e `Application/Identidad`; impls en `Infrastructure` (`HasherOtpBcrypt`, `GeneradorCodigoOtpCsprng`, `LimitadorOtpMemoria`, `ServicioSesionJwt`, `NotificadorOtpLog`); endpoints `/api/auth/*` con cookie de sesion y `IProveedorCorrelacion`. Paquetes nuevos en Infrastructure (BCrypt.Net-Next, Microsoft.IdentityModel.JsonWebTokens). 31 pruebas nuevas (111 unit + 10 integration = 121 en verde). Backend build `-warnaserror`/test/format verde. Commit pendiente.
 - 2026-06-13 - Claude Code - Completada Fase 2 (Contratos de API y seguridad transversal, `04`/`10`): modelo de errores uniforme (excepciones tipadas en `Application/Common`, `MiddlewareManejoErrores`+`MapeadorErrores`+`EscritorRespuestaError`), `MiddlewareCorrelationId`, HTTPS/HSTS guardado a no-Development, rate limiting por endpoint (politicas `publico`/`webhook`/`demo`, 429+`Retry-After`), logging estructurado y acceso a secretos (`ISecretProvider`+`NombresSecretos`; `KeyVaultSecretProvider`/`ConfiguracionSecretProvider`/`SecretProviderConCache`; seleccion por `KeyVault:Uri`). Composition root en `Program.cs` con `AgregarSeguridad`/`AgregarInfraestructura` (Cosmos guardado). Paquetes nuevos en Infrastructure (Azure.Security.KeyVault.Secrets, Azure.Identity, Caching.Memory, Options.ConfigurationExtensions). 24 pruebas nuevas (84 unit + 6 integration = 90 en verde). Backend build `-warnaserror`/test/format verde. Commit pendiente.
+- 2026-06-13T23:48:49Z - Codex - Iniciada Fase 4 con guard comun para `/api/admin/*`: `AutorizacionAdminEndpointFilter` valida cookie de sesion, rol y CSRF; `EndpointsAdminDiagnostico` expone rutas minimas solo en `Development` para pruebas. Agregadas 6 pruebas de integracion (`AdminAuthorizationIntegrationTests`). Backend build/test/format verde (111 unit + 16 integration = 127). Commit pendiente.
