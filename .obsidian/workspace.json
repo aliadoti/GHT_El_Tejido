@@ -4,19 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "a9d2ccf55d6070c3",
+        "id": "abebe48d8b691101",
         "type": "tabs",
         "children": [
           {
-            "id": "cf237a9effa01525",
+            "id": "6363ad2d233636ec",
             "type": "leaf",
             "state": {
-              "type": "pdf",
+              "type": "markdown",
               "state": {
-                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf"
+                "file": "Especificaciones/AVANCES.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-file-text",
-              "title": "Propuesta_Economica_El_Tejido"
+              "icon": "lucide-file",
+              "title": "AVANCES"
             }
           }
         ]
@@ -92,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
+                "file": "Especificaciones/AVANCES.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for Propuesta_Economica_El_Tejido"
+              "title": "Backlinks for AVANCES"
             }
           },
           {
@@ -111,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
+                "file": "Especificaciones/AVANCES.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from Propuesta_Economica_El_Tejido"
+              "title": "Outgoing links from AVANCES"
             }
           },
           {
@@ -154,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
+                "file": "Especificaciones/AVANCES.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of Propuesta_Economica_El_Tejido"
+              "title": "Outline of AVANCES"
             }
           }
         ]
@@ -181,22 +183,22 @@
       "bases:Create new base": false
     }
   },
-  "active": "cf237a9effa01525",
+  "active": "6363ad2d233636ec",
   "lastOpenFiles": [
-    "Propuesta_Comercial/Propuesta_Aliado_Digital_GHT_v2_final.pdf",
+    "tests/ElTejido.UnitTests/Usuarios/RepositorioUsuariosCosmosTests.cs",
+    "src/ElTejido.Infrastructure/Usuarios/UsuarioCosmosDocument.cs",
+    "src/ElTejido.Infrastructure/Usuarios/UsersCosmosContainer.cs",
+    "src/ElTejido.Infrastructure/Usuarios/TagCosmosDocument.cs",
+    "src/ElTejido.Infrastructure/Usuarios/RepositorioUsuariosCosmos.cs",
+    "src/ElTejido.Infrastructure/Usuarios/IUsersCosmosContainer.cs",
+    "src/ElTejido.Infrastructure/Usuarios/FiltroUsuariosCosmos.cs",
+    "src/ElTejido.Infrastructure/Usuarios/FiltroTagsCosmos.cs",
+    "src/ElTejido.Infrastructure/Usuarios",
     "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
-    "Propuesta_Comercial/Propuesta_Aliado_Digital_GHT_v3_final.pptx",
-    "Propuesta_Comercial/real/msoB9BA.tmp",
-    "Propuesta_Comercial/real/msoB2D3.tmp",
-    "Propuesta_Comercial/real/~$Propuesta_Aliado_Digital_GHT_v3_final.tmp",
-    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT_v3_final.pptx",
-    "Propuesta_Comercial/real/~$Propuesta_Economica_El_Tejido.tmp",
-    "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pdf",
-    "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.pptx",
+    "tests/ElTejido.UnitTests/WhatsApp/RepositorioWebhookDedupeCosmosTests.cs",
+    "tests/ElTejido.UnitTests/WhatsApp",
     "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.md",
-    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.pdf",
     "Propuesta_Comercial/real/Evaluacion_Rubricas.md",
-    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.pptx",
     "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.md",
     "src/ElTejido.Web/node_modules/@babel/helper-compilation-targets/node_modules/semver/README.md",
     "src/ElTejido.Web/node_modules/@babel/core/node_modules/semver/README.md",
