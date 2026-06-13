@@ -24,7 +24,7 @@
 | 1 | Normalizacion E.164 centralizada | DONE | pendiente: sin .git | verde | `NumeroWhatsApp`, `INormalizadorNumero`, `NormalizadorNumero`; REQ 10.2, 12.2.2 / ARQ 16 |
 | 1 | Entidades Usuario y Tag | DONE | pendiente: sin .git | verde | `Usuario`, `Tag`, `RolUsuario`, `EstadoRegistro`; REQ 12, 13 |
 | 1 | Puerto `users` para Usuario/Tag | DONE | a36bd2f | verde | `IRepositorioUsuarios`, filtros `FiltroUsuarios`/`FiltroTags`; REQ 12, 13, 26.3 / ARQ 8-9 |
-| 1 | Entidad y puerto `campaigns` | DONE | pendiente | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
+| 1 | Entidad y puerto `campaigns` | DONE | 03c9277 | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
 | 1 | Implementacion Cosmos inicial | TODO | - | - | `Infrastructure`; con emulador/mock en pruebas |
 | 1 | Idempotencia WebhookDedupe/leases | TODO | - | - | `03` secciones 3.16 y 4 |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
@@ -76,4 +76,4 @@
 - 2026-06-12T18:56:38Z - Codex - Iniciada Fase 1 con normalizacion E.164 centralizada en dominio (`NumeroWhatsApp`, `INormalizadorNumero`, `NormalizadorNumero`) y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T18:59:38Z - Codex - Agregadas entidades de dominio `Usuario` y `Tag` con validaciones, roles/estados y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T19:23:13Z - Codex - Agregado puerto `IRepositorioUsuarios` en Application para el contenedor `users`, filtros normalizados para Usuario/Tag y pruebas unitarias. Backend build/test/format verde. Commit a36bd2f.
-- 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit pendiente.
+- 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit 03c9277.
