@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ElTejido.Domain\ElTejido.Domain.csproj" />
     <ProjectReference Include="..\..\src\ElTejido.Application\ElTejido.Application.csproj" />
+    <ProjectReference Include="..\..\src\ElTejido.Infrastructure\ElTejido.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

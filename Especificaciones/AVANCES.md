@@ -5,13 +5,13 @@
 
 ## Estado global
 - Fase actual: **Fase 1 - Dominio y persistencia (iniciada)**
-- Ultima actualizacion: 2026-06-13T00:23:21Z por Codex
+- Ultima actualizacion: 2026-06-13T02:23:01Z por Codex
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Continuar Fase 1 con implementacion Cosmos inicial en `Infrastructure` para el contenedor `campaigns`, mapeando `Campania` al contrato JSON de `03_Modelo_de_Datos_Cosmos.md` seccion 3.3 sin filtrar DTOs Cosmos hacia Domain.
-- Como continuar: leer `03` secciones 2, 3.3 y 5; leer los tipos en `src/ElTejido.Domain/Campanas` y el puerto `src/ElTejido.Application/Campanas/IRepositorioCampanias.cs`. Crear adaptador Cosmos pequeno para guardar/consultar por id/listar por estado; cubrir con pruebas de mapping/repositorio usando mock o emulador. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
+- [ ] Continuar Fase 1 con idempotencia `WebhookDedupe`/`leases`, modelando el documento de `03_Modelo_de_Datos_Cosmos.md` seccion 3.16 y el mecanismo create-if-not-exists de `03` seccion 4 / `05` seccion 2.4.
+- Como continuar: leer `03` secciones 2, 3.16, 4 y 5; leer `05` seccion 2.4 y `10` seccion 3. Crear puerto pequeno de idempotencia en Application y adaptador Cosmos en Infrastructure para `leases` con TTL 604800; cubrir con pruebas de caso nuevo/repetido usando mock o emulador. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -25,7 +25,7 @@
 | 1 | Entidades Usuario y Tag | DONE | pendiente: sin .git | verde | `Usuario`, `Tag`, `RolUsuario`, `EstadoRegistro`; REQ 12, 13 |
 | 1 | Puerto `users` para Usuario/Tag | DONE | a36bd2f | verde | `IRepositorioUsuarios`, filtros `FiltroUsuarios`/`FiltroTags`; REQ 12, 13, 26.3 / ARQ 8-9 |
 | 1 | Entidad y puerto `campaigns` | DONE | 03c9277 | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
-| 1 | Implementacion Cosmos inicial | TODO | - | - | `Infrastructure`; con emulador/mock en pruebas |
+| 1 | Implementacion Cosmos inicial | DONE | pendiente | verde | `RepositorioCampaniasCosmos` para `campaigns`, mapping JSON `Campania`, pruebas con fake container |
 | 1 | Idempotencia WebhookDedupe/leases | TODO | - | - | `03` secciones 3.16 y 4 |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
 | 3 | Identidad y Auth | TODO | - | - | 06 |
@@ -44,6 +44,7 @@
 - 2026-06-12 - Backend - `Usuario` y `Tag` se modelaron como dominio puro sin atributos Cosmos/API; el mapeo JSON queda para infraestructura para no acoplar persistencia al dominio. Ref: `03` secciones 3.1-3.2.
 - 2026-06-12 - Arquitecto/Backend - Los puertos de persistencia se ubican en `ElTejido.Application` e `Infrastructure` los implementara; `Domain` permanece libre de I/O. Ref: `SUPUESTOS.md#fase1-puertos-persistencia-application`.
 - 2026-06-13 - Arquitecto/Backend - `Campania` y sus embebidos se modelaron como dominio puro sin atributos Cosmos/API; el adaptador de `Infrastructure` mapeara nombres JSON y discriminador `type`. Ref: `03` seccion 3.3, `07` seccion 2.
+- 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `campaigns` usa DTOs internos con `Newtonsoft.Json` y `Microsoft.Azure.Cosmos`; el dominio sigue sin atributos de persistencia. Ref: `03` secciones 2, 3.3 y 5 / ARQ 8-9.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -63,7 +64,7 @@
   - Cosmos emulator, Azurite, `dotnet user-secrets`, Key Vault y proxy Angular quedan pendientes para las fases que consuman infraestructura real.
 
 ## Deuda tecnica / pendientes conocidos
-- Existen cambios no relacionados en el working tree (`.obsidian/` y `Propuesta_Comercial/`) que no pertenecen a Fase 1 y no se tocaron.
+- Existe un cambio no relacionado en el working tree (`.obsidian/workspace.json`) que no pertenece a Fase 1 y no se toco.
 - El Node global local (`v22.17.0`) no cumple el minimo de Angular CLI 22 (`22.22.3+`). Impacto: usar Node temporal o actualizar Node antes de correr `npm run build` directamente.
 - El lint frontend inicial es Prettier check; agregar ESLint cuando entren reglas/componentes reales del portal.
 
@@ -77,3 +78,4 @@
 - 2026-06-12T18:59:38Z - Codex - Agregadas entidades de dominio `Usuario` y `Tag` con validaciones, roles/estados y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T19:23:13Z - Codex - Agregado puerto `IRepositorioUsuarios` en Application para el contenedor `users`, filtros normalizados para Usuario/Tag y pruebas unitarias. Backend build/test/format verde. Commit a36bd2f.
 - 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit 03c9277.
+- 2026-06-13T02:23:01Z - Codex - Implementado adaptador Cosmos inicial de `campaigns` en Infrastructure (`RepositorioCampaniasCosmos`) con mapping a contrato JSON de `Campania`, paquetes Cosmos/Newtonsoft y pruebas unitarias de repositorio/mapping con fake container. Backend build/test/format verde. Commit pendiente.
