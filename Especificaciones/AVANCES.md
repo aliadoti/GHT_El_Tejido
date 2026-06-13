@@ -5,13 +5,13 @@
 
 ## Estado global
 - Fase actual: **Fase 1 - Dominio y persistencia (iniciada)**
-- Ultima actualizacion: 2026-06-12T19:23:13Z por Codex
+- Ultima actualizacion: 2026-06-13T00:23:21Z por Codex
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Continuar Fase 1 con entidad/puerto inicial del contenedor `campaigns` para `Campania` con mensajes iniciales y preguntas embebidos segun `03_Modelo_de_Datos_Cosmos.md` seccion 3.3 y `07_Backend_Campanas_y_Configuracion.md` seccion 2.
-- Como continuar: leer `03` secciones 2 y 3.3, `07` secciones 2.1-2.5; modelar dominio puro de `Campania` y un puerto pequeno en `Application` para guardar/consultar por id/listar por estado. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
+- [ ] Continuar Fase 1 con implementacion Cosmos inicial en `Infrastructure` para el contenedor `campaigns`, mapeando `Campania` al contrato JSON de `03_Modelo_de_Datos_Cosmos.md` seccion 3.3 sin filtrar DTOs Cosmos hacia Domain.
+- Como continuar: leer `03` secciones 2, 3.3 y 5; leer los tipos en `src/ElTejido.Domain/Campanas` y el puerto `src/ElTejido.Application/Campanas/IRepositorioCampanias.cs`. Crear adaptador Cosmos pequeno para guardar/consultar por id/listar por estado; cubrir con pruebas de mapping/repositorio usando mock o emulador. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -24,7 +24,7 @@
 | 1 | Normalizacion E.164 centralizada | DONE | pendiente: sin .git | verde | `NumeroWhatsApp`, `INormalizadorNumero`, `NormalizadorNumero`; REQ 10.2, 12.2.2 / ARQ 16 |
 | 1 | Entidades Usuario y Tag | DONE | pendiente: sin .git | verde | `Usuario`, `Tag`, `RolUsuario`, `EstadoRegistro`; REQ 12, 13 |
 | 1 | Puerto `users` para Usuario/Tag | DONE | a36bd2f | verde | `IRepositorioUsuarios`, filtros `FiltroUsuarios`/`FiltroTags`; REQ 12, 13, 26.3 / ARQ 8-9 |
-| 1 | Entidad y puerto `campaigns` | TODO | - | - | `Campania` con mensajes/preguntas embebidos; `03` seccion 3.3 |
+| 1 | Entidad y puerto `campaigns` | DONE | pendiente | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
 | 1 | Implementacion Cosmos inicial | TODO | - | - | `Infrastructure`; con emulador/mock en pruebas |
 | 1 | Idempotencia WebhookDedupe/leases | TODO | - | - | `03` secciones 3.16 y 4 |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
@@ -43,6 +43,7 @@
 - 2026-06-12 - Backend/AppSec - Normalizacion E.164 centralizada como dominio puro; validacion plausible por longitud 8-15, solo digitos ASCII y primer digito distinto de 0. Ref: `SUPUESTOS.md#fase1-normalizacion-e164`.
 - 2026-06-12 - Backend - `Usuario` y `Tag` se modelaron como dominio puro sin atributos Cosmos/API; el mapeo JSON queda para infraestructura para no acoplar persistencia al dominio. Ref: `03` secciones 3.1-3.2.
 - 2026-06-12 - Arquitecto/Backend - Los puertos de persistencia se ubican en `ElTejido.Application` e `Infrastructure` los implementara; `Domain` permanece libre de I/O. Ref: `SUPUESTOS.md#fase1-puertos-persistencia-application`.
+- 2026-06-13 - Arquitecto/Backend - `Campania` y sus embebidos se modelaron como dominio puro sin atributos Cosmos/API; el adaptador de `Infrastructure` mapeara nombres JSON y discriminador `type`. Ref: `03` seccion 3.3, `07` seccion 2.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -75,3 +76,4 @@
 - 2026-06-12T18:56:38Z - Codex - Iniciada Fase 1 con normalizacion E.164 centralizada en dominio (`NumeroWhatsApp`, `INormalizadorNumero`, `NormalizadorNumero`) y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T18:59:38Z - Codex - Agregadas entidades de dominio `Usuario` y `Tag` con validaciones, roles/estados y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T19:23:13Z - Codex - Agregado puerto `IRepositorioUsuarios` en Application para el contenedor `users`, filtros normalizados para Usuario/Tag y pruebas unitarias. Backend build/test/format verde. Commit a36bd2f.
+- 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit pendiente.
