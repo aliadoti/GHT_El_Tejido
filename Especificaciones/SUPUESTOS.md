@@ -79,7 +79,7 @@
 - Impacto / reversibilidad: afecta solo la organizacion de interfaces internas; no cambia contratos API ni Cosmos y permite mover interfaces despues si el equipo estandariza otra frontera.
 
 ### fase4-admin-enforcement - Guard comun para endpoints administrativos
-- Fecha: 2026-06-13 - Agente/Rol: Codex - Backend/AppSec - Commit: (Fase 4)
+- Fecha: 2026-06-13 - Agente/Rol: Codex - Backend/AppSec - Commit: be861d4
 - Contexto: `04 §1/§5` y `06 §4.4` exigen sesion valida, roles por metodo y CSRF en mutaciones, pero no fijan el mecanismo ASP.NET ni el status exacto para CSRF faltante/invalido.
 - Decision: implementar el enforcement como `IEndpointFilter` reutilizable (`AutorizacionAdminEndpointFilter`) para grupos `/api/admin/*`: GET permite `admin` o `visor`; cualquier otro metodo exige `admin` y `X-CSRF-Token` igual al claim `csrf`; CSRF faltante/invalido responde `403 FORBIDDEN`. Para probarlo antes del CRUD real se agregan endpoints minimos bajo `/api/admin/diagnostico/*` solo en `Development`.
 - Alternativa(s) descartada(s): middleware global por path (menos explicito para grupos y pruebas); atributo/controller auth (el proyecto usa Minimal APIs); responder `400` por CSRF faltante (filtra menos intencion de seguridad que `403`).
