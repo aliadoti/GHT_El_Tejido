@@ -4,14 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fase 1 - Dominio y persistencia (iniciada)**
-- Ultima actualizacion: 2026-06-13T03:30:37Z por Codex
+- Fase actual: **Fase 2 - Contratos de API y seguridad transversal (iniciada)**
+- Ultima actualizacion: 2026-06-13T00:00:00Z por Claude Code
 - Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Continuar Fase 1 con dominio y puerto del contenedor `participants` para `ParticipanteCampania` y `EnvioMensaje`, consumiendo `03_Modelo_de_Datos_Cosmos.md` secciones 3.4, 3.5, 4 y 5.
-- Como continuar: leer `03` secciones 2, 3.4, 3.5, 4 y 5; revisar los patrones de `IRepositorioUsuarios`, `IRepositorioCampanias`, `RepositorioUsuariosCosmos` y `RepositorioCampaniasCosmos`. Crear entidades/puerto primero, cubrir reglas de estado/envio/respuesta e idempotencia de envio saliente. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release` y `dotnet format --verify-no-changes`.
+- [ ] Implementar Fase 2 (`04`, `10`): middleware de errores (modelo `04 §3`), correlationId, HTTPS/HSTS, rate limiting en `/api/auth/*` y webhook, logging estructurado y acceso a secretos por Managed Identity con cache corta (local: user-secrets).
+- Como continuar: trabajar en `ElTejido.Api` (composition root + middleware) y agregar el puerto `ISecretProvider` en `Application` con impl Key Vault + impl configuracion en `Infrastructure`. Leer `04 §1, §3, §8` y `10 §2, §3, §4, §6`. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -28,6 +28,8 @@
 | 1 | Implementacion Cosmos inicial | DONE | 93ac9b7 | verde | `RepositorioCampaniasCosmos` para `campaigns`, mapping JSON `Campania`, pruebas con fake container |
 | 1 | Idempotencia WebhookDedupe/leases | DONE | 0556c8c | verde | `IRegistroWebhookDedupe`, `RepositorioWebhookDedupeCosmos`, TTL 604800 |
 | 1 | Adaptador Cosmos `users` | DONE | 19d4761 | verde | `RepositorioUsuariosCosmos` para `Usuario`/`Tag`, mapping JSON, particiones `usuario`/`tag`, busqueda por numero y filtros con fake container |
+| 1 | Dominio + puerto + Cosmos `participants` | DONE | pendiente | verde | `ParticipanteCampania`, `EnvioMensaje`, enums; `IRepositorioParticipantes`, `RepositorioParticipantesCosmos` (pk `campaniaId`); idempotencia de envio saliente (03 §4) |
+| 1 | Dominio + puertos + Cosmos `security` | DONE | pendiente | verde | `CodigoAuthAdmin` (TTL), `LogSeguridad` (append-only), `TipoEventoSeguridad`; `IRepositorioCodigosAuth`, `IRepositorioLogSeguridad`, repos Cosmos (pk = `pk`) |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
 | 3 | Identidad y Auth | TODO | - | - | 06 |
 | 4 | Configuracion | TODO | - | - | 07 |
@@ -48,6 +50,8 @@
 - 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `campaigns` usa DTOs internos con `Newtonsoft.Json` y `Microsoft.Azure.Cosmos`; el dominio sigue sin atributos de persistencia. Ref: `03` secciones 2, 3.3 y 5 / ARQ 8-9.
 - 2026-06-13 - Arquitecto/Backend - La idempotencia de webhooks se expone como puerto booleano `IRegistroWebhookDedupe`: `true` permite procesar y `false` descarta reintentos por conflicto Cosmos. Ref: `03` secciones 3.16 y 4, `05` seccion 2.4 / ARQ 4.2.
 - 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `users` usa documentos internos separados para `Usuario` y `Tag`, con `pk` fija `usuario`/`tag`; busqueda por numero normalizado se resuelve por query contra `whatsappNormalizado`. Ref: `03` secciones 2, 3.1, 3.2 y 5 / ARQ 8-9.
+- 2026-06-13 - Arquitecto/Backend (Claude Code) - Cerrada Fase 1 implementando solo los contenedores `participants` y `security` (decision del usuario); `conversations`, `responses` y `config` se construiran con sus modulos duenos (Fases 5/6/4). `EnvioMensaje` y `LogSeguridad` se modelan append-only via `CreateItemAsync`; `ParticipanteCampania` y `CodigoAuthAdmin` via upsert. Ref: `03` secciones 3.4, 3.5, 3.14, 3.15, 4 / ARQ 8-9, 13.
+- 2026-06-13 - AppSec (Claude Code) - OTP se hashea con bcrypt (`BCrypt.Net-Next`) usando `otp-salt` de Key Vault como pepper (decision del usuario); sesion admin emitida como JWT corto firmado con `jwt-sign` (sin contenedor de sesion). Ref: `06 §4.3`, `10 §5`, `SUPUESTOS.md#fase3-otp-bcrypt-jwt`.
 
 ## Contratos: cambios respecto a las specs
 - Ninguno.
@@ -84,3 +88,4 @@
 - 2026-06-13T02:23:01Z - Codex - Implementado adaptador Cosmos inicial de `campaigns` en Infrastructure (`RepositorioCampaniasCosmos`) con mapping a contrato JSON de `Campania`, paquetes Cosmos/Newtonsoft y pruebas unitarias de repositorio/mapping con fake container. Backend build/test/format verde. Commit 93ac9b7.
 - 2026-06-13T02:37:56Z - Codex - Implementada idempotencia `WebhookDedupe`/`leases`: puerto `IRegistroWebhookDedupe`, adaptador Cosmos create-if-not-exists con manejo de conflicto, documento con `ttl` 604800 y pruebas unitarias de nuevo/repetido/validacion. Backend build/test/format verde. Commit 0556c8c.
 - 2026-06-13T03:30:37Z - Codex - Implementado adaptador Cosmos de `users`: documentos/mappers `Usuario` y `Tag`, wrapper de contenedor, repositorio `RepositorioUsuariosCosmos`, busqueda por numero normalizado y filtros de usuarios/tags; 7 pruebas unitarias nuevas con fake container. Backend build/test/format verde. Commit 19d4761.
+- 2026-06-13 - Claude Code - Cerrada Fase 1: contenedor `participants` (dominio `ParticipanteCampania`/`EnvioMensaje` + enums, puerto `IRepositorioParticipantes`, `RepositorioParticipantesCosmos` con idempotencia de envio saliente) y contenedor `security` (dominio `CodigoAuthAdmin`/`LogSeguridad` + `TipoEventoSeguridad`, puertos `IRepositorioCodigosAuth`/`IRepositorioLogSeguridad`, repos Cosmos). 13 pruebas unitarias nuevas (66 unit + 1 integration en verde). Backend build/test/format verde.

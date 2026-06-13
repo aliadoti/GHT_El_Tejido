@@ -32,6 +32,20 @@
 - Alternativa(s) descartada(s): incluir un catalogo completo de prefijos de pais en dominio; aumenta mantenimiento y puede bloquear numeros validos si queda incompleto.
 - Impacto / reversibilidad: afecta solo el value object de dominio; se puede endurecer luego agregando un catalogo/configuracion de prefijos sin cambiar contratos de API o Cosmos.
 
+### fase1-alcance-contenedores - Contenedores construidos para cerrar Fase 1
+- Fecha: 2026-06-13 - Agente/Rol: Claude Code - Arquitecto/Backend - Commit: (Fase 1 cierre)
+- Contexto: la Fase 1 del plan pide "interfaces de repositorio por contenedor" e "implementacion Cosmos", pero `03` define 8 contenedores y varios pertenecen a modulos de fases posteriores. REQ 14, 29.4, 29.6, 10.3, 30 / ARQ 8-9, 13.
+- Decision: cerrar Fase 1 con los contenedores `participants` (ParticipanteCampania, EnvioMensaje) y `security` (CodigoAuthAdmin, LogSeguridad), ademas de los ya hechos (`users`, `campaigns`, `leases`). `conversations`, `responses` y `config` se implementaran junto a sus modulos duenos (Fases 5, 6 y 4).
+- Alternativa(s) descartada(s): construir los 8 contenedores ahora; duplica trabajo con las fases que definen la forma exacta de uso y agranda Fase 1 sin valor inmediato.
+- Impacto / reversibilidad: no cierra fronteras; los contenedores faltantes se agregan despues sin tocar lo ya hecho. `security` se adelanta porque la Fase 3 (auth) lo consume.
+
+### fase3-otp-bcrypt-jwt - Hashing OTP y mecanismo de sesion admin
+- Fecha: 2026-06-13 - Agente/Rol: Claude Code - AppSec - Commit: (Fase 3)
+- Contexto: `06 §4.2c` y `10 §5` permiten Argon2id **o** bcrypt para el OTP, y `06 §4.3b` permite JWT corto firmado **o** registro de sesion server-side. Decision del usuario.
+- Decision: hashing OTP con `BCrypt.Net-Next`; la sal `otp-salt` de Key Vault se aplica como pepper (se concatena al codigo antes del hash bcrypt, que ya genera su propia sal por hash). Sesion admin como JWT corto firmado con `jwt-sign` (HS256), en cookie `httpOnly/Secure/SameSite=Strict` + token CSRF; expiracion default 60 min. Sin contenedor de sesion.
+- Alternativa(s) descartada(s): Argon2id (mas dependencia/config para el MVP); sesion server-side en Cosmos (contenedor extra no definido en `03`, mas piezas).
+- Impacto / reversibilidad: reversible. El puerto `IHasherOtp` permite cambiar a Argon2id sin tocar el servicio de auth; el logout depende de expiracion corta (no hay revocacion server-side hasta introducir un contenedor de sesion).
+
 ### fase1-puertos-persistencia-application - Ubicacion de puertos de repositorio
 - Fecha: 2026-06-12 - Agente/Rol: Codex - Arquitecto/Backend - Commit: a36bd2f
 - Contexto: `01_Convenciones_para_Agentes.md` seccion 2 menciona interfaces en Domain para algunos modulos, mientras `02_Arquitectura_y_Stack.md` seccion 3 define que Application expone puertos e Infrastructure los implementa. REQ 31.8 / ARQ 1.1, 8, 9.
