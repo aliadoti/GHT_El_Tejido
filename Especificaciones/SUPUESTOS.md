@@ -58,6 +58,19 @@
 - Alternativa(s) descartada(s): rate limiting global (afectaria `/health`); exponer endpoints de diagnostico siempre (superficie innecesaria en produccion); registrar Cosmos siempre (rompe arranque sin emulador).
 - Impacto / reversibilidad: no cierra fronteras. Las politicas y el puerto `ISecretProvider` quedan listos para que Fase 3 (auth) y Fase 5 (webhook) los consuman. Los endpoints de diagnostico se pueden quitar sin afectar contratos.
 
+### fase3-identidad-auth-impl - Detalles de implementacion de la Fase 3
+- Fecha: 2026-06-13 - Agente/Rol: Claude Code - Arquitecto/Backend/AppSec - Commit: (Fase 3)
+- Contexto: `06 §3.2` deja abierta la "pregunta vigente del hilo" (no hay aun contenedor `conversations`, Fase 5), el envio del OTP depende del Gateway (Fase 5) y el registro de los servicios debe convivir con el registro guardado de Cosmos (Fase 2). REQ §10, §26.3 / ARQ §5.
+- Decision:
+  - **Pregunta vigente (MVP):** sin conversaciones todavia, se elige la primera pregunta `activa` por `orden` ascendente. Cuando exista el hilo conversacional (Fase 5/6) se cambiara a "pregunta de la conversacion abierta o primera pendiente".
+  - **Campania activa por participante:** se asume una; si hubiera varias se elige la asociacion mas reciente por `fechaUltimaRespuesta` y, en su defecto, `fechaInclusion`.
+  - **Envio del OTP:** puerto `INotificadorOtp` con impl provisional `NotificadorOtpLog` que NO registra el codigo ni el numero (10 §5); el cliente real de WhatsApp llega en Fase 5.
+  - **Limite de solicitudes OTP por numero:** `ILimitadorOtp` con `LimitadorOtpMemoria` (ventana fija en `IMemoryCache`), suficiente para el MVP en un solo proceso (02 §5); complementa el rate limit HTTP por IP.
+  - **Registro de servicios:** los servicios hoja (hasher, generador, sesion, limitador, notificador, normalizador) se registran siempre; los orquestadores `IAuthAdminService`/`IResolutorParticipante` se gatillan con la presencia de `Cosmos:AccountEndpoint` (necesitan los repos). Los endpoints `request-code`/`verify-code` resuelven `IAuthAdminService` desde `RequestServices` para no condicionar la inferencia de parametros de minimal API cuando el servicio no esta registrado.
+  - **Cookie de sesion:** `httpOnly`, `SameSite=Strict`, `Secure` fuera de Development (en pruebas http sobre TestServer viaja igual), nombre `eltejido_sesion`. La emision del JWT incluye `csrf` como claim; el enforcement de `X-CSRF-Token` y de `/api/admin/*` se implementa en Fase 4 (aun no hay endpoints admin).
+- Alternativa(s) descartada(s): contenedor de sesion server-side (mas piezas, ya descartado en fase3-otp-bcrypt-jwt); registrar Cosmos siempre (rompe el arranque sin emulador); inferencia de `IAuthAdminService` por parametro (falla el build de endpoints si el servicio esta guardado).
+- Impacto / reversibilidad: no cierra fronteras. La eleccion de pregunta vigente y el notificador se sustituyen en Fase 5 sin tocar contratos; el enforcement admin se agrega en Fase 4 reutilizando `IServicioSesion.ValidarAsync`.
+
 ### fase1-puertos-persistencia-application - Ubicacion de puertos de repositorio
 - Fecha: 2026-06-12 - Agente/Rol: Codex - Arquitecto/Backend - Commit: a36bd2f
 - Contexto: `01_Convenciones_para_Agentes.md` seccion 2 menciona interfaces en Domain para algunos modulos, mientras `02_Arquitectura_y_Stack.md` seccion 3 define que Application expone puertos e Infrastructure los implementa. REQ 31.8 / ARQ 1.1, 8, 9.
