@@ -4,14 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fase 1 COMPLETA - siguiente: Fase 2 (Contratos de API y seguridad transversal, sin iniciar)**
+- Fase actual: **Fase 2 COMPLETA - siguiente: Fase 3 (Identidad y Auth, sin iniciar)**
 - Ultima actualizacion: 2026-06-13T00:00:00Z por Claude Code
-- Repo compilable y en verde: **si** (backend build/test/format verificados; frontend sin cambios desde Fase 0)
+- Repo compilable y en verde: **si** (backend build/test/format verificados; 90 pruebas en verde: 84 unit + 6 integration; frontend sin cambios desde Fase 0)
 - Branch de trabajo: **main**
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] Implementar Fase 2 (`04`, `10`): middleware de errores (modelo `04 §3`), correlationId, HTTPS/HSTS, rate limiting en `/api/auth/*` y webhook, logging estructurado y acceso a secretos por Managed Identity con cache corta (local: user-secrets).
-- Como continuar: trabajar en `ElTejido.Api` (composition root + middleware) y agregar el puerto `ISecretProvider` en `Application` con impl Key Vault + impl configuracion en `Infrastructure`. Leer `04 §1, §3, §8` y `10 §2, §3, §4, §6`. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes`.
+- [ ] Implementar Fase 3 - Identidad y Auth (`06`): `IResolutorParticipante`, OTP request/verify con bcrypt (`BCrypt.Net-Next`, pepper `otp-salt`) + JWT firmado (`jwt-sign`, HS256), sesiones/roles, endpoints `/api/auth/*` (request-code, verify-code, logout, me) y respuestas neutrales (REQ §10.3.10).
+- Como continuar: consumir lo ya disponible -> contenedores `participants` y `security` (Fase 1), puerto `ISecretProvider` (Fase 1.5/2: `ElTejido.Application.Seguridad.ISecretProvider` + `NombresSecretos`), modelo de errores y rate limiter (Fase 2: aplicar `PoliticasRateLimiting.Publico` a `/api/auth/*` con `.RequireRateLimiting(...)`). Leer `06 §2-§4`, `04 §4`, `10 §5`. La normalizacion E.164 ya existe (`NormalizadorNumero`). Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -30,7 +30,13 @@
 | 1 | Adaptador Cosmos `users` | DONE | 19d4761 | verde | `RepositorioUsuariosCosmos` para `Usuario`/`Tag`, mapping JSON, particiones `usuario`/`tag`, busqueda por numero y filtros con fake container |
 | 1 | Dominio + puerto + Cosmos `participants` | DONE | pendiente | verde | `ParticipanteCampania`, `EnvioMensaje`, enums; `IRepositorioParticipantes`, `RepositorioParticipantesCosmos` (pk `campaniaId`); idempotencia de envio saliente (03 §4) |
 | 1 | Dominio + puertos + Cosmos `security` | DONE | pendiente | verde | `CodigoAuthAdmin` (TTL), `LogSeguridad` (append-only), `TipoEventoSeguridad`; `IRepositorioCodigosAuth`, `IRepositorioLogSeguridad`, repos Cosmos (pk = `pk`) |
-| 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
+| 2 | Modelo de errores uniforme (04 §3) | DONE | pendiente | verde | `ExcepcionAplicacion`+tipadas en `Application/Common`; `MiddlewareManejoErrores`, `MapeadorErrores`, `EscritorRespuestaError`; mapea `DomainValidationException`->400 y no controladas->500 sin filtrar |
+| 2 | CorrelationId (04 §8, 10 §6.2) | DONE | pendiente | verde | `MiddlewareCorrelationId` lee/genera `corr_<guid>`, scope de logging, header de respuesta y cuerpo de error |
+| 2 | HTTPS/HSTS (10 §3) | DONE | pendiente | verde | `UseHsts`+`UseHttpsRedirection` solo fuera de Development; `/health` sigue verde en pruebas |
+| 2 | Rate limiting (10 §2, §3) | DONE | pendiente | verde | `AddRateLimiter` con politicas `publico`/`webhook`/`demo` por IP, por endpoint; 429 + `Retry-After` con modelo uniforme |
+| 2 | Logging estructurado (10 §6.3) | DONE | pendiente | verde | `ILogger` con propiedades, niveles Information/Warning/Error, correlationId en scope; sin secretos/PII |
+| 2 | Acceso a secretos (10 §4) | DONE | pendiente | verde | Puerto `ISecretProvider`+`NombresSecretos`; `KeyVaultSecretProvider` (DefaultAzureCredential), `ConfiguracionSecretProvider` (user-secrets), decorador `SecretProviderConCache` (IMemoryCache, 5 min); seleccion por `KeyVault:Uri` |
+| 2 | Composition root + Cosmos guardado | DONE | pendiente | verde | `AgregarSeguridad`/`AgregarInfraestructura` en Infrastructure; Cosmos solo si hay `Cosmos:AccountEndpoint`; `Program.cs` cablea middleware/servicios |
 | 3 | Identidad y Auth | TODO | - | - | 06 |
 | 4 | Configuracion | TODO | - | - | 07 |
 | 5 | WhatsApp Gateway + Orquestador | TODO | - | - | 05 |
@@ -51,6 +57,11 @@
 - 2026-06-13 - Arquitecto/Backend - La idempotencia de webhooks se expone como puerto booleano `IRegistroWebhookDedupe`: `true` permite procesar y `false` descarta reintentos por conflicto Cosmos. Ref: `03` secciones 3.16 y 4, `05` seccion 2.4 / ARQ 4.2.
 - 2026-06-13 - Backend/Infrastructure - El adaptador Cosmos de `users` usa documentos internos separados para `Usuario` y `Tag`, con `pk` fija `usuario`/`tag`; busqueda por numero normalizado se resuelve por query contra `whatsappNormalizado`. Ref: `03` secciones 2, 3.1, 3.2 y 5 / ARQ 8-9.
 - 2026-06-13 - Arquitecto/Backend (Claude Code) - Cerrada Fase 1 implementando solo los contenedores `participants` y `security` (decision del usuario); `conversations`, `responses` y `config` se construiran con sus modulos duenos (Fases 5/6/4). `EnvioMensaje` y `LogSeguridad` se modelan append-only via `CreateItemAsync`; `ParticipanteCampania` y `CodigoAuthAdmin` via upsert. Ref: `03` secciones 3.4, 3.5, 3.14, 3.15, 4 / ARQ 8-9, 13.
+- 2026-06-13 - Arquitecto/Backend (Claude Code) - Fase 2: excepciones de aplicacion tipadas en `Application/Common` (`ExcepcionAplicacion` base + `ErrorValidacion/.../ErrorUpstream`) que transportan codigo+estado HTTP; el Edge las traduce con `MapeadorErrores` al modelo `04 §3`. `INTERNAL_ERROR` (500) no tiene tipo: es el fallback de no controladas, sin filtrar mensaje. Ref: `04 §3`, `10 §6.3`.
+- 2026-06-13 - Backend/Edge (Claude Code) - Fase 2: correlationId via `MiddlewareCorrelationId` (lee `X-Correlation-Id` o genera `corr_<guid>`), guardado en `HttpContext.Items`, scope de logging y header de respuesta; un unico `EscritorRespuestaError` serializa el cuerpo de error tanto desde el middleware como desde el rechazo del rate limiter. Ref: `04 §8`, `10 §6.2`, `SUPUESTOS.md#fase2-seguridad-transversal`.
+- 2026-06-13 - AppSec (Claude Code) - Fase 2: rate limiting por endpoint (no global) con politicas `publico`/`webhook` configurables (seccion `Seguridad`) y `demo` para pruebas; HTTPS/HSTS solo fuera de Development para no romper `/health`. Ref: `10 §2, §3`, `04 §8`.
+- 2026-06-13 - AppSec (Claude Code) - Fase 2: `ISecretProvider` (puerto en Application) con `KeyVaultSecretProvider` (Managed Identity via `DefaultAzureCredential`), `ConfiguracionSecretProvider` (user-secrets local) y decorador `SecretProviderConCache` (IMemoryCache, expiracion 5 min, nunca a disco); seleccion por presencia de `KeyVault:Uri`. Nombres canonicos en `NombresSecretos` (`llm-key`, `wa-token`, `wa-appsec`, `wa-verify-token`, `jwt-sign`, `otp-salt`). Ref: `10 §4`, `ARQ §10.3`, `SUPUESTOS.md#fase2-seguridad-transversal`.
+- 2026-06-13 - Arquitecto/Backend (Claude Code) - Fase 2: registro de Cosmos guardado por `Cosmos:AccountEndpoint` (la app arranca en verde sin emulador; `/health` intacto). `AgregarSeguridad`/`AgregarInfraestructura` en `Infrastructure/Configuracion`. Ref: `02 §6`, `04 §7`.
 - 2026-06-13 - AppSec (Claude Code) - OTP se hashea con bcrypt (`BCrypt.Net-Next`) usando `otp-salt` de Key Vault como pepper (decision del usuario); sesion admin emitida como JWT corto firmado con `jwt-sign` (sin contenedor de sesion). Ref: `06 §4.3`, `10 §5`, `SUPUESTOS.md#fase3-otp-bcrypt-jwt`.
 
 ## Contratos: cambios respecto a las specs
@@ -89,3 +100,4 @@
 - 2026-06-13T02:37:56Z - Codex - Implementada idempotencia `WebhookDedupe`/`leases`: puerto `IRegistroWebhookDedupe`, adaptador Cosmos create-if-not-exists con manejo de conflicto, documento con `ttl` 604800 y pruebas unitarias de nuevo/repetido/validacion. Backend build/test/format verde. Commit 0556c8c.
 - 2026-06-13T03:30:37Z - Codex - Implementado adaptador Cosmos de `users`: documentos/mappers `Usuario` y `Tag`, wrapper de contenedor, repositorio `RepositorioUsuariosCosmos`, busqueda por numero normalizado y filtros de usuarios/tags; 7 pruebas unitarias nuevas con fake container. Backend build/test/format verde. Commit 19d4761.
 - 2026-06-13 - Claude Code - Cerrada Fase 1: contenedor `participants` (dominio `ParticipanteCampania`/`EnvioMensaje` + enums, puerto `IRepositorioParticipantes`, `RepositorioParticipantesCosmos` con idempotencia de envio saliente) y contenedor `security` (dominio `CodigoAuthAdmin`/`LogSeguridad` + `TipoEventoSeguridad`, puertos `IRepositorioCodigosAuth`/`IRepositorioLogSeguridad`, repos Cosmos). 13 pruebas unitarias nuevas (66 unit + 1 integration en verde). Backend build/test/format verde.
+- 2026-06-13 - Claude Code - Completada Fase 2 (Contratos de API y seguridad transversal, `04`/`10`): modelo de errores uniforme (excepciones tipadas en `Application/Common`, `MiddlewareManejoErrores`+`MapeadorErrores`+`EscritorRespuestaError`), `MiddlewareCorrelationId`, HTTPS/HSTS guardado a no-Development, rate limiting por endpoint (politicas `publico`/`webhook`/`demo`, 429+`Retry-After`), logging estructurado y acceso a secretos (`ISecretProvider`+`NombresSecretos`; `KeyVaultSecretProvider`/`ConfiguracionSecretProvider`/`SecretProviderConCache`; seleccion por `KeyVault:Uri`). Composition root en `Program.cs` con `AgregarSeguridad`/`AgregarInfraestructura` (Cosmos guardado). Paquetes nuevos en Infrastructure (Azure.Security.KeyVault.Secrets, Azure.Identity, Caching.Memory, Options.ConfigurationExtensions). 24 pruebas nuevas (84 unit + 6 integration = 90 en verde). Backend build `-warnaserror`/test/format verde. Commit pendiente.

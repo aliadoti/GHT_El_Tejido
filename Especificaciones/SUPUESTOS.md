@@ -46,6 +46,18 @@
 - Alternativa(s) descartada(s): Argon2id (mas dependencia/config para el MVP); sesion server-side en Cosmos (contenedor extra no definido en `03`, mas piezas).
 - Impacto / reversibilidad: reversible. El puerto `IHasherOtp` permite cambiar a Argon2id sin tocar el servicio de auth; el logout depende de expiracion corta (no hay revocacion server-side hasta introducir un contenedor de sesion).
 
+### fase2-seguridad-transversal - Detalles de implementacion de la Fase 2
+- Fecha: 2026-06-13 - Agente/Rol: Claude Code - Arquitecto/Backend/AppSec - Commit: (Fase 2)
+- Contexto: `04 §3, §8` y `10 §2-§4, §6` fijan el modelo de errores, correlationId, rate limiting y manejo de secretos, pero dejan abiertos nombres de seccion de configuracion, particion del rate limiter y como exponer endpoints aun inexistentes (`/api/auth/*`, webhook son Fases 3/5).
+- Decision:
+  - Secretos locales bajo la seccion `Secretos:<nombre-canonico>` (user-secrets); cache corta bajo `Seguridad:CacheSecretos:DuracionMinutos` (default 5, rango 5-10). Seleccion de proveedor por presencia de `KeyVault:Uri`.
+  - Rate limiter con politicas nombradas `publico`/`webhook` (FixedWindow por IP, 1 min, limites desde `Seguridad`), aplicadas por endpoint (nunca global) para no afectar `/health`. Politica `demo` (1/min) solo para diagnostico.
+  - Endpoints de diagnostico `/diagnostico/{error,validacion,limitado}` mapeados solo en `Development` para ejercitar el modelo de errores y el 429; no se exponen en produccion.
+  - HTTPS/HSTS solo fuera de `Development` para no romper `/health` sobre http en `WebApplicationFactory`.
+  - Registro Cosmos guardado por presencia de `Cosmos:AccountEndpoint`; nombres de contenedor desde `Cosmos:Containers:*` con defaults `users/campaigns/participants/leases/security`; credencial por `Cosmos:AccountKey` o `DefaultAzureCredential`.
+- Alternativa(s) descartada(s): rate limiting global (afectaria `/health`); exponer endpoints de diagnostico siempre (superficie innecesaria en produccion); registrar Cosmos siempre (rompe arranque sin emulador).
+- Impacto / reversibilidad: no cierra fronteras. Las politicas y el puerto `ISecretProvider` quedan listos para que Fase 3 (auth) y Fase 5 (webhook) los consuman. Los endpoints de diagnostico se pueden quitar sin afectar contratos.
+
 ### fase1-puertos-persistencia-application - Ubicacion de puertos de repositorio
 - Fecha: 2026-06-12 - Agente/Rol: Codex - Arquitecto/Backend - Commit: a36bd2f
 - Contexto: `01_Convenciones_para_Agentes.md` seccion 2 menciona interfaces en Domain para algunos modulos, mientras `02_Arquitectura_y_Stack.md` seccion 3 define que Application expone puertos e Infrastructure los implementa. REQ 31.8 / ARQ 1.1, 8, 9.
