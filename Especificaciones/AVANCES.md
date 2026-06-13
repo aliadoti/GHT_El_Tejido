@@ -25,7 +25,7 @@
 | 1 | Entidades Usuario y Tag | DONE | pendiente: sin .git | verde | `Usuario`, `Tag`, `RolUsuario`, `EstadoRegistro`; REQ 12, 13 |
 | 1 | Puerto `users` para Usuario/Tag | DONE | a36bd2f | verde | `IRepositorioUsuarios`, filtros `FiltroUsuarios`/`FiltroTags`; REQ 12, 13, 26.3 / ARQ 8-9 |
 | 1 | Entidad y puerto `campaigns` | DONE | 03c9277 | verde | `Campania`, `MensajeInicial`, `Pregunta`, configs embebidas y `IRepositorioCampanias`; REQ 11, 15, 16 / ARQ 8-9 |
-| 1 | Implementacion Cosmos inicial | DONE | pendiente | verde | `RepositorioCampaniasCosmos` para `campaigns`, mapping JSON `Campania`, pruebas con fake container |
+| 1 | Implementacion Cosmos inicial | DONE | 93ac9b7 | verde | `RepositorioCampaniasCosmos` para `campaigns`, mapping JSON `Campania`, pruebas con fake container |
 | 1 | Idempotencia WebhookDedupe/leases | TODO | - | - | `03` secciones 3.16 y 4 |
 | 2 | Contratos API + seguridad transversal | TODO | - | - | 04, 10 |
 | 3 | Identidad y Auth | TODO | - | - | 06 |
@@ -78,4 +78,4 @@
 - 2026-06-12T18:59:38Z - Codex - Agregadas entidades de dominio `Usuario` y `Tag` con validaciones, roles/estados y pruebas unitarias. Backend build/test/format verde. Commit omitido por ausencia de `.git` y decision del usuario.
 - 2026-06-12T19:23:13Z - Codex - Agregado puerto `IRepositorioUsuarios` en Application para el contenedor `users`, filtros normalizados para Usuario/Tag y pruebas unitarias. Backend build/test/format verde. Commit a36bd2f.
 - 2026-06-13T00:23:21Z - Codex - Agregada entidad/puerto inicial del contenedor `campaigns`: dominio puro de `Campania` con mensajes iniciales, preguntas y configs embebidas, `IRepositorioCampanias`, `FiltroCampanias` y pruebas unitarias. Backend build/test/format verde. Commit 03c9277.
-- 2026-06-13T02:23:01Z - Codex - Implementado adaptador Cosmos inicial de `campaigns` en Infrastructure (`RepositorioCampaniasCosmos`) con mapping a contrato JSON de `Campania`, paquetes Cosmos/Newtonsoft y pruebas unitarias de repositorio/mapping con fake container. Backend build/test/format verde. Commit pendiente.
+- 2026-06-13T02:23:01Z - Codex - Implementado adaptador Cosmos inicial de `campaigns` en Infrastructure (`RepositorioCampaniasCosmos`) con mapping a contrato JSON de `Campania`, paquetes Cosmos/Newtonsoft y pruebas unitarias de repositorio/mapping con fake container. Backend build/test/format verde. Commit 93ac9b7.
