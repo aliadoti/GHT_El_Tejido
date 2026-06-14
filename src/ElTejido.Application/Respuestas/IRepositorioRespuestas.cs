@@ -21,6 +21,15 @@ public interface IRepositorioRespuestas
         string respuestaId,
         CancellationToken cancellationToken);
 
+    Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(
+        string campaniaId,
+        string evaluacionId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(
+        string campaniaId,
+        CancellationToken cancellationToken);
+
     Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken);
 
     Task<ArtefactoMarkdown?> ObtenerArtefactoAsync(

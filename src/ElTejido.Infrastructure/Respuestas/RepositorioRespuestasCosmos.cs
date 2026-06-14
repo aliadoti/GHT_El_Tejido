@@ -61,6 +61,34 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.FirstOrDefault()?.ToDomain();
     }
 
+    public async Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(
+        string campaniaId,
+        string evaluacionId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(evaluacionId);
+
+        var documento = await _container.ReadByIdAsync<EvaluacionCosmosDocument>(
+            evaluacionId.Trim(),
+            campaniaId.Trim(),
+            cancellationToken);
+        return documento?.ToDomain();
+    }
+
+    public async Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(
+        string campaniaId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
+            .WithParameter("@type", RespuestaCosmosDocument.DocumentType);
+
+        var documentos = await _container.QueryAsync<RespuestaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(d => d.ToDomain()).ToArray();
+    }
+
     public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
         => _container.UpsertAsync(ArtefactoMarkdownCosmosDocument.FromDomain(artefacto), artefacto.CampaniaId, cancellationToken);
 

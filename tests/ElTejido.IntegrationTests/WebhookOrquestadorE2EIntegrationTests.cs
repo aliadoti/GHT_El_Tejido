@@ -213,6 +213,12 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         public Task<DominioConversacion?> ObtenerConversacionAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
             => Task.FromResult<DominioConversacion?>(null);
 
+        public Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(Array.Empty<DominioConversacion>());
+
+        public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Mensaje>>(Array.Empty<Mensaje>());
+
         public Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

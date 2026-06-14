@@ -11,4 +11,9 @@ internal interface IConversationsCosmosContainer
     Task<ConversacionCosmosDocument?> ReadConversacionAsync(string id, string partitionKey, CancellationToken cancellationToken);
 
     Task CreateMensajeAsync(MensajeCosmosDocument document, string partitionKey, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<T>> QueryAsync<T>(
+        Microsoft.Azure.Cosmos.QueryDefinition query,
+        string partitionKey,
+        CancellationToken cancellationToken);
 }

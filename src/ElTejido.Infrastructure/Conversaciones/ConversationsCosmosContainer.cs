@@ -46,4 +46,23 @@ internal sealed class ConversationsCosmosContainer : IConversationsCosmosContain
     {
         await _container.CreateItemAsync(document, new PartitionKey(partitionKey), cancellationToken: cancellationToken);
     }
+
+    public async Task<IReadOnlyCollection<T>> QueryAsync<T>(
+        QueryDefinition query,
+        string partitionKey,
+        CancellationToken cancellationToken)
+    {
+        using var iterator = _container.GetItemQueryIterator<T>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(partitionKey) });
+
+        var documents = new List<T>();
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(cancellationToken);
+            documents.AddRange(page);
+        }
+
+        return documents;
+    }
 }

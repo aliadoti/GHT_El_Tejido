@@ -61,6 +61,9 @@ app.MapearEndpointsAdminFase4();
 app.MapearEndpointsWebhook();
 app.MapearEndpointsAdminEnvios();
 
+// Consulta de resultados: conversaciones, respuestas, evaluaciones, Markdown (04 §5.8).
+app.MapearEndpointsAdminResultados();
+
 if (app.Environment.IsDevelopment())
 {
     // Endpoints de diagnostico (solo Development): ejercitan el modelo de errores (04 §3) y el

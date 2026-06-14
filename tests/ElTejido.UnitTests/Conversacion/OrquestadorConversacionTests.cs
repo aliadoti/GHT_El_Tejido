@@ -195,6 +195,12 @@ public sealed class OrquestadorConversacionTests
         public Task<DominioConversacion?> ObtenerConversacionAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
             => Task.FromResult(_conversaciones.GetValueOrDefault(conversacionId));
 
+        public Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(_conversaciones.Values.Where(c => c.CampaniaId == campaniaId).ToArray());
+
+        public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Mensaje>>(Array.Empty<Mensaje>());
+
         public Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken)
         {
             MensajesGuardados++;

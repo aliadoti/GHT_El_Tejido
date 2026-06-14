@@ -16,5 +16,14 @@ public interface IRepositorioConversaciones
         string conversacionId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(
+        string campaniaId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(
+        string campaniaId,
+        string conversacionId,
+        CancellationToken cancellationToken);
+
     Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken);
 }

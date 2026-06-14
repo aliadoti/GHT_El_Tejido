@@ -149,6 +149,16 @@
 - Alternativa(s) descartada(s): cola dedicada de compilacion (excluido en MVP, `01 §11`); dos mensajes separados de retro y cierre (mas mensajes a Meta sin valor); id de conversacion aleatorio con query (lectura mas cara); fallar duro ante configuracion incompleta (rompe el hilo del usuario, contradice REQ §20.3.10).
 - Impacto / reversibilidad: no cambia contratos `03`/`04`. La compilacion en linea y los mensajes combinados son reversibles (cola/mensajes separados) sin tocar el dominio. La seleccion de pregunta vigente y la ventana por plantilla se endurecen al crecer el MVP.
 
+### fase8-consultas-resultados - Alcance de los endpoints de consulta de resultados
+- Fecha: 2026-06-14 - Agente/Rol: Claude Code - Backend - Commit: (Fase 8 backend)
+- Contexto: `04 §5.8` define los GET de conversaciones/respuestas/evaluaciones/markdown y `§2` lista un conjunto amplio de filtros; los contenedores `responses`/`conversations` estan particionados por `campaniaId`, por lo que una consulta cross-campania seria cross-particion. REQ §27.3.
+- Decision:
+  - Las listas (`/conversaciones`, `/respuestas`, `/markdown`) exigen `campaniaId` (query) para consultar dentro de una sola particion (bajo RU). Los detalles por id tambien reciben `campaniaId` (necesario como partition key del point read).
+  - Filtros soportados en el MVP: `usuarioId`, `preguntaId`, `estado` (respuestas), `tipoArtefacto` (markdown), aplicados en memoria sobre el resultado de la particion + paginacion `§2`. Los demas filtros de `§2` (area, empresa, tag, calificacionMin/Max, fechaDesde/Hasta, tema, entidad, numero) y la busqueda cross-campania quedan pendientes.
+  - `GET /markdown/{id}/raw` devuelve el contenido embebido (`text/markdown`); `POST /markdown/{id}/regenerar` recompila por `ICompiladorMarkdown` desde datos operativos (REQ §22.4.6) y devuelve el artefacto con la version incrementada.
+- Alternativa(s) descartada(s): consultas cross-particion sin `campaniaId` (mayor RU y complejidad, innecesario a escala MVP); indexado/consulta avanzada por todos los filtros (se difiere; el indexado automatico de Cosmos lo soporta cuando se exponga).
+- Impacto / reversibilidad: no cambia contratos `03`/`04`. Anadir mas filtros es aditivo (se amplian las consultas de los repos sin tocar el contrato HTTP).
+
 ### fase4-config-versionado-cosmos - Id fisico para versiones de config
 - Fecha: 2026-06-14 - Agente/Rol: Codex - Backend/AppSec - Commit: pendiente
 - Contexto: `07` secciones 3-4 define versionado por familia estable + version para rubricas/prompts, y `03` usa el contenedor `config` con `id` y `pk`; Cosmos exige `id` unico dentro de la particion, por lo que varias versiones no pueden compartir el mismo `id` fisico.

@@ -157,6 +157,12 @@ public sealed class CompiladorMarkdownTests
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
             => Task.FromResult(_evaluaciones.GetValueOrDefault(respuestaId));
 
+        public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
+            => Task.FromResult(_evaluaciones.Values.FirstOrDefault(e => e.Id == evaluacionId));
+
+        public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
+
         public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
         {
             _artefactos[artefacto.Id] = artefacto;

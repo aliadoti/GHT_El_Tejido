@@ -4,15 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fases 5, 6 y 7 DONE (Gateway+Orquestador, Evaluacion LLM, Markdown); backend conversacional completo**
+- Fase actual: **Fase 8 en curso — backend de consultas (04 §5.8) DONE; Portal Angular (11) TODO**
 - Ultima actualizacion: 2026-06-14T00:00:00Z por Claude Code
-- Repo compilable y en verde: **si** (backend build/test/format verificados; 182 pruebas en verde: 153 unit + 29 integration; frontend sin cambios desde Fase 0)
-- Branch de trabajo: **main**
-- Commit: **pendiente** (decision del usuario: dejar sin commitear)
+- Repo compilable y en verde: **si** (backend build/test/format verificados; 187 pruebas en verde: 153 unit + 34 integration; frontend sin cambios desde Fase 0)
+- Branch de trabajo: **main** (push directo, sin PR, por decision del usuario; el CI corre en cada push a main)
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Fase 8 — Portal Angular** (`11`) y los **endpoints de consulta de resultados** (`04 §5.8`: `/api/admin/conversaciones`, `/respuestas`, `/evaluaciones/{id}`, `/markdown` + `markdown/{id}/regenerar`/`raw`). El backend de datos ya esta listo (`IRepositorioRespuestas`/`IRepositorioConversaciones`/`ICompiladorMarkdown`); falta exponerlo en la API y construir el SPA.
-- Como continuar: leer `11_Frontend_Portal_Angular.md` y `04 §5.8`. Para los GET de resultados, ampliar los puertos de `responses`/`conversations` con consultas filtradas (hoy resuelven por id/lista) y mapear al contrato `§2`. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes`.
+- [ ] **Fase 8 — Portal Angular** (`11`): SPA con login OTP, layout/marca GHT, servicios tipados por feature (`04`), guard/interceptor (CSRF + `withCredentials` + 401), y pantallas (usuarios/tags, campanias, envios, rubricas, prompts, config-llm, resultados). Build a `wwwroot`.
+- Como continuar: el backend de la API ya esta completo (incl. consultas `04 §5.8`). Leer `11_Frontend_Portal_Angular.md`. Node local (`22.17.0`) no cumple Angular CLI 22; usar `npx -p node@24.15.0 ...` para lint/test/build. Ejecutar `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build` y `dotnet format --verify-no-changes` para el backend.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -49,7 +48,8 @@
 | 5 | Orquestador conversacional | DONE | pendiente | verde | Contenedor `conversations` (`Conversacion`/`Mensaje`, `IRepositorioConversaciones`/`RepositorioConversacionesCosmos`); `OrquestadorConversacion` real (maquina de estados, tope 1 repregunta `05 §4.4`, persiste Respuesta/Evaluacion, cierre con retro+agradecimiento, dispara Markdown, fallback neutro). Reemplaza al provisional. 05 §4 |
 | 6 | Evaluacion LLM | DONE | pendiente | verde | Dominio `Evaluacion`/`CalificacionCriterio`/`ConfigLlmSnapshot`/`RecomendacionEvaluacion`; `IEvaluadorLlm`/`EvaluadorLlm` (contexto instruccion/dato, validacion de salida `08 §4`, fallback seguro `08 §6`, log de anomalia); `ILlmClient`/`LlmClientHttp` (Azure OpenAI/OpenAI, JSON, timeout+reintentos). Persistencia de `Evaluacion`/`Respuesta` la hara el orquestador. 08 |
 | 7 | Markdown | DONE | pendiente | verde | Dominio `Respuesta`/`ArtefactoMarkdown` (+estados); contenedor `responses` (`IRepositorioRespuestas`/`RepositorioRespuestasCosmos` para Respuesta/Evaluacion/ArtefactoMarkdown); `ICompiladorMarkdown`/`CompiladorMarkdown` (plantilla determinista `09 §5`, sin secretos, version++ al regenerar); `IAlmacenBlob` (`AlmacenBlobAzure` + fallback `AlmacenBlobMemoria`). 09 |
-| 8 | Portal Angular | TODO | - | - | 11 |
+| 8 | Consultas de resultados (API) | DONE | pendiente | verde | Endpoints `04 §5.8`: GET `/conversaciones`(+/{id}), `/respuestas`(+/{id}), `/evaluaciones/{id}`, `/markdown`(+/{id}, `/raw`), POST `/markdown/{id}/regenerar`; consultas en repos `responses`/`conversations` acotadas por `campaniaId`. 04 §5.8 |
+| 8 | Portal Angular (SPA) | TODO | - | - | 11 |
 | 9 | Integracion E2E + endurecimiento | TODO | - | - | 13 |
 
 ## Decisiones tomadas (con porque)
@@ -88,7 +88,7 @@
 ## Como construir y probar (comandos verificados)
 - Backend:
   - `dotnet build -c Release -warnaserror`
-  - `dotnet test -c Release --no-build` (182 pruebas: 153 unit + 29 integration)
+  - `dotnet test -c Release --no-build` (187 pruebas: 153 unit + 34 integration)
   - `dotnet format --verify-no-changes`
 - Frontend:
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
@@ -106,7 +106,8 @@
 - **Mensaje de retro y cierre combinados:** el orquestador envia retro+repregunta (o retro+agradecimiento) en un solo mensaje de WhatsApp para reducir mensajes; ver `SUPUESTOS.md#orquestador-conversacional`.
 - **Blob in-process por defecto:** sin `Blob:AccountUrl` se usa `AlmacenBlobMemoria` (volatil); el `.md` tambien queda embebido en `ArtefactoMarkdown` (Cosmos) y siempre es regenerable (REQ §22.4.6). En produccion se configura `Blob:AccountUrl`/`Blob:ContainerName` para `AlmacenBlobAzure`.
 - **Camino entrante E2E:** cubierto por `WebhookOrquestadorE2EIntegrationTests` (webhook POST → cola → `TrabajadorWebhook` → `ProcesadorWebhookEntrante` → `OrquestadorConversacion` real → envio de cierre + cierre del hilo, con WhatsApp/LLM mockeados).
-- **Endpoints de consulta de resultados (`04 §5.8`) y `markdown/{id}/regenerar` pendientes:** el compilador y los repos estan listos; falta exponer los GET de conversaciones/respuestas/evaluaciones/markdown y el POST de regeneracion en la API (Fase 8). Los puertos `responses`/`conversations` resuelven hoy por id/lista; las consultas filtradas de `04 §2` se anaden al exponerlos.
+- **Filtros de consulta acotados (`04 §2`):** los endpoints de resultados (`04 §5.8`) ya existen pero las listas exigen `campaniaId` (particion Cosmos) y solo aplican algunos filtros (`usuarioId`, `preguntaId`, `estado`, `tipoArtefacto`) en memoria; los demas filtros de `04 §2` (area, empresa, tag, calificacion, fecha, tema, entidad) y la busqueda cross-campania quedan pendientes. Ver `SUPUESTOS.md#fase8-consultas-resultados`.
+- **Portal Angular (SPA) pendiente:** el backend de la API esta completo; falta construir el portal (`11`).
 - **Cliente LLM HTTP sin prueba de integracion:** `LlmClientHttp` no se ejercita contra un endpoint real (no hay proveedor en CI); la logica del evaluador se cubre con `ILlmClient` mockeado.
 - **OTP por WhatsApp:** `INotificadorOtp` sigue con la impl provisional `NotificadorOtpLog` (no se reconecto al gateway real para no tocar el modulo de auth, DONE). Conectarlo es un paso pequeno pendiente.
 - Existe un cambio no relacionado en el working tree (`.obsidian/workspace.json`) que no pertenece a Fase 1 y no se toco.
@@ -132,6 +133,7 @@
 - 2026-06-13T23:48:49Z - Codex - Iniciada Fase 4 con guard comun para `/api/admin/*`: `AutorizacionAdminEndpointFilter` valida cookie de sesion, rol y CSRF; `EndpointsAdminDiagnostico` expone rutas minimas solo en `Development` para pruebas. Agregadas 6 pruebas de integracion (`AdminAuthorizationIntegrationTests`). Backend build/test/format verde (111 unit + 16 integration = 127). Commit be861d4.
 - 2026-06-14T00:07:48Z - Codex - Implementado CRUD inicial de Fase 4 para `usuarios` y `tags`: endpoints `/api/admin/usuarios` y `/api/admin/tags`, servicio de aplicacion `ServicioGestionUsuarios`, registro guardado por Cosmos, normalizacion E.164, unicidad por WhatsApp, cambios de estado y baja logica. Agregadas 4 pruebas unitarias y 4 de integracion. Backend build/test/format verde (115 unit + 20 integration = 135). Commit 93cf008.
 - 2026-06-14T00:44:41Z - Codex - Cerrada Fase 4: endpoints/casos de uso para campanias, mensajes iniciales, preguntas, participantes, rubricas, prompts y ConfigLLM; dominio y puerto `config`; adaptador Cosmos `RepositorioConfiguracionCosmos`; escritura write-only de secretos por `ISecretWriter`; pruebas de integracion de campanias/participantes y de configuracion sin fuga de API key. Backend build/test/format verde (115 unit + 22 integration = 137). Commit pendiente.
+- 2026-06-14 - Claude Code - Fase 8 (backend de consultas, `04 §5.8`): endpoints `GET /api/admin/{conversaciones,conversaciones/{id},respuestas,respuestas/{id},evaluaciones/{id},markdown,markdown/{id},markdown/{id}/raw}` y `POST /markdown/{id}/regenerar` en `EndpointsAdminResultados` (guard admin/visor; regenerar = admin+CSRF). Metodos de consulta nuevos en `IRepositorioRespuestas` (`ListarRespuestas`, `ObtenerEvaluacionPorId`) e `IRepositorioConversaciones` (`ListarConversaciones`, `ListarMensajes`) + impls Cosmos. Listas acotadas por `campaniaId`; filtros parciales en memoria. 5 integration nuevas (`ResultadosIntegrationTests`). Verde (153 unit + 34 integration = 187). Push directo a main. Ref: `04 §5.8`, `SUPUESTOS.md#fase8-consultas-resultados`.
 - 2026-06-14 - Claude Code - Prueba E2E del camino entrante: `WebhookOrquestadorE2EIntegrationTests` recorre webhook POST → cola → `TrabajadorWebhook` → `ProcesadorWebhookEntrante` → `OrquestadorConversacion` real → envio de cierre + cierre del hilo (WhatsApp/LLM mockeados). 1 integration nueva. Verde (153 unit + 29 integration = 182).
 - 2026-06-14 - Claude Code - Orquestador conversacional (`05 §4`, cierra Fase 5, sin commit): dominio `Conversacion`/`Mensaje`; contenedor `conversations` (`IRepositorioConversaciones`/`RepositorioConversacionesCosmos`+docs); `OrquestadorConversacion` real (maquina de estados, tope 1 repregunta, persiste Respuesta/Evaluacion, cierre+Markdown, fallback neutro); cableado en `TrabajadorWebhook` (reemplaza el provisional eliminado); repo `conversations` en `AgregarInfraestructura`. 6 unit nuevas (`OrquestadorConversacionTests`). Build `-warnaserror`/test/format verde (153 unit + 28 integration = 181). Commit pendiente.
 - 2026-06-14 - Claude Code - Fase 7 (Markdown, `09`, sin commit): dominio `Respuesta`/`ArtefactoMarkdown`; contenedor `responses` (`IRepositorioRespuestas`/`RepositorioRespuestasCosmos`+docs); `ICompiladorMarkdown`/`CompiladorMarkdown` (plantilla determinista, version++ al regenerar, sin secretos); `IAlmacenBlob` (`AlmacenBlobAzure`+`AlmacenBlobMemoria`); registro `AgregarMarkdown`+repo en `AgregarInfraestructura`; wiring en `Program.cs`; paquete `Azure.Storage.Blobs`. 7 unit nuevas (`CompiladorMarkdownTests`, `ResponsesCosmosMappingTests`). Build `-warnaserror`/test/format verde (147 unit + 28 integration = 175). Commit pendiente.
