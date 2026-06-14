@@ -4,14 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fase 9 TODO - Integracion E2E + endurecimiento (`13`)**
-- Ultima actualizacion: 2026-06-14T16:15:00Z por Codex
-- Repo compilable y en verde: **si** (backend build/test/format verificados; 187 pruebas en verde: 153 unit + 34 integration; frontend lint/test/build verificados: 6 pruebas en verde: 2 base + 4 E2E del portal)
+- Fase actual: **Fase 9 DONE - Integracion E2E + endurecimiento (`13`)**
+- Ultima actualizacion: 2026-06-14T17:05:01Z por Codex
+- Repo compilable y en verde: **si** (backend build/test/format verificados; 188 pruebas en verde: 153 unit + 35 integration; frontend lint/test/build verificados: 6 pruebas en verde: 2 base + 4 E2E del portal)
 - Branch de trabajo: **main** (push directo, sin PR, por decision del usuario; el CI corre en cada push a main)
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Fase 9 - Integracion E2E + endurecimiento** (`13`): ejecutar recorrido MVP con API+SPA, mocks/emuladores o recursos reales segun disponibilidad: login OTP, CRUD usuarios/campanias/config, envio, respuesta WhatsApp mock/real, evaluacion, Markdown y consulta de resultados.
-- Como continuar: leer `13_Plan_de_Pruebas_y_Aceptacion.md` y `Guias_Implementacion/` para recursos reales. Levantar API con configuracion Cosmos/Blob/Key Vault o mocks disponibles, servir el SPA ya generado en `src/ElTejido.Api/wwwroot`, y ejecutar backend + frontend con los comandos verificados de este documento.
+- [ ] **Preparacion de release/despliegue real** (`12`, `13`): ejecutar checklist de release con recursos Azure, Key Vault/Blob/Cosmos reales y app WhatsApp de prueba con plantillas aprobadas; repetir el recorrido `13` seccion 5 con 5 usuarios reales.
+- Como continuar: leer `13_Plan_de_Pruebas_y_Aceptacion.md` secciones 5 y 7 y `Guias_Implementacion/`. Configurar secretos reales fuera del repo, desplegar, validar `/health`, y ejecutar el recorrido manual con telefonos reales; el E2E automatizado CI ya queda cubierto por `Fase9AceptacionE2EIntegrationTests`.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -50,7 +50,7 @@
 | 7 | Markdown | DONE | pendiente | verde | Dominio `Respuesta`/`ArtefactoMarkdown` (+estados); contenedor `responses` (`IRepositorioRespuestas`/`RepositorioRespuestasCosmos` para Respuesta/Evaluacion/ArtefactoMarkdown); `ICompiladorMarkdown`/`CompiladorMarkdown` (plantilla determinista `09 Â§5`, sin secretos, version++ al regenerar); `IAlmacenBlob` (`AlmacenBlobAzure` + fallback `AlmacenBlobMemoria`). 09 |
 | 8 | Consultas de resultados (API) | DONE | pendiente | verde | Endpoints `04 Â§5.8`: GET `/conversaciones`(+/{id}), `/respuestas`(+/{id}), `/evaluaciones/{id}`, `/markdown`(+/{id}, `/raw`), POST `/markdown/{id}/regenerar`; consultas en repos `responses`/`conversations` acotadas por `campaniaId`. 04 Â§5.8 |
 | 8 | Portal Angular (SPA) | DONE | pendiente | verde | Login OTP, shell GHT, guards/interceptor CSRF, servicios tipados y pantallas admin; build publica en `src/ElTejido.Api/wwwroot`. 11 |
-| 9 | Integracion E2E + endurecimiento | TODO | - | - | 13 |
+| 9 | Integracion E2E + endurecimiento | DONE | pendiente | verde | `Fase9AceptacionE2EIntegrationTests`: login OTP real, config/campania/envio/webhook/evaluacion/Markdown/consultas con WhatsApp/LLM/persistencia mockeados segun 13 |
 
 ## Decisiones tomadas (con porque)
 - 2026-06-12 - Arquitecto - Frontend en Angular 22 en vez de React (decision del cliente). Ref: `02` secciones 2-3. Sin impacto en backend.
@@ -89,7 +89,7 @@
 ## Como construir y probar (comandos verificados)
 - Backend:
   - `dotnet build -c Release -warnaserror`
-  - `dotnet test -c Release --no-build` (187 pruebas: 153 unit + 34 integration)
+  - `dotnet test -c Release --no-build` (188 pruebas: 153 unit + 35 integration)
   - `dotnet format --verify-no-changes`
 - Frontend:
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
@@ -109,7 +109,8 @@
 - **Blob in-process por defecto:** sin `Blob:AccountUrl` se usa `AlmacenBlobMemoria` (volatil); el `.md` tambien queda embebido en `ArtefactoMarkdown` (Cosmos) y siempre es regenerable (REQ Â§22.4.6). En produccion se configura `Blob:AccountUrl`/`Blob:ContainerName` para `AlmacenBlobAzure`.
 - **Camino entrante E2E:** cubierto por `WebhookOrquestadorE2EIntegrationTests` (webhook POST â†’ cola â†’ `TrabajadorWebhook` â†’ `ProcesadorWebhookEntrante` â†’ `OrquestadorConversacion` real â†’ envio de cierre + cierre del hilo, con WhatsApp/LLM mockeados).
 - **Filtros de consulta acotados (`04 Â§2`):** los endpoints de resultados (`04 Â§5.8`) ya existen pero las listas exigen `campaniaId` (particion Cosmos) y solo aplican algunos filtros (`usuarioId`, `preguntaId`, `estado`, `tipoArtefacto`) en memoria; los demas filtros de `04 Â§2` (area, empresa, tag, calificacion, fecha, tema, entidad) y la busqueda cross-campania quedan pendientes. Ver `SUPUESTOS.md#fase8-consultas-resultados`.
-- **Portal Angular E2E (parcial cubierto):** existe `portal-admin.e2e.spec.ts` (vitest + `HttpTestingController`) que recorre el wiring real de la SPA (AuthService, ApiClient, authInterceptor, AdminApiService, pantalla UsuariosPage) con backend HTTP mockeado: login OTP -> sesion/CSRF -> seguridad del interceptor (withCredentials siempre, `X-CSRF-Token` solo en mutaciones) -> alta/consulta de usuarios -> consulta de respuestas/Markdown acotada por campania. Pendiente para Fase 9: E2E cross-proceso real (navegador + API con Cosmos/Blob/Key Vault/WhatsApp/LLM configurados o emuladores), p.ej. Playwright contra el SPA servido desde `wwwroot`. El render de login desktop/mobile ya se verifico en Fase 8.
+- **E2E automatizado de aceptacion:** `Fase9AceptacionE2EIntegrationTests` recorre API real y endpoints consumidos por el portal: login OTP -> CSRF/cookie -> usuarios/tags -> rubrica/prompt aprobado/config LLM write-only -> campania activa -> envio inicial -> webhook entrante -> evaluacion LLM por puerto mockeado -> cierre WhatsApp -> Markdown -> consultas `/respuestas` y `/markdown/raw`. WhatsApp, LLM y persistencia externa se mockean como permite `13` seccion 1. El E2E manual con 5 telefonos reales queda para release porque depende de recursos Azure, cuenta WhatsApp y plantillas aprobadas.
+- **Portal Angular E2E (servicios/wiring):** existe `portal-admin.e2e.spec.ts` (vitest + `HttpTestingController`) que recorre el wiring real de la SPA (AuthService, ApiClient, authInterceptor, AdminApiService, pantalla UsuariosPage) con backend HTTP mockeado: login OTP -> sesion/CSRF -> seguridad del interceptor (withCredentials siempre, `X-CSRF-Token` solo en mutaciones) -> alta/consulta de usuarios -> consulta de respuestas/Markdown acotada por campania. El render de login desktop/mobile ya se verifico en Fase 8.
 - **Cliente LLM HTTP sin prueba de integracion:** `LlmClientHttp` no se ejercita contra un endpoint real (no hay proveedor en CI); la logica del evaluador se cubre con `ILlmClient` mockeado.
 - **OTP por WhatsApp:** `INotificadorOtp` sigue con la impl provisional `NotificadorOtpLog` (no se reconecto al gateway real para no tocar el modulo de auth, DONE). Conectarlo es un paso pequeno pendiente.
 - Existe un cambio no relacionado en el working tree (`.obsidian/workspace.json`) que no pertenece a Fase 1 y no se toco.
@@ -117,7 +118,7 @@
 - El lint frontend inicial es Prettier check; agregar ESLint cuando entren reglas/componentes reales del portal.
 
 ## Riesgos / bloqueos
-- Los flujos E2E reales (Fase 9) requieren recursos Azure y plantillas WhatsApp aprobadas. El desarrollo y CI pueden avanzar con mocks/emuladores.
+- El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
 - 2026-06-12 - (semilla) - Creados `AVANCES.md` y `SUPUESTOS.md`. Aun sin codigo. Proximo: Fase 0.
@@ -143,3 +144,4 @@
 - 2026-06-13 - Claude Code - Fase 5 (mitad Gateway, decision del usuario: solo Gateway, sin commit): WhatsApp Gateway y procesamiento asincrono in-process. Application: `IWhatsAppGateway`, `EnvioResultado`, `MensajeEntrante`, `WhatsAppWebhookPayload`, colas `IColaWebhook`/`IColaEnvios`+`TrabajoEnvio`, `IAlmacenJobs`+`JobEnvio`, `ProcesadorWebhookEntrante`, `IServicioEnvios`/`ServicioEnvios`, `ProcesadorEnvio`; seam `IOrquestadorConversacion`. Infrastructure: `WhatsAppGateway` (Graph API, HMAC, reintentos+backoff), `OpcionesWhatsApp`, canales `ColaWebhookCanal`/`ColaEnviosCanal`, `AlmacenJobsMemoria`, `TrabajadorWebhook`/`TrabajadorEnvios` (`BackgroundService`), `OrquestadorConversacionPendiente`, registro `AgregarWhatsApp`. Api: `EndpointsWebhook` (GET/POST), `EndpointsAdminEnvios` (envios/reenviar/reintentar/estado + jobs), wiring en `Program.cs`, seccion `WhatsApp` en `appsettings.json`. Paquetes nuevos en Infrastructure: `Microsoft.Extensions.Http`, `Microsoft.Extensions.Hosting.Abstractions`. 18 unit + 6 integration nuevas. Backend build `-warnaserror`/test/format verde (133 unit + 28 integration = 161). Commit pendiente.
 - 2026-06-14T16:15:00Z - Codex - Cerrada Fase 8 Portal Angular (`11`): SPA standalone con login OTP, layout autenticado GHT, guards/interceptor CSRF, servicios tipados por feature (`04`), pantallas de usuarios/tags, campanias, envios, rubricas, prompts, config-llm y resultados/Markdown; build de produccion publica en `src/ElTejido.Api/wwwroot`; QA visual Chrome headless desktop/mobile de `/login`. Verificado: frontend lint/test/build verde, backend build/test/format verde (187 pruebas backend, 2 frontend). Proximo: Fase 9 E2E/endurecimiento (`13`). Commit pendiente.
 - 2026-06-14 - Claude Code - Prueba E2E del portal Angular (antesala de Fase 9, `13 §1/§2`): nuevo `src/ElTejido.Web/src/app/e2e/portal-admin.e2e.spec.ts` (vitest + `HttpTestingController`) que recorre el wiring real de la SPA con backend HTTP mockeado: (1) login OTP neutral -> sesion + token CSRF; (2) seguridad del `authInterceptor` (withCredentials siempre, `X-CSRF-Token` solo en mutaciones); (3) `UsuariosPage` real lista y crea usuarios con CSRF y recarga; (4) consulta de respuestas/Markdown acotada por `campaniaId` sin fuga de secretos. Frontend lint/test verde (6 pruebas: 2 base + 4 E2E) con Node temporal 24.15.0. El backend ya tenia el E2E del camino entrante (`WebhookOrquestadorE2EIntegrationTests`). Pendiente Fase 9: E2E cross-proceso real (navegador + API + emuladores). Commit pendiente.
+- 2026-06-14T17:05:01Z - Codex - Cerrada Fase 9 (`13`) con E2E automatizado de aceptacion: `Fase9AceptacionE2EIntegrationTests` recorre login OTP real, CSRF/cookie, CRUD de usuario/tag/configuracion/campania, envio inicial, webhook entrante, evaluacion LLM con `ILlmClient` mockeado, cierre WhatsApp, generacion Markdown y consultas admin de resultados; valida API key write-only y ausencia de secreto en Markdown. Backend build/test/format verde (188 pruebas: 153 unit + 35 integration). Frontend lint/test/build verde con Node temporal 24.15.0 (6 pruebas). Proximo: checklist de release/despliegue real con Azure/WhatsApp/plantillas aprobadas.
