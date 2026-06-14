@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
     "lint": "prettier --check \"src/**/*.{ts,html,scss}\"",
     "watch": "ng build --watch --configuration development",

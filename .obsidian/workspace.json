@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Especificaciones/AVANCES.md",
+                "file": "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "AVANCES"
+              "title": "PROMPT_Inicio_Desarrollo_Codex"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Especificaciones/AVANCES.md",
+                "file": "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for AVANCES"
+              "title": "Backlinks for PROMPT_Inicio_Desarrollo_Codex"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Especificaciones/AVANCES.md",
+                "file": "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from AVANCES"
+              "title": "Outgoing links from PROMPT_Inicio_Desarrollo_Codex"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Especificaciones/AVANCES.md",
+                "file": "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of AVANCES"
+              "title": "Outline of PROMPT_Inicio_Desarrollo_Codex"
             }
           }
         ]
@@ -185,18 +185,26 @@
   },
   "active": "6363ad2d233636ec",
   "lastOpenFiles": [
-    "tests/ElTejido.UnitTests/Usuarios/RepositorioUsuariosCosmosTests.cs",
-    "src/ElTejido.Infrastructure/Usuarios/UsuarioCosmosDocument.cs",
-    "src/ElTejido.Infrastructure/Usuarios/UsersCosmosContainer.cs",
-    "src/ElTejido.Infrastructure/Usuarios/TagCosmosDocument.cs",
-    "src/ElTejido.Infrastructure/Usuarios/RepositorioUsuariosCosmos.cs",
-    "src/ElTejido.Infrastructure/Usuarios/IUsersCosmosContainer.cs",
-    "src/ElTejido.Infrastructure/Usuarios/FiltroUsuariosCosmos.cs",
-    "src/ElTejido.Infrastructure/Usuarios/FiltroTagsCosmos.cs",
-    "src/ElTejido.Infrastructure/Usuarios",
+    "src/ElTejido.Api/wwwroot/browser/chunk-BERgfAAR.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-BprqvB9e.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-Bv6B8PFb.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-CGIriptQ.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-CTeROChp.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-CYSdlPaw.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-D20Ml9Y5.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-DvCLU44B.js",
+    "src/ElTejido.Api/wwwroot/browser/main-VRXBYIU4.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-DxzCXHks.js",
+    "src/ElTejido.Api/wwwroot/browser/chunk-T9_VqeBq.js",
+    "Especificaciones/00_Indice_y_Guia_de_Uso.md",
+    "Especificaciones/02_Arquitectura_y_Stack.md",
+    "Especificaciones/07_Backend_Campanas_y_Configuracion.md",
+    "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
+    "Especificaciones/AVANCES.md",
+    "Especificaciones/11_Frontend_Portal_Angular.md",
+    "Especificaciones/10_Seguridad_Guardrails_y_Observabilidad.md",
+    "Especificaciones/13_Plan_de_Pruebas_y_Aceptacion.md",
     "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
-    "tests/ElTejido.UnitTests/WhatsApp/RepositorioWebhookDedupeCosmosTests.cs",
-    "tests/ElTejido.UnitTests/WhatsApp",
     "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.md",
     "Propuesta_Comercial/real/Evaluacion_Rubricas.md",
     "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.md",
@@ -213,14 +221,6 @@
     "src/ElTejido.Web/node_modules/hosted-git-info/node_modules/lru-cache/LICENSE.md",
     "src/ElTejido.Web/node_modules/minipass-flush/node_modules/minipass/README.md",
     "src/ElTejido.Web/node_modules/cssstyle/node_modules/lru-cache/README.md",
-    "src/ElTejido.Web/node_modules/hosted-git-info/node_modules/lru-cache/README.md",
-    "src/ElTejido.Web/node_modules/log-update/node_modules/wrap-ansi/readme.md",
-    "src/ElTejido.Web/node_modules/cliui/node_modules/wrap-ansi/readme.md",
-    "src/ElTejido.Web/node_modules/log-update/node_modules/string-width/readme.md",
-    "src/ElTejido.Web/node_modules/cliui/node_modules/string-width/readme.md",
-    "src/ElTejido.Web/node_modules/log-update/node_modules/slice-ansi/readme.md",
-    "src/ElTejido.Web/node_modules/cacache/node_modules/lru-cache/LICENSE.md",
-    "src/ElTejido.Web/node_modules/cacache/node_modules/lru-cache/README.md",
     "Marca/GTA/Aliado TI Design System/assets/logos/aliadoti-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/logos/brand-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/imagery/cream-wall-shadow.png",
