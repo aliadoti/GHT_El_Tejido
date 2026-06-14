@@ -84,6 +84,13 @@ import { formatApiError } from '../../shared-error';
                     </td>
                     <td>
                       @if (auth.isAdmin()) {
+                        <button
+                          type="button"
+                          class="table-button"
+                          (click)="iniciarEdicion(usuario)"
+                        >
+                          Editar
+                        </button>
                         <button type="button" class="table-button" (click)="toggleUsuario(usuario)">
                           {{ usuario.estado === 'activo' ? 'Inactivar' : 'Activar' }}
                         </button>
@@ -102,9 +109,14 @@ import { formatApiError } from '../../shared-error';
 
         <section class="panel">
           <div class="panel-heading">
-            <h3>Crear usuario</h3>
+            <h3>{{ editandoId() ? 'Editar usuario' : 'Crear usuario' }}</h3>
+            @if (editandoId()) {
+              <button type="button" class="ghost-button" (click)="cancelarEdicion()">
+                Cancelar
+              </button>
+            }
           </div>
-          <form class="form-grid" (ngSubmit)="crearUsuario()">
+          <form class="form-grid" (ngSubmit)="guardarUsuario()">
             <label>Nombre <input name="nombre" [(ngModel)]="nuevoUsuario.nombre" required /></label>
             <label>Numero <input name="numero" [(ngModel)]="nuevoUsuario.numero" required /></label>
             <label>
@@ -123,7 +135,7 @@ import { formatApiError } from '../../shared-error';
               >Tags <input name="tags" [(ngModel)]="tagsTexto" placeholder="t_area,t_empresa"
             /></label>
             <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
-              Guardar usuario
+              {{ editandoId() ? 'Actualizar usuario' : 'Guardar usuario' }}
             </button>
           </form>
         </section>
@@ -166,6 +178,7 @@ export class UsuariosPage {
   protected readonly usuarios = signal<UsuarioAdmin[]>([]);
   protected readonly tags = signal<TagAdmin[]>([]);
   protected readonly error = signal('');
+  protected readonly editandoId = signal<string | null>(null);
 
   protected filtroRol = '';
   protected filtroEstado = '';
@@ -209,30 +222,52 @@ export class UsuariosPage {
     });
   }
 
-  crearUsuario() {
-    this.api
-      .crearUsuario({
-        ...this.nuevoUsuario,
-        tags: this.tagsTexto
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-        propiedadesDinamicas: {},
-      })
-      .subscribe({
-        next: () => {
-          this.nuevoUsuario = {
-            nombre: '',
-            numero: '',
-            rol: 'participante',
-            area: '',
-            empresa: '',
-          };
-          this.tagsTexto = '';
-          this.load();
-        },
-        error: (err: unknown) => this.error.set(formatApiError(err)),
-      });
+  guardarUsuario() {
+    const body = {
+      ...this.nuevoUsuario,
+      tags: this.tagsTexto
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+      propiedadesDinamicas: {},
+    };
+    const id = this.editandoId();
+    const peticion = id ? this.api.actualizarUsuario(id, body) : this.api.crearUsuario(body);
+    peticion.subscribe({
+      next: () => {
+        this.resetFormulario();
+        this.load();
+      },
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+  }
+
+  iniciarEdicion(usuario: UsuarioAdmin) {
+    this.editandoId.set(usuario.id);
+    this.nuevoUsuario = {
+      nombre: usuario.nombre,
+      numero: usuario.whatsappNormalizado,
+      rol: usuario.rol,
+      area: usuario.area,
+      empresa: usuario.empresa,
+    };
+    this.tagsTexto = (usuario.tags ?? []).join(',');
+  }
+
+  cancelarEdicion() {
+    this.resetFormulario();
+  }
+
+  private resetFormulario() {
+    this.editandoId.set(null);
+    this.nuevoUsuario = {
+      nombre: '',
+      numero: '',
+      rol: 'participante',
+      area: '',
+      empresa: '',
+    };
+    this.tagsTexto = '';
   }
 
   crearTag() {

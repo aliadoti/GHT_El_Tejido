@@ -4,8 +4,13 @@ Esta guia permite a un humano probar el MVP sin esperar mensajes reales de Whats
 
 ## 1. Preparar entorno local
 
-1. Configura Cosmos, Blob/Key Vault o sus equivalentes locales siguiendo `Guia_Azure_Portal_Paso_a_Paso.md`.
-2. Configura secretos locales en el proyecto API. Minimo para login y webhook simulado:
+En `Development` la API arranca con **persistencia en memoria** (volatil) gracias a
+`appsettings.Development.json -> Persistencia:Modo=Memoria`. No se requiere Cosmos, Azurite ni Key
+Vault para ejercitar la pagina de simulacion: los datos se pierden al reiniciar la API. Si quieres
+persistencia real, sigue `Guia_Azure_Portal_Paso_a_Paso.md` y omite la clave `Persistencia:Modo`
+(o ponla en `Cosmos`).
+
+1. Configura secretos locales en el proyecto API. Minimo para login y webhook simulado:
 
 ```powershell
 cd .\src\ElTejido.Api
@@ -16,7 +21,7 @@ dotnet user-secrets set "Secretos:wa-appsec" "appsec-local"
 dotnet user-secrets set "Secretos:wa-verify-token" "verify-local"
 ```
 
-3. Levanta la API en el puerto usado por el proxy Angular:
+2. Levanta la API en el puerto usado por el proxy Angular:
 
 ```powershell
 cd ..\..
@@ -24,11 +29,12 @@ $env:ASPNETCORE_ENVIRONMENT="Development"
 dotnet run --project .\src\ElTejido.Api --urls "https://localhost:5001"
 ```
 
-4. En otra terminal levanta el portal:
+3. En otra terminal levanta el portal. Angular CLI 22 exige Node 22.22.3+, 24.15.0+ o 26+. Si tu
+Node global no cumple, usa Node temporal con `npx -p node@24.15.0`:
 
 ```powershell
 cd .\src\ElTejido.Web
-npx -y -p node@24.15.0 npm start -- --host 127.0.0.1 --port 4200
+npx -y -p node@24.15.0 npm run start -- --host=127.0.0.1 --port=4200
 ```
 
 Abre `http://127.0.0.1:4200/simulacion-whatsapp`.

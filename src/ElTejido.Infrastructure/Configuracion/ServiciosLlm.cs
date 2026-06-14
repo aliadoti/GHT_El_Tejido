@@ -21,7 +21,7 @@ public static class ServiciosLlm
         services.TryAddSingleton(TimeProvider.System);
         services.AddHttpClient<ILlmClient, LlmClientHttp>();
 
-        if (!string.IsNullOrWhiteSpace(configuration["Cosmos:AccountEndpoint"]))
+        if (OpcionesPersistencia.HayAlmacen(configuration))
         {
             services.AddScoped<IEvaluadorLlm, EvaluadorLlm>();
         }

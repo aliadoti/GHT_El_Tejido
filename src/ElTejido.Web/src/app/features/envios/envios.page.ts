@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
 import { AdminApiService } from '../../core/admin-api.service';
-import { EnvioEstado, JobEnvio } from '../../core/api-models';
+import { Campania, EnvioEstado, JobEnvio, MensajeInicial } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { formatApiError } from '../../shared-error';
 
@@ -28,12 +28,22 @@ import { formatApiError } from '../../shared-error';
       <section class="panel">
         <form class="filters-grid" (ngSubmit)="load()">
           <label>
-            Campania ID
-            <input name="campaniaId" [(ngModel)]="campaniaId" placeholder="camp_..." />
+            Campania
+            <select name="campaniaId" [(ngModel)]="campaniaId" (ngModelChange)="onCampaniaChange()">
+              <option value="" disabled>Selecciona una campania</option>
+              @for (campania of campanias(); track campania.id) {
+                <option [value]="campania.id">{{ campania.nombre }}</option>
+              }
+            </select>
           </label>
           <label>
-            Mensaje inicial ID
-            <input name="mensajeInicialId" [(ngModel)]="mensajeInicialId" placeholder="mi_..." />
+            Mensaje inicial
+            <select name="mensajeInicialId" [(ngModel)]="mensajeInicialId">
+              <option value="">Por defecto (primero activo)</option>
+              @for (mensaje of mensajes(); track mensaje.id) {
+                <option [value]="mensaje.id">{{ mensaje.nombreInterno }}</option>
+              }
+            </select>
           </label>
           <button class="primary-button" type="submit">Consultar</button>
         </form>
@@ -131,6 +141,8 @@ export class EnviosPage {
   protected readonly estados = signal<EnvioEstado[]>([]);
   protected readonly seleccion = signal<string[]>([]);
   protected readonly job = signal<JobEnvio | null>(null);
+  protected readonly campanias = signal<Campania[]>([]);
+  protected readonly mensajes = signal<MensajeInicial[]>([]);
   protected readonly error = signal('');
   protected campaniaId =
     this.route.snapshot.paramMap.get('id') === '_'
@@ -139,9 +151,32 @@ export class EnviosPage {
   protected mensajeInicialId = '';
 
   constructor() {
+    this.api.campanias({ pageSize: 100 }).subscribe({
+      next: (page) => this.campanias.set(page.items),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+
     if (this.campaniaId) {
       this.load();
+      this.loadMensajes();
     }
+  }
+
+  onCampaniaChange() {
+    this.mensajeInicialId = '';
+    this.mensajes.set([]);
+    this.loadMensajes();
+  }
+
+  private loadMensajes() {
+    if (!this.campaniaId) {
+      return;
+    }
+
+    this.api.campania(this.campaniaId).subscribe({
+      next: (campania) => this.mensajes.set(campania.mensajesIniciales ?? []),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
   }
 
   load() {

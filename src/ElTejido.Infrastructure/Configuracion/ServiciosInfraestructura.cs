@@ -10,6 +10,7 @@ using ElTejido.Application.WhatsApp;
 using ElTejido.Infrastructure.Campanas;
 using ElTejido.Infrastructure.Conversaciones;
 using ElTejido.Infrastructure.Participantes;
+using ElTejido.Infrastructure.Persistencia.Memoria;
 using ElTejido.Infrastructure.Respuestas;
 using ElTejido.Infrastructure.Seguridad;
 using ElTejido.Infrastructure.Usuarios;
@@ -21,10 +22,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ElTejido.Infrastructure.Configuracion;
 
 /// <summary>
-/// Registro de la persistencia Cosmos (Fase 1) de forma <b>guardada</b>: solo cablea
-/// <see cref="CosmosClient"/> y los repositorios si hay configuracion Cosmos presente
-/// (<c>Cosmos:AccountEndpoint</c>). Asi la app arranca en verde sin emulador y <c>/health</c>
-/// sigue funcionando (02 §6, 04 §7).
+/// Registra la persistencia de la aplicacion. Soporta dos modos seleccionables por
+/// <c>Persistencia:Modo</c>: <c>Cosmos</c> (default si hay <c>Cosmos:AccountEndpoint</c>) y
+/// <c>Memoria</c> (volatil, para correr el portal localmente, p. ej. la pagina de simulacion).
+/// Cuando no hay almacen configurado la app sigue arrancando para <c>/health</c> (02 §6, 04 §7).
 /// </summary>
 public static class ServiciosInfraestructura
 {
@@ -32,13 +33,39 @@ public static class ServiciosInfraestructura
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        if (OpcionesPersistencia.EsMemoria(configuration))
+        {
+            return RegistrarMemoria(services);
+        }
+
         var endpoint = configuration["Cosmos:AccountEndpoint"];
         if (string.IsNullOrWhiteSpace(endpoint))
         {
-            // Sin configuracion Cosmos no se registra persistencia; la app sigue operativa.
             return services;
         }
 
+        return RegistrarCosmos(services, configuration, endpoint);
+    }
+
+    private static IServiceCollection RegistrarMemoria(IServiceCollection services)
+    {
+        services.AddSingleton<IRepositorioUsuarios, RepositorioUsuariosMemoria>();
+        services.AddSingleton<IRepositorioCampanias, RepositorioCampaniasMemoria>();
+        services.AddSingleton<IRepositorioParticipantes, RepositorioParticipantesMemoria>();
+        services.AddSingleton<IRepositorioConfiguracion, RepositorioConfiguracionMemoria>();
+        services.AddSingleton<IRepositorioRespuestas, RepositorioRespuestasMemoria>();
+        services.AddSingleton<IRepositorioConversaciones, RepositorioConversacionesMemoria>();
+        services.AddSingleton<IRegistroWebhookDedupe, RegistroWebhookDedupeMemoria>();
+        services.AddSingleton<IRepositorioCodigosAuth, RepositorioCodigosAuthMemoria>();
+        services.AddSingleton<IRepositorioLogSeguridad, RepositorioLogSeguridadMemoria>();
+        return services;
+    }
+
+    private static IServiceCollection RegistrarCosmos(
+        IServiceCollection services,
+        IConfiguration configuration,
+        string endpoint)
+    {
         var database = configuration["Cosmos:DatabaseName"] ?? "eltejido";
         var accountKey = configuration["Cosmos:AccountKey"];
 

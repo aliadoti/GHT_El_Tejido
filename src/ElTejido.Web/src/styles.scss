@@ -431,6 +431,24 @@ th {
   font-size: 0.84rem;
 }
 
+.check-inline {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.check-inline input {
+  align-self: center;
+}
+
+.subhead {
+  margin: 14px 0 6px;
+  color: var(--ght-texto-secundario);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .form-error,
 .notice {
   border-radius: 6px;

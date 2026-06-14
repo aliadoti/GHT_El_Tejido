@@ -35,10 +35,10 @@ public static class ServiciosAutenticacion
         services.AddSingleton<IServicioSesion, ServicioSesionJwt>();
         services.AddSingleton<INotificadorOtp, NotificadorOtpLog>();
 
-        // Los orquestadores dependen de los repositorios Cosmos (Fase 1), que solo existen si hay
-        // configuracion Cosmos (registro guardado). Se gatillan con la misma condicion para que la
-        // app arranque y valide su contenedor sin almacen (p. ej. /health). Ver SUPUESTOS.md.
-        if (!string.IsNullOrWhiteSpace(configuration["Cosmos:AccountEndpoint"]))
+        // Los orquestadores dependen de los repositorios de Fase 1, que se registran via
+        // AgregarInfraestructura en modo Cosmos o Memoria. Si no hay almacen configurado la app
+        // sigue arrancando solo para /health.
+        if (OpcionesPersistencia.HayAlmacen(configuration))
         {
             services.AddScoped<IResolutorParticipante, ResolutorParticipante>();
             services.AddScoped<IAuthAdminService, AuthAdminService>();

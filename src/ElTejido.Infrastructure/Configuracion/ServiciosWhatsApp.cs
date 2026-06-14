@@ -34,10 +34,10 @@ public static class ServiciosWhatsApp
         services.AddHostedService<TrabajadorWebhook>();
         services.AddHostedService<TrabajadorEnvios>();
 
-        if (!string.IsNullOrWhiteSpace(configuration["Cosmos:AccountEndpoint"]))
+        if (OpcionesPersistencia.HayAlmacen(configuration))
         {
-            // El orquestador real (05 §4) consume repos Cosmos, evaluador (08) y compilador (09);
-            // se gatilla con Cosmos presente, igual que el resto de orquestadores.
+            // El orquestador real (05 §4) consume los repos (Cosmos o Memoria), evaluador (08) y
+            // compilador (09); se gatilla con la presencia de un almacen, igual que el resto.
             services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();
             services.AddScoped<ProcesadorWebhookEntrante>();
             services.AddScoped<ProcesadorEnvio>();

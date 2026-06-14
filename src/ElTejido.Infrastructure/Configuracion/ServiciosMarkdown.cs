@@ -35,7 +35,7 @@ public static class ServiciosMarkdown
             services.AddSingleton<IAlmacenBlob>(new AlmacenBlobAzure(contenedor));
         }
 
-        if (!string.IsNullOrWhiteSpace(configuration["Cosmos:AccountEndpoint"]))
+        if (OpcionesPersistencia.HayAlmacen(configuration))
         {
             services.AddScoped<ICompiladorMarkdown, CompiladorMarkdown>();
         }

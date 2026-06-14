@@ -119,7 +119,7 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     // Alta de usuario: mutacion con CSRF + recarga.
     const comp = fixture.componentInstance as unknown as {
       nuevoUsuario: Record<string, string>;
-      crearUsuario: () => void;
+      guardarUsuario: () => void;
     };
     comp.nuevoUsuario = {
       nombre: 'Beto',
@@ -128,7 +128,7 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       area: 'Ventas',
       empresa: 'GHT',
     };
-    comp.crearUsuario();
+    comp.guardarUsuario();
 
     const post = http.expectOne((r) => r.url === '/api/admin/usuarios' && r.method === 'POST');
     expect(post.request.headers.get('X-CSRF-Token')).toBe(CSRF);

@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 
 import { AdminApiService } from '../../core/admin-api.service';
-import { ArtefactoMarkdown, Conversacion, Evaluacion, Respuesta } from '../../core/api-models';
+import {
+  ArtefactoMarkdown,
+  Campania,
+  Conversacion,
+  Evaluacion,
+  Respuesta,
+} from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { formatApiError } from '../../shared-error';
 
@@ -27,8 +33,13 @@ import { formatApiError } from '../../shared-error';
       <section class="panel">
         <form class="filters-grid" (ngSubmit)="loadAll()">
           <label>
-            Campania ID
-            <input name="campaniaId" [(ngModel)]="campaniaId" placeholder="camp_..." />
+            Campania
+            <select name="campaniaId" [(ngModel)]="campaniaId">
+              <option value="" disabled>Selecciona una campania</option>
+              @for (campania of campanias(); track campania.id) {
+                <option [value]="campania.id">{{ campania.nombre }}</option>
+              }
+            </select>
           </label>
           <button class="primary-button" type="submit">Consultar resultados</button>
         </form>
@@ -147,8 +158,16 @@ export class ResultadosPage {
   protected readonly artefactos = signal<ArtefactoMarkdown[]>([]);
   protected readonly evaluacion = signal<Evaluacion | null>(null);
   protected readonly markdown = signal<ArtefactoMarkdown | null>(null);
+  protected readonly campanias = signal<Campania[]>([]);
   protected readonly error = signal('');
   protected campaniaId = '';
+
+  constructor() {
+    this.api.campanias({ pageSize: 100 }).subscribe({
+      next: (page) => this.campanias.set(page.items),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+  }
 
   loadAll() {
     if (!this.campaniaId) {

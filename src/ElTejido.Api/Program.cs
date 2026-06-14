@@ -25,7 +25,7 @@ builder.Services.AgregarAutenticacion(builder.Configuration);
 builder.Services.AgregarWhatsApp(builder.Configuration);
 builder.Services.AgregarLlm(builder.Configuration);
 builder.Services.AgregarMarkdown(builder.Configuration);
-if (!string.IsNullOrWhiteSpace(builder.Configuration["Cosmos:AccountEndpoint"]))
+if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
 {
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();

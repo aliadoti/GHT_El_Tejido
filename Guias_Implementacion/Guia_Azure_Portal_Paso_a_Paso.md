@@ -240,24 +240,24 @@ En el repo de GitHub → **Settings → Secrets and variables → Actions → Va
 
 La app lee su configuración de aquí. En el App Service → **Settings → Environment variables** (o **Configuration → Application settings** en portales previos) → **+ Add** para cada una → **Apply/Save**:
 
-| Name | Value |
-|---|---|
-| `Cosmos__AccountEndpoint` | `https://<cosmos-account>.documents.azure.com:443/` |
-| `Cosmos__DatabaseName` | `eltejido` |
-| `Blob__AccountUrl` | `https://<storage>.blob.core.windows.net/` |
-| `Blob__ContainerName` | `markdown` |
-| `KeyVault__Uri` | `https://<keyvault>.vault.azure.net/` |
-| `ApplicationInsights__ConnectionString` | (la de §4.4) |
-| `Llm__Provider` | `AzureOpenAI` u `OpenAI` |
-| `Llm__Endpoint` | (si Azure OpenAI: `https://<aoai>.openai.azure.com/`) |
-| `Llm__ApiKeySecretName` | `llm-key` |
-| `WhatsApp__GraphApiBaseUrl` | `https://graph.facebook.com/v21.0` (la versión que indique la guía de Meta) |
-| `WhatsApp__PhoneNumberId` | (de la guía de Meta) |
-| `WhatsApp__VerifyTokenSecretName` | `wa-verify-token` |
-| `WhatsApp__AppSecretSecretName` | `wa-appsec` |
-| `WhatsApp__AccessTokenSecretName` | `wa-token` |
-| `Auth__SigningKeySecretName` | `jwt-sign` |
-| `Auth__OtpSaltSecretName` | `otp-salt` |
+| Name                                    | Value                                                                       |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `Cosmos__AccountEndpoint`               | `https://<cosmos-account>.documents.azure.com:443/`                         |
+| `Cosmos__DatabaseName`                  | `eltejido`                                                                  |
+| `Blob__AccountUrl`                      | `https://<storage>.blob.core.windows.net/`                                  |
+| `Blob__ContainerName`                   | `markdown`                                                                  |
+| `KeyVault__Uri`                         | `https://<keyvault>.vault.azure.net/`                                       |
+| `ApplicationInsights__ConnectionString` | (la de §4.4)                                                                |
+| `Llm__Provider`                         | `AzureOpenAI` u `OpenAI`                                                    |
+| `Llm__Endpoint`                         | (si Azure OpenAI: `https://<aoai>.openai.azure.com/`)                       |
+| `Llm__ApiKeySecretName`                 | `llm-key`                                                                   |
+| `WhatsApp__GraphApiBaseUrl`             | `https://graph.facebook.com/v21.0` (la versión que indique la guía de Meta) |
+| `WhatsApp__PhoneNumberId`               | (de la guía de Meta)                                                        |
+| `WhatsApp__VerifyTokenSecretName`       | `wa-verify-token`                                                           |
+| `WhatsApp__AppSecretSecretName`         | `wa-appsec`                                                                 |
+| `WhatsApp__AccessTokenSecretName`       | `wa-token`                                                                  |
+| `Auth__SigningKeySecretName`            | `jwt-sign`                                                                  |
+| `Auth__OtpSaltSecretName`               | `otp-salt`                                                                  |
 
 > El doble guion bajo `__` es la forma de anidar secciones de configuración en variables de entorno de .NET (equivale a `Cosmos:AccountEndpoint`). El equipo de desarrollo confirmará los nombres exactos de cada clave según `Especificaciones/02_Arquitectura_y_Stack.md §6`; si alguna difiere, ajústala aquí.
 

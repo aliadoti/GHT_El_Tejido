@@ -11,6 +11,7 @@ import {
   JobEnvio,
   PagedResult,
   ParticipanteCampania,
+  ParticipantePreview,
   PromptConfig,
   Respuesta,
   Rubrica,
@@ -28,6 +29,10 @@ export class AdminApiService {
 
   crearUsuario(body: Partial<UsuarioAdmin> & { numero?: string }) {
     return this.api.post<UsuarioAdmin>('/api/admin/usuarios', body);
+  }
+
+  actualizarUsuario(id: string, body: Partial<UsuarioAdmin> & { numero?: string }) {
+    return this.api.put<UsuarioAdmin>(`/api/admin/usuarios/${id}`, body);
   }
 
   cambiarEstadoUsuario(id: string, estado: string) {
@@ -71,7 +76,7 @@ export class AdminApiService {
   }
 
   previewParticipantes(campaniaId: string, query: Record<string, string | undefined>) {
-    return this.api.get<{ total: number; items: UsuarioAdmin[] }>(
+    return this.api.get<{ total: number; items: ParticipantePreview[] }>(
       `/api/admin/campanias/${campaniaId}/participantes/preview`,
       query,
     );

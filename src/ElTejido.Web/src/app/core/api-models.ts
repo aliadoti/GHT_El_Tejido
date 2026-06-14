@@ -88,6 +88,15 @@ export interface Pregunta {
   estado: string;
 }
 
+export interface ParticipantePreview {
+  usuarioId: string;
+  nombre: string;
+  whatsappNormalizado: string;
+  area: string;
+  empresa: string;
+  tags: string[];
+}
+
 export interface ParticipanteCampania {
   id: string;
   campaniaId: string;
