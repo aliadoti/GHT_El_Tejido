@@ -185,6 +185,8 @@
   },
   "active": "6363ad2d233636ec",
   "lastOpenFiles": [
+    "src/ElTejido.Web/src/app/e2e/portal-admin.e2e.spec.ts",
+    "src/ElTejido.Web/src/app/e2e",
     "src/ElTejido.Api/wwwroot/browser/chunk-BERgfAAR.js",
     "src/ElTejido.Api/wwwroot/browser/chunk-BprqvB9e.js",
     "src/ElTejido.Api/wwwroot/browser/chunk-Bv6B8PFb.js",
@@ -194,8 +196,6 @@
     "src/ElTejido.Api/wwwroot/browser/chunk-D20Ml9Y5.js",
     "src/ElTejido.Api/wwwroot/browser/chunk-DvCLU44B.js",
     "src/ElTejido.Api/wwwroot/browser/main-VRXBYIU4.js",
-    "src/ElTejido.Api/wwwroot/browser/chunk-DxzCXHks.js",
-    "src/ElTejido.Api/wwwroot/browser/chunk-T9_VqeBq.js",
     "Especificaciones/00_Indice_y_Guia_de_Uso.md",
     "Especificaciones/02_Arquitectura_y_Stack.md",
     "Especificaciones/07_Backend_Campanas_y_Configuracion.md",
