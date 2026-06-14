@@ -36,6 +36,10 @@ public static class ServiciosSeguridad
                 sp.GetRequiredService<IOptions<OpcionesCacheSecretos>>());
         });
 
+        services.AddSingleton<ISecretWriter>(_ => string.IsNullOrWhiteSpace(keyVaultUri)
+            ? new SecretWriterMemoria()
+            : new KeyVaultSecretWriter(new Uri(keyVaultUri)));
+
         return services;
     }
 }

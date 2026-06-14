@@ -23,6 +23,8 @@ builder.Services.AgregarAutenticacion(builder.Configuration);
 if (!string.IsNullOrWhiteSpace(builder.Configuration["Cosmos:AccountEndpoint"]))
 {
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
+    builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
+    builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
 }
 
 builder.Services.AgregarLimitadorTasa(opcionesSeguridad);
@@ -49,6 +51,7 @@ app.MapGet("/health", () => Results.Ok(new HealthResponse("ok")))
 // Identidad y autenticacion admin (04 §4, 06).
 app.MapearEndpointsAuth();
 app.MapearEndpointsAdminConfiguracion();
+app.MapearEndpointsAdminFase4();
 
 if (app.Environment.IsDevelopment())
 {

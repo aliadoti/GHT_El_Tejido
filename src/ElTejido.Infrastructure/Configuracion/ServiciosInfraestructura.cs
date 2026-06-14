@@ -1,5 +1,6 @@
 using Azure.Identity;
 using ElTejido.Application.Campanas;
+using ElTejido.Application.Configuracion;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.Usuarios;
@@ -51,6 +52,8 @@ public static class ServiciosInfraestructura
             new RepositorioCampaniasCosmos(Contenedor(sp, "Campaigns", "campaigns")));
         services.AddSingleton<IRepositorioParticipantes>(sp =>
             new RepositorioParticipantesCosmos(Contenedor(sp, "Participants", "participants")));
+        services.AddSingleton<IRepositorioConfiguracion>(sp =>
+            new RepositorioConfiguracionCosmos(Contenedor(sp, "Config", "config")));
         services.AddSingleton<IRegistroWebhookDedupe>(sp =>
             new RepositorioWebhookDedupeCosmos(Contenedor(sp, "Leases", "leases")));
         services.AddSingleton<IRepositorioCodigosAuth>(sp =>

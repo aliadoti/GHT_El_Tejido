@@ -91,3 +91,10 @@
 - Decision: crear ids con prefijos `u_`/`t_` mas GUID, paginar en memoria (`page`, `pageSize`, maximo 100) sobre el resultado actual de `IRepositorioUsuarios`, mantener `DELETE` como baja logica (`EstadoRegistro.Inactivo`) y registrar `IServicioGestionUsuarios` solo cuando exista `Cosmos:AccountEndpoint`; las pruebas sin Cosmos registran el servicio con repositorio en memoria.
 - Alternativa(s) descartada(s): ampliar ahora el puerto de repositorio con paginacion/total nativo (mayor cambio en Cosmos para el paso inicial); borrar documentos en `DELETE` (pierde trazabilidad y contradice estados); registrar el servicio siempre (rompe arranque validado sin Cosmos por DI).
 - Impacto / reversibilidad: la paginacion puede migrar a Cosmos nativo sin cambiar el contrato HTTP; los ids siguen el patron de documentos existentes; el registro guardado conserva `/health` y pruebas locales sin emulador.
+
+### fase4-config-versionado-cosmos - Id fisico para versiones de config
+- Fecha: 2026-06-14 - Agente/Rol: Codex - Backend/AppSec - Commit: pendiente
+- Contexto: `07` secciones 3-4 define versionado por familia estable + version para rubricas/prompts, y `03` usa el contenedor `config` con `id` y `pk`; Cosmos exige `id` unico dentro de la particion, por lo que varias versiones no pueden compartir el mismo `id` fisico.
+- Decision: persistir rubricas/prompts con `id` fisico versionado (`<familiaId>_v<version>`) y campo adicional `familiaId` como id logico expuesto por la API. `GET /rubricas/{id}` y `GET /prompts/{id}` resuelven la ultima version de esa familia.
+- Alternativa(s) descartada(s): sobrescribir siempre el mismo documento (rompe historial/versiones); usar contenedores separados por tipo (cambia la arquitectura de `03`); cambiar el contrato REST para requerir id fisico por version (filtra detalle Cosmos al frontend).
+- Impacto / reversibilidad: no cambia el contrato HTTP ni los snapshots `rubricaRef/versionRubrica` y `promptRef/versionPrompt`. Si luego se ajusta la spec de datos, el mapeo queda encapsulado en `RepositorioConfiguracionCosmos`.
