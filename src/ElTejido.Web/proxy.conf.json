@@ -8,5 +8,10 @@
     "target": "https://localhost:5001",
     "secure": false,
     "changeOrigin": true
+  },
+  "/diagnostico": {
+    "target": "https://localhost:5001",
+    "secure": false,
+    "changeOrigin": true
   }
 }

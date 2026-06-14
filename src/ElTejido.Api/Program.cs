@@ -1,5 +1,6 @@
 using ElTejido.Api.Admin;
 using ElTejido.Api.Auth;
+using ElTejido.Api.Diagnostico;
 using ElTejido.Api.Errores;
 using ElTejido.Api.Observabilidad;
 using ElTejido.Api.Seguridad;
@@ -88,6 +89,7 @@ if (app.Environment.IsDevelopment())
     // Guard comun de /api/admin/* (04 §5, 06 §4.4) ejercitado con endpoints minimos
     // solo en Development; los CRUD reales de Fase 4 reutilizaran este filtro.
     app.MapearEndpointsAdminDiagnostico();
+    app.MapearEndpointsSimulacion();
 }
 
 app.Run();

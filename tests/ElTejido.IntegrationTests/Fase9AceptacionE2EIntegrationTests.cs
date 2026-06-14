@@ -89,7 +89,7 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             && e.Texto.Contains("Buena idea", StringComparison.Ordinal)
             && e.Texto.Contains("Gracias por participar", StringComparison.Ordinal));
 
-        await EsperarAsync(() => store.Respuestas.Any());
+        await EsperarAsync(() => store.Respuestas.Any() && store.Artefactos.Any());
         store.Evaluaciones.Should().ContainSingle(e => e.ConfigLlmRef.StartsWith("llm_", StringComparison.Ordinal));
         store.Artefactos.Should().ContainSingle(a => a.ContenidoMarkdown.Contains("Mi idea reduce desperdicio", StringComparison.Ordinal));
         store.SecretosGuardados.Should().Contain(nombre => nombre.StartsWith("llm-key-", StringComparison.Ordinal));

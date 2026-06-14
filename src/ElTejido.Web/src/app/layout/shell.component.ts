@@ -72,6 +72,7 @@ export class ShellComponent {
     { label: 'Prompts', route: '/prompts', icon: 'P', adminOnly: true },
     { label: 'Config LLM', route: '/config-llm', icon: 'L', adminOnly: true },
     { label: 'Resultados', route: '/resultados', icon: 'M' },
+    { label: 'Simulacion WA', route: '/simulacion-whatsapp', icon: 'W', adminOnly: true },
   ];
 
   logout() {

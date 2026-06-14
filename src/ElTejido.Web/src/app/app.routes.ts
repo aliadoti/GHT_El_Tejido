@@ -10,6 +10,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login.page').then((m) => m.LoginPage),
   },
   {
+    path: 'simulacion-whatsapp',
+    title: 'Simulacion WhatsApp - El Tejido',
+    loadComponent: () =>
+      import('./features/simulacion-whatsapp/simulacion-whatsapp.page').then(
+        (m) => m.SimulacionWhatsappPage,
+      ),
+  },
+  {
     path: '',
     component: ShellComponent,
     canActivate: [authGuard],
