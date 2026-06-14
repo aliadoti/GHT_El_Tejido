@@ -4,6 +4,7 @@ using ElTejido.Api.Errores;
 using ElTejido.Api.Observabilidad;
 using ElTejido.Api.Seguridad;
 using ElTejido.Application.Common;
+using ElTejido.Application.Configuracion;
 using ElTejido.Infrastructure.Configuracion;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,11 @@ builder.Services.AddSingleton<IProveedorCorrelacion, ProveedorCorrelacionHttp>()
 builder.Services.AgregarSeguridad(builder.Configuration);
 builder.Services.AgregarInfraestructura(builder.Configuration);
 builder.Services.AgregarAutenticacion(builder.Configuration);
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Cosmos:AccountEndpoint"]))
+{
+    builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
+}
+
 builder.Services.AgregarLimitadorTasa(opcionesSeguridad);
 
 var app = builder.Build();
@@ -42,6 +48,7 @@ app.MapGet("/health", () => Results.Ok(new HealthResponse("ok")))
 
 // Identidad y autenticacion admin (04 §4, 06).
 app.MapearEndpointsAuth();
+app.MapearEndpointsAdminConfiguracion();
 
 if (app.Environment.IsDevelopment())
 {

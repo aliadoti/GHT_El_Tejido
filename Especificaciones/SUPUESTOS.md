@@ -84,3 +84,10 @@
 - Decision: implementar el enforcement como `IEndpointFilter` reutilizable (`AutorizacionAdminEndpointFilter`) para grupos `/api/admin/*`: GET permite `admin` o `visor`; cualquier otro metodo exige `admin` y `X-CSRF-Token` igual al claim `csrf`; CSRF faltante/invalido responde `403 FORBIDDEN`. Para probarlo antes del CRUD real se agregan endpoints minimos bajo `/api/admin/diagnostico/*` solo en `Development`.
 - Alternativa(s) descartada(s): middleware global por path (menos explicito para grupos y pruebas); atributo/controller auth (el proyecto usa Minimal APIs); responder `400` por CSRF faltante (filtra menos intencion de seguridad que `403`).
 - Impacto / reversibilidad: no cambia contratos de request/response de los CRUD; los endpoints reales de Fase 4 pueden reutilizar el filtro y los diagnosticos se pueden retirar sin afectar produccion.
+
+### fase4-crud-usuarios-tags - Alcance inicial del CRUD admin
+- Fecha: 2026-06-13 - Agente/Rol: Codex - Backend - Commit: c689c8f
+- Contexto: `04` secciones 5.1-5.2 y `07` seccion 1 piden CRUD de usuarios/tags, pero no fijan estrategia de paginacion del repositorio, formato interno de ids nuevos ni si los servicios admin deben registrarse sin Cosmos. REQ 12-13.
+- Decision: crear ids con prefijos `u_`/`t_` mas GUID, paginar en memoria (`page`, `pageSize`, maximo 100) sobre el resultado actual de `IRepositorioUsuarios`, mantener `DELETE` como baja logica (`EstadoRegistro.Inactivo`) y registrar `IServicioGestionUsuarios` solo cuando exista `Cosmos:AccountEndpoint`; las pruebas sin Cosmos registran el servicio con repositorio en memoria.
+- Alternativa(s) descartada(s): ampliar ahora el puerto de repositorio con paginacion/total nativo (mayor cambio en Cosmos para el paso inicial); borrar documentos en `DELETE` (pierde trazabilidad y contradice estados); registrar el servicio siempre (rompe arranque validado sin Cosmos por DI).
+- Impacto / reversibilidad: la paginacion puede migrar a Cosmos nativo sin cambiar el contrato HTTP; los ids siguen el patron de documentos existentes; el registro guardado conserva `/health` y pruebas locales sin emulador.
