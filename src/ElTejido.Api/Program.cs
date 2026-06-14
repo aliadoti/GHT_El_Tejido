@@ -3,6 +3,7 @@ using ElTejido.Api.Auth;
 using ElTejido.Api.Errores;
 using ElTejido.Api.Observabilidad;
 using ElTejido.Api.Seguridad;
+using ElTejido.Api.WhatsApp;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Infrastructure.Configuracion;
@@ -20,6 +21,9 @@ builder.Services.AddSingleton<IProveedorCorrelacion, ProveedorCorrelacionHttp>()
 builder.Services.AgregarSeguridad(builder.Configuration);
 builder.Services.AgregarInfraestructura(builder.Configuration);
 builder.Services.AgregarAutenticacion(builder.Configuration);
+builder.Services.AgregarWhatsApp(builder.Configuration);
+builder.Services.AgregarLlm(builder.Configuration);
+builder.Services.AgregarMarkdown(builder.Configuration);
 if (!string.IsNullOrWhiteSpace(builder.Configuration["Cosmos:AccountEndpoint"]))
 {
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
@@ -52,6 +56,10 @@ app.MapGet("/health", () => Results.Ok(new HealthResponse("ok")))
 app.MapearEndpointsAuth();
 app.MapearEndpointsAdminConfiguracion();
 app.MapearEndpointsAdminFase4();
+
+// WhatsApp Gateway: webhook entrante y envio masivo (04 §5.4/§6, 05).
+app.MapearEndpointsWebhook();
+app.MapearEndpointsAdminEnvios();
 
 if (app.Environment.IsDevelopment())
 {

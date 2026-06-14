@@ -1,12 +1,16 @@
 using Azure.Identity;
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Configuracion;
+using ElTejido.Application.Conversacion;
 using ElTejido.Application.Participantes;
+using ElTejido.Application.Respuestas;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.Usuarios;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Infrastructure.Campanas;
+using ElTejido.Infrastructure.Conversaciones;
 using ElTejido.Infrastructure.Participantes;
+using ElTejido.Infrastructure.Respuestas;
 using ElTejido.Infrastructure.Seguridad;
 using ElTejido.Infrastructure.Usuarios;
 using ElTejido.Infrastructure.WhatsApp;
@@ -54,6 +58,10 @@ public static class ServiciosInfraestructura
             new RepositorioParticipantesCosmos(Contenedor(sp, "Participants", "participants")));
         services.AddSingleton<IRepositorioConfiguracion>(sp =>
             new RepositorioConfiguracionCosmos(Contenedor(sp, "Config", "config")));
+        services.AddSingleton<IRepositorioRespuestas>(sp =>
+            new RepositorioRespuestasCosmos(Contenedor(sp, "Responses", "responses")));
+        services.AddSingleton<IRepositorioConversaciones>(sp =>
+            new RepositorioConversacionesCosmos(Contenedor(sp, "Conversations", "conversations")));
         services.AddSingleton<IRegistroWebhookDedupe>(sp =>
             new RepositorioWebhookDedupeCosmos(Contenedor(sp, "Leases", "leases")));
         services.AddSingleton<IRepositorioCodigosAuth>(sp =>
