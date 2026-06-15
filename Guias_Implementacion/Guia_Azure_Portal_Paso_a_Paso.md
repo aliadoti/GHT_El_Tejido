@@ -93,7 +93,10 @@ Todos los recursos siguientes se crean **dentro de este grupo** y en la **misma 
 
 4. **TTL** (expiración automática) en `security` y `leases`:
    - Abre el contenedor → **Settings** (Scale & Settings) → **Time to Live** → selecciona **On (no default)** → **Save**. Esto permite que cada documento defina su propio `ttl` (lo hace la app para los OTP y el dedupe del webhook).
-5. **Unique key** en `users` (recomendado): al crear el contenedor `users`, en **Unique keys** agrega `/whatsappNormalizado`. *(Si ya lo creaste sin esto, no se puede añadir después; bórralo y recréalo si quieres la restricción. La app también valida unicidad por código, así que no es bloqueante.)*
+5. **Unique key** en `users` (opcional): al crear el contenedor `users`, en **Unique keys** agrega **exactamente** `/whatsappNormalizado`.
+   - ⚠️ **NO pongas `/pk`** como unique key (es la partition key, y la confusión es fácil): como todos los usuarios comparten `pk = "usuario"`, una unique key en `/pk` hace que **el segundo usuario y todos los siguientes fallen** con `Conflict (409)`. Si te pasa, el síntoma es que sólo puedes crear un usuario.
+   - Las unique keys de Cosmos son **inmutables**: si quedó mal, hay que **borrar y recrear** el contenedor (con `/whatsappNormalizado` o sin unique key).
+   - La unique key es **opcional**: la app ya valida unicidad por código, así que dejarla **vacía** es una opción segura y evita este problema por completo.
 
 ---
 
@@ -163,8 +166,10 @@ Asigna estos roles a la **identidad administrada del App Service** (`<webapp>`):
 
 **a) Key Vault — leer secretos:**
 1. Ve a `<keyvault>` → **Access control (IAM) → + Add → Add role assignment**.
-2. **Role:** **Key Vault Secrets User** (solo lectura de secretos; mínimo privilegio).
+2. **Role:** **Key Vault Secrets User** (lectura de secretos; mínimo privilegio para que la app lea OTP/JWT/WhatsApp/LLM en runtime).
 3. **Members → Assign access to: Managed identity → + Select members →** tipo **App Service →** elige `<webapp>` → **Select → Review + assign**.
+
+> ⚠️ **Si vas a guardar la API key del LLM desde el portal de El Tejido (pantalla *Config LLM*):** la app **escribe** ese secreto en Key Vault (como `llm-key-<id>`), por lo que la identidad necesita **ESCRITURA**, no solo lectura. Asigna además el rol **Key Vault Secrets Officer** a la identidad de `<webapp>` (mismo IAM del Key Vault). Sin él, guardar la Config LLM falla con 403. *(Alternativa: cargar tú la API key como secreto en Key Vault y, en el formulario de Config LLM, indicar ese nombre en `apiKeyRef`; así la app solo lee. Nota: el secreto `llm-key` de §0.3/§5 solo se usa si pones `apiKeyRef = llm-key`.)*
 
 **b) Cosmos DB — datos:**
 1. Ve a `<cosmos-account>` → **Access control (IAM) → + Add → Add role assignment**.
@@ -224,9 +229,13 @@ Esto permite que el pipeline de despliegue (ver `Especificaciones/12_CICD_GitHub
 3. **Organization:** tu organización/usuario de GitHub. **Repository:** el repo de El Tejido. **Entity type:** **Branch** → **Branch:** `main`.
 4. **Audience:** deja `api://AzureADTokenExchange` (valor por defecto). **Name:** `gh-main`. **Add**.
 
+> ⚠️ **Coincidencia del subject OIDC.** Esta credencial es de tipo **Branch** → su subject es `repo:<org>/<repo>:ref:refs/heads/main`. Por eso `deploy.yml` **no** usa `environment:` (si lo usara, el subject sería `repo:<org>/<repo>:environment:<env>` y el login fallaría con **`AADSTS700213: No matching federated identity record`**). Si quieres un gate de aprobación con `environment: production`, agrega **otra** credencial federada de tipo **Environment** (name = `production`).
+
 ### 9.3 Dar permiso de despliegue a esa app
 1. Ve al **Grupo de recursos** `<rg>` → **Access control (IAM) → + Add → Add role assignment**.
-2. **Role:** **Contributor** (o, más acotado, **Website Contributor** si solo desplegará la web). **Members:** busca la app `gh-eltejido-deploy` → **Review + assign**.
+2. **Role:** **Contributor** (o, más acotado, **Website Contributor** si solo desplegará la web). **Members → Assign access to: User, group, or service principal →** busca la app `gh-eltejido-deploy` → **Review + assign**.
+
+> ⚠️ **Este paso es obligatorio.** Si lo omites, `azure/login` autentica pero el deploy falla con **`No subscriptions found for <client-id>`** (el service principal no ve ninguna suscripción sin un rol asignado). Espera 1–2 min a que propague y verifica que el rol cayó sobre el principal correcto (`gh-eltejido-deploy`). Si sigue fallando, asigna el rol a nivel de **suscripción** en vez del resource group.
 
 ### 9.4 Cargar valores en GitHub
 En el repo de GitHub → **Settings → Secrets and variables → Actions → Variables** (pestaña *Variables*), crea:
@@ -273,7 +282,10 @@ La app lee su configuración de aquí. En el App Service → **Settings → Envi
 ## §11. Verificación final
 
 1. **Despliega** una vez (haz merge a `main` para disparar el pipeline, o sube un build manual). Ver guía `12`.
-2. Abre `https://<webapp>.azurewebsites.net/health` → debe responder `200 OK`. *(Esto solo confirma que el proceso arrancó: liveness. No verifica Key Vault, Cosmos ni Blob.)*
+
+> ⚠️ **El hostname puede no ser `<webapp>.azurewebsites.net`.** Los App Service creados recientemente usan un **dominio único** con sufijo aleatorio y región, p. ej. `app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net`. Copia el real de **App Service → Overview → Default domain** y úsalo en todas las URLs de abajo. (El deploy y el smoke test del pipeline usan el nombre/URL real automáticamente.)
+
+2. Abre `https://<HOST>/health` → debe responder `200 OK`. *(Esto solo confirma que el proceso arrancó: liveness. No verifica Key Vault, Cosmos ni Blob.)* Abre también `https://<HOST>/` → debe cargar el portal de El Tejido (lo sirve la propia API desde `wwwroot`). *(Si ves la página "Your web app is running and waiting for your content", suele ser caché del navegador: prueba en incógnito o `Ctrl+Shift+R`.)*
 3. **Verificación de dependencias (readiness) — recomendada.** Llama al endpoint protegido `GET /health/ready` con el header `X-Diag-Key` igual a la clave de diagnóstico que configuraste en §10:
    ```powershell
    curl -H "X-Diag-Key: <tu-clave-de-diagnostico>" https://<webapp>.azurewebsites.net/health/ready
