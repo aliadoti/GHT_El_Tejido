@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
+using ElTejido.Domain.Participantes;
 using ElTejido.Infrastructure.WhatsApp;
 using ElTejido.UnitTests.Soporte;
 using FluentAssertions;
@@ -136,10 +138,34 @@ public sealed class WhatsAppGatewayTests
         gateway.ParsearWebhook(payload).Should().BeNull();
     }
 
+    [Fact]
+    public async Task EnviarTexto_SecretoTokenAusente_DevuelveFalloSinLanzar()
+    {
+        // Con el secreto del token ausente, el proveedor lanza KeyNotFoundException (contrato
+        // normalizado). El envio no debe propagar la excepcion: degrada a Fallo con un mensaje
+        // diciente que nombra el secreto faltante, para que el administrador sepa que configurar.
+        var secretos = Substitute.For<ISecretProvider>();
+        secretos.ObtenerSecretoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<string>(_ => throw new KeyNotFoundException("falta el secreto"));
+        var gateway = Construir(secretos);
+
+        var resultado = await gateway.EnviarTextoAsync(
+            "573001112233",
+            "Hola",
+            TipoEnvioMensaje.Inicial,
+            CancellationToken.None);
+
+        resultado.Exito.Should().BeFalse();
+        resultado.Error.Should().Contain(new OpcionesWhatsApp().AccessTokenSecretName);
+    }
+
     private static WhatsAppGateway Construir()
+        => Construir(Substitute.For<ISecretProvider>());
+
+    private static WhatsAppGateway Construir(ISecretProvider secretos)
         => new(
             new HttpClient(),
-            Substitute.For<ElTejido.Application.Seguridad.ISecretProvider>(),
+            secretos,
             Options.Create(new OpcionesWhatsApp()),
             new RelojFijo(DateTimeOffset.UnixEpoch),
             NullLogger<WhatsAppGateway>.Instance);

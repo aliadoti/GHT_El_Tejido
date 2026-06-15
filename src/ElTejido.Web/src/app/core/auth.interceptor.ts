@@ -22,6 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       if (
         error instanceof HttpErrorResponse &&
         error.status === 401 &&
+        request.url.includes('/api/') &&
         !request.url.includes('/api/auth/me')
       ) {
         auth.clearSession();

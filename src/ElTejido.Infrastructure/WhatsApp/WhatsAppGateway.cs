@@ -149,8 +149,13 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
         {
-            _logger.LogError("No se pudo resolver el token de acceso de WhatsApp para el envio {Tipo}.", tipo);
-            return EnvioResultado.Fallo("token_no_disponible");
+            _logger.LogError(
+                "Envio {Tipo} no realizado: falta el secreto '{Secreto}' en el almacen de secretos (Key Vault). "
+                    + "Configuralo para habilitar el envio por WhatsApp.",
+                tipo,
+                _opciones.AccessTokenSecretName);
+            return EnvioResultado.Fallo(
+                $"WhatsApp no configurado: falta el secreto '{_opciones.AccessTokenSecretName}' en Key Vault.");
         }
 
         var ruta = $"{_opciones.GraphApiBaseUrl.TrimEnd('/')}/{_opciones.PhoneNumberId}/messages";
@@ -179,7 +184,8 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
                         tipo,
                         intento + 1,
                         (int)respuesta.StatusCode);
-                    return EnvioResultado.Fallo($"http_{(int)respuesta.StatusCode}");
+                    return EnvioResultado.Fallo(
+                        $"WhatsApp rechazo el envio (HTTP {(int)respuesta.StatusCode}). Revisa el token y el PhoneNumberId.");
                 }
             }
             catch (HttpRequestException ex) when (intento < _opciones.MaxReintentos)
@@ -189,7 +195,7 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             catch (HttpRequestException ex)
             {
                 _logger.LogWarning(ex, "Error de red enviando {Tipo}; agotados los reintentos.", tipo);
-                return EnvioResultado.Fallo("error_red");
+                return EnvioResultado.Fallo("Error de red al contactar WhatsApp; se agotaron los reintentos.");
             }
 
             await Task.Delay(CalcularBackoff(intento), _tiempo, cancellationToken);

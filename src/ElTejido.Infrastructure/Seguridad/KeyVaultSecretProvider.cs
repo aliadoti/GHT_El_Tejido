@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using ElTejido.Application.Seguridad;
@@ -29,7 +30,19 @@ public sealed class KeyVaultSecretProvider : ISecretProvider
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
 
-        var respuesta = await _client.GetSecretAsync(nombre, cancellationToken: cancellationToken);
-        return respuesta.Value.Value;
+        try
+        {
+            var respuesta = await _client.GetSecretAsync(nombre, cancellationToken: cancellationToken);
+            return respuesta.Value.Value;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            // Normaliza "secreto inexistente" al mismo contrato que ConfiguracionSecretProvider
+            // (KeyNotFoundException), para que los consumidores (gateway, webhook) degraden con
+            // gracia en vez de propagar un fallo de infraestructura que tumba el flujo. El nombre
+            // no es sensible; el valor nunca se incluye. Los demas RequestFailedException (403 por
+            // RBAC, red) se propagan a proposito: son errores operativos que deben hacerse visibles.
+            throw new KeyNotFoundException($"El secreto '{nombre}' no existe en Key Vault.", ex);
+        }
     }
 }
