@@ -11,7 +11,7 @@ export const routes: Routes = [
   },
   {
     path: 'simulacion-whatsapp',
-    title: 'Simulacion WhatsApp - El Tejido',
+    title: 'Simulacion WhatsApp - Tejido de Red',
     loadComponent: () =>
       import('./features/simulacion-whatsapp/simulacion-whatsapp.page').then(
         (m) => m.SimulacionWhatsappPage,
@@ -24,25 +24,25 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        title: 'Dashboard - El Tejido',
+        title: 'Dashboard - Tejido de Red',
         loadComponent: () =>
           import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage),
       },
       {
         path: 'usuarios',
-        title: 'Usuarios - El Tejido',
+        title: 'Usuarios - Tejido de Red',
         loadComponent: () =>
           import('./features/usuarios/usuarios.page').then((m) => m.UsuariosPage),
       },
       {
         path: 'campanias',
-        title: 'Campanias - El Tejido',
+        title: 'Campanias - Tejido de Red',
         loadComponent: () =>
           import('./features/campanias/campanias.page').then((m) => m.CampaniasPage),
       },
       {
         path: 'campanias/:id/envios',
-        title: 'Envios - El Tejido',
+        title: 'Envios - Tejido de Red',
         loadComponent: () => import('./features/envios/envios.page').then((m) => m.EnviosPage),
       },
       {
@@ -52,26 +52,26 @@ export const routes: Routes = [
       {
         path: 'rubricas',
         canActivate: [adminGuard],
-        title: 'Rubricas - El Tejido',
+        title: 'Rubricas - Tejido de Red',
         loadComponent: () =>
           import('./features/rubricas/rubricas.page').then((m) => m.RubricasPage),
       },
       {
         path: 'prompts',
         canActivate: [adminGuard],
-        title: 'Prompts - El Tejido',
+        title: 'Prompts - Tejido de Red',
         loadComponent: () => import('./features/prompts/prompts.page').then((m) => m.PromptsPage),
       },
       {
         path: 'config-llm',
         canActivate: [adminGuard],
-        title: 'Config LLM - El Tejido',
+        title: 'Config LLM - Tejido de Red',
         loadComponent: () =>
           import('./features/config-llm/config-llm.page').then((m) => m.ConfigLlmPage),
       },
       {
         path: 'resultados',
-        title: 'Resultados - El Tejido',
+        title: 'Resultados - Tejido de Red',
         loadComponent: () =>
           import('./features/resultados/resultados.page').then((m) => m.ResultadosPage),
       },

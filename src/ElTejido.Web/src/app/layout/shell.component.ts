@@ -19,9 +19,9 @@ interface NavItem {
     <div class="portal-shell">
       <aside class="sidebar" aria-label="Navegacion principal">
         <a class="brand" routerLink="/">
-          <span class="brand-mark">GHT</span>
+          <img class="brand-mark" src="brand/eltejido-logo.png" alt="GHT" width="44" height="44" />
           <span>
-            <strong>El Tejido</strong>
+            <strong>Tejido de Red</strong>
             <small>Banco de ideas</small>
           </span>
         </a>

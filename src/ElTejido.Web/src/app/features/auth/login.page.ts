@@ -15,9 +15,9 @@ import { formatApiError } from '../../shared-error';
     <main class="login-shell">
       <section class="login-panel" aria-labelledby="login-title">
         <div class="login-brand">
-          <span class="brand-mark">GHT</span>
+          <img class="brand-mark" src="brand/eltejido-logo.png" alt="GHT" width="44" height="44" />
           <span>
-            <strong>El Tejido</strong>
+            <strong>Tejido de Red</strong>
             <small>Portal administrativo</small>
           </span>
         </div>
