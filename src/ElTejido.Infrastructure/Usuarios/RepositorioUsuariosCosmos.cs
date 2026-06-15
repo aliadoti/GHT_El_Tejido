@@ -1,3 +1,5 @@
+using System.Net;
+using ElTejido.Application.Common;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Usuarios;
@@ -26,7 +28,17 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
     public async Task GuardarUsuarioAsync(Usuario usuario, CancellationToken cancellationToken)
     {
         var document = UsuarioCosmosDocument.FromDomain(usuario);
-        await _container.UpsertUsuarioAsync(document, document.Pk, cancellationToken);
+        try
+        {
+            await _container.UpsertUsuarioAsync(document, document.Pk, cancellationToken);
+        }
+        catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+        {
+            // La clave unica de `users` (/whatsappNormalizado) ya tiene ese numero: se traduce el
+            // conflicto de almacenamiento a un error de dominio limpio (409) en vez de un 500. Cubre
+            // la carrera con el chequeo previo de unicidad y la latencia del indice (07 §1, 04 §3).
+            throw new ErrorConflicto("Ya existe un usuario con ese numero de WhatsApp.");
+        }
     }
 
     public async Task<Usuario?> ObtenerUsuarioPorIdAsync(string id, CancellationToken cancellationToken)

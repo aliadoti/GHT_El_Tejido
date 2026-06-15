@@ -1,9 +1,12 @@
+using System.Net;
+using ElTejido.Application.Common;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Usuarios;
 using ElTejido.Infrastructure.Usuarios;
 using FluentAssertions;
+using Microsoft.Azure.Cosmos;
 
 namespace ElTejido.UnitTests.Usuarios;
 
@@ -28,6 +31,26 @@ public sealed class RepositorioUsuariosCosmosTests
         upsert.Document.Estado.Should().Be("activo");
         upsert.Document.Tags.Should().BeEquivalentTo("t_area_oper", "t_emp_ght");
         upsert.Document.PropiedadesDinamicas.Should().ContainKey("cargo");
+    }
+
+    [Fact]
+    public async Task GuardarUsuarioAsync_ConflictoDeClaveUnica_LanzaErrorConflicto()
+    {
+        var container = new FakeUsersCosmosContainer
+        {
+            UsuarioUpsertException = new CosmosException(
+                "Unique index constraint violation.",
+                HttpStatusCode.Conflict,
+                subStatusCode: 0,
+                activityId: "actividad",
+                requestCharge: 1),
+        };
+        var repository = new RepositorioUsuariosCosmos(container);
+
+        var act = () => repository.GuardarUsuarioAsync(CrearUsuario(), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ErrorConflicto>()
+            .Where(e => e.Codigo == "CONFLICT");
     }
 
     [Fact]
@@ -200,11 +223,18 @@ public sealed class RepositorioUsuariosCosmosTests
 
         public IReadOnlyCollection<TagCosmosDocument> TagQueryResult { get; init; } = [];
 
+        public Exception? UsuarioUpsertException { get; init; }
+
         public Task UpsertUsuarioAsync(
             UsuarioCosmosDocument document,
             string partitionKey,
             CancellationToken cancellationToken)
         {
+            if (UsuarioUpsertException is not null)
+            {
+                throw UsuarioUpsertException;
+            }
+
             UsuarioUpserts.Add((document, partitionKey));
             return Task.CompletedTask;
         }
