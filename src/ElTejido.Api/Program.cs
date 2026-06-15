@@ -94,6 +94,13 @@ if (app.Environment.IsDevelopment())
     // Guard comun de /api/admin/* (04 §5, 06 §4.4) ejercitado con endpoints minimos
     // solo en Development; los CRUD reales de Fase 4 reutilizaran este filtro.
     app.MapearEndpointsAdminDiagnostico();
+}
+
+// Simulacion de WhatsApp (pagina /simulacion-whatsapp): siempre en Development; en el resto solo si
+// Simulacion:Habilitada=true, y entonces protegida por la clave de diagnostico (X-Diag-Key). Permite
+// la prueba E2E simulada contra el despliegue real (Cosmos/Key Vault) sin conectar WhatsApp todavia.
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Simulacion:Habilitada"))
+{
     app.MapearEndpointsSimulacion();
 }
 

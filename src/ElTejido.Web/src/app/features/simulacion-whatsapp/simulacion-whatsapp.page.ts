@@ -43,6 +43,22 @@ interface OtpResponse {
           <p class="notice">{{ notice() }}</p>
         }
 
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Clave de diagnostico</h2>
+          </div>
+          <p class="subhead">
+            Solo para probar contra el despliegue (Azure). En local dejala vacia. Debe coincidir con
+            la clave configurada en el servidor (Diagnostico:Clave o el secreto diag-key).
+          </p>
+          <form class="form-grid">
+            <label>
+              X-Diag-Key
+              <input name="diagKey" [(ngModel)]="diagKey" type="password" autocomplete="off" />
+            </label>
+          </form>
+        </section>
+
         <div class="two-column">
           <section class="panel">
             <div class="panel-heading">
@@ -172,6 +188,7 @@ interface OtpResponse {
 export class SimulacionWhatsappPage {
   private readonly http = inject(HttpClient);
 
+  protected diagKey = '';
   protected adminNumero = '573001119999';
   protected adminNombre = 'Administrador prueba';
   protected codigoOtp = '123456';
@@ -188,12 +205,16 @@ export class SimulacionWhatsappPage {
 
   crearAdmin() {
     this.http
-      .post<AdminInicialResponse>('/diagnostico/simulacion/admin-inicial', {
-        numero: this.adminNumero,
-        nombre: this.adminNombre,
-        area: 'Administracion',
-        empresa: 'GHT',
-      })
+      .post<AdminInicialResponse>(
+        '/diagnostico/simulacion/admin-inicial',
+        {
+          numero: this.adminNumero,
+          nombre: this.adminNombre,
+          area: 'Administracion',
+          empresa: 'GHT',
+        },
+        { headers: this.diagHeaders() },
+      )
       .subscribe({
         next: (admin) => {
           this.admin.set(admin);
@@ -206,10 +227,14 @@ export class SimulacionWhatsappPage {
 
   emitirOtp() {
     this.http
-      .post<OtpResponse>('/diagnostico/simulacion/otp-admin', {
-        numero: this.adminNumero,
-        codigo: this.codigoOtp,
-      })
+      .post<OtpResponse>(
+        '/diagnostico/simulacion/otp-admin',
+        {
+          numero: this.adminNumero,
+          codigo: this.codigoOtp,
+        },
+        { headers: this.diagHeaders() },
+      )
       .subscribe({
         next: (otp) => {
           this.otp.set(otp);
@@ -272,6 +297,11 @@ export class SimulacionWhatsappPage {
       null,
       2,
     );
+  }
+
+  private diagHeaders() {
+    const clave = this.diagKey.trim();
+    return clave ? new HttpHeaders({ 'X-Diag-Key': clave }) : new HttpHeaders();
   }
 
   private async hmacSha256(secret: string, value: string) {

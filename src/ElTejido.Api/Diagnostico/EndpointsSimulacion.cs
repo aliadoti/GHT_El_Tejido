@@ -17,7 +17,10 @@ internal static class EndpointsSimulacion
 {
     public static IEndpointRouteBuilder MapearEndpointsSimulacion(this IEndpointRouteBuilder app)
     {
-        var grupo = app.MapGroup("/diagnostico/simulacion");
+        // Fuera de Development el grupo exige la clave de diagnostico (X-Diag-Key); en Development
+        // el filtro no exige clave. Estos endpoints crean admin y emiten OTP, por eso van protegidos.
+        var grupo = app.MapGroup("/diagnostico/simulacion")
+            .AddEndpointFilter<FiltroClaveDiagnostico>();
 
         grupo.MapPost("/admin-inicial", CrearAdminInicialAsync);
         grupo.MapPost("/otp-admin", CrearOtpAdminAsync);
