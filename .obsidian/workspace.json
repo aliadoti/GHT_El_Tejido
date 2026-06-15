@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "abebe48d8b691101",
+        "id": "21818e6cffb7eac2",
         "type": "tabs",
         "children": [
           {
-            "id": "6363ad2d233636ec",
+            "id": "282b5588e1ada4bd",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
+                "file": "Guias_Implementacion/Guia_WhatsApp_Cloud_API_Meta_Paso_a_Paso.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "PROMPT_Inicio_Desarrollo_Codex"
+              "title": "Guia_WhatsApp_Cloud_API_Meta_Paso_a_Paso"
             }
           }
         ]
@@ -183,20 +183,22 @@
       "bases:Create new base": false
     }
   },
-  "active": "6363ad2d233636ec",
+  "active": "282b5588e1ada4bd",
   "lastOpenFiles": [
-    "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
+    "Especificaciones/AVANCES.md.tmp.27156.ae8edf141111",
+    "Especificaciones/AVANCES.md.tmp.27156.7b5b8e0ed2f0",
+    "Especificaciones/AVANCES.md.tmp.27156.795f250b726b",
+    "Especificaciones/04_Contrato_API_REST.md.tmp.27156.cc5fe8d6b999",
+    "Rubricas/_rubric.md",
+    "tests/ElTejido.UnitTests/Configuracion/ServicioGestionConfiguracionTests.cs",
+    "tests/ElTejido.UnitTests/Errores/MapeadorErroresTests.cs.tmp.27156.b3e54948cbf0",
+    "tests/ElTejido.IntegrationTests/Fase9AceptacionE2EIntegrationTests.cs.tmp.27156.847087aeacfc",
+    "tests/ElTejido.IntegrationTests/Fase9AceptacionE2EIntegrationTests.cs.tmp.27156.81ac2f273a3d",
+    "src/ElTejido.Api/Admin/EndpointsAdminFase4.cs.tmp.27156.248ab5f4e2d8",
+    "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md.tmp.27156.6ce6ede5335a",
+    "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md.tmp.27156.88be5cc594a2",
     "Guias_Implementacion/Guia_Prueba_E2E_Simulada_WhatsApp.md",
-    "src/ElTejido.Web/src/styles.scss.tmp.24924.04202a54a490",
-    "src/ElTejido.Web/src/app/features/envios/envios.page.ts.tmp.24924.d8aeb1a489e3",
-    "src/ElTejido.Web/src/app/features/resultados/resultados.page.ts.tmp.24924.48f46495acbb",
-    "src/ElTejido.Web/src/app/features/resultados/resultados.page.ts.tmp.24924.b30855581ced",
-    "src/ElTejido.Web/src/app/features/campanias/campanias.page.ts.tmp.24924.9334f6078c16",
-    "src/ElTejido.Web/src/app/features/campanias/campanias.page.ts.tmp.24924.d35dff226905",
-    "src/ElTejido.Web/src/app/features/campanias/campanias.page.ts.tmp.24924.e9b8a2c159db",
-    "src/ElTejido.Web/src/app/e2e/portal-admin.e2e.spec.ts.tmp.24924.c371e7d24a50",
-    "src/ElTejido.Web/src/app/features/campanias/campanias.page.ts.tmp.24924.a636add5ad08",
-    "src/ElTejido.Web/src/app/features/campanias/campanias.page.ts.tmp.24924.8b7103e3da9d",
+    "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
     "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
     "Guias_Implementacion/Guia_WhatsApp_Cloud_API_Meta_Paso_a_Paso.md",
     "Especificaciones/10_Seguridad_Guardrails_y_Observabilidad.md",
@@ -219,7 +221,6 @@
     "src/ElTejido.Web/node_modules/minipass-flush/node_modules/yallist/README.md",
     "src/ElTejido.Web/node_modules/htmlparser2/node_modules/entities/readme.md",
     "src/ElTejido.Web/node_modules/cssstyle/node_modules/lru-cache/LICENSE.md",
-    "src/ElTejido.Web/node_modules/hosted-git-info/node_modules/lru-cache/LICENSE.md",
     "Marca/GTA/Aliado TI Design System/assets/logos/aliadoti-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/logos/brand-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/imagery/cream-wall-shadow.png",

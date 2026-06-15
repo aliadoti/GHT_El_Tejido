@@ -1,22 +1,76 @@
+# Local-only project folders
+/jdocs/
+/Propuesta_Comercial/
+/Marca/
+/Rubricas/
+
+# Build output - .NET
 bin/
 obj/
+artifacts/
 TestResults/
+*.trx
+*.coverage
+*.coveragexml
 coverage/
+coverage-*/
+coverage.opencover.xml
+coverage.cobertura.xml
 
+# Build output - frontend
 node_modules/
 dist/
+out-tsc/
 .angular/
+.cache/
+tmp/
+temp/
 
-.vs/
-.vscode/
-*.user
-*.suo
-*.rsuser
-
+# Generated API static assets
 src/ElTejido.Api/wwwroot/
 
-/jdocs
-/Propuesta_Comercial/
-/Propuesta_Comercial
-/Propuesta_Comercial/real
-/Marca
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+*.local.*
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.local.json
+appsettings.*.local.json
+
+# IDEs and editors
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.csproj.user
+*.vbproj.user
+*.fsproj.user
+.vscode/
+.history/
+
+# Obsidian local workspace state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local agent/tool state
+.claude/
