@@ -169,7 +169,7 @@ Asigna estos roles a la **identidad administrada del App Service** (`<webapp>`):
 2. **Role:** **Key Vault Secrets User** (lectura de secretos; mínimo privilegio para que la app lea OTP/JWT/WhatsApp/LLM en runtime).
 3. **Members → Assign access to: Managed identity → + Select members →** tipo **App Service →** elige `<webapp>` → **Select → Review + assign**.
 
-> ⚠️ **Si vas a guardar la API key del LLM desde el portal de El Tejido (pantalla *Config LLM*):** la app **escribe** ese secreto en Key Vault (como `llm-key-<id>`), por lo que la identidad necesita **ESCRITURA**, no solo lectura. Asigna además el rol **Key Vault Secrets Officer** a la identidad de `<webapp>` (mismo IAM del Key Vault). Sin él, guardar la Config LLM falla con 403. *(Alternativa: cargar tú la API key como secreto en Key Vault y, en el formulario de Config LLM, indicar ese nombre en `apiKeyRef`; así la app solo lee. Nota: el secreto `llm-key` de §0.3/§5 solo se usa si pones `apiKeyRef = llm-key`.)*
+> **API key del LLM (modelo de mínimo privilegio, desde 2026-06-15):** la app **NO escribe** secretos. En la pantalla *Config LLM* del portal solo se indica el **nombre del secreto** (`apiKeyRef`); la API key real la cargas **tú** en Key Vault (un secreto, p. ej. `llm-key`, con el valor real). Por eso basta el rol **Key Vault Secrets User** (lectura) de arriba — **no** hace falta Secrets Officer. La app valida que el secreto exista y sea legible al guardar la Config LLM; si no existe o no tiene permiso, responde un error claro indicando `apiKeyRef`.
 
 **b) Cosmos DB — datos:**
 1. Ve a `<cosmos-account>` → **Access control (IAM) → + Add → Add role assignment**.

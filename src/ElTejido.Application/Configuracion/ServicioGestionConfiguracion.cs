@@ -11,16 +11,16 @@ namespace ElTejido.Application.Configuracion;
 public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
 {
     private readonly IRepositorioConfiguracion _repositorio;
-    private readonly ISecretWriter _secretWriter;
+    private readonly ISecretProvider _secretos;
     private readonly TimeProvider _tiempo;
 
     public ServicioGestionConfiguracion(
         IRepositorioConfiguracion repositorio,
-        ISecretWriter secretWriter,
+        ISecretProvider secretos,
         TimeProvider tiempo)
     {
         _repositorio = repositorio;
-        _secretWriter = secretWriter;
+        _secretos = secretos;
         _tiempo = tiempo;
     }
 
@@ -183,9 +183,12 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         SolicitudGuardarConfigLlm solicitud,
         CancellationToken cancellationToken)
     {
+        // La app no recibe ni escribe la API key: solo referencia un secreto que YA existe en Key
+        // Vault. Validamos que sea legible (existencia + permiso de lectura) para fallar con un
+        // mensaje claro en vez de descubrirlo al evaluar (10 §4).
+        var apiKeyRef = RequerirTexto(solicitud.ApiKeyRef, "apiKeyRef");
+        await ValidarSecretoReferenciadoAsync(apiKeyRef, cancellationToken);
         var id = "llm_" + Guid.NewGuid().ToString("N");
-        var apiKeyRef = ResolverApiKeyRef(solicitud.ApiKeyRef, id);
-        await _secretWriter.GuardarSecretoAsync(apiKeyRef, RequerirTexto(solicitud.ApiKey, "apiKey"), cancellationToken);
         var ahora = _tiempo.GetUtcNow();
         var config = ConfigLlm.Crear(
             id,
@@ -211,10 +214,14 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         CancellationToken cancellationToken)
     {
         var actual = await ObtenerConfigLlmAsync(id, cancellationToken);
-        var apiKeyRef = solicitud.ApiKeyRef is null ? actual.ApiKeyRef : ResolverApiKeyRef(solicitud.ApiKeyRef, actual.Id);
-        if (!string.IsNullOrWhiteSpace(solicitud.ApiKey))
+        var apiKeyRef = actual.ApiKeyRef;
+        if (solicitud.ApiKeyRef is not null)
         {
-            await _secretWriter.GuardarSecretoAsync(apiKeyRef, solicitud.ApiKey, cancellationToken);
+            apiKeyRef = RequerirTexto(solicitud.ApiKeyRef, "apiKeyRef");
+            if (!string.Equals(apiKeyRef, actual.ApiKeyRef, StringComparison.Ordinal))
+            {
+                await ValidarSecretoReferenciadoAsync(apiKeyRef, cancellationToken);
+            }
         }
 
         var config = ConfigLlm.Crear(
@@ -241,7 +248,7 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         CancellationToken cancellationToken)
         => await ActualizarConfigLlmAsync(
             id,
-            new SolicitudActualizarConfigLlm(null, null, null, null, null, null, null, null, null, null, estado),
+            new SolicitudActualizarConfigLlm(null, null, null, null, null, null, null, null, null, estado),
             cancellationToken);
 
     private Rubrica CrearRubrica(SolicitudGuardarRubrica solicitud, int version, DateTimeOffset creadoEn)
@@ -275,8 +282,29 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
             creadoEn,
             _tiempo.GetUtcNow());
 
-    private static string ResolverApiKeyRef(string? apiKeyRef, string id)
-        => string.IsNullOrWhiteSpace(apiKeyRef) ? $"llm-key-{id}" : apiKeyRef.Trim();
+    private async Task ValidarSecretoReferenciadoAsync(string apiKeyRef, CancellationToken cancellationToken)
+    {
+        string valor;
+        try
+        {
+            valor = await _secretos.ObtenerSecretoAsync(apiKeyRef, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // No se distingue 404 vs 403 sin acoplar Application a Azure; el mensaje cubre ambos.
+            throw new ErrorValidacion(
+                $"El secreto '{apiKeyRef}' no existe en Key Vault o la identidad del App Service no puede leerlo. " +
+                "Carga la API key real en ese secreto y verifica el rol 'Key Vault Secrets User' de la identidad.",
+                new[] { new DetalleError("apiKeyRef", "secreto_inexistente_o_inaccesible") });
+        }
+
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            throw new ErrorValidacion(
+                $"El secreto '{apiKeyRef}' existe pero esta vacio. Guarda la API key real en ese secreto.",
+                new[] { new DetalleError("apiKeyRef", "secreto_vacio") });
+        }
+    }
 
     private static string RequerirId(string id)
         => RequerirTexto(id, "id");

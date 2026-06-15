@@ -395,8 +395,7 @@ internal static class EndpointsAdminFase4
             RequerirTexto(request.Proveedor, "proveedor"),
             RequerirTexto(request.Modelo, "modelo"),
             RequerirTexto(request.Endpoint, "endpoint"),
-            RequerirTexto(request.ApiKey, "apiKey"),
-            request.ApiKeyRef,
+            RequerirTexto(request.ApiKeyRef, "apiKeyRef"),
             request.Parametros,
             LimitesTokensLlm.Crear(request.LimitesTokens?.MaxPrompt ?? 6000, request.LimitesTokens?.MaxCompletion ?? 800),
             request.TimeoutSegundos ?? 30,
@@ -409,7 +408,6 @@ internal static class EndpointsAdminFase4
             request.Proveedor,
             request.Modelo,
             request.Endpoint,
-            request.ApiKey,
             request.ApiKeyRef,
             request.Parametros,
             request.LimitesTokens is null ? null : LimitesTokensLlm.Crear(request.LimitesTokens.MaxPrompt, request.LimitesTokens.MaxCompletion),
@@ -715,8 +713,9 @@ internal static class EndpointsAdminFase4
     private sealed record CriterioRequest(string? Nombre, decimal Peso);
     private sealed record PromptRequest(string? Id, string? Nombre, string? TipoPrompt, string? Contenido, string? Estado);
     private sealed record AprobarPromptRequest(string? AprobadoPor);
-    private sealed record ConfigLlmRequest(string? Nombre, string? Proveedor, string? Modelo, string? Endpoint, string? ApiKey, string? ApiKeyRef, IReadOnlyDictionary<string, object?>? Parametros, LimitesTokensRequest? LimitesTokens, int? TimeoutSegundos, int? MaxReintentos, string? Estado);
-    private sealed record ConfigLlmPatchRequest(string? Nombre, string? Proveedor, string? Modelo, string? Endpoint, string? ApiKey, string? ApiKeyRef, IReadOnlyDictionary<string, object?>? Parametros, LimitesTokensRequest? LimitesTokens, int? TimeoutSegundos, int? MaxReintentos, string? Estado);
+    // `apiKey` ya no se acepta: solo `apiKeyRef` (nombre de un secreto que ya existe en Key Vault).
+    private sealed record ConfigLlmRequest(string? Nombre, string? Proveedor, string? Modelo, string? Endpoint, string? ApiKeyRef, IReadOnlyDictionary<string, object?>? Parametros, LimitesTokensRequest? LimitesTokens, int? TimeoutSegundos, int? MaxReintentos, string? Estado);
+    private sealed record ConfigLlmPatchRequest(string? Nombre, string? Proveedor, string? Modelo, string? Endpoint, string? ApiKeyRef, IReadOnlyDictionary<string, object?>? Parametros, LimitesTokensRequest? LimitesTokens, int? TimeoutSegundos, int? MaxReintentos, string? Estado);
     private sealed record LimitesTokensRequest(int MaxPrompt, int MaxCompletion);
     private sealed record RespuestaPaginada<T>(IReadOnlyCollection<T> Items, int Page, int PageSize, int Total);
 }

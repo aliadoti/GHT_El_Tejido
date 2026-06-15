@@ -92,7 +92,6 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         await EsperarAsync(() => store.Respuestas.Any() && store.Artefactos.Any());
         store.Evaluaciones.Should().ContainSingle(e => e.ConfigLlmRef.StartsWith("llm_", StringComparison.Ordinal));
         store.Artefactos.Should().ContainSingle(a => a.ContenidoMarkdown.Contains("Mi idea reduce desperdicio", StringComparison.Ordinal));
-        store.SecretosGuardados.Should().Contain(nombre => nombre.StartsWith("llm-key-", StringComparison.Ordinal));
 
         using var respuestas = await client.GetAsync($"/api/admin/respuestas?campaniaId={campaniaId}");
         respuestas.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -106,7 +105,7 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         raw.Content.Headers.ContentType!.MediaType.Should().Be("text/markdown");
         var markdown = await raw.Content.ReadAsStringAsync();
         markdown.Should().Contain("# Aporte de Ana");
-        markdown.Should().NotContain("sk-test-no-sale");
+        markdown.Should().NotContain("kv-llm-e2e");
     }
 
     private static WebApplicationFactory<Program> Construir(StoreE2E store, WhatsAppFake whatsapp)
@@ -120,6 +119,7 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                     ["Secretos:otp-salt"] = "pepper-de-pruebas",
                     ["Secretos:jwt-sign"] = "clave-de-firma-de-pruebas-con-mas-de-32-bytes",
                     ["Secretos:wa-appsec"] = "appsec-de-pruebas",
+                    ["Secretos:kv-llm-e2e"] = "clave-llm-de-prueba",
                 });
             });
             builder.ConfigureTestServices(services =>
@@ -133,7 +133,6 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                 services.AddSingleton<IRepositorioCodigosAuth>(store);
                 services.AddSingleton<IRepositorioLogSeguridad>(store);
                 services.AddSingleton<IRegistroWebhookDedupe>(store);
-                services.AddSingleton<ISecretWriter>(store);
                 services.AddSingleton<IGeneradorCodigoOtp>(new GeneradorFijo(CodigoOtp));
                 services.AddSingleton<IWhatsAppGateway>(whatsapp);
                 services.AddSingleton<ILlmClient, LlmClientFake>();
@@ -246,11 +245,11 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                 proveedor = "AzureOpenAI",
                 modelo = "gpt-4o-mini",
                 endpoint = "https://example.openai.azure.com/",
-                apiKey = "sk-test-no-sale",
+                apiKeyRef = "kv-llm-e2e",
                 parametros = new Dictionary<string, object?> { ["temperature"] = 0.2 },
             });
         config.StatusCode.Should().Be(HttpStatusCode.Created);
-        (await config.Content.ReadAsStringAsync()).Should().NotContain("sk-test-no-sale");
+        (await config.Content.ReadAsStringAsync()).Should().Contain("kv-llm-e2e");
         return await LeerStringAsync(config, "id");
     }
 
@@ -424,8 +423,7 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         IRepositorioConversaciones,
         IRepositorioCodigosAuth,
         IRepositorioLogSeguridad,
-        IRegistroWebhookDedupe,
-        ISecretWriter
+        IRegistroWebhookDedupe
     {
         private readonly object _sync = new();
         private readonly Dictionary<string, Usuario> _usuarios = new(StringComparer.Ordinal);
@@ -443,7 +441,6 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         private readonly List<Mensaje> _mensajes = [];
         private readonly Dictionary<string, CodigoAuthAdmin> _codigos = new(StringComparer.Ordinal);
         private readonly HashSet<string> _dedupe = new(StringComparer.Ordinal);
-        private readonly List<string> _secretos = [];
 
         public StoreE2E(params Usuario[] usuarios)
         {
@@ -468,10 +465,6 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             get { lock (_sync) return _artefactos.Values.ToArray(); }
         }
 
-        public IReadOnlyCollection<string> SecretosGuardados
-        {
-            get { lock (_sync) return _secretos.ToArray(); }
-        }
 
         public Task GuardarUsuarioAsync(Usuario usuario, CancellationToken cancellationToken)
         {
@@ -779,11 +772,6 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             lock (_sync) return Task.FromResult(_dedupe.Add(whatsappMessageId));
         }
 
-        public Task GuardarSecretoAsync(string nombre, string valor, CancellationToken cancellationToken)
-        {
-            lock (_sync) _secretos.Add(nombre);
-            return Task.CompletedTask;
-        }
     }
 
     private sealed class WhatsAppFake : IWhatsAppGateway

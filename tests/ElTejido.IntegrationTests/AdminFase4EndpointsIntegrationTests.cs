@@ -103,7 +103,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
             new RepositorioCampaniasMemoria(),
             new RepositorioParticipantesMemoria(),
             new RepositorioConfiguracionMemoria(),
-            new SecretWriterFake());
+            new SecretProviderFake());
         using var client = CrearClienteConSesion(fabrica);
 
         using var rubrica = await EnviarJsonAsync(
@@ -153,14 +153,14 @@ public sealed class AdminFase4EndpointsIntegrationTests
                 proveedor = "AzureOpenAI",
                 modelo = "gpt-4o-mini",
                 endpoint = "https://example.openai.azure.com/",
-                apiKey = "NO_DEBE_SALIR",
+                apiKeyRef = "kv-llm-prueba",
                 parametros = new Dictionary<string, object?> { ["temperature"] = 0.2 },
             });
         config.StatusCode.Should().Be(HttpStatusCode.Created);
         var configJson = await config.Content.ReadAsStringAsync();
-        configJson.Should().NotContain("NO_DEBE_SALIR");
-        configJson.Should().Contain("apiKeyRef");
+        configJson.Should().Contain("kv-llm-prueba");
         configJson.Should().Contain("apiKeyMascara");
+        configJson.Should().Contain("apiKeyRef");
     }
 
     private static WebApplicationFactory<Program> Construir(
@@ -168,7 +168,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
         IRepositorioCampanias campanias,
         IRepositorioParticipantes participantes,
         IRepositorioConfiguracion? configuracion = null,
-        ISecretWriter? secretWriter = null)
+        ISecretProvider? secretProvider = null)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
@@ -178,7 +178,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
                 services.AddSingleton(campanias);
                 services.AddSingleton(participantes);
                 services.AddSingleton(configuracion ?? new RepositorioConfiguracionMemoria());
-                services.AddSingleton(secretWriter ?? new SecretWriterFake());
+                services.AddSingleton<ISecretProvider>(secretProvider ?? new SecretProviderFake());
                 services.AddSingleton<IServicioSesion, SesionesFake>();
                 services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
                 services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
@@ -236,15 +236,11 @@ public sealed class AdminFase4EndpointsIntegrationTests
                 : null);
     }
 
-    private sealed class SecretWriterFake : ISecretWriter
+    // La app ya no escribe secretos: referencia uno que debe existir. El fake "tiene" cualquier ref.
+    private sealed class SecretProviderFake : ISecretProvider
     {
-        public List<string> Nombres { get; } = [];
-
-        public Task GuardarSecretoAsync(string nombre, string valor, CancellationToken cancellationToken)
-        {
-            Nombres.Add(nombre);
-            return Task.CompletedTask;
-        }
+        public Task<string> ObtenerSecretoAsync(string nombre, CancellationToken cancellationToken)
+            => Task.FromResult($"valor-secreto-{nombre}");
     }
 
     private sealed class RepositorioUsuariosMemoria : IRepositorioUsuarios

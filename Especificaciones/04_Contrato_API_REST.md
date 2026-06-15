@@ -209,16 +209,16 @@ Response `202`:
 ### 5.7 Configuración LLM — `REQ §19`
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/admin/config-llm` | Lista configs. La API key **nunca** se devuelve; solo enmascarada (`••••1234`). |
-| POST | `/api/admin/config-llm` | Crea config; la API key se escribe en Key Vault (write-only), en BD solo `apiKeyRef` (`REQ §19.2`). |
-| PUT | `/api/admin/config-llm/{id}` | Edita parámetros; para rotar la key se envía un valor nuevo (write-only). |
+| GET | `/api/admin/config-llm` | Lista configs. La API key **nunca** se devuelve; solo `apiKeyRef` + máscara. |
+| POST | `/api/admin/config-llm` | Crea config. **No recibe la API key**: solo `apiKeyRef`, el nombre de un secreto que **ya debe existir** en Key Vault con la key real (`REQ §19.2`). |
+| PUT | `/api/admin/config-llm/{id}` | Edita parámetros y/o cambia `apiKeyRef` (a otro secreto existente). Para rotar la key se actualiza el secreto en Key Vault fuera de la app. |
 | PATCH | `/api/admin/config-llm/{id}/estado` | Activa/inactiva. |
 
-Crear/rotar (la clave entra una vez y no vuelve a salir):
+Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 ```json
-{ "nombre": "Azure OpenAI", "proveedor": "AzureOpenAI", "modelo": "gpt-4o-mini", "endpoint": "https://...", "apiKey": "<solo-al-escribir>", "parametros": { "temperature": 0.2 }, "timeoutSegundos": 30, "maxReintentos": 2 }
+{ "nombre": "LLM", "proveedor": "openrouter.ai", "modelo": "deepseek/deepseek-chat", "endpoint": "https://openrouter.ai/api/v1", "apiKeyRef": "llm-key", "parametros": { "temperature": 0.2 }, "timeoutSegundos": 30, "maxReintentos": 2 }
 ```
-> El backend guarda `apiKey` en Key Vault y persiste solo `apiKeyRef`. La respuesta nunca incluye `apiKey` (`REQ §19.2.2`).
+> **Cambio de contrato (2026-06-15, modelo de mínimo privilegio):** se eliminó el campo `apiKey` del request. El backend **no escribe** secretos: valida que `apiKeyRef` exista y sea legible (si no, responde `400 VALIDATION_ERROR` con detalle `apiKeyRef`), y persiste solo `apiKeyRef`. La API key real la carga un humano/operación en Key Vault. La identidad del App Service solo necesita **Key Vault Secrets User** (lectura). La respuesta nunca incluye la key (`REQ §19.2.2`). Ver `AVANCES.md` → Contratos y `SUPUESTOS.md#configllm-apikeyref-solo-lectura`.
 
 ### 5.8 Consultas de resultados — `REQ §27.3`
 | Método | Ruta | Descripción |

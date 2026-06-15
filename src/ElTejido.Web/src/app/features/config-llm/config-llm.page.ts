@@ -66,15 +66,15 @@ import { formatApiError } from '../../shared-error';
             <label>Modelo <input name="modelo" [(ngModel)]="form.modelo" /></label>
             <label>Endpoint <input name="endpoint" [(ngModel)]="form.endpoint" /></label>
             <label>
-              API key write-only
-              <input
-                name="apiKey"
-                type="password"
-                [(ngModel)]="form.apiKey"
-                autocomplete="new-password"
-              />
+              Nombre del secreto (apiKeyRef)
+              <input name="apiKeyRef" [(ngModel)]="form.apiKeyRef" placeholder="llm-key" />
             </label>
-            <button class="primary-button" type="submit">Guardar sin exponer key</button>
+            <p class="subhead">
+              La API key NO se ingresa aqui. Carga la API key real en Key Vault como un secreto y
+              escribe aqui su nombre. El secreto debe existir antes de guardar; si no, veras un
+              error.
+            </p>
+            <button class="primary-button" type="submit">Guardar configuracion</button>
           </form>
         </section>
       </div>
@@ -103,7 +103,6 @@ export class ConfigLlmPage {
     this.api
       .crearConfigLlm({
         ...this.form,
-        apiKeyRef: 'llm-key',
         parametros: { temperature: 0.2 },
         limitesTokens: { maxPrompt: 6000, maxCompletion: 800 },
         timeoutSegundos: 30,
@@ -125,7 +124,7 @@ export class ConfigLlmPage {
       proveedor: 'AzureOpenAI',
       modelo: 'gpt-4o-mini',
       endpoint: 'https://example.openai.azure.com',
-      apiKey: '',
+      apiKeyRef: 'llm-key',
     };
   }
 }

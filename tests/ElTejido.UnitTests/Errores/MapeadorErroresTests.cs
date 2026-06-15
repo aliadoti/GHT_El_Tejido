@@ -70,6 +70,8 @@ public sealed class MapeadorErroresTests
         resultado.Status.Should().Be(500);
         resultado.Code.Should().Be("INTERNAL_ERROR");
         resultado.Message.Should().NotContain("sensible");
-        resultado.Details.Should().BeEmpty();
+        // No filtra el mensaje, pero sí el tipo de excepcion como pista segura para diagnosticar.
+        resultado.Details.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new CampoErrorRespuesta("exceptionType", "InvalidOperationException"));
     }
 }

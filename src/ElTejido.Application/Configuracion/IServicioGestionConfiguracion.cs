@@ -58,13 +58,14 @@ public sealed record SolicitudGuardarPrompt(
     string Contenido,
     EstadoPrompt Estado);
 
+// Nota seguridad (10 §4): la app NO recibe ni escribe la API key. Solo guarda `ApiKeyRef`, el nombre
+// de un secreto que YA debe existir en Key Vault con la API key real (lo carga un humano/operacion).
 public sealed record SolicitudGuardarConfigLlm(
     string Nombre,
     string Proveedor,
     string Modelo,
     string Endpoint,
-    string ApiKey,
-    string? ApiKeyRef,
+    string ApiKeyRef,
     IReadOnlyDictionary<string, object?>? Parametros,
     LimitesTokensLlm LimitesTokens,
     int TimeoutSegundos,
@@ -76,7 +77,6 @@ public sealed record SolicitudActualizarConfigLlm(
     string? Proveedor,
     string? Modelo,
     string? Endpoint,
-    string? ApiKey,
     string? ApiKeyRef,
     IReadOnlyDictionary<string, object?>? Parametros,
     LimitesTokensLlm? LimitesTokens,

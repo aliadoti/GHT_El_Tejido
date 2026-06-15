@@ -33,12 +33,13 @@ internal static class MapeadorErrores
                 dominio.Message,
                 new[] { new CampoErrorRespuesta(null, dominio.Code) }),
 
-            // No se filtra el mensaje real de excepciones no controladas (04 §3, 10 §6.3).
+            // No se filtra el mensaje real (puede traer datos/PII), pero sí el TIPO de excepción como
+            // pista segura para diagnosticar junto al correlationId en los logs (04 §3, 10 §6.3).
             _ => new ResultadoMapeoError(
                 500,
                 "INTERNAL_ERROR",
                 MensajeInterno,
-                Array.Empty<CampoErrorRespuesta>()),
+                new[] { new CampoErrorRespuesta("exceptionType", excepcion.GetType().Name) }),
         };
     }
 }
