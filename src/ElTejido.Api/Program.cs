@@ -25,6 +25,7 @@ builder.Services.AgregarAutenticacion(builder.Configuration);
 builder.Services.AgregarWhatsApp(builder.Configuration);
 builder.Services.AgregarLlm(builder.Configuration);
 builder.Services.AgregarMarkdown(builder.Configuration);
+builder.Services.AgregarDiagnostico(builder.Configuration);
 if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
 {
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
@@ -52,6 +53,10 @@ app.UseRateLimiter();
 app.MapGet("/health", () => Results.Ok(new HealthResponse("ok")))
     .WithName("Health")
     .WithSummary("Liveness endpoint for App Service and CI smoke tests.");
+
+// Readiness: verifica dependencias externas (Key Vault, Cosmos, Blob, WhatsApp) protegido por
+// clave de diagnostico. Util para confirmar el despliegue tras cargar secretos (guia de Azure §11).
+app.MapearEndpointsPreparacion();
 
 // Identidad y autenticacion admin (04 §4, 06).
 app.MapearEndpointsAuth();

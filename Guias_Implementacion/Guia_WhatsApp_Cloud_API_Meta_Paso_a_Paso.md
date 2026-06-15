@@ -116,6 +116,7 @@ El Tejido necesita plantillas aprobadas para: **mensaje inicial**, **código de 
 
 ## §6. Prueba de extremo a extremo
 
+0. **Confirma que el backend lee los secretos de WhatsApp** antes de probar el envío real: llama a `GET /health/ready` con el header `X-Diag-Key` (ver guía de Azure §11.3). Los componentes `secreto:wa-token`, `secreto:wa-appsec` y `secreto:wa-verify-token` deben aparecer en `ok`. Si alguno sale `faltante`, cárgalo en Key Vault (§3.2/§3.3); si sale `error` (HTTP 403), revisa el rol *Key Vault Secrets User* de la identidad administrada. Así evitas depurar el webhook a ciegas.
 1. Con el **token permanente** y el **Phone number ID** ya cargados en Azure (Key Vault + App settings), reinicia el App Service si hace falta.
 2. Desde el portal de El Tejido, dispara el **envío del mensaje inicial** a un número de prueba ya habilitado (§2.3).
 3. El usuario de prueba debe **recibir** el mensaje (plantilla `el_tejido_saludo`).

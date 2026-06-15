@@ -45,6 +45,7 @@
 | `wa-verify-token`           | Token de verificación del webhook (lo inventas tú)   | Tú lo defines              |
 | `jwt-sign`                  | Clave para firmar sesiones (cadena aleatoria larga)  | Genérala tú                |
 | `otp-salt`                  | Sal para el hash de los OTP (cadena aleatoria larga) | Genérala tú                |
+| `diag-key` *(opcional)*     | Clave del endpoint de verificación `/health/ready`   | Genérala tú (§11)          |
 
 > Para `jwt-sign` y `otp-salt` genera cadenas aleatorias de 32+ bytes (p. ej. en PowerShell: `[Convert]::ToBase64String((1..48|%{Get-Random -Max 256}))`).
 
@@ -258,17 +259,32 @@ La app lee su configuración de aquí. En el App Service → **Settings → Envi
 | `WhatsApp__AccessTokenSecretName`       | `wa-token`                                                                  |
 | `Auth__SigningKeySecretName`            | `jwt-sign`                                                                  |
 | `Auth__OtpSaltSecretName`               | `otp-salt`                                                                  |
+| `Diagnostico__ClaveSecretName`          | `diag-key` (si guardas la clave de verificación en Key Vault, recomendado)  |
+| `Diagnostico__Clave`                    | (alternativa: la clave directa, si **no** usas Key Vault para ella)         |
 
 > El doble guion bajo `__` es la forma de anidar secciones de configuración en variables de entorno de .NET (equivale a `Cosmos:AccountEndpoint`). El equipo de desarrollo confirmará los nombres exactos de cada clave según `Especificaciones/02_Arquitectura_y_Stack.md §6`; si alguna difiere, ajústala aquí.
+
+> **Sobre el proveedor LLM (`Llm__*`):** en el MVP el **proveedor, el endpoint y la referencia de la API key del LLM se configuran desde el portal** (sección Config LLM, que se guarda en Cosmos), **no** por app settings. Basta con cargar el secreto `llm-key` en Key Vault (§5). Las filas `Llm__Provider`/`Llm__Endpoint`/`Llm__ApiKeySecretName` son opcionales y hoy **el código no las lee**; déjalas vacías salvo indicación del equipo.
+
+> **Clave de diagnóstico (`Diagnostico__*`):** habilita el endpoint de verificación `GET /health/ready` (§11). Define **una** de las dos: `Diagnostico__ClaveSecretName` apuntando a un secreto de Key Vault (p. ej. `diag-key`, cárgalo en §5 con una cadena aleatoria larga) **o** `Diagnostico__Clave` con la cadena directa. Si **ninguna** se configura, `/health/ready` responde 404 (deshabilitado), de modo que nunca expone la postura de infraestructura por defecto.
 
 ---
 
 ## §11. Verificación final
 
 1. **Despliega** una vez (haz merge a `main` para disparar el pipeline, o sube un build manual). Ver guía `12`.
-2. Abre `https://<webapp>.azurewebsites.net/health` → debe responder `200 OK`.
-3. En el App Service → **Log stream** o en Application Insights, verifica que la app **lee Key Vault** sin errores de autenticación (si falla, revisa el rol *Key Vault Secrets User* de §7.2a y que la identidad esté **On**).
-4. En **Data Explorer** de Cosmos, confirma que la app puede leer/escribir (tras la primera operación aparecerán documentos).
+2. Abre `https://<webapp>.azurewebsites.net/health` → debe responder `200 OK`. *(Esto solo confirma que el proceso arrancó: liveness. No verifica Key Vault, Cosmos ni Blob.)*
+3. **Verificación de dependencias (readiness) — recomendada.** Llama al endpoint protegido `GET /health/ready` con el header `X-Diag-Key` igual a la clave de diagnóstico que configuraste en §10:
+   ```powershell
+   curl -H "X-Diag-Key: <tu-clave-de-diagnostico>" https://<webapp>.azurewebsites.net/health/ready
+   ```
+   - **`200`** con `"estado":"ok"` → todas las dependencias requeridas están presentes y accesibles.
+   - **`503`** con `"estado":"faltante"` o `"error"` → revisa el desglose por componente. Cada componente reporta `ok` / `faltante` / `error` / `no_aplica`, **sin exponer el valor de ningún secreto**. Ejemplos: `secreto:wa-token` en `faltante` = aún no cargaste ese secreto en Key Vault; `cosmos` en `error` (HTTP 403) = falta el rol de datos de la identidad (§7.2b/§7.4); `blob` en `error` (HTTP 403) = falta *Storage Blob Data Contributor* (§7.2c).
+   - **`404`** → no configuraste `Diagnostico__ClaveSecretName`/`Diagnostico__Clave` (§10), o el header no coincide. El endpoint queda oculto por defecto.
+
+   > Úsalo justo después de cargar los **secretos de WhatsApp** (`wa-token`, `wa-appsec`, `wa-verify-token`) para confirmar de un vistazo que la identidad del App Service los lee. La caché de secretos es de 5 min, pero un secreto recién agregado se ve de inmediato porque solo se cachean lecturas exitosas.
+4. En el App Service → **Log stream** o en Application Insights, verifica que la app **lee Key Vault** sin errores de autenticación (si falla, revisa el rol *Key Vault Secrets User* de §7.2a y que la identidad esté **On**).
+5. En **Data Explorer** de Cosmos, confirma que la app puede leer/escribir (tras la primera operación aparecerán documentos).
 
 ---
 
@@ -285,7 +301,9 @@ La app lee su configuración de aquí. En el App Service → **Settings → Envi
 - [ ] (Opcional) Azure OpenAI + deployment + `llm-key` cargada (§8).
 - [ ] OIDC GitHub↔Azure + variables en GitHub (§9).
 - [ ] Application settings del App Service (§10).
+- [ ] (Opcional) Secreto `diag-key` + `Diagnostico__ClaveSecretName` para habilitar `/health/ready` (§10–§11).
 - [ ] `/health` responde 200 (§11).
+- [ ] `/health/ready` responde 200 con `estado: ok` tras cargar todos los secretos (§11.3).
 
 ---
 
