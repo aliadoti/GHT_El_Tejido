@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Evaluacion;
@@ -7,6 +8,7 @@ using ElTejido.Application.Identidad;
 using ElTejido.Application.Markdown;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Respuestas;
+using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
@@ -15,6 +17,7 @@ using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Participantes;
+using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
@@ -100,6 +103,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                 services.AddSingleton(Substitute.For<IRepositorioRespuestas>());
                 services.AddSingleton(Substitute.For<IRepositorioParticipantes>());
                 services.AddSingleton(Substitute.For<ICompiladorMarkdown>());
+                services.AddSingleton(Substitute.For<IRepositorioLogSeguridad>());
+                services.AddSingleton(Substitute.For<IProveedorCorrelacion>());
 
                 // El orquestador real y el procesador (normalmente guardados por Cosmos) se cablean aqui.
                 services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();

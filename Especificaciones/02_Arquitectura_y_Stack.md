@@ -30,12 +30,12 @@ Los módulos funcionales y sus fronteras están en `ARQ §1.3` y mapeados a carp
 | Observabilidad | Application Insights | — | Telemetría, trazas, alertas. |
 | Hosting | Azure App Service | Linux **B1 Basic** | Always On para webhook estable. (`ARQ §2.2`) |
 | Frontend | **Angular** | **22** (última estable, jun-2026) | Standalone components, signals, OnPush. (Decisión del cliente; sustituye la sugerencia React de `ARQ §14 D8`.) |
-| LLM (por defecto) | **Azure OpenAI** | — | Proveedor por defecto **configurable**; el sistema soporta OpenAI directo u otro (`REQ §19`). Decisión final pendiente; el código no asume un proveedor único. |
+| LLM (por defecto) | **Azure OpenAI** | — | Proveedor por defecto **configurable**; el sistema soporta Azure OpenAI, OpenAI compatible, OpenRouter y Anthropic nativo (`REQ §19`). El código no asume un proveedor único. |
 | CI/CD | GitHub Actions | — | Sin Bicep en el MVP (decisión del cliente). Recursos creados a mano por el portal. |
 
 > **Nota sobre el frontend:** la arquitectura aprobada sugería React/Vite, pero el cliente fijó **Angular (última versión)**. Esta es la única desviación respecto a `ARQ` y queda formalizada aquí. Todo lo demás de `ARQ` se mantiene.
 
-> **Nota sobre el LLM:** el proveedor por defecto se documenta como **Azure OpenAI** (mantiene datos en el tenant, secretos y facturación unificados, `ARQ §14 D6`), pero el módulo de Evaluación (`08`) trata el proveedor como **configurable**: proveedor, modelo, endpoint y `apiKeyRef` viven en datos (`ConfigLLM`), no en código. La guía de Azure incluye Azure OpenAI como opcional.
+> **Nota sobre el LLM:** el proveedor por defecto se documenta como **Azure OpenAI** (mantiene datos en el tenant, secretos y facturación unificados, `ARQ §14 D6`), pero el módulo de Evaluación (`08`) trata el proveedor como **configurable**: proveedor, modelo, endpoint y `apiKeyRef` viven en datos (`ConfigLLM`), no en código. Valores soportados por el MVP: `AzureOpenAI`, `OpenAI`/compatibles (`OpenRouter`, `Anthropic-via-OpenRouter`, `Otro`) y `Anthropic` nativo. La guía de Azure incluye Azure OpenAI como opcional.
 
 ---
 

@@ -369,7 +369,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 }
 ```
 - `apiKeyRef` es **el nombre del secreto en Key Vault, nunca la clave** (`REQ §19.2.7`, `ARQ §10`).
-- `proveedor` ∈ `AzureOpenAI` | `OpenAI` | `Otro`.
+- `proveedor` ∈ `AzureOpenAI` | `OpenAI` | `OpenRouter` | `Anthropic-via-OpenRouter` | `Anthropic` | `Otro`. `Anthropic` usa el adaptador nativo `/v1/messages`; los demas no-Azure se tratan como compatibles con `/chat/completions`.
 
 ### 3.14 `CodigoAuthAdmin` (contenedor `security`) — `REQ §10.3`, `§28.3`
 

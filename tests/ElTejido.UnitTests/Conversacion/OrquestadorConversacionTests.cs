@@ -1,3 +1,4 @@
+using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Evaluacion;
@@ -5,6 +6,7 @@ using ElTejido.Application.Identidad;
 using ElTejido.Application.Markdown;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Respuestas;
+using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
@@ -13,6 +15,7 @@ using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
+using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
 using ElTejido.UnitTests.Soporte;
 using FluentAssertions;
@@ -34,6 +37,8 @@ public sealed class OrquestadorConversacionTests
     private readonly IEvaluadorLlm _evaluador = Substitute.For<IEvaluadorLlm>();
     private readonly ICompiladorMarkdown _compilador = Substitute.For<ICompiladorMarkdown>();
     private readonly IWhatsAppGateway _gateway = Substitute.For<IWhatsAppGateway>();
+    private readonly IRepositorioLogSeguridad _logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
+    private readonly IProveedorCorrelacion _correlacion = Substitute.For<IProveedorCorrelacion>();
     private readonly RelojFijo _reloj = new(Epoca);
 
     public OrquestadorConversacionTests()
@@ -41,6 +46,7 @@ public sealed class OrquestadorConversacionTests
         _configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
         _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
         _configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
+        _correlacion.CorrelationIdActual.Returns("corr_test");
         _gateway.EnviarTextoAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoEnvioMensaje>(), Arg.Any<CancellationToken>())
             .Returns(EnvioResultado.Ok("wamid.out"));
     }
@@ -132,8 +138,65 @@ public sealed class OrquestadorConversacionTests
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
     }
 
+    [Fact]
+    public async Task Procesar_ConfigLlmInactiva_CierraNeutroSinEvaluarYRegistraFallback()
+    {
+        _configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>())
+            .Returns(CrearConfig(EstadoRegistro.Inactivo));
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l =>
+                l.TipoEvento == TipoEventoSeguridad.AnomaliaLlm
+                && l.Resultado == "fallback"
+                && l.Detalle == "config_llm_no_activa"
+                && l.CorrelationId == "corr_test"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_PromptSinAprobacion_CierraNeutroSinEvaluar()
+    {
+        _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(CrearPrompt(aprobado: false));
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.Detalle == "prompt_no_aprobado"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_RubricaInactiva_CierraNeutroSinEvaluar()
+    {
+        _configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>())
+            .Returns(CrearRubrica(EstadoRubrica.Archivada));
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.Detalle == "rubrica_no_activa"),
+            Arg.Any<CancellationToken>());
+    }
+
     private OrquestadorConversacion Construir()
-        => new(_conversaciones, _respuestas, _participantes, _configuracion, _evaluador, _compilador, _gateway, _reloj);
+        => new(
+            _conversaciones,
+            _respuestas,
+            _participantes,
+            _configuracion,
+            _evaluador,
+            _compilador,
+            _gateway,
+            _logSeguridad,
+            _correlacion,
+            _reloj);
 
     private static ParticipanteResuelto Participante()
     {
@@ -166,16 +229,17 @@ public sealed class OrquestadorConversacionTests
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
             4m, "explica", retro, recomendacion, repregunta, new[] { "tema" }, new[] { "ent" }, false, Epoca);
 
-    private static Rubrica CrearRubrica()
+    private static Rubrica CrearRubrica(EstadoRubrica estado = EstadoRubrica.Activa)
         => Rubrica.Crear("rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
-            new[] { CriterioRubrica.Crear("claridad", 1m) }, 1, EstadoRubrica.Activa, Epoca, Epoca);
+            new[] { CriterioRubrica.Crear("claridad", 1m) }, 1, estado, Epoca, Epoca);
 
-    private static Prompt CrearPrompt()
-        => Prompt.Crear("pr_eval", "Prompt", "evaluar", "Eres evaluador.", 1, EstadoPrompt.Activo, "u_admin", Epoca, Epoca, Epoca);
+    private static Prompt CrearPrompt(EstadoPrompt estado = EstadoPrompt.Activo, bool aprobado = true)
+        => Prompt.Crear("pr_eval", "Prompt", "evaluar", "Eres evaluador.", 1, estado,
+            aprobado ? "u_admin" : null, aprobado ? Epoca : null, Epoca, Epoca);
 
-    private static ConfigLlm CrearConfig()
+    private static ConfigLlm CrearConfig(EstadoRegistro estado = EstadoRegistro.Activo)
         => ConfigLlm.Crear("llm_1", "Azure", "AzureOpenAI", "gpt-4o-mini", "https://x", "llm-key", null,
-            LimitesTokensLlm.Crear(6000, 800), 30, 2, EstadoRegistro.Activo, Epoca, Epoca);
+            LimitesTokensLlm.Crear(6000, 800), 30, 2, estado, Epoca, Epoca);
 
     private sealed class FakeConversaciones : IRepositorioConversaciones
     {

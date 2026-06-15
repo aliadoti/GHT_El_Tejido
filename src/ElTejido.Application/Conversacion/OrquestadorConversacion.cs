@@ -1,15 +1,20 @@
+using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Evaluacion;
 using ElTejido.Application.Identidad;
 using ElTejido.Application.Markdown;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Respuestas;
+using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
+using ElTejido.Domain.Common;
+using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
+using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
 using DominioConversacion = ElTejido.Domain.Conversaciones.Conversacion;
 using RespuestaUsuario = ElTejido.Domain.Respuestas.Respuesta;
@@ -34,6 +39,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IEvaluadorLlm _evaluador;
     private readonly ICompiladorMarkdown _compilador;
     private readonly IWhatsAppGateway _gateway;
+    private readonly IRepositorioLogSeguridad _logSeguridad;
+    private readonly IProveedorCorrelacion _correlacion;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -44,6 +51,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IEvaluadorLlm evaluador,
         ICompiladorMarkdown compilador,
         IWhatsAppGateway gateway,
+        IRepositorioLogSeguridad logSeguridad,
+        IProveedorCorrelacion correlacion,
         TimeProvider tiempo)
     {
         _conversaciones = conversaciones;
@@ -53,6 +62,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _evaluador = evaluador;
         _compilador = compilador;
         _gateway = gateway;
+        _logSeguridad = logSeguridad;
+        _correlacion = correlacion;
         _tiempo = tiempo;
     }
 
@@ -88,15 +99,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
         var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, respuestaId, mensaje.Texto, cancellationToken);
 
-        if (contexto is null)
+        if (contexto.Contexto is null)
         {
             // Sin configuracion completa (rubrica/prompt/configLLM) no se puede evaluar: cierre neutro.
+            await RegistrarConfiguracionNoDisponibleAsync(usuario, contexto.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
             await GuardarRespuestaAsync(respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta, EstadoRespuesta.EvaluacionPendiente, ahora, cancellationToken);
             await CerrarNeutroAsync(conversacion, numero, campania, ahora, cancellationToken);
             return;
         }
 
-        var resultado = await _evaluador.EvaluarAsync(contexto, cancellationToken);
+        var resultado = await _evaluador.EvaluarAsync(contexto.Contexto, cancellationToken);
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
         var esFallback = resultado is ResultadoEvaluacion.Fallback;
@@ -147,7 +159,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
     }
 
-    private async Task<ContextoEvaluacion?> ConstruirContextoAsync(
+    private async Task<ContextoDisponible> ConstruirContextoAsync(
         Campania campania,
         Pregunta pregunta,
         Usuario usuario,
@@ -159,28 +171,76 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var promptRef = ResolverPromptRef(pregunta.PromptRefs, campania.PromptRefs, "evaluar");
         if (string.IsNullOrWhiteSpace(rubricaRef) || string.IsNullOrWhiteSpace(promptRef) || string.IsNullOrWhiteSpace(campania.ConfigLlmRef))
         {
-            return null;
+            return ContextoDisponible.NoDisponible("referencias_configuracion_incompletas");
         }
 
         var rubrica = await _configuracion.ObtenerUltimaRubricaAsync(rubricaRef, cancellationToken);
         var prompt = await _configuracion.ObtenerUltimoPromptAsync(promptRef, cancellationToken);
         var configLlm = await _configuracion.ObtenerConfigLlmAsync(campania.ConfigLlmRef, cancellationToken);
-        if (rubrica is null || prompt is null || configLlm is null)
+        if (rubrica is null)
         {
-            return null;
+            return ContextoDisponible.NoDisponible("rubrica_no_encontrada");
         }
 
-        return new ContextoEvaluacion(
-            campania,
-            pregunta,
-            usuario,
-            respuestaId,
-            texto,
-            Array.Empty<string>(),
-            rubrica,
-            prompt,
-            configLlm);
+        if (rubrica.Estado != EstadoRubrica.Activa)
+        {
+            return ContextoDisponible.NoDisponible("rubrica_no_activa");
+        }
+
+        if (prompt is null)
+        {
+            return ContextoDisponible.NoDisponible("prompt_no_encontrado");
+        }
+
+        if (prompt.Estado != EstadoPrompt.Activo)
+        {
+            return ContextoDisponible.NoDisponible("prompt_no_activo");
+        }
+
+        if (string.IsNullOrWhiteSpace(prompt.AprobadoPor) || prompt.FechaAprobacion is null)
+        {
+            return ContextoDisponible.NoDisponible("prompt_no_aprobado");
+        }
+
+        if (configLlm is null)
+        {
+            return ContextoDisponible.NoDisponible("config_llm_no_encontrada");
+        }
+
+        if (configLlm.Estado != EstadoRegistro.Activo)
+        {
+            return ContextoDisponible.NoDisponible("config_llm_no_activa");
+        }
+
+        return ContextoDisponible.Disponible(
+            new ContextoEvaluacion(
+                campania,
+                pregunta,
+                usuario,
+                respuestaId,
+                texto,
+                Array.Empty<string>(),
+                rubrica,
+                prompt,
+                configLlm));
     }
+
+    private Task RegistrarConfiguracionNoDisponibleAsync(
+        Usuario usuario,
+        string motivo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.AnomaliaLlm,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                "fallback",
+                motivo,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
 
     private async Task CompilarMarkdownAsync(
         string campaniaId,
@@ -312,4 +372,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string Combinar(string? primero, string segundo)
         => string.IsNullOrWhiteSpace(primero) ? segundo : primero.Trim() + "\n\n" + segundo;
+
+    private sealed record ContextoDisponible(ContextoEvaluacion? Contexto, string? Motivo)
+    {
+        public static ContextoDisponible Disponible(ContextoEvaluacion contexto) => new(contexto, null);
+
+        public static ContextoDisponible NoDisponible(string motivo) => new(null, motivo);
+    }
 }

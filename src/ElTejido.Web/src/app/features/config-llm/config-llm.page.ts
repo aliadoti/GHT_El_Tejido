@@ -62,8 +62,21 @@ import { formatApiError } from '../../shared-error';
           <div class="panel-heading"><h3>Nueva configuracion</h3></div>
           <form class="form-grid" (ngSubmit)="crear()">
             <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
+            <label>
+              Preset de proveedor
+              <select
+                name="presetProveedor"
+                [(ngModel)]="form.preset"
+                (ngModelChange)="aplicarPreset($event)"
+              >
+                @for (preset of presets; track preset.id) {
+                  <option [value]="preset.id">{{ preset.label }}</option>
+                }
+              </select>
+            </label>
             <label>Proveedor <input name="proveedor" [(ngModel)]="form.proveedor" /></label>
             <label>Modelo <input name="modelo" [(ngModel)]="form.modelo" /></label>
+            <p class="subhead">{{ modeloHint() }}</p>
             <label>Endpoint <input name="endpoint" [(ngModel)]="form.endpoint" /></label>
             <label>
               Nombre del secreto (apiKeyRef)
@@ -86,6 +99,56 @@ export class ConfigLlmPage {
   private readonly api = inject(AdminApiService);
   protected readonly configs = signal<ConfigLlm[]>([]);
   protected readonly error = signal('');
+  protected readonly presets = [
+    {
+      id: 'AzureOpenAI',
+      label: 'Azure OpenAI',
+      proveedor: 'AzureOpenAI',
+      endpoint: 'https://<recurso>.openai.azure.com',
+      modelo: 'gpt-4o-mini',
+      hint: 'Usa el nombre del deployment de Azure OpenAI.',
+    },
+    {
+      id: 'OpenAI',
+      label: 'OpenAI',
+      proveedor: 'OpenAI',
+      endpoint: 'https://api.openai.com/v1',
+      modelo: 'gpt-4o-mini',
+      hint: 'Usa el id publico del modelo de OpenAI.',
+    },
+    {
+      id: 'OpenRouter',
+      label: 'OpenRouter',
+      proveedor: 'OpenRouter',
+      endpoint: 'https://openrouter.ai/api/v1',
+      modelo: 'openai/gpt-4o-mini',
+      hint: 'Usa el formato proveedor/modelo de OpenRouter.',
+    },
+    {
+      id: 'AnthropicOpenRouter',
+      label: 'Anthropic via OpenRouter',
+      proveedor: 'Anthropic-via-OpenRouter',
+      endpoint: 'https://openrouter.ai/api/v1',
+      modelo: 'anthropic/claude-3.5-sonnet',
+      hint: 'Usa un modelo Anthropic publicado en OpenRouter.',
+    },
+    {
+      id: 'Anthropic',
+      label: 'Anthropic nativo',
+      proveedor: 'Anthropic',
+      endpoint: 'https://api.anthropic.com',
+      modelo: 'claude-3-5-sonnet-latest',
+      hint: 'Usa el id de modelo de Anthropic; el backend llama /v1/messages.',
+    },
+    {
+      id: 'Otro',
+      label: 'Otro compatible OpenAI',
+      proveedor: 'Otro',
+      endpoint: 'https://api.example.com/v1',
+      modelo: 'modelo',
+      hint: 'Debe exponer /chat/completions compatible con OpenAI.',
+    },
+  ] as const;
   protected form = this.emptyForm();
 
   constructor() {
@@ -102,7 +165,11 @@ export class ConfigLlmPage {
   crear() {
     this.api
       .crearConfigLlm({
-        ...this.form,
+        nombre: this.form.nombre,
+        proveedor: this.form.proveedor,
+        modelo: this.form.modelo,
+        endpoint: this.form.endpoint,
+        apiKeyRef: this.form.apiKeyRef,
         parametros: { temperature: 0.2 },
         limitesTokens: { maxPrompt: 6000, maxCompletion: 800 },
         timeoutSegundos: 30,
@@ -118,12 +185,29 @@ export class ConfigLlmPage {
       });
   }
 
+  aplicarPreset(presetId: string) {
+    const preset = this.presets.find((item) => item.id === presetId);
+    if (!preset) {
+      return;
+    }
+
+    this.form.proveedor = preset.proveedor;
+    this.form.endpoint = preset.endpoint;
+    this.form.modelo = preset.modelo;
+    this.form.nombre = preset.label;
+  }
+
+  modeloHint() {
+    return this.presets.find((preset) => preset.id === this.form.preset)?.hint ?? '';
+  }
+
   private emptyForm() {
     return {
+      preset: 'AzureOpenAI',
       nombre: 'Azure OpenAI',
       proveedor: 'AzureOpenAI',
       modelo: 'gpt-4o-mini',
-      endpoint: 'https://example.openai.azure.com',
+      endpoint: 'https://<recurso>.openai.azure.com',
       apiKeyRef: 'llm-key',
     };
   }

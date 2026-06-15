@@ -7,6 +7,8 @@ import { AdminApiService } from '../core/admin-api.service';
 import { ApiClient } from '../core/api-client.service';
 import {
   ArtefactoMarkdown,
+  Campania,
+  ConfigLlm,
   PagedResult,
   Respuesta,
   SesionResponse,
@@ -14,6 +16,7 @@ import {
 } from '../core/api-models';
 import { authInterceptor } from '../core/auth.interceptor';
 import { AuthService } from '../core/auth.service';
+import { ConfigLlmPage } from '../features/config-llm/config-llm.page';
 import { UsuariosPage } from '../features/usuarios/usuarios.page';
 
 /**
@@ -179,6 +182,77 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     expect(contenido).not.toMatch(/llm-key|api[-_]?key|secret/i);
   });
 
+  it('fase 10.1: el preset LLM rellena proveedor y endpoint antes de guardar', async () => {
+    const auth = TestBed.inject(AuthService);
+    autenticarComoAdmin(auth);
+
+    const fixture = TestBed.createComponent(ConfigLlmPage);
+    http
+      .expectOne((r) => r.url === '/api/admin/config-llm' && r.method === 'GET')
+      .flush({
+        items: [],
+        page: 1,
+        pageSize: 50,
+        total: 0,
+      } satisfies PagedResult<ConfigLlm>);
+
+    const comp = fixture.componentInstance as unknown as {
+      form: Record<string, string>;
+      aplicarPreset: (preset: string) => void;
+      crear: () => void;
+    };
+    comp.aplicarPreset('Anthropic');
+    comp.form['apiKeyRef'] = 'anthropic-key';
+    comp.crear();
+
+    const post = http.expectOne((r) => r.url === '/api/admin/config-llm' && r.method === 'POST');
+    expect(post.request.headers.get('X-CSRF-Token')).toBe(CSRF);
+    expect(post.request.body).toMatchObject({
+      proveedor: 'Anthropic',
+      endpoint: 'https://api.anthropic.com',
+      modelo: 'claude-3-5-sonnet-latest',
+      apiKeyRef: 'anthropic-key',
+    });
+    post.flush(configLlm('llm_anthropic'));
+    http
+      .expectOne((r) => r.url === '/api/admin/config-llm' && r.method === 'GET')
+      .flush({
+        items: [configLlm('llm_anthropic')],
+        page: 1,
+        pageSize: 50,
+        total: 1,
+      } satisfies PagedResult<ConfigLlm>);
+    await fixture.whenStable();
+  });
+
+  it('fase 10.3: actualiza ConfigLLM, rubrica y prompt de una campania por PUT con CSRF', () => {
+    const auth = TestBed.inject(AuthService);
+    const admin = TestBed.inject(AdminApiService);
+    autenticarComoAdmin(auth);
+
+    let actualizada: Campania | undefined;
+    admin
+      .actualizarCampania('c_1', {
+        nombre: 'Ideas 2026',
+        descripcion: 'Nueva descripcion',
+        objetivo: 'Nuevo objetivo',
+        rubricaRef: 'rub_2',
+        promptRefs: { evaluar: 'pr_2' },
+        configLLMRef: 'llm_2',
+      })
+      .subscribe((campania) => (actualizada = campania));
+
+    const put = http.expectOne((r) => r.url === '/api/admin/campanias/c_1' && r.method === 'PUT');
+    expect(put.request.headers.get('X-CSRF-Token')).toBe(CSRF);
+    expect(put.request.body).toMatchObject({
+      rubricaRef: 'rub_2',
+      promptRefs: { evaluar: 'pr_2' },
+      configLLMRef: 'llm_2',
+    });
+    put.flush(campania('c_1', 'llm_2'));
+    expect(actualizada?.configLLMRef).toBe('llm_2');
+  });
+
   // --- helpers de datos / respuestas mock -----------------------------------
 
   function responderListaUsuarios(items: UsuarioAdmin[]): void {
@@ -239,6 +313,40 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       version: 1,
       creadoEn: '2026-06-14T02:00:00Z',
       actualizadoEn: '2026-06-14T02:00:00Z',
+    };
+  }
+
+  function configLlm(id: string): ConfigLlm {
+    return {
+      id,
+      nombre: 'Anthropic',
+      proveedor: 'Anthropic',
+      modelo: 'claude-3-5-sonnet-latest',
+      endpoint: 'https://api.anthropic.com',
+      apiKeyRef: 'anthropic-key',
+      apiKeyMascara: '********',
+      parametros: {},
+      limitesTokens: { maxPrompt: 6000, maxCompletion: 800 },
+      timeoutSegundos: 30,
+      maxReintentos: 2,
+      estado: 'activo',
+      creadoEn: '2026-06-14T00:00:00Z',
+      actualizadoEn: '2026-06-14T00:00:00Z',
+    };
+  }
+
+  function campania(id: string, configLLMRef: string): Campania {
+    return {
+      id,
+      nombre: 'Ideas 2026',
+      descripcion: 'Nueva descripcion',
+      objetivo: 'Nuevo objetivo',
+      estado: 'borrador',
+      rubricaRef: 'rub_2',
+      promptRefs: { evaluar: 'pr_2' },
+      configLLMRef,
+      creadoEn: '2026-06-14T00:00:00Z',
+      actualizadoEn: '2026-06-14T00:00:00Z',
     };
   }
 });

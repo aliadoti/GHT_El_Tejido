@@ -1,0 +1,90 @@
+using System.Net;
+using System.Text.Json;
+using ElTejido.Application.Evaluacion;
+using ElTejido.Application.Seguridad;
+using ElTejido.Infrastructure.Llm;
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace ElTejido.UnitTests.Evaluacion;
+
+public sealed class LlmClientHttpTests
+{
+    [Fact]
+    public async Task CompletarJsonAsync_Anthropic_UsaMessagesApiHeadersYParseaTexto()
+    {
+        var handler = new HandlerCaptura(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent("""
+                {
+                  "content": [
+                    { "type": "text", "text": "{\"recomendacion\":\"cerrar\"}" }
+                  ]
+                }
+                """),
+        });
+        var client = new LlmClientHttp(
+            new HttpClient(handler),
+            new SecretosFake(),
+            TimeProvider.System,
+            NullLogger<LlmClientHttp>.Instance);
+
+        var resultado = await client.CompletarJsonAsync(
+            new LlmRequest(
+                "Anthropic",
+                "https://api.anthropic.com",
+                "claude-3-5-sonnet-latest",
+                "anthropic-key",
+                new[]
+                {
+                    new LlmMensaje(LlmMensaje.RolSistema, "Eres evaluador. Devuelve JSON."),
+                    new LlmMensaje(LlmMensaje.RolUsuario, "Respuesta como dato."),
+                },
+                new Dictionary<string, object?> { ["temperature"] = 0.2, ["anthropic-version"] = "2023-06-01" },
+                800,
+                30,
+                0),
+            CancellationToken.None);
+
+        resultado.Should().Be("{\"recomendacion\":\"cerrar\"}");
+        handler.Request!.RequestUri!.ToString().Should().Be("https://api.anthropic.com/v1/messages");
+        handler.Request.Headers.GetValues("x-api-key").Should().ContainSingle().Which.Should().Be("secret-value");
+        handler.Request.Headers.GetValues("anthropic-version").Should().ContainSingle().Which.Should().Be("2023-06-01");
+        handler.Request.Headers.Authorization.Should().BeNull();
+
+        var body = handler.Body!;
+        using var document = JsonDocument.Parse(body);
+        document.RootElement.GetProperty("model").GetString().Should().Be("claude-3-5-sonnet-latest");
+        document.RootElement.GetProperty("max_tokens").GetInt32().Should().Be(800);
+        document.RootElement.GetProperty("system").GetString().Should().Contain("Devuelve JSON");
+        document.RootElement.GetProperty("messages")[0].GetProperty("role").GetString().Should().Be("user");
+        document.RootElement.TryGetProperty("response_format", out _).Should().BeFalse();
+    }
+
+    private sealed class SecretosFake : ISecretProvider
+    {
+        public Task<string> ObtenerSecretoAsync(string nombre, CancellationToken cancellationToken)
+            => Task.FromResult("secret-value");
+    }
+
+    private sealed class HandlerCaptura : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _respuesta;
+
+        public HandlerCaptura(Func<HttpRequestMessage, HttpResponseMessage> respuesta) => _respuesta = respuesta;
+
+        public HttpRequestMessage? Request { get; private set; }
+
+        public string? Body { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Request = request;
+            Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            return _respuesta(request);
+        }
+    }
+
+    private static StringContent JsonContent(string json)
+        => new(json, System.Text.Encoding.UTF8, "application/json");
+}

@@ -18,6 +18,7 @@ namespace ElTejido.Infrastructure.Llm;
 public sealed class LlmClientHttp : ILlmClient
 {
     private const string ApiVersionAzure = "2024-06-01";
+    private const string VersionAnthropic = "2023-06-01";
 
     private readonly HttpClient _httpClient;
     private readonly ISecretProvider _secretos;
@@ -39,8 +40,9 @@ public sealed class LlmClientHttp : ILlmClient
     public async Task<string> CompletarJsonAsync(LlmRequest request, CancellationToken cancellationToken)
     {
         var apiKey = await _secretos.ObtenerSecretoAsync(request.ApiKeyRef, cancellationToken);
-        var cuerpo = ConstruirCuerpo(request);
-        var (ruta, esAzure) = ResolverRuta(request);
+        var proveedor = ResolverProveedor(request.Proveedor);
+        var cuerpo = ConstruirCuerpo(request, proveedor);
+        var ruta = ResolverRuta(request, proveedor);
 
         for (var intento = 0; ; intento++)
         {
@@ -53,12 +55,12 @@ public sealed class LlmClientHttp : ILlmClient
                 {
                     Content = JsonContent.Create(cuerpo),
                 };
-                AplicarAutenticacion(solicitud, esAzure, apiKey);
+                AplicarAutenticacion(solicitud, proveedor, apiKey, request.Parametros);
 
                 using var respuesta = await _httpClient.SendAsync(solicitud, timeoutCts.Token);
                 if (respuesta.IsSuccessStatusCode)
                 {
-                    return await LeerContenidoAsync(respuesta, timeoutCts.Token);
+                    return await LeerContenidoAsync(respuesta, proveedor, timeoutCts.Token);
                 }
 
                 if (!EsTransitorio(respuesta.StatusCode) || intento >= request.MaxReintentos)
@@ -93,7 +95,12 @@ public sealed class LlmClientHttp : ILlmClient
         }
     }
 
-    private static Dictionary<string, object?> ConstruirCuerpo(LlmRequest request)
+    private static Dictionary<string, object?> ConstruirCuerpo(LlmRequest request, TipoProveedorLlm proveedor)
+        => proveedor == TipoProveedorLlm.Anthropic
+            ? ConstruirCuerpoAnthropic(request)
+            : ConstruirCuerpoOpenAi(request);
+
+    private static Dictionary<string, object?> ConstruirCuerpoOpenAi(LlmRequest request)
     {
         var cuerpo = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
@@ -117,21 +124,64 @@ public sealed class LlmClientHttp : ILlmClient
         return cuerpo;
     }
 
-    private static (string Ruta, bool EsAzure) ResolverRuta(LlmRequest request)
+    private static Dictionary<string, object?> ConstruirCuerpoAnthropic(LlmRequest request)
     {
-        var baseUrl = request.Endpoint.TrimEnd('/');
-        var esAzure = string.Equals(request.Proveedor, "AzureOpenAI", StringComparison.OrdinalIgnoreCase);
-        var ruta = esAzure
-            ? $"{baseUrl}/openai/deployments/{request.Modelo}/chat/completions?api-version={ApiVersionAzure}"
-            : $"{baseUrl}/chat/completions";
-        return (ruta, esAzure);
+        var cuerpo = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["model"] = request.Modelo,
+            ["max_tokens"] = request.MaxCompletionTokens,
+            ["messages"] = request.Mensajes
+                .Where(m => !string.Equals(m.Rol, LlmMensaje.RolSistema, StringComparison.Ordinal))
+                .Select(m => new { role = MapearRolAnthropic(m.Rol), content = m.Contenido })
+                .ToArray(),
+        };
+
+        var system = string.Join(
+            "\n\n",
+            request.Mensajes
+                .Where(m => string.Equals(m.Rol, LlmMensaje.RolSistema, StringComparison.Ordinal))
+                .Select(m => m.Contenido));
+        if (!string.IsNullOrWhiteSpace(system))
+        {
+            cuerpo["system"] = system;
+        }
+
+        foreach (var parametro in request.Parametros)
+        {
+            if (!EsParametroReservadoAnthropic(parametro.Key) && !cuerpo.ContainsKey(parametro.Key))
+            {
+                cuerpo[parametro.Key] = parametro.Value;
+            }
+        }
+
+        return cuerpo;
     }
 
-    private static void AplicarAutenticacion(HttpRequestMessage solicitud, bool esAzure, string apiKey)
+    private static string ResolverRuta(LlmRequest request, TipoProveedorLlm proveedor)
     {
-        if (esAzure)
+        var baseUrl = request.Endpoint.TrimEnd('/');
+        return proveedor switch
+        {
+            TipoProveedorLlm.AzureOpenAi => $"{baseUrl}/openai/deployments/{request.Modelo}/chat/completions?api-version={ApiVersionAzure}",
+            TipoProveedorLlm.Anthropic => $"{baseUrl}/v1/messages",
+            _ => $"{baseUrl}/chat/completions",
+        };
+    }
+
+    private static void AplicarAutenticacion(
+        HttpRequestMessage solicitud,
+        TipoProveedorLlm proveedor,
+        string apiKey,
+        IReadOnlyDictionary<string, object?> parametros)
+    {
+        if (proveedor == TipoProveedorLlm.AzureOpenAi)
         {
             solicitud.Headers.Add("api-key", apiKey);
+        }
+        else if (proveedor == TipoProveedorLlm.Anthropic)
+        {
+            solicitud.Headers.Add("x-api-key", apiKey);
+            solicitud.Headers.Add("anthropic-version", ResolverVersionAnthropic(parametros));
         }
         else
         {
@@ -139,10 +189,23 @@ public sealed class LlmClientHttp : ILlmClient
         }
     }
 
-    private static async Task<string> LeerContenidoAsync(HttpResponseMessage respuesta, CancellationToken cancellationToken)
+    private static async Task<string> LeerContenidoAsync(
+        HttpResponseMessage respuesta,
+        TipoProveedorLlm proveedor,
+        CancellationToken cancellationToken)
     {
         await using var stream = await respuesta.Content.ReadAsStreamAsync(cancellationToken);
         using var documento = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+        if (proveedor == TipoProveedorLlm.Anthropic
+            && documento.RootElement.TryGetProperty("content", out var contenidoAnthropic)
+            && contenidoAnthropic.ValueKind == JsonValueKind.Array
+            && contenidoAnthropic.GetArrayLength() > 0
+            && contenidoAnthropic[0].TryGetProperty("text", out var textoAnthropic)
+            && textoAnthropic.GetString() is { } textoAnthropicValue)
+        {
+            return textoAnthropicValue;
+        }
 
         if (documento.RootElement.TryGetProperty("choices", out var choices)
             && choices.ValueKind == JsonValueKind.Array
@@ -162,4 +225,38 @@ public sealed class LlmClientHttp : ILlmClient
 
     private static bool EsTransitorio(HttpStatusCode codigo)
         => codigo == HttpStatusCode.TooManyRequests || (int)codigo >= 500;
+
+    private static TipoProveedorLlm ResolverProveedor(string proveedor)
+    {
+        if (string.Equals(proveedor, "AzureOpenAI", StringComparison.OrdinalIgnoreCase))
+        {
+            return TipoProveedorLlm.AzureOpenAi;
+        }
+
+        return string.Equals(proveedor, "Anthropic", StringComparison.OrdinalIgnoreCase)
+            ? TipoProveedorLlm.Anthropic
+            : TipoProveedorLlm.OpenAiCompatible;
+    }
+
+    private static string MapearRolAnthropic(string rol)
+        => string.Equals(rol, "assistant", StringComparison.OrdinalIgnoreCase) ? "assistant" : "user";
+
+    private static bool EsParametroReservadoAnthropic(string parametro)
+        => string.Equals(parametro, "model", StringComparison.Ordinal)
+            || string.Equals(parametro, "max_tokens", StringComparison.Ordinal)
+            || string.Equals(parametro, "messages", StringComparison.Ordinal)
+            || string.Equals(parametro, "system", StringComparison.Ordinal)
+            || string.Equals(parametro, "anthropic-version", StringComparison.OrdinalIgnoreCase);
+
+    private static string ResolverVersionAnthropic(IReadOnlyDictionary<string, object?> parametros)
+        => parametros.TryGetValue("anthropic-version", out var version) && version is not null
+            ? version.ToString() ?? VersionAnthropic
+            : VersionAnthropic;
+
+    private enum TipoProveedorLlm
+    {
+        AzureOpenAi,
+        OpenAiCompatible,
+        Anthropic,
+    }
 }

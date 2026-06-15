@@ -59,6 +59,10 @@ export class AdminApiService {
     return this.api.post<Campania>('/api/admin/campanias', body);
   }
 
+  actualizarCampania(id: string, body: unknown) {
+    return this.api.put<Campania>(`/api/admin/campanias/${id}`, body);
+  }
+
   cambiarEstadoCampania(id: string, estado: string) {
     return this.api.patch<Campania>(`/api/admin/campanias/${id}/estado`, { estado });
   }

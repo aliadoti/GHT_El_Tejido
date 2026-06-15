@@ -210,3 +210,10 @@
   - Mejora transversal de diagnostico: `MapeadorErrores` agrega el TIPO de excepcion en `INTERNAL_ERROR` (`details.exceptionType`), sin filtrar el mensaje (puede traer datos), como pista segura junto al correlationId (peticion del usuario: errores menos genericos).
 - Alternativa(s) descartada(s): dar rol de escritura a la identidad (mas privilegio del necesario, lo que el usuario pidio evitar); mantener `apiKey` opcional y escribir solo si viene (sigue requiriendo escritura y confunde el contrato); nombre de secreto fijo `llm-key` impuesto por la app (menos flexible que dejar elegir el `apiKeyRef`).
 - Impacto / reversibilidad: cambia el contrato `04 §5.7` (request sin `apiKey`) -> documentado en AVANCES "Contratos". La respuesta no cambia (sigue exponiendo `apiKeyRef`+mascara `********`). Para rotar la key, se actualiza el secreto en Key Vault fuera de la app (el `apiKeyRef` no cambia).
+
+### fase10-configuracion-llm-usable - Estados requeridos para evaluar con LLM
+- Fecha: 2026-06-15 - Agente/Rol: Codex - Arquitecto/Backend/AppSec - Commit: pendiente
+- Contexto: Fase 10 pide que una `ConfigLLM` inactiva sea un interruptor real y que el orquestador evalue tambien prompt no aprobado/inactivo y rubrica inactiva. Las specs no definian si debia bloquear o solo advertir al administrador durante la ejecucion conversacional. REQ §19, §20.3.10, §25.1, §31.6 / ARQ §6, §10, §12.
+- Decision: el orquestador trata `ConfigLLM` inactiva, rubrica no activa y prompt de evaluacion no activo/no aprobado como configuracion no disponible: no llama al proveedor LLM, guarda la respuesta como `evaluacionPendiente`, envia cierre neutro y registra `LogSeguridad` con resultado `fallback` y motivo interno.
+- Alternativa(s) descartada(s): llamar de todos modos y solo advertir en logs (consume tokens y contradice el interruptor); fallar duro la conversacion (mala experiencia y contradice fallback seguro).
+- Impacto / reversibilidad: no cambia contratos HTTP ni Cosmos; endurece runtime y reduce consumo. Si luego se requiere flujo de revision administrativa, se puede agregar una notificacion/estado visible sin cambiar la decision de no llamar al LLM.

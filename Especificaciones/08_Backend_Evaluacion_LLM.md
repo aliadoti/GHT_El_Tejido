@@ -30,7 +30,7 @@ public interface ILlmClient
 `ContextoEvaluacion`: `{ Campania, Pregunta, Respuesta (texto), HistorialReciente, Usuario(tags), RubricaSnapshot, PromptSnapshot, ConfigLLMSnapshot }`.
 `ResultadoEvaluacion`: `Exito(Evaluacion)` | `Fallback(EvaluacionParcial, motivo)`.
 
-El `ILlmClient` tiene una implementación por `proveedor` (`AzureOpenAI`, `OpenAI`, `Otro`); se selecciona por `ConfigLLM.proveedor`. El resto del módulo es agnóstico del proveedor.
+El `ILlmClient` tiene una implementación por `proveedor` (`AzureOpenAI`, compatibles OpenAI como `OpenAI`/`OpenRouter`/`Otro`, y `Anthropic` nativo); se selecciona por `ConfigLLM.proveedor`. El resto del módulo es agnóstico del proveedor.
 
 ---
 
@@ -63,7 +63,8 @@ Reglas duras:
 - No incluir datos innecesarios (`REQ §25.3.8`).
 
 ### 3.3 Llamada al proveedor — `REQ §19.1`
-- Lee `ConfigLLM` activa (proveedor, modelo, endpoint, parámetros) y resuelve la API key por `apiKeyRef` desde Key Vault (Managed Identity, caché corta).
+- Lee `ConfigLLM` activa (proveedor, modelo, endpoint, parámetros) y resuelve la API key por `apiKeyRef` desde Key Vault (Managed Identity, caché corta). Si la `ConfigLLM` está inactiva, la rúbrica no está activa o el prompt de evaluación no está activo/aprobado, el orquestador no llama al LLM y aplica fallback seguro (`§6`).
+- Para `proveedor = Anthropic`, el adaptador usa `POST {endpoint}/v1/messages`, headers `x-api-key` y `anthropic-version`, `system` separado de `messages`, y parsea `content[0].text`; el texto devuelto sigue validándose con el esquema JSON de `§4`.
 - Aplica `timeoutSegundos` y `maxReintentos` configurados (`REQ §25.1`). Reintenta solo errores transitorios.
 - Solicita **salida JSON con esquema fijo** (response_format JSON / function calling según proveedor).
 - Respeta `limitesTokens` (`maxPrompt`, `maxCompletion`).
@@ -139,7 +140,7 @@ Si el proveedor falla (timeout, 5xx tras reintentos) **o** la salida es inválid
 - Una respuesta válida produce una `Evaluacion` que cumple el esquema, con snapshots de rúbrica/prompt/config.
 - Salida malformada o proveedor caído → fallback seguro, conversación intacta, `evaluacionPendiente`.
 - El contexto enviado nunca contiene secretos ni API keys.
-- Cambiar de proveedor (Azure OpenAI ↔ OpenAI) es solo configuración; el módulo no cambia.
+- Cambiar de proveedor (Azure OpenAI ↔ OpenAI compatible ↔ Anthropic nativo) es solo configuración; el módulo no cambia.
 - Un intento de prompt-injection no altera la rúbrica/prompt y, si se detecta, se registra.
 
 *Fin del documento.*

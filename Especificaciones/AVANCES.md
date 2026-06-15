@@ -4,19 +4,19 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Fase actual: **Fase 9 DONE - Integracion E2E + endurecimiento (`13`)**; **MVP desplegado en Azure y probado en simulacion** (2026-06-15).
-- Ultima actualizacion: 2026-06-15 por Claude Code (despliegue CD a Azure OIDC, hosting del SPA, readiness/simulacion, bugfix conflicto Cosmos, EOL=LF; documentacion de tropiezos reales del despliegue).
-- Repo compilable y en verde: **si** (backend build/test/format verificados; 208 pruebas en verde: 166 unit + 42 integration; frontend tsc+prettier verificados local, `ng build/test` y el deploy los corre el CI/CD por bloqueo de Node 22.17 local).
+- Fase actual: **Fase 10 DONE - Mejoras de configuracion LLM**; MVP sigue desplegado en Azure y probado en simulacion (2026-06-15).
+- Ultima actualizacion: 2026-06-15 por Codex (Fase 10 completa: presets LLM, ConfigLLM inactiva bloquea evaluacion, edicion de refs LLM de campania en portal, adaptador Anthropic nativo, docs/supuestos actualizados).
+- Repo compilable y en verde: **si** (backend build/test/format verificados; 212 pruebas .NET en verde: 170 unit + 42 integration; frontend lint/test/build verificados local con Node temporal 24.15.0: 8 pruebas Angular).
 - Branch de trabajo: **main** (push directo, sin PR, por decision del usuario; CI + CD corren en cada push a main).
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. WhatsApp real aun NO conectado (se prueba por la pagina de simulacion).
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Completar el recorrido E2E simulado y/o conectar WhatsApp real** (`13 §5`). El sistema ya esta desplegado y se valido: login admin (simulacion), alta de usuarios/participantes, parametrizacion (rubrica/prompt/ConfigLLM/campania). Falta cerrar el recorrido entrante simulado (webhook firmado -> evaluacion LLM -> Markdown -> consulta de resultados) y, cuando haya app de Meta aprobada, conectar WhatsApp real.
+- [ ] **Redeploy a Azure y repetir smoke/E2E simulado con Fase 10** (`13 §5`). El codigo local esta verde; falta publicar estos cambios y validar en el App Service que presets/edicion de campania/config LLM y el flujo simulado siguen funcionando contra Cosmos/Key Vault reales. Cuando haya app de Meta aprobada, conectar WhatsApp real.
 - Como continuar:
   - **Simulado (sin WhatsApp):** asegurar `Simulacion__Habilitada=true` + clave de diagnostico; en `/simulacion-whatsapp` enviar el webhook firmado (App secret = valor temporal de `wa-appsec`) y verificar en Resultados (`Guia_Prueba_E2E_Simulada_WhatsApp.md §7`). Al terminar la ventana de prueba, poner `Simulacion__Habilitada=false`.
   - **WhatsApp real:** cargar `wa-token`/`wa-verify-token` reales y `WhatsApp__PhoneNumberId`, configurar el webhook en Meta (`Guia_WhatsApp §4`), y correr `13 §5` con telefonos reales. Verificar primero con `/health/ready` (todos los componentes en `ok`).
   - **Antes de produccion abierta:** revisar la deuda tecnica de abajo (filtros de consulta, cupos/guardrails).
-- [ ] **Fase 10 — Mejoras de configuracion LLM (backlog listo para desarrollar, SIN bloqueo de infra).** Trabajo de codigo puro y verificable que un agente puede tomar con el prompt estandar. Especificacion accionable por item en la seccion **"Backlog Fase 10"** mas abajo. Sugerido como siguiente desarrollo mientras se consigue la app de Meta. Orden sugerido: 10.2 (seguridad) -> 10.3 (editar campania) -> 10.1 (presets) -> 10.4 (Anthropic nativo).
+- [ ] **Conectar WhatsApp real / validacion operativa final**: cargar secretos reales de Meta, configurar webhook y plantillas aprobadas, y ejecutar el checklist `13 §5` con telefonos reales. Antes de produccion abierta, revisar filtros avanzados de resultados y cupos/guardrails finos.
 
 ## Tablero por fases
 | Fase | Paso | Estado | Commit | Pruebas | Notas |
@@ -60,16 +60,16 @@
 | 9 | Simulacion WhatsApp en Azure (`Simulacion:Habilitada`) | DONE | pendiente | verde | Endpoints de simulacion mapeables fuera de Development tras `X-Diag-Key`; pagina con campo de clave; guia §7. `SUPUESTOS.md#simulacion-azure-gating` |
 | 9 | API sirve el SPA + CD a Azure (OIDC) | DONE | pendiente | verde | `UseStaticFiles`+`MapFallback` (excluye prefijos API), `angular.json` aplana a `wwwroot`, `deploy.yml` (OIDC). Verificado E2E local. `SUPUESTOS.md#spa-hosting-y-cd` |
 | 9 | ConfigLLM solo-lectura de Key Vault + errores con tipo | DONE | pendiente | verde | Request `config-llm` sin `apiKey` (solo `apiKeyRef`); `ISecretProvider` valida; `MapeadorErrores` agrega `exceptionType`. Contrato `04 §5.7` actualizado. `SUPUESTOS.md#configllm-apikeyref-solo-lectura` |
-| 10 | 10.1 Presets de proveedor en el portal (Config LLM) | TODO | — | — | Backlog Fase 10 abajo. Solo UI; sin cambio de backend/contrato |
-| 10 | 10.2 Estado `inactivo` de ConfigLLM se respeta al evaluar | TODO | — | — | Backlog Fase 10 abajo. Backend (orquestador) + unit; relacionado con aprobacion de prompt |
-| 10 | 10.3 Editar el LLM/refs de una campania desde el portal | TODO | — | — | Backlog Fase 10 abajo. Frontend; el `PUT` ya existe (`04 §5.3`) |
-| 10 | 10.4 Adaptador nativo de Anthropic en `LlmClientHttp` | TODO | — | — | Backlog Fase 10 abajo. Infrastructure + unit; key por `ISecretProvider` |
+| 10 | 10.1 Presets de proveedor en el portal (Config LLM) | DONE | pendiente | verde | `<select>` de presets Azure/OpenAI/OpenRouter/Anthropic/Otro; proveedor/endpoint/modelo editables; prueba SPA fase 10.1. |
+| 10 | 10.2 Estado `inactivo` de ConfigLLM se respeta al evaluar | DONE | pendiente | verde | Orquestador no llama al LLM si ConfigLLM inactiva, rubrica no activa o prompt no activo/aprobado; fallback neutro + `LogSeguridad`. |
+| 10 | 10.3 Editar el LLM/refs de una campania desde el portal | DONE | pendiente | verde | `PUT /api/admin/campanias/{id}` expuesto en `AdminApiService` y formulario de edicion con selects de rubrica/config LLM/prompt. |
+| 10 | 10.4 Adaptador nativo de Anthropic en `LlmClientHttp` | DONE | pendiente | verde | `proveedor=Anthropic` usa `/v1/messages`, `x-api-key`, `anthropic-version`, `system` separado y parseo `content[0].text`; unit con handler fake. |
 
-## Backlog Fase 10 — Mejoras de configuracion LLM (pendiente de desarrollo)
-> Especificacion accionable para retomar con el prompt estandar ("implement the phase complete").
+## Fase 10 completada — Mejoras de configuracion LLM
+> Fase cerrada el 2026-06-15 por Codex. Se conserva esta seccion como referencia de alcance y aceptacion implementados.
 > Cada item es independiente, sin bloqueo de infraestructura, y debe cerrarse con su Definition of Done
-> (`01 §8`): build `-warnaserror` + test + format verde (backend) y tsc+prettier (frontend; el `ng build/test`
-> lo corre el CI por Node 22.17 local). Registrar supuestos en `SUPUESTOS.md` si aplica.
+> (`01 §8`): build `-warnaserror` + test + format verde (backend) y lint/test/build verde (frontend con Node temporal 24.15.0 local).
+> Registrar supuestos en `SUPUESTOS.md` si aplica.
 > Contexto base: hoy el LLM es agnostico de proveedor via `ConfigLlm` (proveedor/modelo/endpoint/apiKeyRef);
 > `LlmClientHttp` soporta `AzureOpenAI` (ruta deployments + header `api-key`) y el resto como compatible-OpenAI
 > (`/chat/completions` + `Bearer`). La API key vive solo en Key Vault (por `apiKeyRef`); el corte de una key se
@@ -129,11 +129,12 @@
 
 ## Contratos: cambios respecto a las specs
 - 2026-06-15 - `04 §5.7` (Config LLM): se **eliminó el campo `apiKey`** del request POST/PUT. La app ya no escribe la key; solo recibe `apiKeyRef` (nombre de un secreto que debe existir en Key Vault) y lo valida. Spec `04 §5.7` actualizada en el mismo cambio. Motivo: mínimo privilegio (la identidad solo necesita lectura de Key Vault). Ver `SUPUESTOS.md#configllm-apikeyref-solo-lectura`.
+- 2026-06-15 - `02`/`03`/`08` (Config LLM): `proveedor=Anthropic` queda documentado como valor nativo, separado de `Anthropic-via-OpenRouter`; usa endpoint Anthropic `/v1/messages`, `x-api-key` y `anthropic-version`. Ver `SUPUESTOS.md#fase10-configuracion-llm-usable`.
 
 ## Como construir y probar (comandos verificados)
 - Backend:
   - `dotnet build -c Release -warnaserror`
-  - `dotnet test -c Release --no-build` (208 pruebas: 166 unit + 42 integration)
+  - `dotnet test -c Release --no-build` (212 pruebas: 170 unit + 42 integration)
   - `dotnet format --verify-no-changes` (LF segun `.editorconfig`; ver `.gitattributes`)
 - **Line endings (LF):** `.editorconfig` usa `end_of_line = lf` y `.gitattributes` (`* text=auto eol=lf`)
   extrae LF en cualquier SO. El repo ya guardaba LF, asi que CI (Linux) y local (Windows) ven lo mismo
@@ -144,7 +145,7 @@
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
   - `cd src/ElTejido.Web`
   - `npx -y -p node@24.15.0 npm run lint`
-  - `npx -y -p node@24.15.0 npm run test -- --watch=false`
+  - `npx -y -p node@24.15.0 node node_modules/@angular/cli/bin/ng test --watch=false --progress=false` (8 pruebas)
   - `npx -y -p node@24.15.0 node node_modules/@angular/cli/bin/ng build --configuration production`
   - QA visual local: `ng serve --host 127.0.0.1 --port 4200 --proxy-config proxy.conf.json`; capturas Chrome headless desktop/mobile contra `/login` verificadas. Browser plugin integrado no expuso instancia `iab` en esta sesion, por eso se uso Chrome local.
 - Local:

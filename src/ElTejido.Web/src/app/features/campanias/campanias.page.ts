@@ -171,6 +171,55 @@ import { formatApiError } from '../../shared-error';
 
           <div class="tabs-layout">
             <article>
+              <h4>Configuracion</h4>
+              <form class="form-grid" (ngSubmit)="actualizarCampania(campania.id)">
+                <label>Nombre <input name="editarNombre" [(ngModel)]="edicion.nombre" /></label>
+                <label>
+                  Descripcion
+                  <input name="editarDescripcion" [(ngModel)]="edicion.descripcion" />
+                </label>
+                <label>
+                  Objetivo
+                  <textarea
+                    name="editarObjetivo"
+                    rows="3"
+                    [(ngModel)]="edicion.objetivo"
+                  ></textarea>
+                </label>
+                <label>
+                  Rubrica
+                  <select name="editarRubricaRef" [(ngModel)]="edicion.rubricaRef" required>
+                    @for (rubrica of rubricas(); track rubrica.id) {
+                      <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  Config LLM
+                  <select name="editarConfigLlmRef" [(ngModel)]="edicion.configLlmRef" required>
+                    @for (config of configsLlm(); track config.id) {
+                      <option [value]="config.id">{{ config.nombre }}</option>
+                    }
+                  </select>
+                </label>
+                <label>
+                  Prompt de evaluacion
+                  <select name="editarPromptEvaluarRef" [(ngModel)]="edicion.promptEvaluarRef">
+                    <option value="">Sin prompt por defecto</option>
+                    @for (prompt of prompts(); track prompt.id) {
+                      <option [value]="prompt.id">
+                        {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
+                      </option>
+                    }
+                  </select>
+                </label>
+                <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
+                  Guardar cambios
+                </button>
+              </form>
+            </article>
+
+            <article>
               <h4>Mensajes iniciales</h4>
               <form class="form-grid" (ngSubmit)="crearMensaje(campania.id)">
                 <input
@@ -355,6 +404,7 @@ export class CampaniasPage {
     configLlmRef: '',
     promptEvaluarRef: '',
   };
+  protected edicion = this.emptyCampaniaForm();
   protected mensaje = { nombreInterno: '', texto: '' };
   protected pregunta = { categoria: '', texto: '', rubricaRef: '', promptEvaluarRef: '' };
   protected filtroParticipantes = { area: '', empresa: '' };
@@ -381,12 +431,15 @@ export class CampaniasPage {
       next: (page) => this.rubricas.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
-    this.api.configsLlm({ pageSize: 100 }).subscribe({
+    this.api.configsLlm({ estado: 'activo', pageSize: 100 }).subscribe({
       next: (page) => this.configsLlm.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
-    this.api.prompts({ pageSize: 100 }).subscribe({
-      next: (page) => this.prompts.set(page.items),
+    this.api.prompts({ tipoPrompt: 'evaluar', estado: 'activo', pageSize: 100 }).subscribe({
+      next: (page) =>
+        this.prompts.set(
+          page.items.filter((prompt) => !!prompt.aprobadoPor && !!prompt.fechaAprobacion),
+        ),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
     this.api.usuarios({ rol: 'participante', pageSize: 100 }).subscribe({
@@ -408,6 +461,7 @@ export class CampaniasPage {
     this.api.campania(id).subscribe({
       next: (campania) => {
         this.selected.set(campania);
+        this.edicion = this.formFromCampania(campania);
         this.loadParticipantes(campania.id);
       },
       error: (err: unknown) => this.error.set(formatApiError(err)),
@@ -434,15 +488,33 @@ export class CampaniasPage {
       .subscribe({
         next: (campania) => {
           this.nueva = {
-            nombre: '',
-            descripcion: '',
-            objetivo: '',
-            rubricaRef: '',
-            configLlmRef: '',
-            promptEvaluarRef: '',
+            ...this.emptyCampaniaForm(),
           };
           this.load();
           this.select(campania.id);
+        },
+        error: (err: unknown) => this.error.set(formatApiError(err)),
+      });
+  }
+
+  actualizarCampania(id: string) {
+    const promptRefs = this.edicion.promptEvaluarRef
+      ? { evaluar: this.edicion.promptEvaluarRef }
+      : {};
+    this.api
+      .actualizarCampania(id, {
+        nombre: this.edicion.nombre,
+        descripcion: this.edicion.descripcion,
+        objetivo: this.edicion.objetivo,
+        rubricaRef: this.edicion.rubricaRef,
+        promptRefs,
+        configLLMRef: this.edicion.configLlmRef,
+      })
+      .subscribe({
+        next: (campania) => {
+          this.selected.set(campania);
+          this.edicion = this.formFromCampania(campania);
+          this.load();
         },
         error: (err: unknown) => this.error.set(formatApiError(err)),
       });
@@ -536,5 +608,27 @@ export class CampaniasPage {
       next: (items) => this.participantes.set(items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
+  }
+
+  private emptyCampaniaForm() {
+    return {
+      nombre: '',
+      descripcion: '',
+      objetivo: '',
+      rubricaRef: '',
+      configLlmRef: '',
+      promptEvaluarRef: '',
+    };
+  }
+
+  private formFromCampania(campania: Campania) {
+    return {
+      nombre: campania.nombre,
+      descripcion: campania.descripcion,
+      objetivo: campania.objetivo,
+      rubricaRef: campania.rubricaRef ?? '',
+      configLlmRef: campania.configLLMRef ?? '',
+      promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
+    };
   }
 }
