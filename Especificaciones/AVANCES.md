@@ -92,10 +92,12 @@
 - Backend:
   - `dotnet build -c Release -warnaserror`
   - `dotnet test -c Release --no-build` (204 pruebas: 162 unit + 42 integration)
-  - `dotnet format --verify-no-changes` (requiere CRLF segun `.editorconfig`; ver `.gitattributes`)
-- **Line endings (CRLF):** `.editorconfig` exige `end_of_line = crlf`. El `.gitattributes` fuerza
-  `*.cs`/MSBuild a extraerse como CRLF en cualquier SO, para que `dotnet format` sea consistente
-  en Windows (local) y en el runner Linux del CI. El repo guarda LF normalizado (no hay churn).
+  - `dotnet format --verify-no-changes` (LF segun `.editorconfig`; ver `.gitattributes`)
+- **Line endings (LF):** `.editorconfig` usa `end_of_line = lf` y `.gitattributes` (`* text=auto eol=lf`)
+  extrae LF en cualquier SO. El repo ya guardaba LF, asi que CI (Linux) y local (Windows) ven lo mismo
+  y `dotnet format` es consistente. Antes `.editorconfig` pedia CRLF: en Windows `core.autocrlf=true`
+  daba CRLF local (format pasaba) pero el runner Linux veia LF y fallaba con ENDOFLINE. Forzar CRLF en
+  checkout no era fiable (git no aplicaba la conversion de salida), por eso se normalizo a LF.
 - Frontend:
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
   - `cd src/ElTejido.Web`
