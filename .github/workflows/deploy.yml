@@ -19,7 +19,11 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production # habilita aprobacion manual (gate) si se configura en el repo
+    # Sin `environment:` a proposito: con un environment, el subject del token OIDC seria
+    # `repo:<org>/<repo>:environment:production` y no coincidiria con la credencial federada
+    # creada como Branch=main (guia Azure §9.2 -> `...:ref:refs/heads/main`). Para reactivar un
+    # gate de aprobacion, agrega `environment: production` Y una credencial federada de tipo
+    # Environment (name: production) en Entra ID.
     steps:
       - uses: actions/checkout@v4
 
