@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { BrandSignatureComponent } from '../../layout/brand-signature.component';
 import { formatApiError } from '../../shared-error';
 
 interface AdminInicialResponse {
@@ -21,7 +22,7 @@ interface OtpResponse {
 @Component({
   selector: 'app-simulacion-whatsapp-page',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, BrandSignatureComponent],
   template: `
     <section class="login-shell simulator-shell">
       <div class="simulator-page">
@@ -142,6 +143,8 @@ interface OtpResponse {
           </div>
           <pre class="markdown-preview">{{ payloadPreview() }}</pre>
         </section>
+
+        <app-brand-signature />
       </div>
     </section>
   `,

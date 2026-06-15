@@ -4,12 +4,13 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/auth.service';
+import { BrandSignatureComponent } from '../../layout/brand-signature.component';
 import { formatApiError } from '../../shared-error';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, BrandSignatureComponent],
   template: `
     <main class="login-shell">
       <section class="login-panel" aria-labelledby="login-title">
@@ -74,9 +75,19 @@ import { formatApiError } from '../../shared-error';
             </button>
           }
         </form>
+
+        <app-brand-signature class="login-signature" />
       </section>
     </main>
   `,
+  styles: [
+    `
+      .login-signature {
+        border-top: 1px solid var(--ght-borde);
+        padding-top: 4px;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginPage {
