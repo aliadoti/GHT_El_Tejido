@@ -91,8 +91,11 @@
 ## Como construir y probar (comandos verificados)
 - Backend:
   - `dotnet build -c Release -warnaserror`
-  - `dotnet test -c Release --no-build` (188 pruebas: 153 unit + 35 integration)
-  - `dotnet format --verify-no-changes`
+  - `dotnet test -c Release --no-build` (204 pruebas: 162 unit + 42 integration)
+  - `dotnet format --verify-no-changes` (requiere CRLF segun `.editorconfig`; ver `.gitattributes`)
+- **Line endings (CRLF):** `.editorconfig` exige `end_of_line = crlf`. El `.gitattributes` fuerza
+  `*.cs`/MSBuild a extraerse como CRLF en cualquier SO, para que `dotnet format` sea consistente
+  en Windows (local) y en el runner Linux del CI. El repo guarda LF normalizado (no hay churn).
 - Frontend:
   - Requisito: Node `22.22.3+`, `24.15.0+` o `26+` para Angular CLI 22. La maquina local tiene Node `22.17.0`, por eso se verifico con Node temporal en Fase 0.
   - `cd src/ElTejido.Web`
