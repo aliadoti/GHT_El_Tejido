@@ -233,6 +233,24 @@ import { formatApiError } from '../../shared-error';
                   [(ngModel)]="mensaje.texto"
                   placeholder="Texto"
                 ></textarea>
+                <p class="subhead">
+                  Plantilla WhatsApp (requerida para el envio inicial proactivo)
+                </p>
+                <input
+                  name="miPlantillaNombre"
+                  [(ngModel)]="mensaje.plantillaNombre"
+                  placeholder="Plantilla aprobada (ej: el_tejido_saludo)"
+                />
+                <input
+                  name="miPlantillaIdioma"
+                  [(ngModel)]="mensaje.plantillaIdioma"
+                  placeholder="Idioma (ej: es)"
+                />
+                <input
+                  name="miPlantillaComponentes"
+                  [(ngModel)]="mensaje.plantillaComponentes"
+                  placeholder="Variables en orden, coma-separadas (ej: nombre, campania)"
+                />
                 <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
                   Agregar mensaje
                 </button>
@@ -405,7 +423,13 @@ export class CampaniasPage {
     promptEvaluarRef: '',
   };
   protected edicion = this.emptyCampaniaForm();
-  protected mensaje = { nombreInterno: '', texto: '' };
+  protected mensaje = {
+    nombreInterno: '',
+    texto: '',
+    plantillaNombre: '',
+    plantillaIdioma: 'es',
+    plantillaComponentes: '',
+  };
   protected pregunta = { categoria: '', texto: '', rubricaRef: '', promptEvaluarRef: '' };
   protected filtroParticipantes = { area: '', empresa: '' };
 
@@ -531,16 +555,37 @@ export class CampaniasPage {
   }
 
   crearMensaje(campaniaId: string) {
+    const plantillaNombre = this.mensaje.plantillaNombre.trim();
+    const componentes = this.mensaje.plantillaComponentes
+      .split(',')
+      .map((componente) => componente.trim())
+      .filter((componente) => componente.length > 0);
+    const plantillaWhatsApp = plantillaNombre
+      ? {
+          nombre: plantillaNombre,
+          idioma: this.mensaje.plantillaIdioma.trim() || 'es',
+          componentes,
+        }
+      : undefined;
+
     this.api
       .crearMensajeInicial(campaniaId, {
-        ...this.mensaje,
+        nombreInterno: this.mensaje.nombreInterno,
+        texto: this.mensaje.texto,
         orden: 1,
         variablesDinamicas: ['nombre'],
         estado: 'activo',
+        ...(plantillaWhatsApp ? { plantillaWhatsApp } : {}),
       })
       .subscribe({
         next: () => {
-          this.mensaje = { nombreInterno: '', texto: '' };
+          this.mensaje = {
+            nombreInterno: '',
+            texto: '',
+            plantillaNombre: '',
+            plantillaIdioma: 'es',
+            plantillaComponentes: '',
+          };
           this.select(campaniaId);
         },
         error: (err: unknown) => this.error.set(formatApiError(err)),
