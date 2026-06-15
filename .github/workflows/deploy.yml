@@ -51,16 +51,24 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - uses: azure/webapps-deploy@v3
+        id: deploy
         with:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           package: ./publish
 
-      # 4) Smoke test: /health debe responder 200 tras el despliegue (04 §7).
+      # 4) Smoke test: /health debe responder 200 tras el despliegue (04 §7). Usa la URL real que
+      #    reporta el deploy (los App Service nuevos tienen hostname unico con sufijo/region, no el
+      #    clasico <name>.azurewebsites.net), con fallback a `az webapp show` si no viniera.
       - run: |
+          url="${{ steps.deploy.outputs.webapp-url }}"
+          if [ -z "$url" ]; then
+            host=$(az webapp list --query "[?name=='${{ vars.AZURE_WEBAPP_NAME }}'].defaultHostName | [0]" -o tsv 2>/dev/null || true)
+            [ -n "$host" ] && url="https://$host"
+          fi
+          url="${url%/}"
+          echo "Smoke test contra: $url/health"
           for i in 1 2 3 4 5 6; do
-            if curl -fsS "https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"; then
-              echo "health OK"; exit 0
-            fi
+            if curl -fsS "$url/health"; then echo; echo "health OK"; exit 0; fi
             echo "reintento $i..."; sleep 10
           done
           echo "El smoke test de /health fallo"; exit 1
