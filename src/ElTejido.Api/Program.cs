@@ -48,6 +48,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+// Sirve el portal Angular (SPA) publicado en wwwroot. En local el portal corre con `ng serve`;
+// en el despliegue (App Service) lo sirve la propia API desde wwwroot. El fallback a index.html
+// (al final) habilita el ruteo del cliente (/login, /simulacion-whatsapp, etc.).
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok(new HealthResponse("ok")))
@@ -103,6 +109,27 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Simulac
 {
     app.MapearEndpointsSimulacion();
 }
+
+// Rutas no resueltas: las del SPA (deep-links como /login, /simulacion-whatsapp) sirven index.html;
+// los prefijos de la API conservan su contrato (404 propio) en vez de devolver el HTML del portal.
+var indiceSpa = app.Environment.WebRootFileProvider.GetFileInfo("index.html");
+app.MapFallback(async context =>
+{
+    var ruta = context.Request.Path.Value ?? string.Empty;
+    var esApi = ruta.StartsWith("/api", StringComparison.OrdinalIgnoreCase)
+        || ruta.StartsWith("/webhook", StringComparison.OrdinalIgnoreCase)
+        || ruta.StartsWith("/health", StringComparison.OrdinalIgnoreCase)
+        || ruta.StartsWith("/diagnostico", StringComparison.OrdinalIgnoreCase);
+
+    if (esApi || !indiceSpa.Exists)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(indiceSpa);
+});
 
 app.Run();
 

@@ -1,0 +1,62 @@
+name: Deploy
+
+# CD: al hacer push a main (o manualmente) construye el artefacto unico (API + SPA Angular
+# embebido en wwwroot) y lo despliega al App Service por OIDC (12 §3.2). Sin secretos de larga vida:
+# usa azure/login con federated credentials. Requiere las Variables de Actions de la guia Azure §9.4.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # requerido para OIDC
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production # habilita aprobacion manual (gate) si se configura en el repo
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) Build del SPA Angular: outputPath ya apunta a src/ElTejido.Api/wwwroot (flat, sin browser/).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: src/ElTejido.Web/package-lock.json
+      - working-directory: src/ElTejido.Web
+        run: npm ci
+      - working-directory: src/ElTejido.Web
+        run: npm run build -- --configuration production
+
+      # 2) Build + publish del backend (incluye wwwroot con el SPA).
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet publish src/ElTejido.Api/ElTejido.Api.csproj -c Release -o ./publish
+
+      # 3) Login a Azure (OIDC) y despliegue al App Service.
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: ./publish
+
+      # 4) Smoke test: /health debe responder 200 tras el despliegue (04 §7).
+      - run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"; then
+              echo "health OK"; exit 0
+            fi
+            echo "reintento $i..."; sleep 10
+          done
+          echo "El smoke test de /health fallo"; exit 1
