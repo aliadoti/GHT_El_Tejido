@@ -13,6 +13,7 @@ using ElTejido.Domain.Common;
 using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
+using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Seguridad;
@@ -185,6 +186,38 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Procesar_PrimerContactoSinEnvioInicial_EnviaPreguntaYNoEvalua()
+    {
+        var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
+
+        await Construir().ProcesarMensajeEntranteAsync(ParticipanteFrio(), Mensaje("Hola"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero, Arg.Is<string>(t => t.Contains(pregunta.Texto)), TipoEnvioMensaje.Inicial, Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRespuestaInicial);
+    }
+
+    [Fact]
+    public async Task Procesar_SegundoMensajeTrasPrimerContacto_EvaluaComoRespuesta()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        var orquestador = Construir();
+        var frio = ParticipanteFrio();
+
+        await orquestador.ProcesarMensajeEntranteAsync(frio, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(frio, Mensaje("Mi idea real"), CancellationToken.None);
+
+        // El primer entrante solo envia la pregunta (Inicial); el segundo ya se evalua y cierra.
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Inicial, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
     private OrquestadorConversacion Construir()
         => new(
             _conversaciones,
@@ -204,6 +237,19 @@ public sealed class OrquestadorConversacionTests
         var campania = CrearCampania(new[] { pregunta });
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    private static ParticipanteResuelto ParticipanteFrio()
+    {
+        var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
+        var campania = CrearCampania(new[] { pregunta });
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        // estadoEnvio = Pendiente: el envio inicial de campania nunca se hizo (primer contacto en frio).
+        var participante = ParticipanteCampania.Crear(
+            "pc_1", "c_1", "u_1", NumeroWhatsApp.FromNormalized(Numero),
+            EstadoRegistro.Activo, EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta,
+            Epoca, null, null);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 

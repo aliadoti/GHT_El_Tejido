@@ -32,6 +32,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 {
     private const string Canal = "whatsapp";
 
+    /// <summary>
+    /// Saludo que antecede a la pregunta vigente cuando el participante inicia en frio (05 §4):
+    /// escribio sin haber recibido la pregunta de la campania. Ver <c>SUPUESTOS.md#primer-contacto-pregunta</c>.
+    /// </summary>
+    private const string SaludoPrimerContacto =
+        "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
+
     private readonly IRepositorioConversaciones _conversaciones;
     private readonly IRepositorioRespuestas _respuestas;
     private readonly IRepositorioParticipantes _participantes;
@@ -83,6 +90,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (conversacion is { Estado: EstadoConversacion.Cerrada })
         {
             // MVP: una conversacion por (usuario, campania, pregunta); cerrada no acepta mas mensajes.
+            return;
+        }
+
+        // Primer contacto en frio (05 §4): el participante escribe sin haber recibido la pregunta
+        // (el envio inicial de campania no se hizo, estadoEnvio != enviado). Le respondemos con la
+        // pregunta vigente y NO evaluamos este mensaje; el SIGUIENTE entrante (que ya hallara esta
+        // conversacion creada) se evalua como la respuesta.
+        if (conversacion is null && participante.Participante.EstadoEnvio != EstadoEnvio.Enviado)
+        {
+            await ResponderPrimerContactoAsync(conversacionId, campania, usuario, pregunta, numero, mensaje, ahora, cancellationToken);
             return;
         }
 
@@ -142,6 +159,29 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         conversacion = conversacion.Cerrar(ahora);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+    }
+
+    private async Task ResponderPrimerContactoAsync(
+        string conversacionId,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        // Crea el hilo y lo deja en esperandoRespuestaInicial (no avanza a Evaluando) renovando la ventana.
+        var conversacion = DominioConversacion
+            .Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora)
+            .RegistrarEntrante(mensaje.Timestamp);
+
+        await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
+
+        var texto = Combinar(SaludoPrimerContacto, pregunta.Texto);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
+
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
     }
 
