@@ -33,7 +33,21 @@ public static class ServiciosAutenticacion
         services.AddSingleton<IGeneradorCodigoOtp, GeneradorCodigoOtpCsprng>();
         services.AddSingleton<ILimitadorOtp, LimitadorOtpMemoria>();
         services.AddSingleton<IServicioSesion, ServicioSesionJwt>();
-        services.AddSingleton<INotificadorOtp, NotificadorOtpLog>();
+
+        // Envio del OTP de login admin (06 §4.2e). Si hay plantilla HSM configurada y habilitada, se
+        // envia por WhatsApp real (via IWhatsAppGateway, registrado en AgregarWhatsApp); si no, se usa
+        // el notificador de log para que dev y la simulacion sigan funcionando sin WhatsApp real.
+        services.Configure<OpcionesOtpWhatsApp>(configuration.GetSection(OpcionesOtpWhatsApp.Seccion));
+        var otpWhatsApp = configuration.GetSection(OpcionesOtpWhatsApp.Seccion).Get<OpcionesOtpWhatsApp>();
+        if (otpWhatsApp is { Habilitado: true } && !string.IsNullOrWhiteSpace(otpWhatsApp.PlantillaNombre))
+        {
+            // Scoped: el gateway usa un typed HttpClient; AuthAdminService tambien es scoped.
+            services.AddScoped<INotificadorOtp, NotificadorOtpWhatsApp>();
+        }
+        else
+        {
+            services.AddSingleton<INotificadorOtp, NotificadorOtpLog>();
+        }
 
         // Los orquestadores dependen de los repositorios de Fase 1, que se registran via
         // AgregarInfraestructura en modo Cosmos o Memoria. Si no hay almacen configurado la app
