@@ -13,7 +13,6 @@ import { formatApiError } from '../../shared-error';
     <section class="page-grid">
       <div class="section-header">
         <div>
-          <p class="eyebrow">REQ 17</p>
           <h2>Rubricas Markdown</h2>
         </div>
         <button type="button" class="ghost-button" (click)="load()">Actualizar</button>

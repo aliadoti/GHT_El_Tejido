@@ -14,7 +14,6 @@ import { formatApiError } from '../../shared-error';
     <section class="page-grid">
       <div class="section-header">
         <div>
-          <p class="eyebrow">REQ 12-13</p>
           <h2>Usuarios y tags</h2>
         </div>
         <button type="button" class="ghost-button" (click)="load()">Actualizar</button>

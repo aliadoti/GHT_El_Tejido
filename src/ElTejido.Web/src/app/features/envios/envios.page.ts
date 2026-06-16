@@ -15,7 +15,6 @@ import { formatApiError } from '../../shared-error';
     <section class="page-grid">
       <div class="section-header">
         <div>
-          <p class="eyebrow">REQ 15, 27.2</p>
           <h2>Envios de campania</h2>
         </div>
         <button type="button" class="ghost-button" (click)="load()">Actualizar</button>

@@ -22,7 +22,6 @@ import { formatApiError } from '../../shared-error';
     <section class="page-grid">
       <div class="section-header">
         <div>
-          <p class="eyebrow">REQ 11, 14, 15, 16</p>
           <h2>Campanias</h2>
         </div>
         <button type="button" class="ghost-button" (click)="load()">Actualizar</button>
