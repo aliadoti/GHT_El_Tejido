@@ -43,6 +43,23 @@ public sealed class TrabajadorWebhook : BackgroundService
 
                 var resultado = await procesador.ProcesarAsync(payload, stoppingToken);
                 _logger.LogInformation("Webhook entrante procesado con resultado {Resultado}.", resultado);
+
+                // Un payload sin mensaje suele ser una notificacion de estado de un envio saliente; se
+                // loguea (fallos en Warning) para diagnosticar entregas aceptadas (200) pero no entregadas.
+                if (resultado == ResultadoProcesoEntrante.NoMensaje)
+                {
+                    foreach (var linea in ResumenEstadosEntrega.Describir(payload))
+                    {
+                        if (linea.EsFallo)
+                        {
+                            _logger.LogWarning("{Estado}", linea.Texto);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("{Estado}", linea.Texto);
+                        }
+                    }
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

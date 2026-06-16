@@ -30,6 +30,44 @@ public sealed record WhatsAppChangeValue
 {
     [JsonPropertyName("messages")]
     public IReadOnlyList<WhatsAppMessage>? Messages { get; init; }
+
+    /// <summary>Notificaciones de estado de mensajes salientes (sent/delivered/read/failed, 04 §6.2).</summary>
+    [JsonPropertyName("statuses")]
+    public IReadOnlyList<WhatsAppStatus>? Statuses { get; init; }
+}
+
+/// <summary>Estado de entrega de un mensaje saliente reportado por Meta (incl. errores de entrega).</summary>
+public sealed record WhatsAppStatus
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; init; }
+
+    [JsonPropertyName("errors")]
+    public IReadOnlyList<WhatsAppStatusError>? Errors { get; init; }
+}
+
+public sealed record WhatsAppStatusError
+{
+    [JsonPropertyName("code")]
+    public int Code { get; init; }
+
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; init; }
+
+    [JsonPropertyName("error_data")]
+    public WhatsAppStatusErrorData? ErrorData { get; init; }
+}
+
+public sealed record WhatsAppStatusErrorData
+{
+    [JsonPropertyName("details")]
+    public string? Details { get; init; }
 }
 
 public sealed record WhatsAppMessage
