@@ -42,23 +42,20 @@ public sealed class NotificadorOtpWhatsApp : INotificadorOtp
             return;
         }
 
+        // Plantilla de categoria Authentication (con boton copy-code/one-tap): el codigo se envia en
+        // el body y en el boton (lo arma el gateway). Solo se necesita el nombre/idioma de la plantilla.
         var plantilla = PlantillaWhatsApp.Crear(
             _opciones.PlantillaNombre,
             _opciones.PlantillaIdioma,
-            new[] { _opciones.NombreVariableCodigo });
-
-        var variables = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            [_opciones.NombreVariableCodigo] = codigo,
-        };
+            componentes: null);
 
         EnvioResultado resultado;
         try
         {
-            resultado = await _gateway.EnviarPlantillaAsync(
+            resultado = await _gateway.EnviarPlantillaAutenticacionAsync(
                 numero.Valor,
                 plantilla,
-                variables,
+                codigo,
                 TipoEnvioMensaje.Autenticacion,
                 cancellationToken);
         }

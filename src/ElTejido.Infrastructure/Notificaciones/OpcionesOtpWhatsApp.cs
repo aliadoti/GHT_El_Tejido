@@ -19,9 +19,9 @@ public sealed class OpcionesOtpWhatsApp
     /// <summary>Nombre de la plantilla HSM aprobada (categoria autenticacion) para el codigo.</summary>
     public string PlantillaNombre { get; set; } = string.Empty;
 
-    /// <summary>Idioma de la plantilla (p. ej. <c>es</c> o <c>es_CO</c>).</summary>
+    /// <summary>
+    /// Idioma de la plantilla; debe coincidir EXACTAMENTE con el de la plantilla aprobada en Meta
+    /// (p. ej. <c>es</c>, <c>es_CO</c>, <c>en_US</c>). Un idioma que no coincide da error de Meta.
+    /// </summary>
     public string PlantillaIdioma { get; set; } = "es";
-
-    /// <summary>Nombre logico del componente del cuerpo que recibe el codigo (mapeo de variable).</summary>
-    public string NombreVariableCodigo { get; set; } = "codigo";
 }

@@ -1,7 +1,10 @@
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
+using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Participantes;
 using ElTejido.Infrastructure.WhatsApp;
 using ElTejido.UnitTests.Soporte;
@@ -159,6 +162,65 @@ public sealed class WhatsAppGatewayTests
         resultado.Error.Should().Contain(new OpcionesWhatsApp().AccessTokenSecretName);
     }
 
+    [Fact]
+    public async Task EnviarPlantillaAutenticacion_ArmaBodyYBotonConElCodigo()
+    {
+        var secretos = Substitute.For<ISecretProvider>();
+        secretos.ObtenerSecretoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("token-de-prueba");
+        var handler = new HandlerCapturador(HttpStatusCode.OK, "{\"messages\":[{\"id\":\"wamid.1\"}]}");
+        var opciones = new OpcionesWhatsApp { PhoneNumberId = "123456" };
+        var gateway = Construir(secretos, handler, opciones);
+
+        var plantilla = PlantillaWhatsApp.Crear("el_tejido_otp", "es", componentes: null);
+        var resultado = await gateway.EnviarPlantillaAutenticacionAsync(
+            "573001112233",
+            plantilla,
+            "987654",
+            TipoEnvioMensaje.Autenticacion,
+            CancellationToken.None);
+
+        resultado.Exito.Should().BeTrue();
+        handler.UltimaRuta.Should().EndWith("/123456/messages");
+
+        using var doc = JsonDocument.Parse(handler.UltimoCuerpo!);
+        var componentes = doc.RootElement.GetProperty("template").GetProperty("components");
+        componentes.GetArrayLength().Should().Be(2);
+
+        var body = componentes[0];
+        body.GetProperty("type").GetString().Should().Be("body");
+        body.GetProperty("parameters")[0].GetProperty("text").GetString().Should().Be("987654");
+
+        var boton = componentes[1];
+        boton.GetProperty("type").GetString().Should().Be("button");
+        boton.GetProperty("sub_type").GetString().Should().Be("url");
+        boton.GetProperty("index").GetString().Should().Be("0");
+        boton.GetProperty("parameters")[0].GetProperty("text").GetString().Should().Be("987654");
+    }
+
+    [Fact]
+    public async Task EnviarPlantillaAutenticacion_RespuestaError_DevuelveFalloConDetalleDeMeta()
+    {
+        var secretos = Substitute.For<ISecretProvider>();
+        secretos.ObtenerSecretoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("token-de-prueba");
+        const string cuerpoError =
+            "{\"error\":{\"message\":\"Unsupported post request.\",\"type\":\"GraphMethodException\",\"code\":100,\"fbtrace_id\":\"AbC123\"}}";
+        var handler = new HandlerCapturador(HttpStatusCode.NotFound, cuerpoError);
+        var gateway = Construir(secretos, handler, new OpcionesWhatsApp { PhoneNumberId = "123456", MaxReintentos = 0 });
+
+        var plantilla = PlantillaWhatsApp.Crear("el_tejido_otp", "es", componentes: null);
+        var resultado = await gateway.EnviarPlantillaAutenticacionAsync(
+            "573001112233",
+            plantilla,
+            "987654",
+            TipoEnvioMensaje.Autenticacion,
+            CancellationToken.None);
+
+        resultado.Exito.Should().BeFalse();
+        resultado.Error.Should().Contain("HTTP 404");
+        resultado.Error.Should().Contain("code=100");
+        resultado.Error.Should().Contain("fbtrace_id=AbC123");
+    }
+
     private static WhatsAppGateway Construir()
         => Construir(Substitute.For<ISecretProvider>());
 
@@ -169,6 +231,37 @@ public sealed class WhatsAppGatewayTests
             Options.Create(new OpcionesWhatsApp()),
             new RelojFijo(DateTimeOffset.UnixEpoch),
             NullLogger<WhatsAppGateway>.Instance);
+
+    private static WhatsAppGateway Construir(ISecretProvider secretos, HttpMessageHandler handler, OpcionesWhatsApp opciones)
+        => new(
+            new HttpClient(handler),
+            secretos,
+            Options.Create(opciones),
+            new RelojFijo(DateTimeOffset.UnixEpoch),
+            NullLogger<WhatsAppGateway>.Instance);
+
+    private sealed class HandlerCapturador : HttpMessageHandler
+    {
+        private readonly HttpStatusCode _estado;
+        private readonly string _cuerpoRespuesta;
+
+        public HandlerCapturador(HttpStatusCode estado, string cuerpoRespuesta)
+        {
+            _estado = estado;
+            _cuerpoRespuesta = cuerpoRespuesta;
+        }
+
+        public string? UltimaRuta { get; private set; }
+
+        public string? UltimoCuerpo { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            UltimaRuta = request.RequestUri?.ToString();
+            UltimoCuerpo = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(_estado) { Content = new StringContent(_cuerpoRespuesta) };
+        }
+    }
 
     private static string Hmac(byte[] cuerpo, string secreto)
     {

@@ -807,6 +807,12 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             Enviados.Enqueue((numeroE164, string.Join(" ", variables.Values), tipo));
             return Task.FromResult(EnvioResultado.Ok("wamid.tpl." + Interlocked.Increment(ref _secuencia)));
         }
+
+        public Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(string numeroE164, PlantillaWhatsApp plantilla, string codigo, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
+        {
+            Enviados.Enqueue((numeroE164, codigo, tipo));
+            return Task.FromResult(EnvioResultado.Ok("wamid.auth." + Interlocked.Increment(ref _secuencia)));
+        }
     }
 
     private sealed class LlmClientFake : ILlmClient

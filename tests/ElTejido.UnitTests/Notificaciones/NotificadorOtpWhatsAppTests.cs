@@ -16,14 +16,14 @@ public sealed class NotificadorOtpWhatsAppTests
     private const string Codigo = "123456";
 
     [Fact]
-    public async Task EnviarCodigoAsync_ConPlantilla_EnviaPlantillaConCodigoComoVariableYTipoAutenticacion()
+    public async Task EnviarCodigoAsync_ConPlantilla_EnviaPlantillaAutenticacionConCodigoYTipoAutenticacion()
     {
         var gateway = Substitute.For<IWhatsAppGateway>();
         gateway
-            .EnviarPlantillaAsync(
+            .EnviarPlantillaAutenticacionAsync(
                 Arg.Any<string>(),
                 Arg.Any<PlantillaWhatsApp>(),
-                Arg.Any<IReadOnlyDictionary<string, string>>(),
+                Arg.Any<string>(),
                 Arg.Any<TipoEnvioMensaje>(),
                 Arg.Any<CancellationToken>())
             .Returns(EnvioResultado.Ok("wamid.1"));
@@ -33,15 +33,14 @@ public sealed class NotificadorOtpWhatsAppTests
             Habilitado = true,
             PlantillaNombre = "el_tejido_otp",
             PlantillaIdioma = "es",
-            NombreVariableCodigo = "codigo",
         });
 
         await notificador.EnviarCodigoAsync(NumeroWhatsApp.FromNormalized(Numero), Codigo, CancellationToken.None);
 
-        await gateway.Received(1).EnviarPlantillaAsync(
+        await gateway.Received(1).EnviarPlantillaAutenticacionAsync(
             Numero,
             Arg.Is<PlantillaWhatsApp>(p => p.Nombre == "el_tejido_otp" && p.Idioma == "es"),
-            Arg.Is<IReadOnlyDictionary<string, string>>(v => v["codigo"] == Codigo),
+            Codigo,
             TipoEnvioMensaje.Autenticacion,
             Arg.Any<CancellationToken>());
     }
@@ -51,13 +50,13 @@ public sealed class NotificadorOtpWhatsAppTests
     {
         var gateway = Substitute.For<IWhatsAppGateway>();
         gateway
-            .EnviarPlantillaAsync(
+            .EnviarPlantillaAutenticacionAsync(
                 Arg.Any<string>(),
                 Arg.Any<PlantillaWhatsApp>(),
-                Arg.Any<IReadOnlyDictionary<string, string>>(),
+                Arg.Any<string>(),
                 Arg.Any<TipoEnvioMensaje>(),
                 Arg.Any<CancellationToken>())
-            .Returns(EnvioResultado.Fallo("WhatsApp rechazo el envio (HTTP 400)."));
+            .Returns(EnvioResultado.Fallo("WhatsApp rechazo el envio (HTTP 404)."));
 
         var notificador = Construir(gateway, new OpcionesOtpWhatsApp
         {
@@ -76,10 +75,10 @@ public sealed class NotificadorOtpWhatsAppTests
     {
         var gateway = Substitute.For<IWhatsAppGateway>();
         gateway
-            .EnviarPlantillaAsync(
+            .EnviarPlantillaAutenticacionAsync(
                 Arg.Any<string>(),
                 Arg.Any<PlantillaWhatsApp>(),
-                Arg.Any<IReadOnlyDictionary<string, string>>(),
+                Arg.Any<string>(),
                 Arg.Any<TipoEnvioMensaje>(),
                 Arg.Any<CancellationToken>())
             .Returns<EnvioResultado>(_ => throw new HttpRequestException("boom"));
@@ -109,7 +108,7 @@ public sealed class NotificadorOtpWhatsAppTests
 
         await notificador.EnviarCodigoAsync(NumeroWhatsApp.FromNormalized(Numero), Codigo, CancellationToken.None);
 
-        await gateway.DidNotReceiveWithAnyArgs().EnviarPlantillaAsync(
+        await gateway.DidNotReceiveWithAnyArgs().EnviarPlantillaAutenticacionAsync(
             default!,
             default!,
             default!,

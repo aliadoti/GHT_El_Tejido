@@ -193,6 +193,9 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
         public Task<EnvioResultado> EnviarPlantillaAsync(string numeroE164, PlantillaWhatsApp plantilla, IReadOnlyDictionary<string, string> variables, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
             => Task.FromResult(EnvioResultado.Ok("wamid.out"));
+
+        public Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(string numeroE164, PlantillaWhatsApp plantilla, string codigo, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
+            => Task.FromResult(EnvioResultado.Ok("wamid.out"));
     }
 
     private sealed class ResolutorFake : IResolutorParticipante

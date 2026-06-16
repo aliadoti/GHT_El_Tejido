@@ -23,6 +23,20 @@ public interface IWhatsAppGateway
         TipoEnvioMensaje tipo,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Envia una plantilla de <b>autenticacion</b> de Meta (categoria Authentication) con boton de
+    /// codigo (copy-code / one-tap autofill). Meta exige que el codigo viaje tanto en el componente
+    /// <c>body</c> como en el componente <c>button</c> (sub_type <c>url</c>, index <c>0</c>); este
+    /// metodo arma ambos a partir del mismo <paramref name="codigo"/>. Necesaria para el OTP de login
+    /// (06 §4.2e): es un mensaje iniciado por el negocio, sin ventana de 24h (05 §2.2).
+    /// </summary>
+    Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(
+        string numeroE164,
+        PlantillaWhatsApp plantilla,
+        string codigo,
+        TipoEnvioMensaje tipo,
+        CancellationToken cancellationToken);
+
     /// <summary>Envia texto libre (solo permitido dentro de la ventana de servicio de 24h, 05 §2.2).</summary>
     Task<EnvioResultado> EnviarTextoAsync(
         string numeroE164,

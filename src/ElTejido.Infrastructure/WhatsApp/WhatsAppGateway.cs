@@ -123,6 +123,43 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
         return EnviarAsync(cuerpo, tipo, cancellationToken);
     }
 
+    public Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(
+        string numeroE164,
+        PlantillaWhatsApp plantilla,
+        string codigo,
+        TipoEnvioMensaje tipo,
+        CancellationToken cancellationToken)
+    {
+        // Meta exige el codigo en el body y en el boton (sub_type=url, index=0) para las plantillas
+        // de categoria Authentication con boton copy-code/one-tap.
+        var parametroCodigo = new[] { new { type = "text", text = codigo } };
+
+        var cuerpo = new
+        {
+            messaging_product = "whatsapp",
+            to = numeroE164,
+            type = "template",
+            template = new
+            {
+                name = plantilla.Nombre,
+                language = new { code = plantilla.Idioma },
+                components = new object[]
+                {
+                    new { type = "body", parameters = parametroCodigo },
+                    new
+                    {
+                        type = "button",
+                        sub_type = "url",
+                        index = "0",
+                        parameters = parametroCodigo,
+                    },
+                },
+            },
+        };
+
+        return EnviarAsync(cuerpo, tipo, cancellationToken);
+    }
+
     public Task<EnvioResultado> EnviarTextoAsync(
         string numeroE164,
         string texto,
@@ -179,13 +216,17 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
 
                 if (!EsTransitorio(respuesta.StatusCode) || intento >= _opciones.MaxReintentos)
                 {
+                    // Se registra el detalle de error de Meta (code/subcode/message/fbtrace_id) para
+                    // diagnosticar; el cuerpo de error de Graph API no contiene nuestros secretos.
+                    var detalle = await LeerDetalleErrorAsync(respuesta, cancellationToken);
                     _logger.LogWarning(
-                        "Envio {Tipo} fallido tras {Intentos} intento(s): HTTP {Codigo}.",
+                        "Envio {Tipo} fallido tras {Intentos} intento(s): HTTP {Codigo}. Detalle de Meta: {Detalle}",
                         tipo,
                         intento + 1,
-                        (int)respuesta.StatusCode);
+                        (int)respuesta.StatusCode,
+                        detalle);
                     return EnvioResultado.Fallo(
-                        $"WhatsApp rechazo el envio (HTTP {(int)respuesta.StatusCode}). Revisa el token y el PhoneNumberId.");
+                        $"WhatsApp rechazo el envio (HTTP {(int)respuesta.StatusCode}). {detalle}");
                 }
             }
             catch (HttpRequestException ex) when (intento < _opciones.MaxReintentos)
@@ -222,6 +263,40 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Extrae un detalle diciente del cuerpo de error de Graph API (objeto <c>error</c> con
+    /// <c>code</c>/<c>error_subcode</c>/<c>message</c>/<c>fbtrace_id</c>) para el log y el
+    /// <see cref="EnvioResultado"/>. El cuerpo de error de Meta no contiene nuestros secretos.
+    /// </summary>
+    private static async Task<string> LeerDetalleErrorAsync(HttpResponseMessage respuesta, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var json = await respuesta.Content.ReadAsStringAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return "(sin cuerpo de error)";
+            }
+
+            using var documento = JsonDocument.Parse(json);
+            if (documento.RootElement.TryGetProperty("error", out var error))
+            {
+                var mensaje = error.TryGetProperty("message", out var m) ? m.GetString() : null;
+                var codigo = error.TryGetProperty("code", out var c) ? c.ToString() : "?";
+                var subcodigo = error.TryGetProperty("error_subcode", out var s) ? s.ToString() : null;
+                var trace = error.TryGetProperty("fbtrace_id", out var t) ? t.GetString() : null;
+                var sub = subcodigo is null ? string.Empty : $" subcode={subcodigo}";
+                return $"code={codigo}{sub} message=\"{mensaje}\" fbtrace_id={trace}";
+            }
+
+            return json.Length > 500 ? json[..500] : json;
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or HttpRequestException)
+        {
+            return "(cuerpo de error no legible)";
+        }
     }
 
     private TimeSpan CalcularBackoff(int intento)
