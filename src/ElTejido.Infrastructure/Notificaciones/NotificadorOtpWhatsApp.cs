@@ -44,6 +44,13 @@ public sealed class NotificadorOtpWhatsApp : INotificadorOtp
 
         // Plantilla de categoria Authentication (con boton copy-code/one-tap): el codigo se envia en
         // el body y en el boton (lo arma el gateway). Solo se necesita el nombre/idioma de la plantilla.
+        // Se loguea name+idioma (sin codigo ni numero) para diagnosticar 132001 (name+language que no
+        // resuelve): el idioma debe ser el codigo exacto de la plantilla aprobada (p. ej. es_CO).
+        _logger.LogInformation(
+            "Enviando OTP por WhatsApp con plantilla '{Plantilla}' idioma '{Idioma}'.",
+            _opciones.PlantillaNombre,
+            _opciones.PlantillaIdioma);
+
         var plantilla = PlantillaWhatsApp.Crear(
             _opciones.PlantillaNombre,
             _opciones.PlantillaIdioma,
