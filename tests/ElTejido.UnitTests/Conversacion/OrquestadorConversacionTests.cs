@@ -53,16 +53,20 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
-    public async Task Procesar_RecomendacionCerrar_EnviaCierreCompilaYCierra()
+    public async Task Procesar_PrimerTurnoExito_CompilaOfreceMejoraYNoCierra()
     {
+        // Aunque el LLM recomiende cerrar, la primera evaluacion valida SIEMPRE ofrece una mejora.
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
-        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
         await _compilador.Received(1).CompilarAsync(Arg.Any<SolicitudCompilacion>(), Arg.Any<CancellationToken>());
-        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+        _conversaciones.Ultima!.RepreguntasUsadas.Should().Be(1);
         await _respuestas.Received().GuardarRespuestaAsync(
             Arg.Is<Respuesta>(r => r.Estado == EstadoRespuesta.Evaluada), Arg.Any<CancellationToken>());
         await _participantes.Received().GuardarParticipanteAsync(
@@ -70,31 +74,17 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
-    public async Task Procesar_Repreguntar_EnviaRepreguntaYNoCierra()
+    public async Task Procesar_SegundoTurno_ReEvaluaYCierra_ContandoUltimaEvaluacion()
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
-            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Cuanto ahorra?")));
-
-        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
-
-        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
-        await _compilador.DidNotReceiveWithAnyArgs().CompilarAsync(default!, default);
-        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
-        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
-        _conversaciones.Ultima!.RepreguntasUsadas.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task Procesar_SegundoTurno_SiempreCierra_TopeUnaRepregunta()
-    {
-        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
-            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Otra?")));
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
         var orquestador = Construir();
 
         await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Idea"), CancellationToken.None);
-        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Repregunta respondida"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Idea mejorada"), CancellationToken.None);
 
-        // Segundo turno: aunque el LLM sugiera repreguntar, el tope (1) obliga a cerrar.
+        // Turno 1 ofrece mejora; turno 2 re-evalua y, agotado el cupo (1), cierra.
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
         await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
         await _evaluador.Received(2).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
@@ -201,19 +191,23 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
-    public async Task Procesar_SegundoMensajeTrasPrimerContacto_EvaluaComoRespuesta()
+    public async Task Procesar_SegundoMensajeTrasPrimerContacto_EvaluaYOfreceMejora()
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
         var orquestador = Construir();
         var frio = ParticipanteFrio();
 
+        // 1) "Hola" -> pregunta; 2) respuesta -> evalua y ofrece mejora; 3) mejora -> re-evalua y cierra.
         await orquestador.ProcesarMensajeEntranteAsync(frio, Mensaje("Hola"), CancellationToken.None);
         await orquestador.ProcesarMensajeEntranteAsync(frio, Mensaje("Mi idea real"), CancellationToken.None);
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
 
-        // El primer entrante solo envia la pregunta (Inicial); el segundo ya se evalua y cierra.
-        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await orquestador.ProcesarMensajeEntranteAsync(frio, Mensaje("Mi idea mejorada"), CancellationToken.None);
+
+        await _evaluador.Received(2).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
         await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Inicial, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
         await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
     }

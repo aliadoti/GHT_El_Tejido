@@ -44,7 +44,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
     private static readonly DateTimeOffset Epoca = DateTimeOffset.UnixEpoch;
 
     [Fact]
-    public async Task MensajeEntranteAutorizado_RecorreElPipelineYCierraElHilo()
+    public async Task MensajeEntranteAutorizado_RecorreElPipelineYOfreceMejora()
     {
         var gateway = new GatewayDePrueba();
         var conversaciones = new ConversacionesFake();
@@ -62,11 +62,14 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         // El procesamiento es asincrono (worker de cola); se espera por el efecto observable.
         await EsperarAsync(() => !gateway.Enviados.IsEmpty);
 
+        // Tras la primera evaluacion valida el orquestador ofrece SIEMPRE una mejora (05 §4.4):
+        // envia la retro + invitacion como Repregunta y deja el hilo abierto esperando el ajuste.
         gateway.Enviados.Should().ContainSingle();
-        gateway.Enviados.First().Tipo.Should().Be(TipoEnvioMensaje.Cierre);
+        gateway.Enviados.First().Tipo.Should().Be(TipoEnvioMensaje.Repregunta);
 
-        await EsperarAsync(() => conversaciones.Ultima is { Estado: EstadoConversacion.Cerrada });
-        conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        await EsperarAsync(() => conversaciones.Ultima is { EstadoMaquina: EstadoMaquinaConversacion.EsperandoRepregunta });
+        conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
+        conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
     }
 
     private static WebApplicationFactory<Program> Construir(GatewayDePrueba gateway, ConversacionesFake conversaciones)

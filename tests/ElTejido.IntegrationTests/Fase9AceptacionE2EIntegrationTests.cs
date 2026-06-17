@@ -83,11 +83,13 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         using var webhook = await EnviarWebhookAsync(client, "wamid.e2e.1", "Mi idea reduce desperdicio operativo.");
         webhook.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await EsperarAsync(() => whatsapp.Enviados.Any(e => e.Tipo == TipoEnvioMensaje.Cierre));
+        // Tras la primera evaluacion valida el orquestador ofrece SIEMPRE una mejora (05 §4.4):
+        // envia la retro como Repregunta y deja el hilo abierto. La evaluacion y el Markdown ya
+        // quedan persistidos en este primer turno (el ultimo intento seria el definitivo).
+        await EsperarAsync(() => whatsapp.Enviados.Any(e => e.Tipo == TipoEnvioMensaje.Repregunta));
         whatsapp.Enviados.Should().Contain(e =>
-            e.Tipo == TipoEnvioMensaje.Cierre
-            && e.Texto.Contains("Buena idea", StringComparison.Ordinal)
-            && e.Texto.Contains("Gracias por participar", StringComparison.Ordinal));
+            e.Tipo == TipoEnvioMensaje.Repregunta
+            && e.Texto.Contains("Buena idea", StringComparison.Ordinal));
 
         await EsperarAsync(() => store.Respuestas.Any() && store.Artefactos.Any());
         store.Evaluaciones.Should().ContainSingle(e => e.ConfigLlmRef.StartsWith("llm_", StringComparison.Ordinal));

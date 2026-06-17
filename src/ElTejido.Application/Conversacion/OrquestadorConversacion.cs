@@ -39,6 +39,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private const string SaludoPrimerContacto =
         "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
 
+    /// <summary>
+    /// Invitacion a mejorar la respuesta tras la primera evaluacion (05 §4.4). El siguiente mensaje
+    /// se re-evalua y cierra la participacion contando esa ultima version.
+    /// </summary>
+    private const string InvitacionMejora =
+        "Si quieres, puedes enviar una version mejorada de tu respuesta con base en esta "
+        + "retroalimentacion y la tomare en cuenta (es tu ultimo ajuste). Si ya estas conforme, "
+        + "no necesitas responder.";
+
     private readonly IRepositorioConversaciones _conversaciones;
     private readonly IRepositorioRespuestas _respuestas;
     private readonly IRepositorioParticipantes _participantes;
@@ -134,14 +143,24 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada, ahora, cancellationToken);
 
         var evaluacion = resultado.Evaluacion;
-        var puedeRepreguntar = resultado is ResultadoEvaluacion.Exito
-            && evaluacion.Recomendacion == Domain.Evaluacion.RecomendacionEvaluacion.Repreguntar
-            && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas
-            && !string.IsNullOrWhiteSpace(evaluacion.RepreguntaSugerida);
 
-        if (puedeRepreguntar)
+        // El Markdown se compila por cada evaluacion valida (cada intento queda con su artefacto;
+        // el ultimo es el definitivo). En fallback no se compila (08 §6).
+        if (!esFallback)
         {
-            var texto = Combinar(evaluacion.RetroalimentacionEnviada, evaluacion.RepreguntaSugerida!);
+            await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
+        }
+
+        // Mejora determinista (05 §4.4): tras una evaluacion valida se ofrece SIEMPRE una revision
+        // (hasta MaxRepreguntas, default 1) con la retro como base; el siguiente mensaje se re-evalua
+        // y, agotado el cupo, cierra contando la ultima evaluacion. En fallback no se ofrece (se cierra).
+        var ofrecerMejora = !esFallback && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
+        if (ofrecerMejora)
+        {
+            var invitacion = string.IsNullOrWhiteSpace(evaluacion.RepreguntaSugerida)
+                ? InvitacionMejora
+                : evaluacion.RepreguntaSugerida!.Trim() + "\n\n" + InvitacionMejora;
+            var texto = Combinar(evaluacion.RetroalimentacionEnviada, invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
 
             conversacion = conversacion.RegistrarRepregunta();
@@ -149,14 +168,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        // Cierre: retro + agradecimiento en un solo mensaje (tipo Cierre); compila Markdown si hubo evaluacion valida.
+        // Cierre: retro + agradecimiento en un solo mensaje (tipo Cierre).
         var cierre = Combinar(evaluacion.RetroalimentacionEnviada, campania.ConfigConversacional.MensajeCierre);
         await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
-
-        if (!esFallback)
-        {
-            await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
-        }
 
         conversacion = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
