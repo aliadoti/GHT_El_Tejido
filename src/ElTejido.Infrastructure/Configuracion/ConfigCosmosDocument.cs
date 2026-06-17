@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Configuracion;
 using Newtonsoft.Json;
@@ -159,7 +160,7 @@ internal sealed class ConfigCosmosDocument
             Modelo = config.Modelo,
             Endpoint = config.Endpoint,
             ApiKeyRef = config.ApiKeyRef,
-            Parametros = config.Parametros,
+            Parametros = NormalizeParametros(config.Parametros),
             LimitesTokens = LimitesTokensDocument.FromDomain(config.LimitesTokens),
             TimeoutSegundos = config.TimeoutSegundos,
             MaxReintentos = config.MaxReintentos,
@@ -190,8 +191,27 @@ internal sealed class ConfigCosmosDocument
         => parametros?.ToDictionary(p => p.Key, p => NormalizeValue(p.Value), StringComparer.Ordinal)
             ?? new Dictionary<string, object?>();
 
+    // Convierte los valores de parametros a escalares nativos antes de persistir/al leer. La API los
+    // entrega como System.Text.Json.JsonElement y Cosmos como Newtonsoft.JValue; sin esto un numero
+    // (p. ej. temperature 0.2) se serializaba como objeto y el proveedor LLM lo rechazaba (400).
     private static object? NormalizeValue(object? value)
-        => value is JValue jValue ? jValue.Value : value;
+        => value switch
+        {
+            JValue jValue => jValue.Value,
+            JsonElement element => FromJsonElement(element),
+            _ => value,
+        };
+
+    private static object? FromJsonElement(JsonElement element)
+        => element.ValueKind switch
+        {
+            JsonValueKind.Number => element.TryGetInt64(out var entero) ? entero : element.GetDouble(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => element.GetRawText(),
+        };
 
     private static string ToCosmosEstadoRubrica(EstadoRubrica estado)
         => estado == EstadoRubrica.Activa ? "activa" : "archivada";

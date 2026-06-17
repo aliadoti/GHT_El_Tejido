@@ -5,6 +5,7 @@ using ElTejido.Application.Seguridad;
 using ElTejido.Infrastructure.Llm;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Newtonsoft.Json.Linq;
 
 namespace ElTejido.UnitTests.Evaluacion;
 
@@ -59,6 +60,51 @@ public sealed class LlmClientHttpTests
         document.RootElement.GetProperty("system").GetString().Should().Contain("Devuelve JSON");
         document.RootElement.GetProperty("messages")[0].GetProperty("role").GetString().Should().Be("user");
         document.RootElement.TryGetProperty("response_format", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CompletarJsonAsync_OmiteParametrosNoEscalares_YEnviaEscalares()
+    {
+        var handler = new HandlerCaptura(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent("""
+                { "choices": [ { "message": { "content": "{\"recomendacion\":\"cerrar\"}" } } ] }
+                """),
+        });
+        var client = new LlmClientHttp(
+            new HttpClient(handler),
+            new SecretosFake(),
+            TimeProvider.System,
+            NullLogger<LlmClientHttp>.Instance);
+
+        using var numero = JsonDocument.Parse("0.9");
+        var parametros = new Dictionary<string, object?>
+        {
+            // Valor corrupto (objeto en lugar de numero): no debe enviarse al proveedor (causaba HTTP 400).
+            ["temperature"] = JObject.Parse("""{ "valueKind": 4 }"""),
+            // JsonElement numerico (como llega de la API): debe enviarse como numero.
+            ["top_p"] = numero.RootElement.Clone(),
+            // Escalar nativo: debe enviarse tal cual.
+            ["seed"] = 42,
+        };
+
+        await client.CompletarJsonAsync(
+            new LlmRequest(
+                "OpenRouter",
+                "https://openrouter.ai/api/v1",
+                "openai/gpt-4o-mini",
+                "key",
+                new[] { new LlmMensaje(LlmMensaje.RolUsuario, "Respuesta como dato.") },
+                parametros,
+                800,
+                30,
+                0),
+            CancellationToken.None);
+
+        using var document = JsonDocument.Parse(handler.Body!);
+        document.RootElement.TryGetProperty("temperature", out _).Should().BeFalse();
+        document.RootElement.GetProperty("top_p").GetDouble().Should().Be(0.9);
+        document.RootElement.GetProperty("seed").GetInt64().Should().Be(42);
     }
 
     private sealed class SecretosFake : ISecretProvider

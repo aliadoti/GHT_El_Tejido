@@ -5,6 +5,7 @@ using System.Text.Json;
 using ElTejido.Application.Evaluacion;
 using ElTejido.Application.Seguridad;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace ElTejido.Infrastructure.Llm;
 
@@ -120,9 +121,9 @@ public sealed class LlmClientHttp : ILlmClient
         // Parametros configurables (temperature, top_p, ...) sin sobreescribir los campos base.
         foreach (var parametro in request.Parametros)
         {
-            if (!cuerpo.ContainsKey(parametro.Key))
+            if (!cuerpo.ContainsKey(parametro.Key) && TryNormalizarParametro(parametro.Value, out var valor))
             {
-                cuerpo[parametro.Key] = parametro.Value;
+                cuerpo[parametro.Key] = valor;
             }
         }
 
@@ -153,9 +154,11 @@ public sealed class LlmClientHttp : ILlmClient
 
         foreach (var parametro in request.Parametros)
         {
-            if (!EsParametroReservadoAnthropic(parametro.Key) && !cuerpo.ContainsKey(parametro.Key))
+            if (!EsParametroReservadoAnthropic(parametro.Key)
+                && !cuerpo.ContainsKey(parametro.Key)
+                && TryNormalizarParametro(parametro.Value, out var valor))
             {
-                cuerpo[parametro.Key] = parametro.Value;
+                cuerpo[parametro.Key] = valor;
             }
         }
 
@@ -241,6 +244,49 @@ public sealed class LlmClientHttp : ILlmClient
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return "(no se pudo leer el cuerpo)";
+        }
+    }
+
+    /// <summary>
+    /// Normaliza un parametro configurable a un escalar JSON nativo (numero/texto/bool). Los
+    /// <see cref="JsonElement"/> (System.Text.Json, via API) y <see cref="JValue"/> (Newtonsoft, via
+    /// Cosmos) se convierten a su valor; cualquier objeto/array u otro tipo se <b>omite</b> para no
+    /// enviar JSON invalido al proveedor (p. ej. un `temperature` corrupto como objeto -> 400).
+    /// </summary>
+    private static bool TryNormalizarParametro(object? value, out object? normalizado)
+    {
+        switch (value)
+        {
+            case string or bool or int or long or short or double or float or decimal:
+                normalizado = value;
+                return true;
+            case JsonElement element:
+                return TryDesdeJsonElement(element, out normalizado);
+            case JValue jValue:
+                return TryNormalizarParametro(jValue.Value, out normalizado);
+            default:
+                normalizado = null;
+                return false;
+        }
+    }
+
+    private static bool TryDesdeJsonElement(JsonElement element, out object? valor)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Number:
+                valor = element.TryGetInt64(out var entero) ? entero : element.GetDouble();
+                return true;
+            case JsonValueKind.String:
+                valor = element.GetString();
+                return true;
+            case JsonValueKind.True:
+            case JsonValueKind.False:
+                valor = element.GetBoolean();
+                return true;
+            default:
+                valor = null;
+                return false;
         }
     }
 
