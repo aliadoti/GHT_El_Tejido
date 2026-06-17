@@ -739,6 +739,12 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             lock (_sync) return Task.FromResult<IReadOnlyCollection<DominioConversacion>>(_conversaciones.Values.Where(c => c.CampaniaId == campaniaId).ToArray());
         }
 
+        public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
+        {
+            lock (_sync) return Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
+                _conversaciones.Values.Where(c => c.Estado == EstadoConversacion.Abierta).ToArray());
+        }
+
         public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
         {
             lock (_sync) return Task.FromResult<IReadOnlyCollection<Mensaje>>(_mensajes.Where(m => m.CampaniaId == campaniaId && m.ConversacionId == conversacionId).ToArray());

@@ -363,14 +363,24 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
 internal sealed class RepositorioConversacionesMemoria : IRepositorioConversaciones
 {
     private readonly ConcurrentDictionary<string, DominioConversacion> _conversaciones = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _ultimaActividad = new(StringComparer.Ordinal);
     private readonly List<Mensaje> _mensajes = [];
     private readonly object _msgLock = new();
 
     public Task GuardarConversacionAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
     {
         _conversaciones[conversacion.Id] = conversacion;
+        _ultimaActividad[conversacion.Id] = DateTimeOffset.UtcNow;
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
+            _conversaciones.Values
+                .Where(c => c.Estado == EstadoConversacion.Abierta
+                    && _ultimaActividad.TryGetValue(c.Id, out var actividad)
+                    && actividad < limite)
+                .ToArray());
 
     public Task<DominioConversacion?> ObtenerConversacionAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
     {

@@ -16,4 +16,9 @@ internal interface IConversationsCosmosContainer
         Microsoft.Azure.Cosmos.QueryDefinition query,
         string partitionKey,
         CancellationToken cancellationToken);
+
+    /// <summary>Consulta sin particion (cross-partition); usada por barridos de bajo volumen.</summary>
+    Task<IReadOnlyCollection<T>> QueryCrossPartitionAsync<T>(
+        Microsoft.Azure.Cosmos.QueryDefinition query,
+        CancellationToken cancellationToken);
 }

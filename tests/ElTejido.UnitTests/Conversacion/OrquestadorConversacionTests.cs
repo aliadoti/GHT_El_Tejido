@@ -302,6 +302,10 @@ public sealed class OrquestadorConversacionTests
         public Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(_conversaciones.Values.Where(c => c.CampaniaId == campaniaId).ToArray());
 
+        public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
+                _conversaciones.Values.Where(c => c.Estado == EstadoConversacion.Abierta).ToArray());
+
         public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Mensaje>>(Array.Empty<Mensaje>());
 

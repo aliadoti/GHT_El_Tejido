@@ -53,6 +53,22 @@ public sealed class RepositorioConversacionesCosmos : IRepositorioConversaciones
         return documentos.Select(d => d.ToDomain()).ToArray();
     }
 
+    public async Task<IReadOnlyCollection<Conversacion>> ListarAbiertasInactivasAsync(
+        DateTimeOffset limite,
+        CancellationToken cancellationToken)
+    {
+        // _ts es la marca de tiempo (epoch segundos) de la ultima escritura del documento en Cosmos;
+        // la conversacion se reescribe en cada turno, por lo que refleja su ultima actividad.
+        var query = new QueryDefinition(
+                "SELECT * FROM c WHERE c.type = @type AND c.estado = @estado AND c._ts < @limite")
+            .WithParameter("@type", ConversacionCosmosDocument.DocumentType)
+            .WithParameter("@estado", "abierta")
+            .WithParameter("@limite", limite.ToUnixTimeSeconds());
+
+        var documentos = await _container.QueryCrossPartitionAsync<ConversacionCosmosDocument>(query, cancellationToken);
+        return documentos.Select(d => d.ToDomain()).ToArray();
+    }
+
     public async Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(
         string campaniaId,
         string conversacionId,

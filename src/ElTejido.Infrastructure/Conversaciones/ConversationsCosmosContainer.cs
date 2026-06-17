@@ -65,4 +65,20 @@ internal sealed class ConversationsCosmosContainer : IConversationsCosmosContain
 
         return documents;
     }
+
+    public async Task<IReadOnlyCollection<T>> QueryCrossPartitionAsync<T>(
+        QueryDefinition query,
+        CancellationToken cancellationToken)
+    {
+        using var iterator = _container.GetItemQueryIterator<T>(query);
+
+        var documents = new List<T>();
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(cancellationToken);
+            documents.AddRange(page);
+        }
+
+        return documents;
+    }
 }

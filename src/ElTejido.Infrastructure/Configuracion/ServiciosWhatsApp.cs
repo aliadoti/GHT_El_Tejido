@@ -1,9 +1,11 @@
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.WhatsApp;
+using ElTejido.Infrastructure.Conversaciones;
 using ElTejido.Infrastructure.WhatsApp;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace ElTejido.Infrastructure.Configuracion;
 
@@ -22,6 +24,9 @@ public static class ServiciosWhatsApp
     {
         services.TryAddSingleton(TimeProvider.System);
         services.Configure<OpcionesWhatsApp>(configuration.GetSection(OpcionesWhatsApp.Seccion));
+        services.Configure<OpcionesConversacion>(configuration.GetSection(OpcionesConversacion.Seccion));
+        // POCO plano para que Application (sin Microsoft.Extensions.Options) lo consuma directo.
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<OpcionesConversacion>>().Value);
 
         services.AddHttpClient<IWhatsAppGateway, WhatsAppGateway>();
 
@@ -42,6 +47,10 @@ public static class ServiciosWhatsApp
             services.AddScoped<ProcesadorWebhookEntrante>();
             services.AddScoped<ProcesadorEnvio>();
             services.AddScoped<IServicioEnvios, ServicioEnvios>();
+
+            // Expiracion de conversaciones abandonadas (cierre por inactividad, parametrizable).
+            services.AddScoped<ServicioExpiracionConversaciones>();
+            services.AddHostedService<TrabajadorExpiracionConversaciones>();
         }
 
         return services;

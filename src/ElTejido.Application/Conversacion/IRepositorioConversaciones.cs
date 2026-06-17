@@ -20,6 +20,14 @@ public interface IRepositorioConversaciones
         string campaniaId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Hilos ABIERTOS (cualquier campania) cuya ultima actividad es anterior a <paramref name="limite"/>.
+    /// Sirve al barrido de expiracion para cerrarlos por inactividad.
+    /// </summary>
+    Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(
+        DateTimeOffset limite,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(
         string campaniaId,
         string conversacionId,
