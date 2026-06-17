@@ -42,11 +42,18 @@ public sealed class TrabajadorWebhook : BackgroundService
                 }
 
                 var resultado = await procesador.ProcesarAsync(payload, stoppingToken);
-                _logger.LogInformation("Webhook entrante procesado con resultado {Resultado}.", resultado);
+                _logger.LogInformation("Webhook entrante procesado con resultado {Resultado}.", resultado.Estado);
+
+                // Un numero rechazado por la resolucion (06 §3) se loguea en Warning con el motivo
+                // interno para diagnostico (nunca se revela al usuario; la respuesta sigue siendo neutral).
+                if (resultado.Estado == ResultadoProcesoEntrante.NoAutorizado)
+                {
+                    _logger.LogWarning("Webhook entrante rechazado por la resolucion: motivo {Motivo}.", resultado.Motivo);
+                }
 
                 // Un payload sin mensaje suele ser una notificacion de estado de un envio saliente; se
                 // loguea (fallos en Warning) para diagnosticar entregas aceptadas (200) pero no entregadas.
-                if (resultado == ResultadoProcesoEntrante.NoMensaje)
+                if (resultado.Estado == ResultadoProcesoEntrante.NoMensaje)
                 {
                     foreach (var linea in ResumenEstadosEntrega.Describir(payload))
                     {

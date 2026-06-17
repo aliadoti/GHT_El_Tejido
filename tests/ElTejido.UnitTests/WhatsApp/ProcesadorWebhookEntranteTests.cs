@@ -28,7 +28,7 @@ public sealed class ProcesadorWebhookEntranteTests
 
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
-        resultado.Should().Be(ResultadoProcesoEntrante.NoMensaje);
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.NoMensaje);
         await _dedupe.DidNotReceiveWithAnyArgs().IntentarRegistrarMensajeAsync(default!, default, default);
     }
 
@@ -41,7 +41,7 @@ public sealed class ProcesadorWebhookEntranteTests
 
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
-        resultado.Should().Be(ResultadoProcesoEntrante.Duplicado);
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.Duplicado);
         await _resolutor.DidNotReceiveWithAnyArgs().ResolverAsync(default!, default);
     }
 
@@ -56,7 +56,8 @@ public sealed class ProcesadorWebhookEntranteTests
 
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
-        resultado.Should().Be(ResultadoProcesoEntrante.NoAutorizado);
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.NoAutorizado);
+        resultado.Motivo.Should().Be(MotivoRechazo.NoMatriculado);
         await _orquestador.DidNotReceiveWithAnyArgs().ProcesarMensajeEntranteAsync(default!, default!, default);
     }
 
@@ -71,7 +72,7 @@ public sealed class ProcesadorWebhookEntranteTests
 
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
-        resultado.Should().Be(ResultadoProcesoEntrante.Procesado);
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.Procesado);
         await _orquestador.Received(1).ProcesarMensajeEntranteAsync(
             Arg.Any<ParticipanteResuelto>(),
             Arg.Any<MensajeEntrante>(),

@@ -20,6 +20,12 @@ public enum ResultadoProcesoEntrante
 }
 
 /// <summary>
+/// Desenlace del procesamiento mas el motivo de rechazo cuando aplica (<see cref="ResultadoProcesoEntrante.NoAutorizado"/>).
+/// El motivo es interno (06 §3.3): se registra/loguea para diagnostico, nunca se revela al usuario.
+/// </summary>
+public readonly record struct ResultadoEntrante(ResultadoProcesoEntrante Estado, MotivoRechazo? Motivo = null);
+
+/// <summary>
 /// Procesa un payload entrante del webhook tras el ack 200 (05 §2.4 pasos a-g): parsea, aplica
 /// idempotencia, resuelve el participante, aplica el guardrail de longitud (10 §2) y entrega el
 /// control al orquestador. Logica pura de aplicacion: el <c>IHostedService</c> que la invoca
@@ -47,14 +53,14 @@ public sealed class ProcesadorWebhookEntrante
         _tiempo = tiempo;
     }
 
-    public async Task<ResultadoProcesoEntrante> ProcesarAsync(
+    public async Task<ResultadoEntrante> ProcesarAsync(
         WhatsAppWebhookPayload payload,
         CancellationToken cancellationToken)
     {
         var mensaje = _gateway.ParsearWebhook(payload);
         if (mensaje is null)
         {
-            return ResultadoProcesoEntrante.NoMensaje;
+            return new ResultadoEntrante(ResultadoProcesoEntrante.NoMensaje);
         }
 
         // Idempotencia por whatsappMessageId: si ya estaba registrado, es un reintento de Meta (03 §4).
@@ -64,14 +70,16 @@ public sealed class ProcesadorWebhookEntrante
             cancellationToken);
         if (!primeraVez)
         {
-            return ResultadoProcesoEntrante.Duplicado;
+            return new ResultadoEntrante(ResultadoProcesoEntrante.Duplicado);
         }
 
         var resolucion = await _resolutor.ResolverAsync(mensaje.NumeroE164, cancellationToken);
         if (resolucion is not ResultadoResolucion.Autorizado autorizado)
         {
-            // El rechazo neutral ya quedo registrado en LogSeguridad por la resolucion (06 §3.3).
-            return ResultadoProcesoEntrante.NoAutorizado;
+            // El rechazo neutral ya quedo registrado en LogSeguridad por la resolucion (06 §3.3);
+            // el motivo se devuelve para diagnostico interno (logs), nunca se revela al usuario.
+            var motivo = (resolucion as ResultadoResolucion.NoAutorizado)?.Motivo;
+            return new ResultadoEntrante(ResultadoProcesoEntrante.NoAutorizado, motivo);
         }
 
         var participante = autorizado.Participante;
@@ -83,6 +91,6 @@ public sealed class ProcesadorWebhookEntrante
             : mensaje;
 
         await _orquestador.ProcesarMensajeEntranteAsync(participante, mensajeAcotado, cancellationToken);
-        return ResultadoProcesoEntrante.Procesado;
+        return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
     }
 }
