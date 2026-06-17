@@ -30,6 +30,21 @@ public sealed class ConstructorMensajesEvaluacionTests
         mensajes[1].Contenido.Should().NotContain(TextoRespuesta);
     }
 
+    [Fact]
+    public void Construir_SystemIncluyeEsquemaJsonExplicitoConClavesYEscala()
+    {
+        var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto());
+        var system = mensajes[0].Contenido;
+
+        // El modelo recibe las claves EXACTAS del contrato (08 §4), sin depender del prompt del admin.
+        system.Should().Contain("retroalimentacion_usuario");
+        system.Should().Contain("calificacion_total");
+        system.Should().Contain("calificacion_por_criterio");
+        system.Should().Contain("recomendacion");
+        // Y la escala concreta de la rubrica (1 a 5).
+        system.Should().Contain("entre 1 y 5");
+    }
+
     private static ContextoEvaluacion CrearContexto()
     {
         var pregunta = FabricasDominio.CrearPregunta("p_1", 1);

@@ -67,7 +67,7 @@ public sealed class EvaluadorLlmTests
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 
         resultado.Should().BeOfType<ResultadoEvaluacion.Fallback>();
-        ((ResultadoEvaluacion.Fallback)resultado).Motivo.Should().Be("salida_invalida");
+        ((ResultadoEvaluacion.Fallback)resultado).Motivo.Should().StartWith("salida_invalida");
     }
 
     [Fact]

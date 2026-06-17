@@ -73,9 +73,14 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             // salida no parseable -> fallback.
         }
 
-        if (salida is null || !EsSalidaValida(salida, contexto.RubricaSnapshot.Escala, out var recomendacion))
+        if (salida is null)
         {
-            return await FallbackAsync(contexto, "salida_invalida", cancellationToken);
+            return await FallbackAsync(contexto, "salida_invalida:no_json", cancellationToken);
+        }
+
+        if (!EsSalidaValida(salida, contexto.RubricaSnapshot.Escala, out var recomendacion, out var razonInvalida))
+        {
+            return await FallbackAsync(contexto, "salida_invalida:" + razonInvalida, cancellationToken);
         }
 
         if (salida.AnomaliaSeguridad)
@@ -104,33 +109,45 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     private static bool EsSalidaValida(
         SalidaLlmEvaluacion salida,
         EscalaRubrica escala,
-        out RecomendacionEvaluacion recomendacion)
+        out RecomendacionEvaluacion recomendacion,
+        out string razon)
     {
         recomendacion = RecomendacionEvaluacion.Cerrar;
+        razon = string.Empty;
 
         if (string.IsNullOrWhiteSpace(salida.RetroalimentacionUsuario))
         {
+            razon = "retro_vacia";
             return false;
         }
 
         if (!TryMapearRecomendacion(salida.Recomendacion, out recomendacion))
         {
+            razon = "recomendacion_invalida";
             return false;
         }
 
         if (recomendacion == RecomendacionEvaluacion.Repreguntar
             && string.IsNullOrWhiteSpace(salida.RepreguntaSugerida))
         {
+            razon = "repregunta_vacia";
             return false;
         }
 
         if (!EnEscala(salida.CalificacionTotal, escala))
         {
+            razon = "calificacion_fuera_de_escala";
             return false;
         }
 
-        return salida.CalificacionPorCriterio is null
-            || salida.CalificacionPorCriterio.All(c => EnEscala(c.Puntaje, escala));
+        if (salida.CalificacionPorCriterio is not null
+            && !salida.CalificacionPorCriterio.All(c => EnEscala(c.Puntaje, escala)))
+        {
+            razon = "criterio_fuera_de_escala";
+            return false;
+        }
+
+        return true;
     }
 
     private DominioEvaluacion ConstruirEvaluacion(
