@@ -148,6 +148,10 @@ export class AdminApiService {
     return this.api.post<ConfigLlm>('/api/admin/config-llm', body);
   }
 
+  actualizarConfigLlm(id: string, body: unknown) {
+    return this.api.put<ConfigLlm>(`/api/admin/config-llm/${id}`, body);
+  }
+
   conversaciones(campaniaId: string) {
     return this.api.get<PagedResult<Conversacion>>('/api/admin/conversaciones', { campaniaId });
   }

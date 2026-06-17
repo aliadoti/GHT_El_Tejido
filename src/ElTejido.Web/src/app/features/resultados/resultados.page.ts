@@ -8,6 +8,7 @@ import {
   Conversacion,
   Evaluacion,
   Respuesta,
+  UsuarioAdmin,
 } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { formatApiError } from '../../shared-error';
@@ -53,7 +54,7 @@ import { formatApiError } from '../../shared-error';
           <ul class="compact-list">
             @for (conv of conversaciones(); track conv.id) {
               <li>
-                <strong>{{ conv.usuarioId }}</strong>
+                <strong>{{ nombreUsuario(conv.usuarioId) }}</strong>
                 <span>{{ conv.estado }} / {{ conv.estadoMaquina }}</span>
               </li>
             } @empty {
@@ -71,8 +72,14 @@ import { formatApiError } from '../../shared-error';
             @for (respuesta of respuestas(); track respuesta.id) {
               <li>
                 <button type="button" class="link-button" (click)="abrirRespuesta(respuesta.id)">
-                  {{ respuesta.usuarioId }}
+                  {{ nombreUsuario(respuesta.usuarioId) }}
                 </button>
+                <span
+                  class="status-badge"
+                  [class.badge-warn]="respuesta.estado === 'evaluacionPendiente'"
+                >
+                  {{ respuesta.estado === 'evaluacionPendiente' ? 'sin evaluar' : 'evaluada' }}
+                </span>
                 <span>{{ respuesta.texto }}</span>
               </li>
             } @empty {
@@ -90,9 +97,12 @@ import { formatApiError } from '../../shared-error';
             @for (artefacto of artefactos(); track artefacto.id) {
               <li>
                 <button type="button" class="link-button" (click)="abrirMarkdown(artefacto.id)">
-                  {{ artefacto.id }}
+                  {{ nombreUsuario(artefacto.usuarioId) }}
                 </button>
-                <span>v{{ artefacto.version }} - {{ artefacto.estado }}</span>
+                <span
+                  >{{ artefacto.tipoArtefacto }} · v{{ artefacto.version }} ·
+                  {{ artefacto.estado }}</span
+                >
               </li>
             } @empty {
               <li class="muted">Sin artefactos.</li>
@@ -101,26 +111,57 @@ import { formatApiError } from '../../shared-error';
         </section>
       </div>
 
-      @if (evaluacion(); as detalle) {
+      @if (respuestaSeleccionada(); as resp) {
         <section class="panel">
           <div class="panel-heading">
-            <h3>Evaluacion seleccionada</h3>
-            <span class="status-badge">{{ detalle.recomendacion }}</span>
+            <h3>Evaluacion de {{ nombreUsuario(resp.usuarioId) }}</h3>
+            @if (evaluacion(); as detalle) {
+              <span class="status-badge">{{ detalle.recomendacion }}</span>
+            }
           </div>
-          <div class="detail-grid">
-            <div>
-              <span class="muted">Calificacion</span>
-              <strong class="score">{{ detalle.calificacionTotal }}</strong>
+
+          @if (!evaluacion()) {
+            <p class="muted">Esta respuesta aun no tiene una evaluacion asociada.</p>
+          } @else if (esFallback()) {
+            <p class="form-error">
+              La evaluacion no se completo (fallback): no hay calificacion ni Markdown para esta
+              respuesta. Suele indicar un problema con el LLM (p. ej. API key invalida o endpoint
+              incorrecto). Corrige la configuracion LLM y vuelve a enviar la respuesta.
+            </p>
+            <div class="detail-grid">
+              <div class="wide">
+                <span class="muted">Respuesta del participante</span>
+                <p>{{ resp.texto }}</p>
+              </div>
+              <div class="wide">
+                <span class="muted">Detalle tecnico</span>
+                <p>{{ evaluacion()!.explicacion }}</p>
+              </div>
             </div>
-            <div>
-              <span class="muted">Temas</span>
-              <p>{{ detalle.temas.join(', ') || '-' }}</p>
+          } @else {
+            <div class="detail-grid">
+              <div>
+                <span class="muted">Calificacion</span>
+                <strong class="score">{{ evaluacion()!.calificacionTotal }}</strong>
+              </div>
+              <div>
+                <span class="muted">Temas</span>
+                <p>{{ evaluacion()!.temas.join(', ') || '-' }}</p>
+              </div>
+              <div class="wide">
+                <span class="muted">Respuesta del participante</span>
+                <p>{{ resp.texto }}</p>
+              </div>
+              <div class="wide">
+                <span class="muted">Retroalimentacion enviada</span>
+                <p>{{ evaluacion()!.retroalimentacionEnviada }}</p>
+              </div>
+              <div class="wide">
+                <span class="muted">Explicacion</span>
+                <p>{{ evaluacion()!.explicacion }}</p>
+              </div>
             </div>
-            <div class="wide">
-              <span class="muted">Explicacion</span>
-              <p>{{ detalle.explicacion }}</p>
-            </div>
-          </div>
+          }
         </section>
       }
 
@@ -156,8 +197,10 @@ export class ResultadosPage {
   protected readonly respuestas = signal<Respuesta[]>([]);
   protected readonly artefactos = signal<ArtefactoMarkdown[]>([]);
   protected readonly evaluacion = signal<Evaluacion | null>(null);
+  protected readonly respuestaSeleccionada = signal<Respuesta | null>(null);
   protected readonly markdown = signal<ArtefactoMarkdown | null>(null);
   protected readonly campanias = signal<Campania[]>([]);
+  protected readonly usuarios = signal<Map<string, UsuarioAdmin>>(new Map());
   protected readonly error = signal('');
   protected campaniaId = '';
 
@@ -166,6 +209,32 @@ export class ResultadosPage {
       next: (page) => this.campanias.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
+    // Mapa id -> usuario para mostrar nombre/area en vez del id tecnico en las listas.
+    this.api.usuarios({ pageSize: 500 }).subscribe({
+      next: (page) => this.usuarios.set(new Map(page.items.map((u) => [u.id, u]))),
+      error: () => {
+        /* el id tecnico sigue siendo el fallback; no bloquea la consulta de resultados */
+      },
+    });
+  }
+
+  /** Nombre legible del participante (con area si esta disponible); cae al id si no se encontro. */
+  nombreUsuario(usuarioId: string): string {
+    const usuario = this.usuarios().get(usuarioId);
+    if (!usuario) {
+      return usuarioId;
+    }
+    return usuario.area ? `${usuario.nombre} (${usuario.area})` : usuario.nombre;
+  }
+
+  /** Una evaluacion en fallback (08 §6) no tiene calificacion ni Markdown utilizables. */
+  esFallback(): boolean {
+    const respuesta = this.respuestaSeleccionada();
+    const evaluacion = this.evaluacion();
+    return (
+      respuesta?.estado === 'evaluacionPendiente' ||
+      (evaluacion?.explicacion?.startsWith('Evaluacion en fallback') ?? false)
+    );
   }
 
   loadAll() {
@@ -190,7 +259,10 @@ export class ResultadosPage {
 
   abrirRespuesta(id: string) {
     this.api.respuesta(this.campaniaId, id).subscribe({
-      next: (detalle) => this.evaluacion.set(detalle.evaluacion),
+      next: (detalle) => {
+        this.respuestaSeleccionada.set(detalle.respuesta);
+        this.evaluacion.set(detalle.evaluacion);
+      },
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
   }

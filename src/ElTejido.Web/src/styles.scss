@@ -393,6 +393,15 @@ th {
   font-weight: 700;
 }
 
+.status-badge.badge-warn {
+  background: rgb(219 43 9 / 8%);
+  color: var(--ght-rojo);
+}
+
+tbody tr.row-selected {
+  background: var(--ght-panel-suave);
+}
+
 .table-wrap {
   overflow-x: auto;
 }

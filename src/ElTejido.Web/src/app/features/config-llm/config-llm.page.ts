@@ -34,11 +34,12 @@ import { formatApiError } from '../../shared-error';
                   <th>Modelo</th>
                   <th>Key</th>
                   <th>Estado</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 @for (config of configs(); track config.id) {
-                  <tr>
+                  <tr [class.row-selected]="editandoId() === config.id">
                     <td>{{ config.nombre }}</td>
                     <td>{{ config.proveedor }}</td>
                     <td>{{ config.modelo }}</td>
@@ -46,10 +47,15 @@ import { formatApiError } from '../../shared-error';
                     <td>
                       <span class="status-badge">{{ config.estado }}</span>
                     </td>
+                    <td>
+                      <button type="button" class="link-button" (click)="editar(config)">
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="empty-cell">No hay configs LLM.</td>
+                    <td colspan="6" class="empty-cell">No hay configs LLM.</td>
                   </tr>
                 }
               </tbody>
@@ -58,8 +64,15 @@ import { formatApiError } from '../../shared-error';
         </section>
 
         <section class="panel">
-          <div class="panel-heading"><h3>Nueva configuracion</h3></div>
-          <form class="form-grid" (ngSubmit)="crear()">
+          <div class="panel-heading">
+            <h3>{{ editandoId() ? 'Editar configuracion' : 'Nueva configuracion' }}</h3>
+            @if (editandoId()) {
+              <button type="button" class="ghost-button" (click)="cancelarEdicion()">
+                Cancelar
+              </button>
+            }
+          </div>
+          <form class="form-grid" (ngSubmit)="guardar()">
             <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
             <label>
               Preset de proveedor
@@ -81,12 +94,21 @@ import { formatApiError } from '../../shared-error';
               Nombre del secreto (apiKeyRef)
               <input name="apiKeyRef" [(ngModel)]="form.apiKeyRef" placeholder="llm-key" />
             </label>
+            <label>
+              Estado
+              <select name="estado" [(ngModel)]="form.estado">
+                <option value="activo">activo</option>
+                <option value="inactivo">inactivo</option>
+              </select>
+            </label>
             <p class="subhead">
               La API key NO se ingresa aqui. Carga la API key real en Key Vault como un secreto y
               escribe aqui su nombre. El secreto debe existir antes de guardar; si no, veras un
               error.
             </p>
-            <button class="primary-button" type="submit">Guardar configuracion</button>
+            <button class="primary-button" type="submit">
+              {{ editandoId() ? 'Guardar cambios' : 'Guardar configuracion' }}
+            </button>
           </form>
         </section>
       </div>
@@ -98,6 +120,8 @@ export class ConfigLlmPage {
   private readonly api = inject(AdminApiService);
   protected readonly configs = signal<ConfigLlm[]>([]);
   protected readonly error = signal('');
+  protected readonly editandoId = signal<string | null>(null);
+  private editandoOriginal: ConfigLlm | null = null;
   protected readonly presets = [
     {
       id: 'AzureOpenAI',
@@ -161,6 +185,14 @@ export class ConfigLlmPage {
     });
   }
 
+  guardar() {
+    if (this.editandoId()) {
+      this.actualizar();
+    } else {
+      this.crear();
+    }
+  }
+
   crear() {
     this.api
       .crearConfigLlm({
@@ -173,15 +205,65 @@ export class ConfigLlmPage {
         limitesTokens: { maxPrompt: 6000, maxCompletion: 800 },
         timeoutSegundos: 30,
         maxReintentos: 2,
-        estado: 'activo',
+        estado: this.form.estado,
       })
       .subscribe({
         next: () => {
-          this.form = this.emptyForm();
+          this.resetForm();
           this.load();
         },
         error: (err: unknown) => this.error.set(formatApiError(err)),
       });
+  }
+
+  actualizar() {
+    const id = this.editandoId();
+    if (!id) {
+      return;
+    }
+
+    // Los campos avanzados (parametros, limites, timeout, reintentos) no estan en el formulario:
+    // se preservan los de la config original para no perderlos al editar lo visible.
+    const original = this.editandoOriginal;
+    this.api
+      .actualizarConfigLlm(id, {
+        nombre: this.form.nombre,
+        proveedor: this.form.proveedor,
+        modelo: this.form.modelo,
+        endpoint: this.form.endpoint,
+        apiKeyRef: this.form.apiKeyRef,
+        parametros: original?.parametros ?? { temperature: 0.2 },
+        limitesTokens: original?.limitesTokens ?? { maxPrompt: 6000, maxCompletion: 800 },
+        timeoutSegundos: original?.timeoutSegundos ?? 30,
+        maxReintentos: original?.maxReintentos ?? 2,
+        estado: this.form.estado,
+      })
+      .subscribe({
+        next: () => {
+          this.resetForm();
+          this.load();
+        },
+        error: (err: unknown) => this.error.set(formatApiError(err)),
+      });
+  }
+
+  editar(config: ConfigLlm) {
+    this.editandoId.set(config.id);
+    this.editandoOriginal = config;
+    this.form = {
+      preset: 'Otro',
+      nombre: config.nombre,
+      proveedor: config.proveedor,
+      modelo: config.modelo,
+      endpoint: config.endpoint,
+      apiKeyRef: config.apiKeyRef,
+      estado: config.estado === 'inactivo' ? 'inactivo' : 'activo',
+    };
+    this.error.set('');
+  }
+
+  cancelarEdicion() {
+    this.resetForm();
   }
 
   aplicarPreset(presetId: string) {
@@ -200,6 +282,12 @@ export class ConfigLlmPage {
     return this.presets.find((preset) => preset.id === this.form.preset)?.hint ?? '';
   }
 
+  private resetForm() {
+    this.editandoId.set(null);
+    this.editandoOriginal = null;
+    this.form = this.emptyForm();
+  }
+
   private emptyForm() {
     return {
       preset: 'AzureOpenAI',
@@ -208,6 +296,7 @@ export class ConfigLlmPage {
       modelo: 'gpt-4o-mini',
       endpoint: 'https://<recurso>.openai.azure.com',
       apiKeyRef: 'llm-key',
+      estado: 'activo',
     };
   }
 }
