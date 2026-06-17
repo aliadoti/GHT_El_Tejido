@@ -65,11 +65,16 @@ public sealed class LlmClientHttp : ILlmClient
 
                 if (!EsTransitorio(respuesta.StatusCode) || intento >= request.MaxReintentos)
                 {
+                    // El cuerpo de error del proveedor (JSON con el motivo) es interno y no contiene
+                    // la API key (esta viaja en headers, no se refleja en la respuesta); se loguea
+                    // truncado para diagnosticar 4xx de configuracion (modelo/params invalidos).
+                    var detalle = await LeerErrorSeguroAsync(respuesta, timeoutCts.Token);
                     _logger.LogWarning(
-                        "LLM {Proveedor} respondio HTTP {Codigo} tras {Intentos} intento(s).",
+                        "LLM {Proveedor} respondio HTTP {Codigo} tras {Intentos} intento(s). Detalle: {Detalle}",
                         request.Proveedor,
                         (int)respuesta.StatusCode,
-                        intento + 1);
+                        intento + 1,
+                        detalle);
                     throw new HttpRequestException($"LLM respondio HTTP {(int)respuesta.StatusCode}.");
                 }
             }
@@ -218,6 +223,25 @@ public sealed class LlmClientHttp : ILlmClient
         }
 
         throw new InvalidOperationException("La respuesta del LLM no contiene contenido utilizable.");
+    }
+
+    private static async Task<string> LeerErrorSeguroAsync(HttpResponseMessage respuesta, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var cuerpo = await respuesta.Content.ReadAsStringAsync(cancellationToken);
+            cuerpo = cuerpo.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return cuerpo.Length switch
+            {
+                0 => "(sin cuerpo)",
+                > 500 => cuerpo[..500],
+                _ => cuerpo,
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return "(no se pudo leer el cuerpo)";
+        }
     }
 
     private static TimeSpan CalcularBackoff(int intento)
