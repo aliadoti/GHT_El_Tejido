@@ -87,6 +87,12 @@ public sealed class EnviosIntegrationTests
                 services.AddSingleton(participantes);
                 services.AddSingleton(usuarios);
                 services.AddSingleton<IServicioSesion, SesionesFake>();
+                services.AddSingleton(new OpcionesPlantillaEnvioInicial
+                {
+                    Nombre = "el_tejido_inicio_campania",
+                    Idioma = "es_CO",
+                    Componentes = ["nombre"],
+                });
                 services.AddScoped<IServicioEnvios, ServicioEnvios>();
             });
         });

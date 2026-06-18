@@ -27,6 +27,12 @@ public sealed class ServicioEnviosTests
     private readonly List<TrabajoEnvio> _encolados = [];
     private readonly IColaEnvios _cola = Substitute.For<IColaEnvios>();
     private readonly AlmacenJobsMemoria _jobs = new(new RelojFijo(Epoca));
+    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial = new()
+    {
+        Nombre = "el_tejido_inicio_campania",
+        Idioma = "es_CO",
+        Componentes = ["nombre", "campania"],
+    };
 
     public ServicioEnviosTests()
     {
@@ -77,14 +83,34 @@ public sealed class ServicioEnviosTests
     }
 
     [Fact]
-    public async Task EncolarIniciales_RenderizaVariablesEnTextoLibre()
+    public async Task EncolarIniciales_UsaPlantillaGlobalConfigurada()
     {
         ConfigurarCampania(EstadoCampania.Activa);
         ConfigurarParticipantes(CrearParticipante("u_1", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta));
 
         await Construir().EncolarInicialesAsync(CampaniaId, null, null, CancellationToken.None);
 
-        _encolados.Should().ContainSingle().Which.TextoLibre.Should().Be("Hola Usuario u_1");
+        var trabajo = _encolados.Should().ContainSingle().Which;
+        trabajo.Plantilla.Should().NotBeNull();
+        trabajo.Plantilla!.Nombre.Should().Be("el_tejido_inicio_campania");
+        trabajo.Plantilla.Idioma.Should().Be("es_CO");
+        trabajo.Plantilla.Componentes.Should().Equal("nombre", "campania");
+        trabajo.Variables["nombre"].Should().Be("Usuario u_1");
+        trabajo.Variables["campania"].Should().Be("Campania");
+        trabajo.TextoLibre.Should().Be("Hola Usuario u_1");
+    }
+
+    [Fact]
+    public async Task EncolarIniciales_SinPlantillaGlobal_LanzaReglaNegocio()
+    {
+        ConfigurarCampania(EstadoCampania.Activa);
+        ConfigurarParticipantes(CrearParticipante("u_1", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta));
+
+        var accion = () => Construir(new OpcionesPlantillaEnvioInicial())
+            .EncolarInicialesAsync(CampaniaId, null, null, CancellationToken.None);
+
+        await accion.Should().ThrowAsync<ErrorReglaNegocio>()
+            .WithMessage("*WhatsApp__PlantillaEnvioInicial__Nombre*");
     }
 
     [Fact]
@@ -115,8 +141,8 @@ public sealed class ServicioEnviosTests
         _encolados.Should().ContainSingle().Which.UsuarioId.Should().Be("u_2");
     }
 
-    private ServicioEnvios Construir()
-        => new(_campanias, _participantes, _usuarios, _cola, _jobs);
+    private ServicioEnvios Construir(OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
+        => new(_campanias, _participantes, _usuarios, _cola, _jobs, plantillaEnvioInicial ?? _plantillaEnvioInicial);
 
     private void ConfigurarCampania(EstadoCampania estado)
         => _campanias.ObtenerCampaniaPorIdAsync(CampaniaId, Arg.Any<CancellationToken>())

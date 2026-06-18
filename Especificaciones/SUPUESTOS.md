@@ -99,12 +99,23 @@
   - **Alcance:** se implementa el Gateway completo (webhook entrante + envio masivo) y se difiere el orquestador. Para no dejar el flujo entrante colgando, se crea el seam `IOrquestadorConversacion` (`05 §4.1`, en `Application/Conversacion`) con impl provisional `OrquestadorConversacionPendiente` (solo registra el hito, sin texto ni PII). El `TrabajadorWebhook` ya le entrega el `MensajeEntrante` resuelto; la Fase 6/7 sustituye la impl sin tocar el Gateway.
   - **Procesamiento asincrono:** colas in-process con `System.Threading.Channels` + `BackgroundService` (02 §5). El ack del webhook es 200 inmediato; el parseo/idempotencia/resolucion ocurren en el trabajador.
   - **Idempotencia de envio saliente:** se decide por **estado del participante** (`estadoEnvio`), no por `ExisteEnvioAsync` (que existe por cualquier registro, incluido `error`, y bloquearia el reintento): `EncolarIniciales` omite `enviado`; `Reenviar` apunta a `sinRespuesta`; `Reintentar` apunta a `error`. `EnvioMensaje` se mantiene append-only para trazabilidad.
-  - **Plantilla vs texto:** el envio inicial usa la plantilla del `MensajeInicial` si esta configurada; si no, cae a texto libre con variables sustituidas (en produccion el inicio fuera de ventana exige plantilla aprobada; es una decision de configuracion). La logica fina de ventana de 24h vive con el orquestador (Fase 6).
+  - **Plantilla vs texto:** ACTUALIZACION 2026-06-18: el envio inicial de campania ya no cae a texto libre. Usa la plantilla global `WhatsApp:PlantillaEnvioInicial` y falla cerrado si falta el nombre. La logica fina de ventana de 24h vive con el orquestador (Fase 6).
   - **Almacen de jobs:** in-process en memoria (`AlmacenJobsMemoria`); volatil al reiniciar (02 §5). El portal redispara por estado de participante.
   - **Guardrails de entrada:** solo se acota la longitud al maximo de la campania; cupos por usuario/campania y rate por numero se completan con el orquestador.
   - **Registro guardado:** gateway, colas, almacen de jobs, orquestador provisional y trabajadores se registran siempre; los procesadores y `IServicioEnvios` se gatillan con `Cosmos:AccountEndpoint` (igual que el resto de orquestadores), para que la app arranque sin emulador.
 - Alternativa(s) descartada(s): implementar el orquestador ahora con LLM/Markdown mockeados (cierra una frontera que las Fases 6/7 definen con detalle; mas trabajo sin valor inmediato); cola dedicada/Service Bus (excluido en MVP, `01 §11`); idempotencia por `ExisteEnvioAsync` (bloquea reintentos de errores).
 - Impacto / reversibilidad: no cambia contratos `03`/`04`. El seam del orquestador y los puertos de cola quedan listos para Fase 6/7. Las colas/almacen in-process son reemplazables por infraestructura durable post-MVP sin tocar los puertos.
+
+### plantilla-envio-inicial-campania - Primer contacto proactivo de campania por plantilla global
+- Fecha: 2026-06-18 - Agente/Rol: Codex - Backend/Integracion WhatsApp - Commit: pendiente.
+- Contexto: `05 §2.2` exige plantilla HSM aprobada para iniciar conversacion fuera de la ventana de 24 h. El flujo de envio de campania podia caer a texto libre cuando `MensajeInicial.PlantillaWhatsApp` no estaba configurado, lo que Meta no entrega para el primer contacto. REQ §15, §26 / ARQ §4.1, §4.4.
+- Decision:
+  - El envio inicial de campania, reenvios a `sinRespuesta` y reintentos de errores usan siempre `EnviarPlantillaAsync` con una plantilla global no secreta cargada desde `WhatsApp:PlantillaEnvioInicial`.
+  - Si `WhatsApp__PlantillaEnvioInicial__Nombre` falta o esta vacio, el backend rechaza el disparo con error de regla de negocio y no encola trabajos con texto libre.
+  - Nombre sugerido para crear/aprobar en Meta y cargar en Azure: `el_tejido_inicio_campania`; idioma recomendado: `es_CO`; componentes sugeridos: `nombre`, `campania`.
+  - `MensajeInicial.Texto` se conserva para trazabilidad/render local, pero ya no es el mecanismo de entrega proactiva fuera de ventana.
+- Alternativa(s) descartada(s): depender de `MensajeInicial.PlantillaWhatsApp` por campania (deja el invariante critico en operacion manual); caer a texto libre si falta plantilla (Meta no lo entrega); duplicar la pregunta dentro de la plantilla (mezcla saludo/pregunta y contradice `#primer-contacto-pregunta`, que entrega la pregunta cuando el participante responde).
+- Impacto / reversibilidad: no cambia contratos `03`/`04`; agrega configuracion no secreta y endurece el flujo de envio. Reversible cambiando la fuente de la plantilla, sin tocar el gateway ni el contrato REST.
 
 ### fase6-evaluacion-llm - Decisiones del modulo de Evaluacion LLM
 - Fecha: 2026-06-13 - Agente/Rol: Claude Code - Arquitecto/Backend/AppSec - Commit: pendiente (sin commit)

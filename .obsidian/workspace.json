@@ -185,6 +185,7 @@
   },
   "active": "1a2e987bd13434b2",
   "lastOpenFiles": [
+    "src/ElTejido.Application/WhatsApp/OpcionesPlantillaEnvioInicial.cs",
     "src/ElTejido.Api/wwwroot/chunk--wz1E-x4.js",
     "src/ElTejido.Api/wwwroot/chunk-B-DHM0p4.js",
     "src/ElTejido.Api/wwwroot/chunk-BDGQQGfB.js",
@@ -195,7 +196,6 @@
     "src/ElTejido.Api/wwwroot/chunk-DgV1GaSx.js",
     "src/ElTejido.Api/wwwroot/chunk-DrK0g-DX.js",
     "src/ElTejido.Api/wwwroot/chunk-HdZd1pHX.js",
-    "src/ElTejido.Api/wwwroot/chunk-OWvCE1od.js",
     "Especificaciones/Reglas_Conversacion_y_Participacion.md",
     "Propuesta_Comercial/real/Evaluacion_Rubricas.md",
     "Guias_Implementacion/Guia_WhatsApp_Cloud_API_Meta_Paso_a_Paso.md",

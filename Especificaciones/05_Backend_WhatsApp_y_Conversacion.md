@@ -36,7 +36,8 @@ public interface IWhatsAppGateway
 `ARQ §4.1`: WhatsApp exige **plantillas HSM aprobadas** para iniciar conversación o enviar fuera de la ventana de servicio de 24h; dentro de la ventana se permite **texto libre**.
 
 El Gateway decide así:
-- **Mensaje inicial** y cualquier envío cuando **no** hay ventana abierta → `EnviarPlantillaAsync` (plantilla aprobada + variables).
+- **Mensaje inicial de campaña** y reenvíos/reintentos proactivos → `EnviarPlantillaAsync` usando la plantilla aprobada configurada en App Settings (`WhatsApp:PlantillaEnvioInicial`). Si falta `Nombre`, el backend rechaza el envío en vez de caer a texto libre.
+- **Cualquier otro envío cuando no hay ventana abierta** → `EnviarPlantillaAsync` (plantilla aprobada + variables).
 - **Retroalimentación y repregunta dentro de la ventana** (`now < conversacion.ventanaServicioVenceEn`) → `EnviarTextoAsync`.
 - **Repregunta fuera de ventana** → plantilla de repregunta aprobada (`ARQ §16`).
 
@@ -70,6 +71,11 @@ Disparado por `POST /api/admin/.../envios` (`04 §5.4`). El backend encola un jo
 
 ### 2.6 Configuración consumida (sección `WhatsApp` de `02 §6`)
 `GraphApiBaseUrl`, `PhoneNumberId`, `VerifyTokenSecretName`, `AppSecretSecretName`, `AccessTokenSecretName`, y el catálogo de plantillas aprobadas (nombre, idioma, mapeo de variables). Los nombres de secretos coinciden con la guía de Azure.
+
+Para el envío inicial de campañas, configurar en el App Service:
+- `WhatsApp__PlantillaEnvioInicial__Nombre` = `el_tejido_inicio_campania` (nombre sugerido para la plantilla aprobada en Meta).
+- `WhatsApp__PlantillaEnvioInicial__Idioma` = `es_CO` (debe coincidir exactamente con el idioma aprobado).
+- `WhatsApp__PlantillaEnvioInicial__Componentes__0` = `nombre` y `WhatsApp__PlantillaEnvioInicial__Componentes__1` = `campania` si la plantilla usa dos variables de cuerpo.
 
 ---
 

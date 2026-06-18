@@ -135,6 +135,10 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                     ["Secretos:jwt-sign"] = "clave-de-firma-de-pruebas-con-mas-de-32-bytes",
                     ["Secretos:wa-appsec"] = "appsec-de-pruebas",
                     ["Secretos:kv-llm-e2e"] = "clave-llm-de-prueba",
+                    ["WhatsApp:PlantillaEnvioInicial:Nombre"] = "el_tejido_inicio_campania",
+                    ["WhatsApp:PlantillaEnvioInicial:Idioma"] = "es_CO",
+                    ["WhatsApp:PlantillaEnvioInicial:Componentes:0"] = "nombre",
+                    ["WhatsApp:PlantillaEnvioInicial:Componentes:1"] = "campania",
                 });
             });
             builder.ConfigureTestServices(services =>

@@ -22,19 +22,22 @@ public sealed class ServicioEnvios : IServicioEnvios
     private readonly IRepositorioUsuarios _usuarios;
     private readonly IColaEnvios _cola;
     private readonly IAlmacenJobs _jobs;
+    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
 
     public ServicioEnvios(
         IRepositorioCampanias campanias,
         IRepositorioParticipantes participantes,
         IRepositorioUsuarios usuarios,
         IColaEnvios cola,
-        IAlmacenJobs jobs)
+        IAlmacenJobs jobs,
+        OpcionesPlantillaEnvioInicial plantillaEnvioInicial)
     {
         _campanias = campanias;
         _participantes = participantes;
         _usuarios = usuarios;
         _cola = cola;
         _jobs = jobs;
+        _plantillaEnvioInicial = plantillaEnvioInicial;
     }
 
     public Task<ResultadoEncolarEnvio> EncolarInicialesAsync(
@@ -126,6 +129,7 @@ public sealed class ServicioEnvios : IServicioEnvios
         }
 
         var mensaje = ResolverMensajeInicial(campania, mensajeInicialId);
+        var plantilla = ResolverPlantillaEnvioInicial(mensaje);
 
         var participantes = await _participantes.ListarParticipantesAsync(id, cancellationToken);
         var objetivos = participantes
@@ -151,7 +155,7 @@ public sealed class ServicioEnvios : IServicioEnvios
                 participante.UsuarioId,
                 participante.WhatsappNormalizado.Valor,
                 mensaje.Id,
-                mensaje.PlantillaWhatsApp,
+                plantilla,
                 variables,
                 ReemplazarVariables(mensaje.Texto, variables),
                 tipo);
@@ -160,6 +164,36 @@ public sealed class ServicioEnvios : IServicioEnvios
         }
 
         return new ResultadoEncolarEnvio(job.Id, job.Encolados, "enProceso");
+    }
+
+    private PlantillaWhatsApp ResolverPlantillaEnvioInicial(MensajeInicial mensaje)
+    {
+        if (string.IsNullOrWhiteSpace(_plantillaEnvioInicial.Nombre))
+        {
+            throw new ErrorReglaNegocio(
+                "Configura WhatsApp__PlantillaEnvioInicial__Nombre con el nombre de una plantilla aprobada por Meta antes de enviar campanias.");
+        }
+
+        var idioma = !string.IsNullOrWhiteSpace(_plantillaEnvioInicial.Idioma)
+            ? _plantillaEnvioInicial.Idioma.Trim()
+            : mensaje.PlantillaWhatsApp?.Idioma;
+        if (string.IsNullOrWhiteSpace(idioma))
+        {
+            throw new ErrorReglaNegocio(
+                "Configura WhatsApp__PlantillaEnvioInicial__Idioma con el codigo exacto de idioma aprobado por Meta.");
+        }
+
+        var componentes = _plantillaEnvioInicial.Componentes
+            .Select(componente => componente.Trim())
+            .Where(componente => componente.Length > 0)
+            .ToArray();
+
+        if (componentes.Length == 0 && mensaje.PlantillaWhatsApp is not null)
+        {
+            componentes = mensaje.PlantillaWhatsApp.Componentes.ToArray();
+        }
+
+        return PlantillaWhatsApp.Crear(_plantillaEnvioInicial.Nombre, idioma, componentes);
     }
 
     private static MensajeInicial ResolverMensajeInicial(Campania campania, string? mensajeInicialId)

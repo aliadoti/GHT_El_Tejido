@@ -25,8 +25,10 @@ public static class ServiciosWhatsApp
         services.TryAddSingleton(TimeProvider.System);
         services.Configure<OpcionesWhatsApp>(configuration.GetSection(OpcionesWhatsApp.Seccion));
         services.Configure<OpcionesConversacion>(configuration.GetSection(OpcionesConversacion.Seccion));
+        services.Configure<OpcionesPlantillaEnvioInicial>(configuration.GetSection(OpcionesPlantillaEnvioInicial.Seccion));
         // POCO plano para que Application (sin Microsoft.Extensions.Options) lo consuma directo.
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<OpcionesConversacion>>().Value);
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<OpcionesPlantillaEnvioInicial>>().Value);
 
         services.AddHttpClient<IWhatsAppGateway, WhatsAppGateway>();
 
