@@ -8,11 +8,26 @@ import {
   ConfigLlm,
   ParticipanteCampania,
   ParticipantePreview,
+  Pregunta,
   PromptConfig,
   Rubrica,
 } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
+import { NotificacionesService } from '../../core/notificaciones.service';
 import { formatApiError } from '../../shared-error';
+
+interface PreguntaForm {
+  categoria: string;
+  texto: string;
+  instruccion: string;
+  orden: number;
+  estado: string;
+  rubricaRef: string;
+  promptEvaluarRef: string;
+  maxRepreguntas: number;
+  maxCaracteresMensaje: number;
+  maxLlamadasLlm: number;
+}
 
 @Component({
   selector: 'app-campanias-page',
@@ -269,17 +284,53 @@ import { formatApiError } from '../../shared-error';
             <article>
               <h4>Preguntas</h4>
               <form class="form-grid" (ngSubmit)="crearPregunta(campania.id)">
-                <input
-                  name="preguntaCategoria"
-                  [(ngModel)]="pregunta.categoria"
-                  placeholder="Categoria"
-                />
-                <textarea
-                  name="preguntaTexto"
-                  rows="3"
-                  [(ngModel)]="pregunta.texto"
-                  placeholder="Pregunta"
-                ></textarea>
+                <label>
+                  Categoria
+                  <input
+                    name="preguntaCategoria"
+                    [(ngModel)]="pregunta.categoria"
+                    placeholder="Categoria"
+                  />
+                </label>
+                <label>
+                  Pregunta
+                  <textarea
+                    name="preguntaTexto"
+                    rows="3"
+                    [(ngModel)]="pregunta.texto"
+                    placeholder="Texto que recibira el participante"
+                  ></textarea>
+                </label>
+                <label>
+                  Instruccion de evaluacion
+                  <textarea
+                    name="preguntaInstruccion"
+                    rows="2"
+                    [(ngModel)]="pregunta.instruccion"
+                    placeholder="Criterio operativo para evaluar la respuesta"
+                  ></textarea>
+                </label>
+                <div class="inline-form">
+                  <label>
+                    Orden
+                    <input
+                      type="number"
+                      min="1"
+                      name="preguntaOrden"
+                      [(ngModel)]="pregunta.orden"
+                    />
+                  </label>
+                  <label>
+                    Revisiones
+                    <input
+                      type="number"
+                      min="0"
+                      name="preguntaMaxRepreguntas"
+                      [(ngModel)]="pregunta.maxRepreguntas"
+                    />
+                  </label>
+                </div>
+                <input type="hidden" name="preguntaEstado" [(ngModel)]="pregunta.estado" />
                 <label>
                   Rubrica (opcional, sobreescribe la campania)
                   <select name="preguntaRubricaRef" [(ngModel)]="pregunta.rubricaRef">
@@ -309,11 +360,108 @@ import { formatApiError } from '../../shared-error';
                   <li>
                     <strong>{{ item.categoria }}</strong
                     ><span>{{ item.texto }}</span>
+                    <span>Orden {{ item.orden }} · {{ item.estado }}</span>
+                    @if (auth.isAdmin()) {
+                      <button type="button" class="table-button" (click)="editarPregunta(item)">
+                        Editar
+                      </button>
+                    }
                   </li>
                 } @empty {
                   <li class="muted">Sin preguntas.</li>
                 }
               </ul>
+              @if (preguntaEditandoId()) {
+                <div class="edit-block">
+                  <div class="panel-heading">
+                    <h5 class="subhead">Editar pregunta</h5>
+                    <button type="button" class="ghost-button" (click)="cancelarEdicionPregunta()">
+                      Cancelar
+                    </button>
+                  </div>
+                  <form class="form-grid" (ngSubmit)="actualizarPregunta(campania.id)">
+                    <label>
+                      Categoria
+                      <input
+                        name="editarPreguntaCategoria"
+                        [(ngModel)]="preguntaEdicion.categoria"
+                      />
+                    </label>
+                    <label>
+                      Pregunta
+                      <textarea
+                        name="editarPreguntaTexto"
+                        rows="3"
+                        [(ngModel)]="preguntaEdicion.texto"
+                      ></textarea>
+                    </label>
+                    <label>
+                      Instruccion de evaluacion
+                      <textarea
+                        name="editarPreguntaInstruccion"
+                        rows="2"
+                        [(ngModel)]="preguntaEdicion.instruccion"
+                      ></textarea>
+                    </label>
+                    <div class="inline-form">
+                      <label>
+                        Orden
+                        <input
+                          type="number"
+                          min="1"
+                          name="editarPreguntaOrden"
+                          [(ngModel)]="preguntaEdicion.orden"
+                        />
+                      </label>
+                      <label>
+                        Revisiones
+                        <input
+                          type="number"
+                          min="0"
+                          name="editarPreguntaMaxRepreguntas"
+                          [(ngModel)]="preguntaEdicion.maxRepreguntas"
+                        />
+                      </label>
+                      <label>
+                        Estado
+                        <select name="editarPreguntaEstado" [(ngModel)]="preguntaEdicion.estado">
+                          <option value="activo">Activo</option>
+                          <option value="inactivo">Inactivo</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label>
+                      Rubrica
+                      <select
+                        name="editarPreguntaRubricaRef"
+                        [(ngModel)]="preguntaEdicion.rubricaRef"
+                      >
+                        <option value="">Heredar de la campania</option>
+                        @for (rubrica of rubricas(); track rubrica.id) {
+                          <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label>
+                      Prompt de evaluacion
+                      <select
+                        name="editarPreguntaPromptRef"
+                        [(ngModel)]="preguntaEdicion.promptEvaluarRef"
+                      >
+                        <option value="">Heredar de la campania</option>
+                        @for (prompt of prompts(); track prompt.id) {
+                          <option [value]="prompt.id">
+                            {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
+                          </option>
+                        }
+                      </select>
+                    </label>
+                    <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
+                      Guardar pregunta
+                    </button>
+                  </form>
+                </div>
+              }
             </article>
 
             <article>
@@ -398,6 +546,7 @@ import { formatApiError } from '../../shared-error';
 })
 export class CampaniasPage {
   private readonly api = inject(AdminApiService);
+  private readonly notificaciones = inject(NotificacionesService);
   protected readonly auth = inject(AuthService);
   protected readonly campanias = signal<Campania[]>([]);
   protected readonly selected = signal<Campania | null>(null);
@@ -410,6 +559,7 @@ export class CampaniasPage {
   protected readonly areasDisponibles = signal<string[]>([]);
   protected readonly empresasDisponibles = signal<string[]>([]);
   protected readonly error = signal('');
+  protected readonly preguntaEditandoId = signal<string | null>(null);
 
   protected filtroEstado = '';
   protected filtroBusqueda = '';
@@ -429,7 +579,8 @@ export class CampaniasPage {
     plantillaIdioma: 'es',
     plantillaComponentes: '',
   };
-  protected pregunta = { categoria: '', texto: '', rubricaRef: '', promptEvaluarRef: '' };
+  protected pregunta = this.emptyPreguntaForm();
+  protected preguntaEdicion = this.emptyPreguntaForm();
   protected filtroParticipantes = { area: '', empresa: '' };
 
   constructor() {
@@ -485,6 +636,7 @@ export class CampaniasPage {
       next: (campania) => {
         this.selected.set(campania);
         this.edicion = this.formFromCampania(campania);
+        this.cancelarEdicionPregunta();
         this.loadParticipantes(campania.id);
       },
       error: (err: unknown) => this.error.set(formatApiError(err)),
@@ -515,8 +667,9 @@ export class CampaniasPage {
           };
           this.load();
           this.select(campania.id);
+          this.notificaciones.exito('Campania creada.');
         },
-        error: (err: unknown) => this.error.set(formatApiError(err)),
+        error: (err: unknown) => this.reportarError(err),
       });
   }
 
@@ -538,8 +691,9 @@ export class CampaniasPage {
           this.selected.set(campania);
           this.edicion = this.formFromCampania(campania);
           this.load();
+          this.notificaciones.exito('Campania actualizada.');
         },
-        error: (err: unknown) => this.error.set(formatApiError(err)),
+        error: (err: unknown) => this.reportarError(err),
       });
   }
 
@@ -548,8 +702,9 @@ export class CampaniasPage {
       next: (actualizada) => {
         this.selected.set(actualizada);
         this.load();
+        this.notificaciones.exito(`Campania ${estado}.`);
       },
-      error: (err: unknown) => this.error.set(formatApiError(err)),
+      error: (err: unknown) => this.reportarError(err),
     });
   }
 
@@ -586,33 +741,48 @@ export class CampaniasPage {
             plantillaComponentes: '',
           };
           this.select(campaniaId);
+          this.notificaciones.exito('Mensaje inicial agregado.');
         },
-        error: (err: unknown) => this.error.set(formatApiError(err)),
+        error: (err: unknown) => this.reportarError(err),
       });
   }
 
   crearPregunta(campaniaId: string) {
+    this.api.crearPregunta(campaniaId, this.preguntaPayload(this.pregunta)).subscribe({
+      next: () => {
+        this.pregunta = this.emptyPreguntaForm();
+        this.select(campaniaId);
+        this.notificaciones.exito('Pregunta agregada.');
+      },
+      error: (err: unknown) => this.reportarError(err),
+    });
+  }
+
+  editarPregunta(pregunta: Pregunta) {
+    this.preguntaEditandoId.set(pregunta.id);
+    this.preguntaEdicion = this.formFromPregunta(pregunta);
+  }
+
+  cancelarEdicionPregunta() {
+    this.preguntaEditandoId.set(null);
+    this.preguntaEdicion = this.emptyPreguntaForm();
+  }
+
+  actualizarPregunta(campaniaId: string) {
+    const preguntaId = this.preguntaEditandoId();
+    if (!preguntaId) {
+      return;
+    }
+
     this.api
-      .crearPregunta(campaniaId, {
-        categoria: this.pregunta.categoria,
-        texto: this.pregunta.texto,
-        instruccion: this.pregunta.texto,
-        orden: 1,
-        estado: 'activo',
-        maxRepreguntas: 1,
-        limitesSeguridad: { maxCaracteresMensaje: 1500, maxLlamadasLlm: 2 },
-        configMarkdown: { tipoArtefacto: 'respuesta' },
-        ...(this.pregunta.rubricaRef ? { rubricaRef: this.pregunta.rubricaRef } : {}),
-        ...(this.pregunta.promptEvaluarRef
-          ? { promptRefs: { evaluar: this.pregunta.promptEvaluarRef } }
-          : {}),
-      })
+      .actualizarPregunta(campaniaId, preguntaId, this.preguntaPayload(this.preguntaEdicion))
       .subscribe({
         next: () => {
-          this.pregunta = { categoria: '', texto: '', rubricaRef: '', promptEvaluarRef: '' };
+          this.cancelarEdicionPregunta();
           this.select(campaniaId);
+          this.notificaciones.exito('Pregunta actualizada.');
         },
-        error: (err: unknown) => this.error.set(formatApiError(err)),
+        error: (err: unknown) => this.reportarError(err),
       });
   }
 
@@ -642,8 +812,9 @@ export class CampaniasPage {
         this.loadParticipantes(campaniaId);
         this.previewUsuarios.set([]);
         this.previewSeleccion.set(new Set<string>());
+        this.notificaciones.exito('Participantes asociados a la campania.');
       },
-      error: (err: unknown) => this.error.set(formatApiError(err)),
+      error: (err: unknown) => this.reportarError(err),
     });
   }
 
@@ -665,6 +836,21 @@ export class CampaniasPage {
     };
   }
 
+  private emptyPreguntaForm(): PreguntaForm {
+    return {
+      categoria: '',
+      texto: '',
+      instruccion: '',
+      orden: 1,
+      estado: 'activo',
+      rubricaRef: '',
+      promptEvaluarRef: '',
+      maxRepreguntas: 1,
+      maxCaracteresMensaje: 1500,
+      maxLlamadasLlm: 2,
+    };
+  }
+
   private formFromCampania(campania: Campania) {
     return {
       nombre: campania.nombre,
@@ -674,5 +860,44 @@ export class CampaniasPage {
       configLlmRef: campania.configLLMRef ?? '',
       promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
     };
+  }
+
+  private formFromPregunta(pregunta: Pregunta): PreguntaForm {
+    return {
+      categoria: pregunta.categoria,
+      texto: pregunta.texto,
+      instruccion: pregunta.instruccion,
+      orden: pregunta.orden,
+      estado: pregunta.estado,
+      rubricaRef: pregunta.rubricaRef ?? '',
+      promptEvaluarRef: pregunta.promptRefs?.['evaluar'] ?? '',
+      maxRepreguntas: pregunta.maxRepreguntas ?? 1,
+      maxCaracteresMensaje: pregunta.limitesSeguridad?.maxCaracteresMensaje ?? 1500,
+      maxLlamadasLlm: pregunta.limitesSeguridad?.maxLlamadasLlm ?? 2,
+    };
+  }
+
+  private preguntaPayload(form: PreguntaForm) {
+    return {
+      categoria: form.categoria,
+      texto: form.texto,
+      instruccion: form.instruccion || form.texto,
+      orden: Number(form.orden) || 1,
+      estado: form.estado,
+      rubricaRef: form.rubricaRef,
+      promptRefs: form.promptEvaluarRef ? { evaluar: form.promptEvaluarRef } : {},
+      maxRepreguntas: Math.max(0, Number(form.maxRepreguntas) || 0),
+      limitesSeguridad: {
+        maxCaracteresMensaje: Math.max(1, Number(form.maxCaracteresMensaje) || 1500),
+        maxLlamadasLlm: Math.max(1, Number(form.maxLlamadasLlm) || 2),
+      },
+      configMarkdown: { tipoArtefacto: 'respuesta' },
+    };
+  }
+
+  private reportarError(err: unknown) {
+    const mensaje = formatApiError(err);
+    this.error.set(mensaje);
+    this.notificaciones.error(mensaje);
   }
 }

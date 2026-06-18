@@ -86,6 +86,17 @@ export interface Pregunta {
   categoria: string;
   orden: number;
   estado: string;
+  rubricaRef?: string | null;
+  versionRubrica?: number | null;
+  promptRefs?: Record<string, string>;
+  maxRepreguntas: number;
+  limitesSeguridad?: {
+    maxCaracteresMensaje: number;
+    maxLlamadasLlm: number;
+  };
+  configMarkdown?: {
+    tipoArtefacto: string;
+  };
 }
 
 export interface ParticipantePreview {

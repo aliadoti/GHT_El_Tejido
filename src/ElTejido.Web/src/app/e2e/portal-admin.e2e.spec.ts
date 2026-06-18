@@ -253,6 +253,52 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     expect(actualizada?.configLLMRef).toBe('llm_2');
   });
 
+  it('mejora campanias: actualiza una pregunta por PUT con CSRF', () => {
+    const auth = TestBed.inject(AuthService);
+    const admin = TestBed.inject(AdminApiService);
+    autenticarComoAdmin(auth);
+
+    let preguntaActualizada: { texto: string; maxRepreguntas: number } | undefined;
+    admin
+      .actualizarPregunta('c_1', 'p_1', {
+        texto: 'Que mejora propone para reducir desperdicio?',
+        instruccion: 'Valora claridad, impacto y viabilidad.',
+        categoria: 'productividad',
+        orden: 2,
+        estado: 'activo',
+        rubricaRef: 'rub_2',
+        promptRefs: { evaluar: 'pr_2' },
+        maxRepreguntas: 1,
+        limitesSeguridad: { maxCaracteresMensaje: 1500, maxLlamadasLlm: 2 },
+        configMarkdown: { tipoArtefacto: 'respuesta' },
+      })
+      .subscribe((pregunta) => (preguntaActualizada = pregunta));
+
+    const put = http.expectOne(
+      (r) => r.url === '/api/admin/campanias/c_1/preguntas/p_1' && r.method === 'PUT',
+    );
+    expect(put.request.headers.get('X-CSRF-Token')).toBe(CSRF);
+    expect(put.request.body).toMatchObject({
+      texto: 'Que mejora propone para reducir desperdicio?',
+      promptRefs: { evaluar: 'pr_2' },
+      limitesSeguridad: { maxCaracteresMensaje: 1500, maxLlamadasLlm: 2 },
+    });
+    put.flush({
+      id: 'p_1',
+      texto: 'Que mejora propone para reducir desperdicio?',
+      instruccion: 'Valora claridad, impacto y viabilidad.',
+      categoria: 'productividad',
+      orden: 2,
+      estado: 'activo',
+      rubricaRef: 'rub_2',
+      promptRefs: { evaluar: 'pr_2' },
+      maxRepreguntas: 1,
+      limitesSeguridad: { maxCaracteresMensaje: 1500, maxLlamadasLlm: 2 },
+      configMarkdown: { tipoArtefacto: 'respuesta' },
+    });
+    expect(preguntaActualizada?.maxRepreguntas).toBe(1);
+  });
+
   // --- helpers de datos / respuestas mock -----------------------------------
 
   function responderListaUsuarios(items: UsuarioAdmin[]): void {

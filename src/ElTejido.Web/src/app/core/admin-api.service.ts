@@ -12,6 +12,7 @@ import {
   PagedResult,
   ParticipanteCampania,
   ParticipantePreview,
+  Pregunta,
   PromptConfig,
   Respuesta,
   Rubrica,
@@ -73,6 +74,13 @@ export class AdminApiService {
 
   crearPregunta(campaniaId: string, body: unknown) {
     return this.api.post(`/api/admin/campanias/${campaniaId}/preguntas`, body);
+  }
+
+  actualizarPregunta(campaniaId: string, preguntaId: string, body: unknown) {
+    return this.api.put<Pregunta>(
+      `/api/admin/campanias/${campaniaId}/preguntas/${preguntaId}`,
+      body,
+    );
   }
 
   participantes(campaniaId: string) {

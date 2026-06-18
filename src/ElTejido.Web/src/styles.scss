@@ -440,6 +440,13 @@ tbody tr.row-selected {
   font-size: 0.84rem;
 }
 
+.edit-block {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--ght-borde);
+  padding-top: 14px;
+}
+
 .check-inline {
   display: flex;
   align-items: baseline;
@@ -475,6 +482,57 @@ tbody tr.row-selected {
   border: 1px solid rgb(80 141 94 / 28%);
   background: rgb(80 141 94 / 10%);
   color: var(--ght-verde);
+}
+
+.toast-stack {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--ght-borde);
+  border-left: 4px solid var(--ght-verde-claro);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--ght-sombra);
+  color: var(--ght-texto);
+  padding: 12px 12px 12px 14px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.toast span {
+  overflow-wrap: anywhere;
+}
+
+.toast-exito {
+  border-left-color: var(--ght-verde);
+}
+
+.toast-error {
+  border-left-color: var(--ght-rojo);
+}
+
+.toast-close {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ght-panel-suave);
+  color: var(--ght-texto-secundario);
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .markdown-preview {
@@ -647,5 +705,10 @@ tbody tr.row-selected {
     right: 12px;
     transform: scale(0.72);
     transform-origin: top right;
+  }
+
+  .toast-stack {
+    right: 14px;
+    bottom: 14px;
   }
 }

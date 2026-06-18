@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AdminApiService } from '../../core/admin-api.service';
 import { Campania, EnvioEstado, JobEnvio, MensajeInicial } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
+import { NotificacionesService } from '../../core/notificaciones.service';
 import { formatApiError } from '../../shared-error';
 
 @Component({
@@ -136,6 +137,7 @@ import { formatApiError } from '../../shared-error';
 export class EnviosPage {
   private readonly api = inject(AdminApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly notificaciones = inject(NotificacionesService);
   protected readonly auth = inject(AuthService);
   protected readonly estados = signal<EnvioEstado[]>([]);
   protected readonly seleccion = signal<string[]>([]);
@@ -180,7 +182,9 @@ export class EnviosPage {
 
   load() {
     if (!this.campaniaId) {
-      this.error.set('Ingresa un campaniaId para consultar envios.');
+      const mensaje = 'Selecciona una campania para consultar envios.';
+      this.error.set(mensaje);
+      this.notificaciones.info(mensaje);
       return;
     }
 
@@ -194,21 +198,41 @@ export class EnviosPage {
   }
 
   enviarSeleccionados() {
+    if (!this.campaniaId) {
+      this.notificaciones.info('Selecciona una campania antes de enviar.');
+      return;
+    }
+
+    if (this.seleccion().length === 0) {
+      this.notificaciones.info('Selecciona al menos un participante para enviar la campania.');
+      return;
+    }
+
     this.api
       .enviar(this.campaniaId, this.seleccion(), this.mensajeInicialId || undefined)
-      .subscribe(this.jobObserver());
+      .subscribe(this.jobObserver('Envio de campania encolado'));
   }
 
   reenviar() {
+    if (!this.campaniaId) {
+      this.notificaciones.info('Selecciona una campania antes de reenviar.');
+      return;
+    }
+
     this.api
       .reenviar(this.campaniaId, this.mensajeInicialId || undefined)
-      .subscribe(this.jobObserver());
+      .subscribe(this.jobObserver('Reenvio encolado'));
   }
 
   reintentar() {
+    if (!this.campaniaId) {
+      this.notificaciones.info('Selecciona una campania antes de reintentar.');
+      return;
+    }
+
     this.api
       .reintentar(this.campaniaId, this.mensajeInicialId || undefined)
-      .subscribe(this.jobObserver());
+      .subscribe(this.jobObserver('Reintento encolado'));
   }
 
   toggle(usuarioId: string) {
@@ -228,13 +252,18 @@ export class EnviosPage {
     return this.estados().length > 0 && this.seleccion().length === this.estados().length;
   }
 
-  private jobObserver() {
+  private jobObserver(mensajeBase: string) {
     return {
       next: (job: JobEnvio) => {
         this.job.set(job);
         this.load();
+        this.notificaciones.exito(`${mensajeBase}: ${job.encolados} participantes.`);
       },
-      error: (err: unknown) => this.error.set(formatApiError(err)),
+      error: (err: unknown) => {
+        const mensaje = formatApiError(err);
+        this.error.set(mensaje);
+        this.notificaciones.error(mensaje);
+      },
     };
   }
 }
