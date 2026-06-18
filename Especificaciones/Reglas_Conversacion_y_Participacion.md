@@ -25,12 +25,13 @@ Una **conversación** es el hilo de un trío `(participante, campaña, pregunta)
 
 ## 2. Reglas detalladas
 
-### 2.1 Primer contacto en frío → enviar la pregunta
-Si el participante escribe **sin haber recibido la pregunta** (no se le hizo el envío inicial de
-campaña, `estadoEnvio ≠ enviado`) y aún no tiene conversación, el sistema **responde con la pregunta
-vigente** (saludo + texto de la pregunta) y **NO evalúa** ese primer mensaje. El **siguiente** mensaje
-ya se evalúa como respuesta. Si el envío inicial sí se hizo, el participante ya vio la pregunta y su
-mensaje se evalúa directamente. (Supuesto: `SUPUESTOS.md#primer-contacto-pregunta`.)
+### 2.1 Primer entrante de un hilo nuevo → enviar la pregunta
+Si el participante escribe y aún no existe conversación para el trío `(participante, campaña,
+pregunta)`, el sistema **responde con la pregunta vigente** (saludo + texto de la pregunta) y **NO
+evalúa** ese primer mensaje. Esta regla aplica aunque el envío inicial de campaña ya esté marcado como
+`enviado`, porque ese envío puede haber entregado solo el `MensajeInicial`/saludo y no la pregunta
+evaluable. El **siguiente** mensaje ya se evalúa como respuesta según la máquina de estados. (Supuesto:
+`SUPUESTOS.md#primer-contacto-pregunta`.)
 
 ### 2.2 Evaluación con LLM
 Cada respuesta se evalúa con el LLM usando la **rúbrica**, el **prompt** aprobado y la **ConfigLLM**

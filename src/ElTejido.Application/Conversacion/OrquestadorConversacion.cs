@@ -33,8 +33,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private const string Canal = "whatsapp";
 
     /// <summary>
-    /// Saludo que antecede a la pregunta vigente cuando el participante inicia en frio (05 §4):
-    /// escribio sin haber recibido la pregunta de la campania. Ver <c>SUPUESTOS.md#primer-contacto-pregunta</c>.
+    /// Saludo que antecede a la pregunta vigente en el primer entrante de un hilo nuevo (05 §4).
+    /// Ver <c>SUPUESTOS.md#primer-contacto-pregunta</c>.
     /// </summary>
     private const string SaludoPrimerContacto =
         "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
@@ -102,11 +102,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        // Primer contacto en frio (05 §4): el participante escribe sin haber recibido la pregunta
-        // (el envio inicial de campania no se hizo, estadoEnvio != enviado). Le respondemos con la
-        // pregunta vigente y NO evaluamos este mensaje; el SIGUIENTE entrante (que ya hallara esta
-        // conversacion creada) se evalua como la respuesta.
-        if (conversacion is null && participante.Participante.EstadoEnvio != EstadoEnvio.Enviado)
+        // Primer entrante de un hilo nuevo (05 §4): el envio inicial de campania puede haber sido
+        // solo un saludo, asi que la pregunta vigente se envia aqui y este mensaje NO se evalua.
+        // El SIGUIENTE entrante ya hallara esta conversacion creada y se evalua como respuesta.
+        if (conversacion is null)
         {
             await ResponderPrimerContactoAsync(conversacionId, campania, usuario, pregunta, numero, mensaje, ahora, cancellationToken);
             return;

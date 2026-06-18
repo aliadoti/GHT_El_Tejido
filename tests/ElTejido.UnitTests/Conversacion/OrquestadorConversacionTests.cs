@@ -58,6 +58,7 @@ public sealed class OrquestadorConversacionTests
         // Aunque el LLM recomiende cerrar, la primera evaluacion valida SIEMPRE ofrece una mejora.
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
@@ -78,6 +79,7 @@ public sealed class OrquestadorConversacionTests
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
         var orquestador = Construir();
 
         await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Idea"), CancellationToken.None);
@@ -95,6 +97,7 @@ public sealed class OrquestadorConversacionTests
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Fallback(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, EvaluadorLlm.RetroNeutra), "error_proveedor"));
+        await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
@@ -121,6 +124,7 @@ public sealed class OrquestadorConversacionTests
     public async Task Procesar_ConfigIncompleta_CierraNeutroSinEvaluar()
     {
         _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns((Prompt?)null);
+        await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
@@ -134,6 +138,7 @@ public sealed class OrquestadorConversacionTests
     {
         _configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>())
             .Returns(CrearConfig(EstadoRegistro.Inactivo));
+        await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
@@ -153,6 +158,7 @@ public sealed class OrquestadorConversacionTests
     {
         _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>())
             .Returns(CrearPrompt(aprobado: false));
+        await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
@@ -167,6 +173,7 @@ public sealed class OrquestadorConversacionTests
     {
         _configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>())
             .Returns(CrearRubrica(EstadoRubrica.Archivada));
+        await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
 
@@ -212,6 +219,36 @@ public sealed class OrquestadorConversacionTests
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
     }
 
+    [Fact]
+    public async Task Procesar_BusinessInitiatedPrimerEntrante_EnviaPreguntaLuegoEvaluaYCierra()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        var orquestador = Construir();
+        var participante = Participante();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await _respuestas.DidNotReceiveWithAnyArgs().GuardarRespuestaAsync(default!, default);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(t => t.Contains(participante.PreguntaVigente.Texto, StringComparison.Ordinal)),
+            TipoEnvioMensaje.Inicial,
+            Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRespuestaInicial);
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea real"), CancellationToken.None);
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea mejorada"), CancellationToken.None);
+
+        await _evaluador.Received(2).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
     private OrquestadorConversacion Construir()
         => new(
             _conversaciones,
@@ -224,6 +261,11 @@ public sealed class OrquestadorConversacionTests
             _logSeguridad,
             _correlacion,
             _reloj);
+
+    private Task PrepararConversacionAsync()
+        => _conversaciones.GuardarConversacionAsync(
+            DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca),
+            CancellationToken.None);
 
     private static ParticipanteResuelto Participante()
     {

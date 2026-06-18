@@ -44,7 +44,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
     private static readonly DateTimeOffset Epoca = DateTimeOffset.UnixEpoch;
 
     [Fact]
-    public async Task MensajeEntranteAutorizado_RecorreElPipelineYOfreceMejora()
+    public async Task MensajeEntranteAutorizado_RecorrePipelinePreguntaYOfreceMejora()
     {
         var gateway = new GatewayDePrueba();
         var conversaciones = new ConversacionesFake();
@@ -52,20 +52,30 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         using var fabrica = Construir(gateway, conversaciones);
         using var client = fabrica.CreateClient();
 
-        const string cuerpo = "{\"entry\":[{\"changes\":[{\"value\":{\"messages\":[{\"from\":\"573001112233\",\"id\":\"wamid.E2E\",\"timestamp\":\"1700000000\",\"type\":\"text\",\"text\":{\"body\":\"Mi idea es reducir desperdicio\"}}]}}]}]}";
-        using var contenido = new StringContent(cuerpo, System.Text.Encoding.UTF8, "application/json");
+        const string cuerpoPrimerEntrante = "{\"entry\":[{\"changes\":[{\"value\":{\"messages\":[{\"from\":\"573001112233\",\"id\":\"wamid.E2E.1\",\"timestamp\":\"1700000000\",\"type\":\"text\",\"text\":{\"body\":\"Hola\"}}]}}]}]}";
+        using var contenido = new StringContent(cuerpoPrimerEntrante, System.Text.Encoding.UTF8, "application/json");
         contenido.Headers.Add("X-Hub-Signature-256", "sha256=ignorada-en-prueba");
 
         using var respuesta = await client.PostAsync("/webhook/whatsapp", contenido);
         respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // El procesamiento es asincrono (worker de cola); se espera por el efecto observable.
-        await EsperarAsync(() => !gateway.Enviados.IsEmpty);
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+
+        // El primer entrante de un hilo nuevo recibe la pregunta vigente y NO se evalua.
+        gateway.Enviados.Should().ContainSingle();
+        gateway.Enviados.First().Tipo.Should().Be(TipoEnvioMensaje.Inicial);
+
+        const string cuerpoRespuesta = "{\"entry\":[{\"changes\":[{\"value\":{\"messages\":[{\"from\":\"573001112233\",\"id\":\"wamid.E2E.2\",\"timestamp\":\"1700000000\",\"type\":\"text\",\"text\":{\"body\":\"Mi idea es reducir desperdicio\"}}]}}]}]}";
+        using var contenidoRespuesta = new StringContent(cuerpoRespuesta, System.Text.Encoding.UTF8, "application/json");
+        contenidoRespuesta.Headers.Add("X-Hub-Signature-256", "sha256=ignorada-en-prueba");
+
+        using var respuestaReal = await client.PostAsync("/webhook/whatsapp", contenidoRespuesta);
+        respuestaReal.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Tras la primera evaluacion valida el orquestador ofrece SIEMPRE una mejora (05 §4.4):
         // envia la retro + invitacion como Repregunta y deja el hilo abierto esperando el ajuste.
-        gateway.Enviados.Should().ContainSingle();
-        gateway.Enviados.First().Tipo.Should().Be(TipoEnvioMensaje.Repregunta);
+        await EsperarAsync(() => gateway.Enviados.Any(e => e.Tipo == TipoEnvioMensaje.Repregunta));
 
         await EsperarAsync(() => conversaciones.Ultima is { EstadoMaquina: EstadoMaquinaConversacion.EsperandoRepregunta });
         conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
@@ -222,7 +232,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         }
 
         public Task<DominioConversacion?> ObtenerConversacionAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
-            => Task.FromResult<DominioConversacion?>(null);
+            => Task.FromResult(Ultima?.CampaniaId == campaniaId && Ultima.Id == conversacionId ? Ultima : null);
 
         public Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(Array.Empty<DominioConversacion>());

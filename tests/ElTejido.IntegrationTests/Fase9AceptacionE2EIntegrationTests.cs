@@ -79,9 +79,22 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             e.Tipo == TipoEnvioMensaje.Inicial
             && e.Numero == NumeroParticipante
             && e.Texto.Contains("Ana", StringComparison.Ordinal));
+        var inicialesTrasCampania = whatsapp.Enviados.Count(e => e.Tipo == TipoEnvioMensaje.Inicial);
 
-        using var webhook = await EnviarWebhookAsync(client, "wamid.e2e.1", "Mi idea reduce desperdicio operativo.");
+        using var webhook = await EnviarWebhookAsync(client, "wamid.e2e.1", "Hola");
         webhook.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // El mensaje inicial de campania es saludo; el primer entrante abre el hilo con la pregunta
+        // vigente y no se evalua como respuesta.
+        await EsperarAsync(() => whatsapp.Enviados.Count(e => e.Tipo == TipoEnvioMensaje.Inicial) > inicialesTrasCampania);
+        whatsapp.Enviados.Should().Contain(e =>
+            e.Tipo == TipoEnvioMensaje.Inicial
+            && e.Texto.Contains("Que mejora propone?", StringComparison.Ordinal));
+        store.Respuestas.Should().BeEmpty();
+        store.Artefactos.Should().BeEmpty();
+
+        using var webhookRespuesta = await EnviarWebhookAsync(client, "wamid.e2e.2", "Mi idea reduce desperdicio operativo.");
+        webhookRespuesta.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Tras la primera evaluacion valida el orquestador ofrece SIEMPRE una mejora (05 §4.4):
         // envia la retro como Repregunta y deja el hilo abierto. La evaluacion y el Markdown ya
