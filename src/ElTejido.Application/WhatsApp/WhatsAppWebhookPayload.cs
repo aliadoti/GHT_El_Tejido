@@ -86,10 +86,43 @@ public sealed record WhatsAppMessage
 
     [JsonPropertyName("text")]
     public WhatsAppMessageText? Text { get; init; }
+
+    [JsonPropertyName("button")]
+    public WhatsAppMessageButton? Button { get; init; }
+
+    [JsonPropertyName("interactive")]
+    public WhatsAppMessageInteractive? Interactive { get; init; }
 }
 
 public sealed record WhatsAppMessageText
 {
     [JsonPropertyName("body")]
     public string? Body { get; init; }
+}
+
+public sealed record WhatsAppMessageButton
+{
+    [JsonPropertyName("text")]
+    public string? Text { get; init; }
+
+    [JsonPropertyName("payload")]
+    public string? Payload { get; init; }
+}
+
+public sealed record WhatsAppMessageInteractive
+{
+    [JsonPropertyName("type")]
+    public string? Type { get; init; }
+
+    [JsonPropertyName("button_reply")]
+    public WhatsAppMessageInteractiveButtonReply? ButtonReply { get; init; }
+}
+
+public sealed record WhatsAppMessageInteractiveButtonReply
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
 }

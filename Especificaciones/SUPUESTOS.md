@@ -117,6 +117,17 @@
 - Alternativa(s) descartada(s): depender de `MensajeInicial.PlantillaWhatsApp` por campania (deja el invariante critico en operacion manual); caer a texto libre si falta plantilla (Meta no lo entrega); duplicar la pregunta dentro de la plantilla (mezcla saludo/pregunta y contradice `#primer-contacto-pregunta`, que entrega la pregunta cuando el participante responde).
 - Impacto / reversibilidad: no cambia contratos `03`/`04`; agrega configuracion no secreta y endurece el flujo de envio. Reversible cambiando la fuente de la plantilla, sin tocar el gateway ni el contrato REST.
 
+### webhook-boton-template-como-entrante - Click del boton de plantilla abre el flujo conversacional
+- Fecha: 2026-06-18 - Agente/Rol: Codex - Backend/Integracion WhatsApp - Commit: pendiente.
+- Contexto: al recibir la plantilla inicial, si el participante respondia con texto el orquestador enviaba la pregunta vigente, pero si hacia click en el boton del template el webhook llegaba como `messages[].type=button` o `interactive.button_reply` y el parser lo descartaba como no-texto. REQ §9, §15, §26 / ARQ §4.2, §6.
+- Decision:
+  - `IWhatsAppGateway.ParsearWebhook` considera procesables los mensajes `text`, `button` y `interactive` con `type=button_reply`.
+  - Para `button`, el texto conversacional se toma de `button.text` y, si falta, de `button.payload`.
+  - Para `interactive.button_reply`, el texto se toma de `button_reply.title` y, si falta, de `button_reply.id`.
+  - El orquestador no cambia: el click se trata como primer entrante del participante, crea la conversacion en `EsperandoRespuestaInicial` y envia la pregunta vigente como texto libre dentro de la ventana abierta por ese click.
+- Alternativa(s) descartada(s): crear un flujo especial para botones (duplica la regla de primer entrante); ignorar el payload del boton y esperar texto manual (deja roto el CTA principal de la plantilla); evaluar el texto del boton como respuesta a la pregunta (contradice `#primer-contacto-pregunta`, porque el participante aun no recibio la pregunta).
+- Impacto / reversibilidad: no cambia contratos `03`/`04`; amplia el parser del webhook y mantiene la idempotencia por `whatsappMessageId`.
+
 ### fase6-evaluacion-llm - Decisiones del modulo de Evaluacion LLM
 - Fecha: 2026-06-13 - Agente/Rol: Claude Code - Arquitecto/Backend/AppSec - Commit: pendiente (sin commit)
 - Contexto: `08` fija el puerto `IEvaluadorLlm`/`ILlmClient`, el contrato de salida (`08 §4`) y el fallback (`08 §6`), pero deja abiertos: la estrategia de seleccion de proveedor, el limite exacto de longitud de la retro, el tratamiento de la salida sobre-larga o de campos opcionales, donde se persiste la `Evaluacion`, y como se aplican los cupos de llamadas. REQ §19, §20, §25.3, §26.5 / ARQ §6, §12.

@@ -56,6 +56,7 @@ Invocado desde el endpoint `POST /webhook/whatsapp` (`04 §6.2`). Flujo (`ARQ §
 1. El endpoint verifica firma (VerificarFirma). Si falla → 401, descarta.
 2. Responde 200 OK inmediato y encola { payload } a la cola in-process.
 3. El worker:
+   - Nota: el parser considera entrantes procesables los textos, clicks de boton de plantilla (`type=button`) y respuestas `interactive.button_reply`.
    a. ParsearWebhook → MensajeEntrante (ignora payloads de estado/no-mensaje).
    b. Idempotencia: intenta crear WebhookDedupe{ id = whatsappMessageId } en `leases`.
       - Si ya existía → descarta (mensaje repetido por reintento de Meta).

@@ -100,6 +100,104 @@ public sealed class WhatsAppGatewayTests
     }
 
     [Fact]
+    public void ParsearWebhook_ClickBotonTemplate_DevuelveMensajeEntrante()
+    {
+        var gateway = Construir();
+        var payload = new WhatsAppWebhookPayload
+        {
+            Entry = new[]
+            {
+                new WhatsAppEntry
+                {
+                    Changes = new[]
+                    {
+                        new WhatsAppChange
+                        {
+                            Value = new WhatsAppChangeValue
+                            {
+                                Messages = new[]
+                                {
+                                    new WhatsAppMessage
+                                    {
+                                        From = "573001112233",
+                                        Id = "wamid.BTN",
+                                        Timestamp = "1700000010",
+                                        Type = "button",
+                                        Button = new WhatsAppMessageButton
+                                        {
+                                            Text = "Participar",
+                                            Payload = "participar",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
+
+        var mensaje = gateway.ParsearWebhook(payload);
+
+        mensaje.Should().NotBeNull();
+        mensaje!.NumeroE164.Should().Be("573001112233");
+        mensaje.Texto.Should().Be("Participar");
+        mensaje.WhatsappMessageId.Should().Be("wamid.BTN");
+        mensaje.Timestamp.Should().Be(DateTimeOffset.FromUnixTimeSeconds(1700000010));
+    }
+
+    [Fact]
+    public void ParsearWebhook_ClickBotonInteractivo_DevuelveMensajeEntrante()
+    {
+        var gateway = Construir();
+        var payload = new WhatsAppWebhookPayload
+        {
+            Entry = new[]
+            {
+                new WhatsAppEntry
+                {
+                    Changes = new[]
+                    {
+                        new WhatsAppChange
+                        {
+                            Value = new WhatsAppChangeValue
+                            {
+                                Messages = new[]
+                                {
+                                    new WhatsAppMessage
+                                    {
+                                        From = "573001112233",
+                                        Id = "wamid.INT",
+                                        Timestamp = "1700000020",
+                                        Type = "interactive",
+                                        Interactive = new WhatsAppMessageInteractive
+                                        {
+                                            Type = "button_reply",
+                                            ButtonReply = new WhatsAppMessageInteractiveButtonReply
+                                            {
+                                                Id = "participar",
+                                                Title = "Participar",
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
+
+        var mensaje = gateway.ParsearWebhook(payload);
+
+        mensaje.Should().NotBeNull();
+        mensaje!.NumeroE164.Should().Be("573001112233");
+        mensaje.Texto.Should().Be("Participar");
+        mensaje.WhatsappMessageId.Should().Be("wamid.INT");
+        mensaje.Timestamp.Should().Be(DateTimeOffset.FromUnixTimeSeconds(1700000020));
+    }
+
+    [Fact]
     public void ParsearWebhook_SinMensajes_DevuelveNull()
     {
         var gateway = Construir();

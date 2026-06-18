@@ -77,7 +77,7 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             .Select(change => change.Value)
             .Where(value => value is not null)
             .SelectMany(value => value!.Messages ?? Array.Empty<WhatsAppMessage>())
-            .FirstOrDefault(EsTextoProcesable);
+            .FirstOrDefault(EsMensajeProcesable);
 
         if (mensaje is null)
         {
@@ -85,9 +85,10 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             return null;
         }
 
+        var texto = ExtraerTextoProcesable(mensaje);
         return new MensajeEntrante(
             mensaje.From!,
-            mensaje.Text!.Body!,
+            texto!,
             mensaje.Id!,
             ParsearTimestamp(mensaje.Timestamp));
     }
@@ -305,11 +306,39 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
     private static bool EsTransitorio(HttpStatusCode codigo)
         => codigo == HttpStatusCode.TooManyRequests || (int)codigo >= 500;
 
-    private static bool EsTextoProcesable(WhatsAppMessage mensaje)
-        => string.Equals(mensaje.Type, "text", StringComparison.Ordinal)
-            && !string.IsNullOrWhiteSpace(mensaje.From)
+    private static bool EsMensajeProcesable(WhatsAppMessage mensaje)
+        => !string.IsNullOrWhiteSpace(mensaje.From)
             && !string.IsNullOrWhiteSpace(mensaje.Id)
-            && !string.IsNullOrWhiteSpace(mensaje.Text?.Body);
+            && !string.IsNullOrWhiteSpace(ExtraerTextoProcesable(mensaje));
+
+    private static string? ExtraerTextoProcesable(WhatsAppMessage mensaje)
+    {
+        if (string.Equals(mensaje.Type, "text", StringComparison.Ordinal))
+        {
+            return mensaje.Text?.Body;
+        }
+
+        if (string.Equals(mensaje.Type, "button", StringComparison.Ordinal))
+        {
+            return !string.IsNullOrWhiteSpace(mensaje.Button?.Text)
+                ? mensaje.Button.Text
+                : mensaje.Button?.Payload;
+        }
+
+        var interactive = mensaje.Interactive;
+        if (string.Equals(mensaje.Type, "interactive", StringComparison.Ordinal) && interactive is not null)
+        {
+            if (string.Equals(interactive.Type, "button_reply", StringComparison.Ordinal))
+            {
+                var respuesta = interactive.ButtonReply;
+                return !string.IsNullOrWhiteSpace(respuesta?.Title)
+                    ? respuesta.Title
+                    : respuesta?.Id;
+            }
+        }
+
+        return null;
+    }
 
     private DateTimeOffset ParsearTimestamp(string? timestamp)
         => long.TryParse(timestamp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var segundos)
