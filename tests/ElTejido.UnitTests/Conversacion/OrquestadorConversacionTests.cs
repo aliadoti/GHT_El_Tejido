@@ -249,6 +249,38 @@ public sealed class OrquestadorConversacionTests
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
     }
 
+    [Fact]
+    public async Task Procesar_CampaniaConDosPreguntas_CubreCicloCompletoPorPregunta()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        var orquestador = Construir();
+        var participante = ParticipanteMultipregunta();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Respuesta p1"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mejora p1"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Respuesta p2"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mejora p2"), CancellationToken.None);
+
+        await _gateway.Received(2).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Inicial, Arg.Any<CancellationToken>());
+        await _gateway.Received(2).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _gateway.Received(2).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Pregunta 2", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Inicial,
+            Arg.Any<CancellationToken>());
+        await _evaluador.Received(4).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.Received(4).GuardarRespuestaAsync(Arg.Any<Respuesta>(), Arg.Any<CancellationToken>());
+        await _respuestas.Received(2).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(respuesta => respuesta.PreguntaId == "p_2"),
+            Arg.Any<CancellationToken>());
+
+        _conversaciones.Conversaciones.Should().ContainSingle(c => c.PreguntaId == "p_1" && c.Estado == EstadoConversacion.Cerrada);
+        _conversaciones.Conversaciones.Should().ContainSingle(c => c.PreguntaId == "p_2" && c.Estado == EstadoConversacion.Cerrada);
+    }
+
     private OrquestadorConversacion Construir()
         => new(
             _conversaciones,
@@ -287,6 +319,16 @@ public sealed class OrquestadorConversacionTests
             EstadoRegistro.Activo, EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta,
             Epoca, null, null);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    private static ParticipanteResuelto ParticipanteMultipregunta()
+    {
+        var pregunta1 = FabricasDominio.CrearPregunta("p_1", 1);
+        var pregunta2 = FabricasDominio.CrearPregunta("p_2", 2);
+        var campania = CrearCampania(new[] { pregunta1, pregunta2 });
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta1);
     }
 
     private static MensajeEntrante Mensaje(string texto) => new(Numero, texto, "wamid." + Guid.NewGuid().ToString("N"), Epoca);
@@ -328,6 +370,8 @@ public sealed class OrquestadorConversacionTests
         private readonly Dictionary<string, DominioConversacion> _conversaciones = new(StringComparer.Ordinal);
 
         public DominioConversacion? Ultima { get; private set; }
+
+        public IReadOnlyCollection<DominioConversacion> Conversaciones => _conversaciones.Values.ToArray();
 
         public int MensajesGuardados { get; private set; }
 

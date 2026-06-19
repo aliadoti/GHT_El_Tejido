@@ -223,19 +223,26 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
     private sealed class ConversacionesFake : IRepositorioConversaciones
     {
+        private readonly Dictionary<string, DominioConversacion> _conversaciones = new(StringComparer.Ordinal);
+
         public DominioConversacion? Ultima { get; private set; }
 
         public Task GuardarConversacionAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
         {
+            _conversaciones[conversacion.Id] = conversacion;
             Ultima = conversacion;
             return Task.CompletedTask;
         }
 
         public Task<DominioConversacion?> ObtenerConversacionAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
-            => Task.FromResult(Ultima?.CampaniaId == campaniaId && Ultima.Id == conversacionId ? Ultima : null);
+            => Task.FromResult(
+                _conversaciones.TryGetValue(conversacionId, out var conversacion) && conversacion.CampaniaId == campaniaId
+                    ? conversacion
+                    : null);
 
         public Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(string campaniaId, CancellationToken cancellationToken)
-            => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(Array.Empty<DominioConversacion>());
+            => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
+                _conversaciones.Values.Where(conversacion => conversacion.CampaniaId == campaniaId).ToArray());
 
         public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(Array.Empty<DominioConversacion>());

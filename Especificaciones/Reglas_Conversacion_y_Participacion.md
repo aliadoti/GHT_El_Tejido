@@ -33,6 +33,13 @@ evalúa** ese primer mensaje. Esta regla aplica aunque el envío inicial de camp
 evaluable. El **siguiente** mensaje ya se evalúa como respuesta según la máquina de estados. (Supuesto:
 `SUPUESTOS.md#primer-contacto-pregunta`.)
 
+En campanias con varias preguntas activas, el orquestador resuelve la pregunta de trabajo por `orden`:
+mantiene el hilo abierto actual hasta completar su evaluacion y su unico reintento; cuando ese hilo se
+cierra con evaluacion valida, crea el hilo de la siguiente pregunta activa y la envia como texto libre en
+la misma ventana. Si un participante escribe despues de una pregunta cerrada y aun hay preguntas
+pendientes, el entrante se usa para abrir/enviar la siguiente pregunta y no se evalua como respuesta. Si
+todas las preguntas activas ya estan cerradas, los mensajes posteriores se ignoran.
+
 ### 2.2 Evaluación con LLM
 Cada respuesta se evalúa con el LLM usando la **rúbrica**, el **prompt** aprobado y la **ConfigLLM**
 activos de la pregunta/campaña. El modelo debe devolver un JSON con el esquema acordado (el sistema le

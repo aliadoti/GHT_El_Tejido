@@ -39,6 +39,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private const string SaludoPrimerContacto =
         "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
 
+    private const string SaludoSiguientePregunta =
+        "Continuemos con la siguiente pregunta:";
+
     /// <summary>
     /// Invitacion a mejorar la respuesta tras la primera evaluacion (05 §4.4). El siguiente mensaje
     /// se re-evalua y cierra la participacion contando esa ultima version.
@@ -90,17 +93,19 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         var usuario = participante.Usuario;
         var campania = participante.Campania;
-        var pregunta = participante.PreguntaVigente;
         var numero = usuario.WhatsappNormalizado;
         var ahora = _tiempo.GetUtcNow();
 
-        var conversacionId = $"conv_{campania.Id}_{usuario.Id}_{pregunta.Id}";
-        var conversacion = await _conversaciones.ObtenerConversacionAsync(campania.Id, conversacionId, cancellationToken);
-        if (conversacion is { Estado: EstadoConversacion.Cerrada })
+        var hilo = await ResolverHiloTrabajoAsync(campania, usuario.Id, participante.PreguntaVigente, cancellationToken);
+        if (hilo is null)
         {
-            // MVP: una conversacion por (usuario, campania, pregunta); cerrada no acepta mas mensajes.
+            // Todas las preguntas activas de la campania ya tienen su hilo cerrado.
             return;
         }
+
+        var pregunta = hilo.Pregunta;
+        var conversacionId = hilo.ConversacionId;
+        var conversacion = hilo.Conversacion;
 
         // Primer entrante de un hilo nuevo (05 §4): el envio inicial de campania puede haber sido
         // solo un saludo, asi que la pregunta vigente se envia aqui y este mensaje NO se evalua.
@@ -173,6 +178,50 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         conversacion = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+
+        await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+    }
+
+    private async Task<HiloTrabajo?> ResolverHiloTrabajoAsync(
+        Campania campania,
+        string usuarioId,
+        Pregunta preguntaFallback,
+        CancellationToken cancellationToken)
+    {
+        var preguntas = PreguntasActivasOrdenadas(campania);
+        if (preguntas.Count == 0)
+        {
+            return null;
+        }
+
+        var conversaciones = await _conversaciones.ListarConversacionesAsync(campania.Id, cancellationToken);
+        var conversacionesUsuario = conversaciones
+            .Where(conversacion => conversacion.UsuarioId == usuarioId)
+            .GroupBy(conversacion => conversacion.PreguntaId, StringComparer.Ordinal)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo => grupo.OrderByDescending(conversacion => conversacion.FechaInicio).First(),
+                StringComparer.Ordinal);
+
+        foreach (var pregunta in preguntas)
+        {
+            if (!conversacionesUsuario.TryGetValue(pregunta.Id, out var conversacion))
+            {
+                return new HiloTrabajo(pregunta, CrearConversacionId(campania.Id, usuarioId, pregunta.Id), null);
+            }
+
+            if (conversacion.Estado != EstadoConversacion.Cerrada)
+            {
+                return new HiloTrabajo(pregunta, conversacion.Id, conversacion);
+            }
+        }
+
+        if (preguntas.Any(pregunta => pregunta.Id == preguntaFallback.Id))
+        {
+            return null;
+        }
+
+        return new HiloTrabajo(preguntaFallback, CrearConversacionId(campania.Id, usuarioId, preguntaFallback.Id), null);
     }
 
     private async Task ResponderPrimerContactoAsync(
@@ -196,6 +245,52 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+    }
+
+    private async Task EnviarSiguientePreguntaPendienteAsync(
+        Campania campania,
+        Usuario usuario,
+        Pregunta preguntaActual,
+        NumeroWhatsApp numero,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var siguiente = await ResolverSiguientePreguntaSinHiloAsync(campania, usuario.Id, preguntaActual, cancellationToken);
+        if (siguiente is null)
+        {
+            return;
+        }
+
+        var conversacionId = CrearConversacionId(campania.Id, usuario.Id, siguiente.Id);
+        var conversacion = DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, siguiente.Id, Canal, null, ahora);
+        var texto = Combinar(SaludoSiguientePregunta, siguiente.Texto);
+
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+    }
+
+    private async Task<Pregunta?> ResolverSiguientePreguntaSinHiloAsync(
+        Campania campania,
+        string usuarioId,
+        Pregunta preguntaActual,
+        CancellationToken cancellationToken)
+    {
+        var preguntas = PreguntasActivasOrdenadas(campania);
+        var indiceActual = preguntas.FindIndex(pregunta => pregunta.Id == preguntaActual.Id);
+        if (indiceActual < 0 || indiceActual == preguntas.Count - 1)
+        {
+            return null;
+        }
+
+        var conversaciones = await _conversaciones.ListarConversacionesAsync(campania.Id, cancellationToken);
+        var preguntasConHilo = conversaciones
+            .Where(conversacion => conversacion.UsuarioId == usuarioId)
+            .Select(conversacion => conversacion.PreguntaId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return preguntas
+            .Skip(indiceActual + 1)
+            .FirstOrDefault(pregunta => !preguntasConHilo.Contains(pregunta.Id));
     }
 
     private async Task CerrarNeutroAsync(
@@ -425,6 +520,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string Combinar(string? primero, string segundo)
         => string.IsNullOrWhiteSpace(primero) ? segundo : primero.Trim() + "\n\n" + segundo;
+
+    private static List<Pregunta> PreguntasActivasOrdenadas(Campania campania)
+        => campania.Preguntas
+            .Where(pregunta => pregunta.Estado == EstadoRegistro.Activo)
+            .OrderBy(pregunta => pregunta.Orden)
+            .ThenBy(pregunta => pregunta.Id, StringComparer.Ordinal)
+            .ToList();
+
+    private static string CrearConversacionId(string campaniaId, string usuarioId, string preguntaId)
+        => $"conv_{campaniaId}_{usuarioId}_{preguntaId}";
+
+    private sealed record HiloTrabajo(Pregunta Pregunta, string ConversacionId, DominioConversacion? Conversacion);
 
     private sealed record ContextoDisponible(ContextoEvaluacion? Contexto, string? Motivo)
     {
