@@ -141,11 +141,14 @@ ProcesarMensajeEntranteAsync:
 ```
 
 ### 4.4 Tope duro del MVP
-**1 repregunta ⇒ máximo 2 evaluaciones por hilo** (`REQ §25.2`, `§26.6`). El orquestador NO supera este límite aunque el LLM lo sugiera. El límite es configurable por pregunta/campaña pero su valor MVP es 1.
+**Revisiones como oportunidades:** `MaxRepreguntas` controla cuantas invitaciones a mejorar se ofrecen. Cuando el hilo esta en `esperandoRepregunta` y `repreguntasUsadas >= maxRepreguntas`, el siguiente entrante se registra como respuesta `recibida`, no se evalua, no genera retro/Markdown y se cierra con solo el mensaje de cierre (`REQ §25.2`, `§26.6`).
 
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
-La retroalimentación que se envía es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuándo enviarla y si además envía cierre. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, más de una repregunta (`REQ §21.3`).
+La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 
+
+#### Textos operativos configurables
+Los textos no generados por el LLM se leen de la seccion `Conversacion:Mensajes` y pueden cambiarse por variables de entorno: `Conversacion__Mensajes__SaludoPrimerContacto`, `Conversacion__Mensajes__SaludoSiguientePregunta`, `Conversacion__Mensajes__InvitacionMejora` y `Conversacion__Mensajes__MensajeConfiguracionNoDisponible`. Si el valor falta o esta vacio, se usa el default compilado. `ConfigConversacional.MensajeCierre` sigue viniendo de la campania/portal.
 ### 4.6 Manejo de errores
 - Si la evaluación cae en **fallback** (`08 §6`): el orquestador envía una retroalimentación neutra ("Gracias, registramos tu aporte") y cierra sin romper el hilo; la `Respuesta` queda `evaluacionPendiente` (`REQ §20.3.10`).
 - Si el envío saliente falla: se reintenta (Gateway) y se registra; la conversación no se pierde (el estado persiste en Cosmos).

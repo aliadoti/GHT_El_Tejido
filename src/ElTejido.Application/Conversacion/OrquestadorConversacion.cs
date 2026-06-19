@@ -24,32 +24,13 @@ namespace ElTejido.Application.Conversacion;
 /// <summary>
 /// Orquestador conversacional (05 §4): gobierna la maquina de estados de un hilo a partir de un
 /// mensaje entrante. Persiste Mensaje y Respuesta, evalua con el LLM (08), aplica el tope de
-/// <b>1 repregunta</b> del MVP (05 §4.4) y, al cerrar, envia retro+cierre y compila el Markdown (09).
+/// revisiones del MVP (05 §4.4) y, al cerrar, envia el cierre que corresponda y compila el Markdown (09).
 /// Ante fallback del evaluador (08 §6) envia retro neutra y cierra dejando la respuesta como
 /// <c>evaluacionPendiente</c> (sin romper el hilo).
 /// </summary>
 public sealed class OrquestadorConversacion : IOrquestadorConversacion
 {
     private const string Canal = "whatsapp";
-
-    /// <summary>
-    /// Saludo que antecede a la pregunta vigente en el primer entrante de un hilo nuevo (05 §4).
-    /// Ver <c>SUPUESTOS.md#primer-contacto-pregunta</c>.
-    /// </summary>
-    private const string SaludoPrimerContacto =
-        "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
-
-    private const string SaludoSiguientePregunta =
-        "Continuemos con la siguiente pregunta:";
-
-    /// <summary>
-    /// Invitacion a mejorar la respuesta tras la primera evaluacion (05 §4.4). El siguiente mensaje
-    /// se re-evalua y cierra la participacion contando esa ultima version.
-    /// </summary>
-    private const string InvitacionMejora =
-        "Si quieres, puedes enviar una version mejorada de tu respuesta con base en esta "
-        + "retroalimentacion y la tomare en cuenta (es tu ultimo ajuste). Si ya estas conforme, "
-        + "no necesitas responder.";
 
     private readonly IRepositorioConversaciones _conversaciones;
     private readonly IRepositorioRespuestas _respuestas;
@@ -60,6 +41,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IWhatsAppGateway _gateway;
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
+    private readonly OpcionesMensajesConversacion _mensajes;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -72,6 +54,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IWhatsAppGateway gateway,
         IRepositorioLogSeguridad logSeguridad,
         IProveedorCorrelacion correlacion,
+        OpcionesConversacion opciones,
         TimeProvider tiempo)
     {
         _conversaciones = conversaciones;
@@ -83,6 +66,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _gateway = gateway;
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
+        _mensajes = opciones.Mensajes;
         _tiempo = tiempo;
     }
 
@@ -118,23 +102,45 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         conversacion ??= DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora);
         var esRepregunta = conversacion.EstadoMaquina == EstadoMaquinaConversacion.EsperandoRepregunta;
+        var revisionesAgotadas = esRepregunta && conversacion.RepreguntasUsadas >= pregunta.MaxRepreguntas;
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
-
-        conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
-        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
 
         await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
 
         var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
+
+        if (revisionesAgotadas)
+        {
+            conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp);
+            await GuardarRespuestaAsync(
+                respuestaId,
+                campania.Id,
+                usuario,
+                pregunta,
+                conversacionId,
+                mensaje.Texto,
+                esRepregunta,
+                EstadoRespuesta.Recibida,
+                ahora,
+                cancellationToken);
+            await CerrarConAgradecimientoAsync(conversacion, numero, campania, ahora, cancellationToken);
+            await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+            return;
+        }
+
+        conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+
         var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, respuestaId, mensaje.Texto, cancellationToken);
 
         if (contexto.Contexto is null)
         {
-            // Sin configuracion completa (rubrica/prompt/configLLM) no se puede evaluar: cierre neutro.
+            // Sin configuracion completa (rubrica/prompt/configLLM) no se puede evaluar: se informa
+            // un problema operativo al participante y se cierra sin llamar al LLM.
             await RegistrarConfiguracionNoDisponibleAsync(usuario, contexto.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
             await GuardarRespuestaAsync(respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta, EstadoRespuesta.EvaluacionPendiente, ahora, cancellationToken);
-            await CerrarNeutroAsync(conversacion, numero, campania, ahora, cancellationToken);
+            await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, ahora, cancellationToken);
             return;
         }
 
@@ -155,15 +161,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
         }
 
-        // Mejora determinista (05 §4.4): tras una evaluacion valida se ofrece SIEMPRE una revision
-        // (hasta MaxRepreguntas, default 1) con la retro como base; el siguiente mensaje se re-evalua
-        // y, agotado el cupo, cierra contando la ultima evaluacion. En fallback no se ofrece (se cierra).
+        // Mejora deterministica (05 §4.4): tras una evaluacion valida se ofrece una revision
+        // (hasta MaxRepreguntas, default 1) con la retro como base. Si el siguiente mensaje llega
+        // con el cupo agotado, se registra sin evaluarlo y se cierra con agradecimiento.
         var ofrecerMejora = !esFallback && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
         if (ofrecerMejora)
         {
+            var invitacionMejora = TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault);
             var invitacion = string.IsNullOrWhiteSpace(evaluacion.RepreguntaSugerida)
-                ? InvitacionMejora
-                : evaluacion.RepreguntaSugerida!.Trim() + "\n\n" + InvitacionMejora;
+                ? invitacionMejora
+                : evaluacion.RepreguntaSugerida!.Trim() + "\n\n" + invitacionMejora;
             var texto = Combinar(evaluacion.RetroalimentacionEnviada, invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
 
@@ -241,7 +248,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
-        var texto = Combinar(SaludoPrimerContacto, pregunta.Texto);
+        var texto = Combinar(TextoConfigurado(_mensajes.SaludoPrimerContacto, OpcionesMensajesConversacion.SaludoPrimerContactoDefault), pregunta.Texto);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -263,7 +270,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var conversacionId = CrearConversacionId(campania.Id, usuario.Id, siguiente.Id);
         var conversacion = DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, siguiente.Id, Canal, null, ahora);
-        var texto = Combinar(SaludoSiguientePregunta, siguiente.Texto);
+        var texto = Combinar(TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault), siguiente.Texto);
 
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -291,6 +298,39 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         return preguntas
             .Skip(indiceActual + 1)
             .FirstOrDefault(pregunta => !preguntasConHilo.Contains(pregunta.Id));
+    }
+
+    private async Task CerrarConAgradecimientoAsync(
+        DominioConversacion conversacion,
+        NumeroWhatsApp numero,
+        Campania campania,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        await EnviarAsync(conversacion, numero, campania.ConfigConversacional.MensajeCierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+
+        var cerrada = conversacion.Cerrar(ahora);
+        await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
+    }
+
+    private async Task CerrarPorConfiguracionNoDisponibleAsync(
+        DominioConversacion conversacion,
+        NumeroWhatsApp numero,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        await EnviarAsync(
+            conversacion,
+            numero,
+            TextoConfigurado(
+                _mensajes.MensajeConfiguracionNoDisponible,
+                OpcionesMensajesConversacion.MensajeConfiguracionNoDisponibleDefault),
+            TipoEnvioMensaje.Cierre,
+            ahora,
+            cancellationToken);
+
+        var cerrada = conversacion.Cerrar(ahora);
+        await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
     }
 
     private async Task CerrarNeutroAsync(
@@ -520,6 +560,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string Combinar(string? primero, string segundo)
         => string.IsNullOrWhiteSpace(primero) ? segundo : primero.Trim() + "\n\n" + segundo;
+
+    private static string TextoConfigurado(string? valor, string fallback)
+        => string.IsNullOrWhiteSpace(valor) ? fallback : valor.Trim();
 
     private static List<Pregunta> PreguntasActivasOrdenadas(Campania campania)
         => campania.Preguntas

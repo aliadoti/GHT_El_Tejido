@@ -34,34 +34,42 @@ evaluable. El **siguiente** mensaje ya se evalúa como respuesta según la máqu
 `SUPUESTOS.md#primer-contacto-pregunta`.)
 
 En campanias con varias preguntas activas, el orquestador resuelve la pregunta de trabajo por `orden`:
-mantiene el hilo abierto actual hasta completar su evaluacion y su unico reintento; cuando ese hilo se
-cierra con evaluacion valida, crea el hilo de la siguiente pregunta activa y la envia como texto libre en
-la misma ventana. Si un participante escribe despues de una pregunta cerrada y aun hay preguntas
-pendientes, el entrante se usa para abrir/enviar la siguiente pregunta y no se evalua como respuesta. Si
-todas las preguntas activas ya estan cerradas, los mensajes posteriores se ignoran.
+mantiene el hilo abierto actual hasta completar sus revisiones disponibles; cuando ese hilo se cierra,
+crea el hilo de la siguiente pregunta activa y la envia como texto libre en la misma ventana. Si un
+participante escribe despues de una pregunta cerrada y aun hay preguntas pendientes, el entrante se usa
+para abrir/enviar la siguiente pregunta y no se evalua como respuesta. Si todas las preguntas activas ya
+estan cerradas, los mensajes posteriores se ignoran.
 
 ### 2.2 Evaluación con LLM
 Cada respuesta se evalúa con el LLM usando la **rúbrica**, el **prompt** aprobado y la **ConfigLLM**
 activos de la pregunta/campaña. El modelo debe devolver un JSON con el esquema acordado (el sistema le
 incrusta el esquema y la escala). Requisitos para evaluar:
 - ConfigLLM en estado **activo**, prompt **activo y aprobado**, rúbrica **activa**.
-- Si falta alguno, o el proveedor falla, o la salida es inválida → **fallback seguro** (`08 §6`):
-  se envía una retro neutra, la respuesta queda `evaluacionPendiente`, **no se genera Markdown** y la
-  conversación se cierra. El motivo queda en `LogSeguridad` y en el detalle técnico de Resultados
-  (`error_proveedor`, `config_llm_no_activa`, `salida_invalida:<razón>`, …).
+- Si falta rubrica, prompt o ConfigLLM valida, no se llama al LLM: se informa al participante que hay
+  un problema de configuracion y que debe contactar al administrador; la respuesta queda
+  `evaluacionPendiente`, **no se genera Markdown** y la conversacion se cierra.
+- Si el proveedor falla o la salida es invalida -> **fallback seguro** (`08 §6`):
+  se envia una retro neutra, la respuesta queda `evaluacionPendiente`, **no se genera Markdown** y la
+  conversacion se cierra. El motivo queda en `LogSeguridad` y en el detalle tecnico de Resultados
+  (`error_proveedor`, `config_llm_no_activa`, `salida_invalida:<razon>`, ...).
 
-### 2.3 Revisión determinista (una mejora, cuenta la última)
-Tras una **evaluación válida**, el sistema **siempre ofrece al participante una oportunidad de mejorar**
-su respuesta con base en la retroalimentación (envía retro + invitación). El **siguiente** mensaje se
-**re-evalúa** y la conversación **se cierra contando esa última versión**. El número de revisiones lo
-controla `MaxRepreguntas` (default **1**); con `MaxRepreguntas = 0` se cierra sin ofrecer mejora. En
-fallback **no** se ofrece mejora (se cierra con retro neutra). Cada evaluación válida compila su propio
-Markdown; el del último intento es el definitivo.
+### 2.3 Revision determinista (revisiones como oportunidades)
+Tras una **evaluacion valida**, el sistema ofrece al participante una oportunidad de mejorar su respuesta
+con base en la retroalimentacion (envia retro + invitacion) mientras
+`RepreguntasUsadas < MaxRepreguntas`. Cuando el hilo esta en `esperandoRepregunta` y
+`RepreguntasUsadas >= MaxRepreguntas`, el siguiente mensaje del participante **se registra como
+`recibida`, no se manda al LLM, no genera retroalimentacion ni Markdown**, y el sistema envia solo el
+`MensajeCierre`. Luego, si hay otra pregunta activa pendiente, continua con esa pregunta.
+
+El numero de revisiones lo controla `MaxRepreguntas` (default **1**); con `MaxRepreguntas = 0` se cierra
+sin ofrecer mejora. En fallback **no** se ofrece mejora (se cierra con retro neutra). Cada evaluacion
+valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
 
 ### 2.4 Cierre y Markdown
-Al cerrar (sin más revisiones disponibles) se envía **retro + mensaje de cierre** y se compila el
-**Markdown** del aporte (`09`), salvo en fallback. Una conversación **cerrada ignora** cualquier
-mensaje posterior (se descarta en silencio).
+Hay dos cierres normales: si la evaluacion valida decide cerrar sin ofrecer revision, se envia
+**retro + mensaje de cierre** y se compila el **Markdown** del aporte (`09`); si el participante responde
+despues de agotar revisiones, se envia **solo el mensaje de cierre** y no se compila un Markdown nuevo.
+Una conversacion **cerrada ignora** cualquier mensaje posterior (se descarta en silencio).
 
 ### 2.5 Ventana de 24 h y respuestas tardías
 - WhatsApp solo permite **texto libre** dentro de las **24 h** posteriores al último mensaje del
@@ -88,9 +96,16 @@ campaña activa o sin pregunta vigente) se **rechaza de forma neutral**; el moti
 |---|---|---|---|
 | `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Cuántas revisiones/mejoras se ofrecen antes de cerrar (0 = ninguna). |
 | `MensajeCierre` (config conversacional) | Portal admin (campaña) | "Gracias. Tu aporte quedó registrado…" | Texto que acompaña la retro al cerrar. |
+| `Conversacion:Mensajes:SaludoPrimerContacto` | App config / env `Conversacion__Mensajes__SaludoPrimerContacto` | "Hola! Gracias por escribirnos..." | Texto que antecede la primera pregunta cuando el participante abre un hilo nuevo. |
+| `Conversacion:Mensajes:SaludoSiguientePregunta` | App config / env `Conversacion__Mensajes__SaludoSiguientePregunta` | "Continuemos con la siguiente pregunta:" | Texto que antecede una pregunta pendiente posterior. |
+| `Conversacion:Mensajes:InvitacionMejora` | App config / env `Conversacion__Mensajes__InvitacionMejora` | Invitacion operativa a mejorar | Texto adicional que acompana la retro cuando aun quedan revisiones. |
+| `Conversacion:Mensajes:MensajeConfiguracionNoDisponible` | App config / env `Conversacion__Mensajes__MensajeConfiguracionNoDisponible` | "Hay un problema con la configuracion..." | Texto visible cuando falta rubrica, prompt o ConfigLLM valida y no se llama al LLM. |
 | `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo. Recomendado p. ej. `72`. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |
+
+> Si un texto de `Conversacion:Mensajes:*` se deja vacio o con espacios, el orquestador usa el default
+> compilado para evitar mensajes salientes vacios.
 
 > Para **activar la expiración** en Azure: agregar el App Setting
 > `Conversacion__HorasExpiracionSinRespuesta` con el número de horas deseado (p. ej. `72`). Con `0` o sin

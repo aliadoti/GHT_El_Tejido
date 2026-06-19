@@ -17,4 +17,32 @@ public sealed class OpcionesConversacion
 
     /// <summary>Periodicidad del barrido de expiracion, en minutos (minimo 1; default 15).</summary>
     public int IntervaloRevisionMinutos { get; set; } = 15;
+
+    /// <summary>Textos operativos del orquestador que se pueden sobreescribir por configuracion.</summary>
+    public OpcionesMensajesConversacion Mensajes { get; set; } = new();
+}
+
+public sealed class OpcionesMensajesConversacion
+{
+    public const string SaludoPrimerContactoDefault =
+        "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
+
+    public const string SaludoSiguientePreguntaDefault =
+        "Continuemos con la siguiente pregunta:";
+
+    public const string InvitacionMejoraDefault =
+        "Si quieres, puedes enviar una version mejorada de tu respuesta con base en esta "
+        + "retroalimentacion y la tomare en cuenta (es tu ultimo ajuste). Si ya estas conforme, "
+        + "no necesitas responder.";
+
+    public const string MensajeConfiguracionNoDisponibleDefault =
+        "Hay un problema con la configuracion de esta campania. Contacta al administrador del sistema.";
+
+    public string SaludoPrimerContacto { get; set; } = SaludoPrimerContactoDefault;
+
+    public string SaludoSiguientePregunta { get; set; } = SaludoSiguientePreguntaDefault;
+
+    public string InvitacionMejora { get; set; } = InvitacionMejoraDefault;
+
+    public string MensajeConfiguracionNoDisponible { get; set; } = MensajeConfiguracionNoDisponibleDefault;
 }
