@@ -3,7 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
 import { AdminApiService } from '../../core/admin-api.service';
-import { Campania, EnvioEstado, JobEnvio, MensajeInicial } from '../../core/api-models';
+import {
+  Campania,
+  EnvioEstado,
+  JobEnvio,
+  MensajeInicial,
+  UsuarioAdmin,
+} from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { NotificacionesService } from '../../core/notificaciones.service';
 import { formatApiError } from '../../shared-error';
@@ -113,7 +119,7 @@ import { formatApiError } from '../../shared-error';
                       (change)="toggle(estado.usuarioId)"
                     />
                   </td>
-                  <td>{{ estado.usuarioId }}</td>
+                  <td>{{ nombreUsuario(estado.usuarioId) }}</td>
                   <td>{{ estado.numero }}</td>
                   <td>
                     <span class="status-badge">{{ estado.estadoEnvio }}</span>
@@ -144,6 +150,7 @@ export class EnviosPage {
   protected readonly job = signal<JobEnvio | null>(null);
   protected readonly campanias = signal<Campania[]>([]);
   protected readonly mensajes = signal<MensajeInicial[]>([]);
+  protected readonly usuariosMap = signal<Map<string, UsuarioAdmin>>(new Map());
   protected readonly error = signal('');
   protected campaniaId =
     this.route.snapshot.paramMap.get('id') === '_'
@@ -156,11 +163,27 @@ export class EnviosPage {
       next: (page) => this.campanias.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
+    // Mapa id -> usuario para mostrar nombre/area en vez del id tecnico en la tabla de estado.
+    this.api.usuarios({ pageSize: 500 }).subscribe({
+      next: (page) => this.usuariosMap.set(new Map(page.items.map((u) => [u.id, u]))),
+      error: () => {
+        /* el id tecnico sigue siendo el fallback; no bloquea la consulta de envios */
+      },
+    });
 
     if (this.campaniaId) {
       this.load();
       this.loadMensajes();
     }
+  }
+
+  /** Nombre legible del participante (con area si esta disponible); cae al id si no se encontro. */
+  nombreUsuario(usuarioId: string): string {
+    const usuario = this.usuariosMap().get(usuarioId);
+    if (!usuario) {
+      return usuarioId;
+    }
+    return usuario.area ? `${usuario.nombre} (${usuario.area})` : usuario.nombre;
   }
 
   onCampaniaChange() {

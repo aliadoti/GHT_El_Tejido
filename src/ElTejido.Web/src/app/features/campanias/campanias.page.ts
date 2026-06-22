@@ -11,6 +11,7 @@ import {
   Pregunta,
   PromptConfig,
   Rubrica,
+  UsuarioAdmin,
 } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { NotificacionesService } from '../../core/notificaciones.service';
@@ -183,360 +184,410 @@ interface PreguntaForm {
             </div>
           </div>
 
-          <div class="tabs-layout">
-            <article>
-              <h4>Configuracion</h4>
-              <form class="form-grid" (ngSubmit)="actualizarCampania(campania.id)">
-                <label>Nombre <input name="editarNombre" [(ngModel)]="edicion.nombre" /></label>
-                <label>
-                  Descripcion
-                  <input name="editarDescripcion" [(ngModel)]="edicion.descripcion" />
-                </label>
-                <label>
-                  Objetivo
-                  <textarea
-                    name="editarObjetivo"
-                    rows="3"
-                    [(ngModel)]="edicion.objetivo"
-                  ></textarea>
-                </label>
-                <label>
-                  Rubrica
-                  <select name="editarRubricaRef" [(ngModel)]="edicion.rubricaRef" required>
-                    @for (rubrica of rubricas(); track rubrica.id) {
-                      <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
-                    }
-                  </select>
-                </label>
-                <label>
-                  Config LLM
-                  <select name="editarConfigLlmRef" [(ngModel)]="edicion.configLlmRef" required>
-                    @for (config of configsLlm(); track config.id) {
-                      <option [value]="config.id">{{ config.nombre }}</option>
-                    }
-                  </select>
-                </label>
-                <label>
-                  Prompt de evaluacion
-                  <select name="editarPromptEvaluarRef" [(ngModel)]="edicion.promptEvaluarRef">
-                    <option value="">Sin prompt por defecto</option>
-                    @for (prompt of prompts(); track prompt.id) {
-                      <option [value]="prompt.id">
-                        {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
-                      </option>
-                    }
-                  </select>
-                </label>
-                <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
-                  Guardar cambios
-                </button>
-              </form>
-            </article>
+          <nav class="tab-nav" role="tablist">
+            <button
+              type="button"
+              class="tab-button"
+              [class.active]="tabActiva() === 'config'"
+              (click)="tabActiva.set('config')"
+            >
+              Configuracion
+            </button>
+            <button
+              type="button"
+              class="tab-button"
+              [class.active]="tabActiva() === 'mensajes'"
+              (click)="tabActiva.set('mensajes')"
+            >
+              Mensajes iniciales
+            </button>
+            <button
+              type="button"
+              class="tab-button"
+              [class.active]="tabActiva() === 'preguntas'"
+              (click)="tabActiva.set('preguntas')"
+            >
+              Preguntas
+            </button>
+            <button
+              type="button"
+              class="tab-button"
+              [class.active]="tabActiva() === 'participantes'"
+              (click)="tabActiva.set('participantes')"
+            >
+              Participantes
+            </button>
+          </nav>
 
-            <article>
-              <h4>Mensajes iniciales</h4>
-              <form class="form-grid" (ngSubmit)="crearMensaje(campania.id)">
-                <input
-                  name="miNombre"
-                  [(ngModel)]="mensaje.nombreInterno"
-                  placeholder="Nombre interno"
-                />
-                <textarea
-                  name="miTexto"
-                  rows="3"
-                  [(ngModel)]="mensaje.texto"
-                  placeholder="Texto"
-                ></textarea>
-                <p class="subhead">
-                  Plantilla WhatsApp (requerida para el envio inicial proactivo)
-                </p>
-                <input
-                  name="miPlantillaNombre"
-                  [(ngModel)]="mensaje.plantillaNombre"
-                  placeholder="Plantilla aprobada (ej: el_tejido_saludo)"
-                />
-                <input
-                  name="miPlantillaIdioma"
-                  [(ngModel)]="mensaje.plantillaIdioma"
-                  placeholder="Idioma (ej: es)"
-                />
-                <input
-                  name="miPlantillaComponentes"
-                  [(ngModel)]="mensaje.plantillaComponentes"
-                  placeholder="Variables en orden, coma-separadas (ej: nombre, campania)"
-                />
-                <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
-                  Agregar mensaje
-                </button>
-              </form>
-              <ul class="compact-list">
-                @for (item of campania.mensajesIniciales ?? []; track item.id) {
-                  <li>
-                    <strong>{{ item.nombreInterno }}</strong
-                    ><span>{{ item.texto }}</span>
-                  </li>
-                } @empty {
-                  <li class="muted">Sin mensajes.</li>
-                }
-              </ul>
-            </article>
+          <div class="tab-panels">
+            @if (tabActiva() === 'config') {
+              <article>
+                <h4>Configuracion</h4>
+                <form class="form-grid" (ngSubmit)="actualizarCampania(campania.id)">
+                  <label>Nombre <input name="editarNombre" [(ngModel)]="edicion.nombre" /></label>
+                  <label>
+                    Descripcion
+                    <input name="editarDescripcion" [(ngModel)]="edicion.descripcion" />
+                  </label>
+                  <label>
+                    Objetivo
+                    <textarea
+                      name="editarObjetivo"
+                      rows="3"
+                      [(ngModel)]="edicion.objetivo"
+                    ></textarea>
+                  </label>
+                  <label>
+                    Rubrica
+                    <select name="editarRubricaRef" [(ngModel)]="edicion.rubricaRef" required>
+                      @for (rubrica of rubricas(); track rubrica.id) {
+                        <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    Config LLM
+                    <select name="editarConfigLlmRef" [(ngModel)]="edicion.configLlmRef" required>
+                      @for (config of configsLlm(); track config.id) {
+                        <option [value]="config.id">{{ config.nombre }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    Prompt de evaluacion
+                    <select name="editarPromptEvaluarRef" [(ngModel)]="edicion.promptEvaluarRef">
+                      <option value="">Sin prompt por defecto</option>
+                      @for (prompt of prompts(); track prompt.id) {
+                        <option [value]="prompt.id">
+                          {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
+                    Guardar cambios
+                  </button>
+                </form>
+              </article>
+            }
 
-            <article>
-              <h4>Preguntas</h4>
-              <form class="form-grid" (ngSubmit)="crearPregunta(campania.id)">
-                <label>
-                  Categoria
+            @if (tabActiva() === 'mensajes') {
+              <article>
+                <h4>Mensajes iniciales</h4>
+                <form class="form-grid" (ngSubmit)="crearMensaje(campania.id)">
                   <input
-                    name="preguntaCategoria"
-                    [(ngModel)]="pregunta.categoria"
-                    placeholder="Categoria"
+                    name="miNombre"
+                    [(ngModel)]="mensaje.nombreInterno"
+                    placeholder="Nombre interno"
                   />
-                </label>
-                <label>
-                  Pregunta
                   <textarea
-                    name="preguntaTexto"
+                    name="miTexto"
                     rows="3"
-                    [(ngModel)]="pregunta.texto"
-                    placeholder="Texto que recibira el participante"
+                    [(ngModel)]="mensaje.texto"
+                    placeholder="Texto"
                   ></textarea>
-                </label>
-                <label>
-                  Instruccion de evaluacion
-                  <textarea
-                    name="preguntaInstruccion"
-                    rows="2"
-                    [(ngModel)]="pregunta.instruccion"
-                    placeholder="Criterio operativo para evaluar la respuesta"
-                  ></textarea>
-                </label>
-                <div class="inline-form">
+                  <p class="subhead">
+                    Plantilla WhatsApp (requerida para el envio inicial proactivo)
+                  </p>
+                  <input
+                    name="miPlantillaNombre"
+                    [(ngModel)]="mensaje.plantillaNombre"
+                    placeholder="Plantilla aprobada (ej: el_tejido_saludo)"
+                  />
+                  <input
+                    name="miPlantillaIdioma"
+                    [(ngModel)]="mensaje.plantillaIdioma"
+                    placeholder="Idioma (ej: es)"
+                  />
+                  <input
+                    name="miPlantillaComponentes"
+                    [(ngModel)]="mensaje.plantillaComponentes"
+                    placeholder="Variables en orden, coma-separadas (ej: nombre, campania)"
+                  />
+                  <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
+                    Agregar mensaje
+                  </button>
+                </form>
+                <ul class="compact-list">
+                  @for (item of campania.mensajesIniciales ?? []; track item.id) {
+                    <li>
+                      <strong>{{ item.nombreInterno }}</strong
+                      ><span>{{ item.texto }}</span>
+                    </li>
+                  } @empty {
+                    <li class="muted">Sin mensajes.</li>
+                  }
+                </ul>
+              </article>
+            }
+
+            @if (tabActiva() === 'preguntas') {
+              <article>
+                <h4>Preguntas</h4>
+                <form class="form-grid" (ngSubmit)="crearPregunta(campania.id)">
                   <label>
-                    Orden
+                    Categoria
                     <input
-                      type="number"
-                      min="1"
-                      name="preguntaOrden"
-                      [(ngModel)]="pregunta.orden"
+                      name="preguntaCategoria"
+                      [(ngModel)]="pregunta.categoria"
+                      placeholder="Categoria"
                     />
                   </label>
                   <label>
-                    Revisiones
-                    <input
-                      type="number"
-                      min="0"
-                      name="preguntaMaxRepreguntas"
-                      [(ngModel)]="pregunta.maxRepreguntas"
-                    />
+                    Pregunta
+                    <textarea
+                      name="preguntaTexto"
+                      rows="3"
+                      [(ngModel)]="pregunta.texto"
+                      placeholder="Texto que recibira el participante"
+                    ></textarea>
                   </label>
-                </div>
-                <input type="hidden" name="preguntaEstado" [(ngModel)]="pregunta.estado" />
-                <label>
-                  Rubrica (opcional, sobreescribe la campania)
-                  <select name="preguntaRubricaRef" [(ngModel)]="pregunta.rubricaRef">
-                    <option value="">Heredar de la campania</option>
-                    @for (rubrica of rubricas(); track rubrica.id) {
-                      <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
-                    }
-                  </select>
-                </label>
-                <label>
-                  Prompt de evaluacion (opcional, sobreescribe la campania)
-                  <select name="preguntaPromptRef" [(ngModel)]="pregunta.promptEvaluarRef">
-                    <option value="">Heredar de la campania</option>
-                    @for (prompt of prompts(); track prompt.id) {
-                      <option [value]="prompt.id">
-                        {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
-                      </option>
-                    }
-                  </select>
-                </label>
-                <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
-                  Agregar pregunta
-                </button>
-              </form>
-              <ul class="compact-list">
-                @for (item of campania.preguntas ?? []; track item.id) {
-                  <li>
-                    <strong>{{ item.categoria }}</strong
-                    ><span>{{ item.texto }}</span>
-                    <span>Orden {{ item.orden }} · {{ item.estado }}</span>
-                    @if (auth.isAdmin()) {
-                      <button type="button" class="table-button" (click)="editarPregunta(item)">
-                        Editar
-                      </button>
-                    }
-                  </li>
-                } @empty {
-                  <li class="muted">Sin preguntas.</li>
-                }
-              </ul>
-              @if (preguntaEditandoId()) {
-                <div class="edit-block">
-                  <div class="panel-heading">
-                    <h5 class="subhead">Editar pregunta</h5>
-                    <button type="button" class="ghost-button" (click)="cancelarEdicionPregunta()">
-                      Cancelar
-                    </button>
-                  </div>
-                  <form class="form-grid" (ngSubmit)="actualizarPregunta(campania.id)">
+                  <label>
+                    Instruccion de evaluacion
+                    <textarea
+                      name="preguntaInstruccion"
+                      rows="2"
+                      [(ngModel)]="pregunta.instruccion"
+                      placeholder="Criterio operativo para evaluar la respuesta"
+                    ></textarea>
+                  </label>
+                  <div class="inline-form">
                     <label>
-                      Categoria
+                      Orden
                       <input
-                        name="editarPreguntaCategoria"
-                        [(ngModel)]="preguntaEdicion.categoria"
+                        type="number"
+                        min="1"
+                        name="preguntaOrden"
+                        [(ngModel)]="pregunta.orden"
                       />
                     </label>
                     <label>
-                      Pregunta
-                      <textarea
-                        name="editarPreguntaTexto"
-                        rows="3"
-                        [(ngModel)]="preguntaEdicion.texto"
-                      ></textarea>
+                      Revisiones
+                      <input
+                        type="number"
+                        min="0"
+                        name="preguntaMaxRepreguntas"
+                        [(ngModel)]="pregunta.maxRepreguntas"
+                      />
                     </label>
-                    <label>
-                      Instruccion de evaluacion
-                      <textarea
-                        name="editarPreguntaInstruccion"
-                        rows="2"
-                        [(ngModel)]="preguntaEdicion.instruccion"
-                      ></textarea>
-                    </label>
-                    <div class="inline-form">
-                      <label>
-                        Orden
-                        <input
-                          type="number"
-                          min="1"
-                          name="editarPreguntaOrden"
-                          [(ngModel)]="preguntaEdicion.orden"
-                        />
-                      </label>
-                      <label>
-                        Revisiones
-                        <input
-                          type="number"
-                          min="0"
-                          name="editarPreguntaMaxRepreguntas"
-                          [(ngModel)]="preguntaEdicion.maxRepreguntas"
-                        />
-                      </label>
-                      <label>
-                        Estado
-                        <select name="editarPreguntaEstado" [(ngModel)]="preguntaEdicion.estado">
-                          <option value="activo">Activo</option>
-                          <option value="inactivo">Inactivo</option>
-                        </select>
-                      </label>
-                    </div>
-                    <label>
-                      Rubrica
-                      <select
-                        name="editarPreguntaRubricaRef"
-                        [(ngModel)]="preguntaEdicion.rubricaRef"
-                      >
-                        <option value="">Heredar de la campania</option>
-                        @for (rubrica of rubricas(); track rubrica.id) {
-                          <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
-                        }
-                      </select>
-                    </label>
-                    <label>
-                      Prompt de evaluacion
-                      <select
-                        name="editarPreguntaPromptRef"
-                        [(ngModel)]="preguntaEdicion.promptEvaluarRef"
-                      >
-                        <option value="">Heredar de la campania</option>
-                        @for (prompt of prompts(); track prompt.id) {
-                          <option [value]="prompt.id">
-                            {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
-                          </option>
-                        }
-                      </select>
-                    </label>
-                    <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
-                      Guardar pregunta
-                    </button>
-                  </form>
-                </div>
-              }
-            </article>
-
-            <article>
-              <h4>Participantes</h4>
-              <form class="form-grid" (ngSubmit)="preview(campania.id)">
-                <label>
-                  Area
-                  <select name="previewArea" [(ngModel)]="filtroParticipantes.area">
-                    <option value="">Todas</option>
-                    @for (area of areasDisponibles(); track area) {
-                      <option [value]="area">{{ area }}</option>
-                    }
-                  </select>
-                </label>
-                <label>
-                  Empresa
-                  <select name="previewEmpresa" [(ngModel)]="filtroParticipantes.empresa">
-                    <option value="">Todas</option>
-                    @for (empresa of empresasDisponibles(); track empresa) {
-                      <option [value]="empresa">{{ empresa }}</option>
-                    }
-                  </select>
-                </label>
-                <button class="ghost-button" type="submit">Preview</button>
-              </form>
-              @if (previewUsuarios().length > 0) {
-                <p class="muted">
-                  Preview: {{ previewUsuarios().length }} elegibles,
-                  {{ previewSeleccion().size }} seleccionados
-                </p>
+                  </div>
+                  <input type="hidden" name="preguntaEstado" [(ngModel)]="pregunta.estado" />
+                  <label>
+                    Rubrica (opcional, sobreescribe la campania)
+                    <select name="preguntaRubricaRef" [(ngModel)]="pregunta.rubricaRef">
+                      <option value="">Heredar de la campania</option>
+                      @for (rubrica of rubricas(); track rubrica.id) {
+                        <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    Prompt de evaluacion (opcional, sobreescribe la campania)
+                    <select name="preguntaPromptRef" [(ngModel)]="pregunta.promptEvaluarRef">
+                      <option value="">Heredar de la campania</option>
+                      @for (prompt of prompts(); track prompt.id) {
+                        <option [value]="prompt.id">
+                          {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
+                        </option>
+                      }
+                    </select>
+                  </label>
+                  <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
+                    Agregar pregunta
+                  </button>
+                </form>
                 <ul class="compact-list">
-                  @for (usuario of previewUsuarios(); track usuario.usuarioId) {
+                  @for (item of campania.preguntas ?? []; track item.id) {
                     <li>
-                      <label class="check-inline">
-                        <input
-                          type="checkbox"
-                          [checked]="previewSeleccion().has(usuario.usuarioId)"
-                          (change)="togglePreview(usuario.usuarioId)"
-                        />
-                        <strong>{{ usuario.nombre }}</strong>
-                        <span>{{ usuario.area }} / {{ usuario.empresa }}</span>
-                      </label>
+                      <strong>{{ item.categoria }}</strong
+                      ><span>{{ item.texto }}</span>
+                      <span
+                        >Orden {{ item.orden }} · {{ item.estado }} · Revisiones:
+                        {{ item.maxRepreguntas }}</span
+                      >
+                      @if (auth.isAdmin()) {
+                        <button type="button" class="table-button" (click)="editarPregunta(item)">
+                          Editar
+                        </button>
+                      }
                     </li>
+                  } @empty {
+                    <li class="muted">Sin preguntas.</li>
                   }
                 </ul>
-                @if (auth.isAdmin()) {
-                  <button
-                    type="button"
-                    class="primary-button"
-                    [disabled]="previewSeleccion().size === 0"
-                    (click)="asociarPreview(campania.id)"
-                  >
-                    Asociar seleccionados ({{ previewSeleccion().size }})
-                  </button>
+                @if (preguntaEditandoId()) {
+                  <div class="edit-block">
+                    <div class="panel-heading">
+                      <h5 class="subhead">Editar pregunta</h5>
+                      <button
+                        type="button"
+                        class="ghost-button"
+                        (click)="cancelarEdicionPregunta()"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    <form class="form-grid" (ngSubmit)="actualizarPregunta(campania.id)">
+                      <label>
+                        Categoria
+                        <input
+                          name="editarPreguntaCategoria"
+                          [(ngModel)]="preguntaEdicion.categoria"
+                        />
+                      </label>
+                      <label>
+                        Pregunta
+                        <textarea
+                          name="editarPreguntaTexto"
+                          rows="3"
+                          [(ngModel)]="preguntaEdicion.texto"
+                        ></textarea>
+                      </label>
+                      <label>
+                        Instruccion de evaluacion
+                        <textarea
+                          name="editarPreguntaInstruccion"
+                          rows="2"
+                          [(ngModel)]="preguntaEdicion.instruccion"
+                        ></textarea>
+                      </label>
+                      <div class="inline-form">
+                        <label>
+                          Orden
+                          <input
+                            type="number"
+                            min="1"
+                            name="editarPreguntaOrden"
+                            [(ngModel)]="preguntaEdicion.orden"
+                          />
+                        </label>
+                        <label>
+                          Revisiones
+                          <input
+                            type="number"
+                            min="0"
+                            name="editarPreguntaMaxRepreguntas"
+                            [(ngModel)]="preguntaEdicion.maxRepreguntas"
+                          />
+                        </label>
+                        <label>
+                          Estado
+                          <select name="editarPreguntaEstado" [(ngModel)]="preguntaEdicion.estado">
+                            <option value="activo">Activo</option>
+                            <option value="inactivo">Inactivo</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label>
+                        Rubrica
+                        <select
+                          name="editarPreguntaRubricaRef"
+                          [(ngModel)]="preguntaEdicion.rubricaRef"
+                        >
+                          <option value="">Heredar de la campania</option>
+                          @for (rubrica of rubricas(); track rubrica.id) {
+                            <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+                          }
+                        </select>
+                      </label>
+                      <label>
+                        Prompt de evaluacion
+                        <select
+                          name="editarPreguntaPromptRef"
+                          [(ngModel)]="preguntaEdicion.promptEvaluarRef"
+                        >
+                          <option value="">Heredar de la campania</option>
+                          @for (prompt of prompts(); track prompt.id) {
+                            <option [value]="prompt.id">
+                              {{ prompt.nombre }} ({{ prompt.tipoPrompt }})
+                            </option>
+                          }
+                        </select>
+                      </label>
+                      <button class="primary-button" type="submit" [disabled]="!auth.isAdmin()">
+                        Guardar pregunta
+                      </button>
+                    </form>
+                  </div>
                 }
-              }
-              <h5 class="subhead">Asociados</h5>
-              <div class="table-wrap small-table">
-                <table>
-                  <tbody>
-                    @for (participante of participantes(); track participante.id) {
-                      <tr>
-                        <td>{{ participante.usuarioId }}</td>
-                        <td>{{ participante.estadoEnvio }}</td>
-                        <td>{{ participante.estadoRespuesta }}</td>
-                      </tr>
-                    } @empty {
-                      <tr>
-                        <td class="empty-cell">Sin participantes asociados.</td>
-                      </tr>
+              </article>
+            }
+
+            @if (tabActiva() === 'participantes') {
+              <article>
+                <h4>Participantes</h4>
+                <form class="form-grid" (ngSubmit)="preview(campania.id)">
+                  <label>
+                    Area
+                    <select name="previewArea" [(ngModel)]="filtroParticipantes.area">
+                      <option value="">Todas</option>
+                      @for (area of areasDisponibles(); track area) {
+                        <option [value]="area">{{ area }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    Empresa
+                    <select name="previewEmpresa" [(ngModel)]="filtroParticipantes.empresa">
+                      <option value="">Todas</option>
+                      @for (empresa of empresasDisponibles(); track empresa) {
+                        <option [value]="empresa">{{ empresa }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button class="ghost-button" type="submit">Preview</button>
+                </form>
+                @if (previewUsuarios().length > 0) {
+                  <p class="muted">
+                    Preview: {{ previewUsuarios().length }} elegibles,
+                    {{ previewSeleccion().size }} seleccionados
+                  </p>
+                  <ul class="compact-list">
+                    @for (usuario of previewUsuarios(); track usuario.usuarioId) {
+                      <li>
+                        <label class="check-inline">
+                          <input
+                            type="checkbox"
+                            [checked]="previewSeleccion().has(usuario.usuarioId)"
+                            (change)="togglePreview(usuario.usuarioId)"
+                          />
+                          <strong>{{ usuario.nombre }}</strong>
+                          <span>{{ usuario.area }} / {{ usuario.empresa }}</span>
+                        </label>
+                      </li>
                     }
-                  </tbody>
-                </table>
-              </div>
-            </article>
+                  </ul>
+                  @if (auth.isAdmin()) {
+                    <button
+                      type="button"
+                      class="primary-button"
+                      [disabled]="previewSeleccion().size === 0"
+                      (click)="asociarPreview(campania.id)"
+                    >
+                      Asociar seleccionados ({{ previewSeleccion().size }})
+                    </button>
+                  }
+                }
+                <h5 class="subhead">Asociados</h5>
+                <div class="table-wrap small-table">
+                  <table>
+                    <tbody>
+                      @for (participante of participantes(); track participante.id) {
+                        <tr>
+                          <td>{{ nombreUsuario(participante.usuarioId) }}</td>
+                          <td>{{ participante.estadoEnvio }}</td>
+                          <td>{{ participante.estadoRespuesta }}</td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td class="empty-cell">Sin participantes asociados.</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            }
           </div>
         </section>
       }
@@ -560,6 +611,10 @@ export class CampaniasPage {
   protected readonly empresasDisponibles = signal<string[]>([]);
   protected readonly error = signal('');
   protected readonly preguntaEditandoId = signal<string | null>(null);
+  protected readonly usuariosMap = signal<Map<string, UsuarioAdmin>>(new Map());
+  protected readonly tabActiva = signal<'config' | 'mensajes' | 'preguntas' | 'participantes'>(
+    'config',
+  );
 
   protected filtroEstado = '';
   protected filtroBusqueda = '';
@@ -616,13 +671,24 @@ export class CampaniasPage {
         ),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
-    this.api.usuarios({ rol: 'participante', pageSize: 100 }).subscribe({
+    this.api.usuarios({ rol: 'participante', pageSize: 500 }).subscribe({
       next: (page) => {
         this.areasDisponibles.set(this.distinct(page.items.map((usuario) => usuario.area)));
         this.empresasDisponibles.set(this.distinct(page.items.map((usuario) => usuario.empresa)));
+        // Mapa id -> usuario para mostrar nombre/area en vez del id tecnico en Asociados.
+        this.usuariosMap.set(new Map(page.items.map((usuario) => [usuario.id, usuario])));
       },
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
+  }
+
+  /** Nombre legible del participante (con area si esta disponible); cae al id si no se encontro. */
+  nombreUsuario(usuarioId: string): string {
+    const usuario = this.usuariosMap().get(usuarioId);
+    if (!usuario) {
+      return usuarioId;
+    }
+    return usuario.area ? `${usuario.nombre} (${usuario.area})` : usuario.nombre;
   }
 
   private distinct(valores: string[]): string[] {
@@ -636,6 +702,7 @@ export class CampaniasPage {
       next: (campania) => {
         this.selected.set(campania);
         this.edicion = this.formFromCampania(campania);
+        this.tabActiva.set('config');
         this.cancelarEdicionPregunta();
         this.loadParticipantes(campania.id);
       },

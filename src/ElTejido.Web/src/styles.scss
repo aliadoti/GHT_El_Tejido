@@ -286,7 +286,6 @@ th {
 
 .two-column,
 .three-column,
-.tabs-layout,
 .detail-grid {
   display: grid;
   gap: 18px;
@@ -300,8 +299,42 @@ th {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.tabs-layout {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--ght-borde);
+}
+
+.tab-button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ght-texto-secundario);
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 9px 14px;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.tab-button:hover {
+  color: var(--ght-verde);
+}
+
+.tab-button.active {
+  color: var(--ght-verde);
+  border-bottom-color: var(--ght-verde);
+}
+
+.tab-panels {
+  display: grid;
+  gap: 16px;
+}
+
+.tab-panels article {
+  display: grid;
+  gap: 12px;
 }
 
 .detail-grid {
@@ -658,7 +691,6 @@ tbody tr.row-selected {
   .portal-shell,
   .two-column,
   .three-column,
-  .tabs-layout,
   .filters-grid {
     grid-template-columns: 1fr;
   }
