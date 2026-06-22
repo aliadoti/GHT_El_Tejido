@@ -45,6 +45,7 @@ internal static class EndpointsAdminFase4
         rubricas.MapGet("", ListarRubricasAsync);
         rubricas.MapPost("", CrearRubricaAsync);
         rubricas.MapGet("/{id}", ObtenerRubricaAsync);
+        rubricas.MapPut("/{id}", ActualizarRubricaAsync);
         rubricas.MapGet("/{id}/versiones", VersionesRubricaAsync);
         rubricas.MapPost("/{id}/versiones", CrearVersionRubricaAsync);
         rubricas.MapPatch("/{id}/estado", CambiarEstadoRubricaAsync);
@@ -53,6 +54,7 @@ internal static class EndpointsAdminFase4
         prompts.MapGet("", ListarPromptsAsync);
         prompts.MapPost("", CrearPromptAsync);
         prompts.MapGet("/{id}", ObtenerPromptAsync);
+        prompts.MapPut("/{id}", ActualizarPromptAsync);
         prompts.MapGet("/{id}/versiones", VersionesPromptAsync);
         prompts.MapPost("/{id}/versiones", CrearVersionPromptAsync);
         prompts.MapPost("/{id}/aprobar", AprobarPromptAsync);
@@ -262,6 +264,13 @@ internal static class EndpointsAdminFase4
     private static async Task<IResult> VersionesRubricaAsync(string id, HttpContext contexto, CancellationToken ct)
         => Results.Ok((await ServicioConfig(contexto).ListarVersionesRubricaAsync(id, ct)).Select(MapearRubrica));
 
+    private static async Task<IResult> ActualizarRubricaAsync(
+        string id,
+        RubricaRequest request,
+        HttpContext contexto,
+        CancellationToken ct)
+        => Results.Ok(MapearRubrica(await ServicioConfig(contexto).ActualizarRubricaAsync(id, ToSolicitudRubrica(request with { Id = id }), ct)));
+
     private static async Task<IResult> CrearVersionRubricaAsync(
         string id,
         RubricaRequest request,
@@ -290,6 +299,9 @@ internal static class EndpointsAdminFase4
 
     private static async Task<IResult> VersionesPromptAsync(string id, HttpContext contexto, CancellationToken ct)
         => Results.Ok((await ServicioConfig(contexto).ListarVersionesPromptAsync(id, ct)).Select(MapearPrompt));
+
+    private static async Task<IResult> ActualizarPromptAsync(string id, PromptRequest request, HttpContext contexto, CancellationToken ct)
+        => Results.Ok(MapearPrompt(await ServicioConfig(contexto).ActualizarPromptAsync(id, ToSolicitudPrompt(request with { Id = id }), ct)));
 
     private static async Task<IResult> CrearVersionPromptAsync(string id, PromptRequest request, HttpContext contexto, CancellationToken ct)
         => Results.Created($"/api/admin/prompts/{id}", MapearPrompt(await ServicioConfig(contexto).CrearVersionPromptAsync(id, ToSolicitudPrompt(request), ct)));
@@ -523,7 +535,7 @@ internal static class EndpointsAdminFase4
             escala = rubrica.Escala,
             criterios = rubrica.Criterios,
             rubrica.Version,
-            estado = rubrica.Estado == EstadoRubrica.Activa ? "activa" : "archivada",
+            estado = ToApiEstado(rubrica.Estado),
             rubrica.CreadoEn,
             rubrica.ActualizadoEn,
         };
@@ -653,7 +665,17 @@ internal static class EndpointsAdminFase4
         {
             "activa" => EstadoRubrica.Activa,
             "archivada" => EstadoRubrica.Archivada,
+            "borrador" => EstadoRubrica.Borrador,
             _ => throw new ErrorValidacion("El estado de rubrica no es valido.", new[] { new DetalleError("estado", "valor_invalido") }),
+        };
+
+    private static string ToApiEstado(EstadoRubrica estado)
+        => estado switch
+        {
+            EstadoRubrica.Activa => "activa",
+            EstadoRubrica.Archivada => "archivada",
+            EstadoRubrica.Borrador => "borrador",
+            _ => estado.ToString().ToLowerInvariant(),
         };
 
     private static EstadoPrompt? ParseEstadoPromptOpcional(StringValues valor)

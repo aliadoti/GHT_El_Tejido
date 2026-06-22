@@ -5,6 +5,8 @@ import { AdminApiService } from '../../core/admin-api.service';
 import { PromptConfig } from '../../core/api-models';
 import { formatApiError } from '../../shared-error';
 
+type ModoPrompt = 'crear' | 'editar' | 'version';
+
 @Component({
   selector: 'app-prompts-page',
   standalone: true,
@@ -32,6 +34,7 @@ import { formatApiError } from '../../shared-error';
                   <th>Nombre</th>
                   <th>Tipo</th>
                   <th>Version</th>
+                  <th>Estado</th>
                   <th>Aprobacion</th>
                   <th></th>
                 </tr>
@@ -43,19 +46,27 @@ import { formatApiError } from '../../shared-error';
                     <td>{{ prompt.tipoPrompt }}</td>
                     <td>v{{ prompt.version }}</td>
                     <td>
+                      <span class="status-badge">{{ prompt.estado }}</span>
+                    </td>
+                    <td>
                       <span class="status-badge">{{
                         prompt.aprobadoPor ? 'aprobado' : 'pendiente'
                       }}</span>
                     </td>
                     <td>
-                      <button type="button" class="table-button" (click)="aprobar(prompt.id)">
-                        Aprobar
+                      <button type="button" class="table-button" (click)="editar(prompt)">
+                        {{ prompt.estado === 'borrador' ? 'Editar' : 'Nueva version' }}
                       </button>
+                      @if (!prompt.aprobadoPor) {
+                        <button type="button" class="table-button" (click)="aprobar(prompt.id)">
+                          Aprobar
+                        </button>
+                      }
                     </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="empty-cell">No hay prompts.</td>
+                    <td colspan="6" class="empty-cell">No hay prompts.</td>
                   </tr>
                 }
               </tbody>
@@ -64,9 +75,14 @@ import { formatApiError } from '../../shared-error';
         </section>
 
         <section class="panel">
-          <div class="panel-heading"><h3>Nuevo prompt</h3></div>
-          <form class="form-grid" (ngSubmit)="crear()">
-            <label>ID familia <input name="id" [(ngModel)]="form.id" /></label>
+          <div class="panel-heading">
+            <h3>{{ tituloFormulario() }}</h3>
+          </div>
+          <form class="form-grid" (ngSubmit)="guardar()">
+            <label
+              >ID familia
+              <input name="id" [(ngModel)]="form.id" [disabled]="modo() !== 'crear'" />
+            </label>
             <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
             <label>
               Tipo
@@ -80,7 +96,12 @@ import { formatApiError } from '../../shared-error';
               >Contenido
               <textarea name="contenido" rows="9" [(ngModel)]="form.contenido"></textarea>
             </label>
-            <button class="primary-button" type="submit">Crear borrador</button>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">{{ textoBoton() }}</button>
+              @if (modo() !== 'crear') {
+                <button type="button" class="ghost-button" (click)="cancelar()">Cancelar</button>
+              }
+            </div>
           </form>
         </section>
       </div>
@@ -92,6 +113,7 @@ export class PromptsPage {
   private readonly api = inject(AdminApiService);
   protected readonly prompts = signal<PromptConfig[]>([]);
   protected readonly error = signal('');
+  protected readonly modo = signal<ModoPrompt>('crear');
   protected form = this.emptyForm();
 
   constructor() {
@@ -105,12 +127,50 @@ export class PromptsPage {
     });
   }
 
-  crear() {
-    this.api.crearPrompt({ ...this.form, estado: 'borrador' }).subscribe({
-      next: () => {
-        this.form = this.emptyForm();
-        this.load();
-      },
+  tituloFormulario() {
+    switch (this.modo()) {
+      case 'editar':
+        return 'Editar borrador';
+      case 'version':
+        return 'Nueva version';
+      default:
+        return 'Nuevo prompt';
+    }
+  }
+
+  textoBoton() {
+    switch (this.modo()) {
+      case 'editar':
+        return 'Guardar cambios';
+      case 'version':
+        return 'Crear version';
+      default:
+        return 'Crear borrador';
+    }
+  }
+
+  editar(prompt: PromptConfig) {
+    this.error.set('');
+    this.form = {
+      id: prompt.id,
+      nombre: prompt.nombre,
+      tipoPrompt: prompt.tipoPrompt,
+      contenido: prompt.contenido,
+    };
+    // Borrador: edicion en sitio. Activo/inactivo (ya aprobado o liberado): nueva version.
+    this.modo.set(prompt.estado === 'borrador' ? 'editar' : 'version');
+  }
+
+  guardar() {
+    const peticion =
+      this.modo() === 'editar'
+        ? this.api.actualizarPrompt(this.form.id, { ...this.form })
+        : this.modo() === 'version'
+          ? this.api.crearVersionPrompt(this.form.id, { ...this.form, estado: 'borrador' })
+          : this.api.crearPrompt({ ...this.form, estado: 'borrador' });
+
+    peticion.subscribe({
+      next: () => this.cancelar(),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
   }
@@ -120,6 +180,12 @@ export class PromptsPage {
       next: () => this.load(),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
+  }
+
+  cancelar() {
+    this.form = this.emptyForm();
+    this.modo.set('crear');
+    this.load();
   }
 
   private emptyForm() {

@@ -191,17 +191,19 @@ Response `202`:
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/admin/rubricas` | Lista (`estado`). |
-| POST | `/api/admin/rubricas` | Crea v1 (sube Markdown; parsea criterios/pesos/escala). |
+| POST | `/api/admin/rubricas` | Crea v1 (sube Markdown; parsea criterios/pesos/escala). Estado por defecto del portal: `borrador`. |
 | GET | `/api/admin/rubricas/{id}` | Última versión activa. |
+| PUT | `/api/admin/rubricas/{id}` | Edita **en sitio** la versión vigente. Solo si está en `borrador`; si no, responde `409 CONFLICT` (usar `/versiones`). No incrementa versión. |
 | GET | `/api/admin/rubricas/{id}/versiones` | Lista versiones. |
 | POST | `/api/admin/rubricas/{id}/versiones` | Nueva versión (no muta las previas). |
-| PATCH | `/api/admin/rubricas/{id}/estado` | Activa/archiva. |
+| PATCH | `/api/admin/rubricas/{id}/estado` | `borrador`/`activa`/`archivada`. |
 
 ### 5.6 Prompts — `REQ §18`
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/admin/prompts` | Lista (`tipoPrompt, estado`). |
 | POST | `/api/admin/prompts` | Crea v1 (estado `borrador`, sin aprobar). |
+| PUT | `/api/admin/prompts/{id}` | Edita **en sitio** la versión vigente. Solo si está en `borrador` (sin aprobar); si no, responde `409 CONFLICT` (usar `/versiones`). No incrementa versión. |
 | POST | `/api/admin/prompts/{id}/versiones` | Nueva versión. |
 | POST | `/api/admin/prompts/{id}/aprobar` | Aprobación humana (`aprobadoPor`, `fechaAprobacion`). Sin esto no se usa en campaña (`REQ §18.3.6`). |
 | PATCH | `/api/admin/prompts/{id}/estado` | Activa/inactiva. |

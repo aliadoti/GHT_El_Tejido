@@ -136,12 +136,36 @@ export class AdminApiService {
     return this.api.post<Rubrica>('/api/admin/rubricas', body);
   }
 
+  actualizarRubrica(id: string, body: unknown) {
+    return this.api.put<Rubrica>(`/api/admin/rubricas/${id}`, body);
+  }
+
+  crearVersionRubrica(id: string, body: unknown) {
+    return this.api.post<Rubrica>(`/api/admin/rubricas/${id}/versiones`, body);
+  }
+
+  cambiarEstadoRubrica(id: string, estado: string) {
+    return this.api.patch<Rubrica>(`/api/admin/rubricas/${id}/estado`, { estado });
+  }
+
   prompts(query?: Record<string, string | number | undefined>) {
     return this.api.get<PagedResult<PromptConfig>>('/api/admin/prompts', query);
   }
 
   crearPrompt(body: unknown) {
     return this.api.post<PromptConfig>('/api/admin/prompts', body);
+  }
+
+  actualizarPrompt(id: string, body: unknown) {
+    return this.api.put<PromptConfig>(`/api/admin/prompts/${id}`, body);
+  }
+
+  crearVersionPrompt(id: string, body: unknown) {
+    return this.api.post<PromptConfig>(`/api/admin/prompts/${id}/versiones`, body);
+  }
+
+  cambiarEstadoPrompt(id: string, estado: string) {
+    return this.api.patch<PromptConfig>(`/api/admin/prompts/${id}/estado`, { estado });
   }
 
   aprobarPrompt(id: string, aprobadoPor: string) {

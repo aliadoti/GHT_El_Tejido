@@ -15,6 +15,13 @@ public interface IServicioGestionConfiguracion
 
     Task<Rubrica> CrearVersionRubricaAsync(string id, SolicitudGuardarRubrica solicitud, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Edita en sitio la version vigente de una rubrica. Solo permitido si esta en
+    /// <see cref="EstadoRubrica.Borrador"/> (no comprometida); en cualquier otro estado lanza
+    /// conflicto y debe usarse <see cref="CrearVersionRubricaAsync"/> para conservar snapshots.
+    /// </summary>
+    Task<Rubrica> ActualizarRubricaAsync(string id, SolicitudGuardarRubrica solicitud, CancellationToken cancellationToken);
+
     Task<Rubrica> CambiarEstadoRubricaAsync(string id, EstadoRubrica estado, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<Prompt>> BuscarPromptsAsync(string? tipoPrompt, EstadoPrompt? estado, CancellationToken cancellationToken);
@@ -26,6 +33,13 @@ public interface IServicioGestionConfiguracion
     Task<Prompt> CrearPromptAsync(SolicitudGuardarPrompt solicitud, CancellationToken cancellationToken);
 
     Task<Prompt> CrearVersionPromptAsync(string id, SolicitudGuardarPrompt solicitud, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Edita en sitio la version vigente de un prompt. Solo permitido si esta en
+    /// <see cref="EstadoPrompt.Borrador"/> (sin aprobar, nunca usado para evaluar); en cualquier otro
+    /// estado lanza conflicto y debe usarse <see cref="CrearVersionPromptAsync"/>.
+    /// </summary>
+    Task<Prompt> ActualizarPromptAsync(string id, SolicitudGuardarPrompt solicitud, CancellationToken cancellationToken);
 
     Task<Prompt> AprobarPromptAsync(string id, string usuarioId, CancellationToken cancellationToken);
 

@@ -63,9 +63,9 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Al guardar, el servicio **parsea** del Markdown (o de campos estructurados acompañantes) los `criterios[]`, `pesos` y `escala` para poder validarlos y mostrarlos en el portal. Si el parseo no es determinista, se aceptan criterios/pesos/escala como campos estructurados además del Markdown (la fuente para el LLM sigue siendo el Markdown).
 - Validación: la suma de pesos debe ser coherente (p. ej. ~1.0 o normalizable); escala con min/max válidos. Si no, `400/422` con detalle.
 
-### 3.2 Versionado (`REQ §17.3.2–3`)
-- Cada edición relevante crea una **nueva versión**; las versiones previas son inmutables.
+### 3.2 Versionado y edición híbrida por estado (`REQ §17.3.2–3`)
 - **Estrategia elegida:** `id` estable de familia (p. ej. `r_general`) + campo `version` incremental; cada versión es un documento independiente en `config` con el mismo nombre de familia y distinto `version`. La "versión activa" es la de mayor `version` con `estado=activa`. La Evaluación guarda `rubricaRef + versionRubrica` (snapshot).
+- **Edición híbrida por estado:** una rúbrica en `borrador` (estado **no comprometido**, nunca usado para evaluar) se edita **en sitio** sobre su versión vigente (`PUT /api/admin/rubricas/{id}`), sin incrementar versión. Una vez `activa` (o `archivada`) queda inmutable: toda edición posterior es **nueva versión** (`POST .../versiones`); el `PUT` responde `409 CONFLICT`. Así las versiones comprometidas nunca mutan y los snapshots de evaluaciones pasadas se conservan. Ver `SUPUESTOS.md#edicion-config-hibrida`.
 - `GET .../versiones` lista el historial.
 
 ---
@@ -79,6 +79,7 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 
 ### 4.2 Versionado y aprobación humana (`REQ §18.2, §18.3.6`)
 - Misma estrategia de versionado que rúbricas (familia + `version`).
+- **Edición híbrida por estado:** un prompt en `borrador` (sin aprobar, nunca usado para evaluar) se edita **en sitio** (`PUT /api/admin/prompts/{id}`), sin incrementar versión y permaneciendo en `borrador`. Una vez aprobado/`activo` (o `inactivo`) queda comprometido: edición posterior es **nueva versión** (que vuelve a nacer en `borrador`, sin aprobar); el `PUT` responde `409 CONFLICT`. Ver `SUPUESTOS.md#edicion-config-hibrida`.
 - **Aprobación obligatoria** antes de uso en campaña: `POST .../aprobar` setea `aprobadoPor` + `fechaAprobacion`. Un prompt sin aprobar **no** puede asociarse/usarse en una campaña activa; el servicio lo valida al activar la campaña o al evaluar.
 
 ---

@@ -5,6 +5,8 @@ import { AdminApiService } from '../../core/admin-api.service';
 import { Rubrica } from '../../core/api-models';
 import { formatApiError } from '../../shared-error';
 
+type ModoRubrica = 'crear' | 'editar' | 'version';
+
 @Component({
   selector: 'app-rubricas-page',
   standalone: true,
@@ -33,6 +35,7 @@ import { formatApiError } from '../../shared-error';
                   <th>Nombre</th>
                   <th>Version</th>
                   <th>Estado</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -44,10 +47,33 @@ import { formatApiError } from '../../shared-error';
                     <td>
                       <span class="status-badge">{{ rubrica.estado }}</span>
                     </td>
+                    <td>
+                      <button type="button" class="table-button" (click)="editar(rubrica)">
+                        {{ rubrica.estado === 'borrador' ? 'Editar' : 'Nueva version' }}
+                      </button>
+                      @if (rubrica.estado !== 'activa') {
+                        <button
+                          type="button"
+                          class="table-button"
+                          (click)="cambiarEstado(rubrica, 'activa')"
+                        >
+                          Activar
+                        </button>
+                      }
+                      @if (rubrica.estado === 'activa') {
+                        <button
+                          type="button"
+                          class="table-button"
+                          (click)="cambiarEstado(rubrica, 'archivada')"
+                        >
+                          Archivar
+                        </button>
+                      }
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4" class="empty-cell">No hay rubricas.</td>
+                    <td colspan="5" class="empty-cell">No hay rubricas.</td>
                   </tr>
                 }
               </tbody>
@@ -56,16 +82,26 @@ import { formatApiError } from '../../shared-error';
         </section>
 
         <section class="panel">
-          <div class="panel-heading"><h3>Nueva rubrica</h3></div>
-          <form class="form-grid" (ngSubmit)="crear()">
-            <label>ID familia <input name="id" [(ngModel)]="form.id" /></label>
+          <div class="panel-heading">
+            <h3>{{ tituloFormulario() }}</h3>
+          </div>
+          <form class="form-grid" (ngSubmit)="guardar()">
+            <label
+              >ID familia
+              <input name="id" [(ngModel)]="form.id" [disabled]="modo() !== 'crear'" />
+            </label>
             <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
             <label>Descripcion <input name="descripcion" [(ngModel)]="form.descripcion" /></label>
             <label>
               Contenido Markdown
               <textarea name="contenido" rows="9" [(ngModel)]="form.contenidoMarkdown"></textarea>
             </label>
-            <button class="primary-button" type="submit">Crear v1</button>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">{{ textoBoton() }}</button>
+              @if (modo() !== 'crear') {
+                <button type="button" class="ghost-button" (click)="cancelar()">Cancelar</button>
+              }
+            </div>
           </form>
         </section>
       </div>
@@ -77,6 +113,7 @@ export class RubricasPage {
   private readonly api = inject(AdminApiService);
   protected readonly rubricas = signal<Rubrica[]>([]);
   protected readonly error = signal('');
+  protected readonly modo = signal<ModoRubrica>('crear');
   protected form = this.emptyForm();
 
   constructor() {
@@ -90,21 +127,71 @@ export class RubricasPage {
     });
   }
 
-  crear() {
-    this.api
-      .crearRubrica({
-        ...this.form,
-        escala: { min: 1, max: 5 },
-        criterios: [{ nombre: 'Impacto', peso: 1 }],
-        estado: 'activa',
-      })
-      .subscribe({
-        next: () => {
-          this.form = this.emptyForm();
-          this.load();
-        },
-        error: (err: unknown) => this.error.set(formatApiError(err)),
-      });
+  tituloFormulario() {
+    switch (this.modo()) {
+      case 'editar':
+        return 'Editar borrador';
+      case 'version':
+        return 'Nueva version';
+      default:
+        return 'Nueva rubrica';
+    }
+  }
+
+  textoBoton() {
+    switch (this.modo()) {
+      case 'editar':
+        return 'Guardar cambios';
+      case 'version':
+        return 'Crear version';
+      default:
+        return 'Crear v1';
+    }
+  }
+
+  editar(rubrica: Rubrica) {
+    this.error.set('');
+    this.form = {
+      id: rubrica.id,
+      nombre: rubrica.nombre,
+      descripcion: rubrica.descripcion,
+      contenidoMarkdown: rubrica.contenidoMarkdown,
+    };
+    // Borrador: edicion en sitio (misma version). Activa/archivada: nueva version (conserva snapshots).
+    this.modo.set(rubrica.estado === 'borrador' ? 'editar' : 'version');
+  }
+
+  guardar() {
+    const payload = {
+      ...this.form,
+      escala: { min: 1, max: 5 },
+      criterios: [{ nombre: 'Impacto', peso: 1 }],
+    };
+
+    const peticion =
+      this.modo() === 'editar'
+        ? this.api.actualizarRubrica(this.form.id, { ...payload, estado: 'borrador' })
+        : this.modo() === 'version'
+          ? this.api.crearVersionRubrica(this.form.id, { ...payload, estado: 'activa' })
+          : this.api.crearRubrica({ ...payload, estado: 'borrador' });
+
+    peticion.subscribe({
+      next: () => this.cancelar(),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+  }
+
+  cambiarEstado(rubrica: Rubrica, estado: string) {
+    this.api.cambiarEstadoRubrica(rubrica.id, estado).subscribe({
+      next: () => this.load(),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+  }
+
+  cancelar() {
+    this.form = this.emptyForm();
+    this.modo.set('crear');
+    this.load();
   }
 
   private emptyForm() {

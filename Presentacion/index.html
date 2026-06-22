@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>El Tejido — Presentación ejecutiva</title>
+<style>
+  /* ============================================================
+     El Tejido — Presentación ejecutiva
+     Paleta editorial Aliado TI (crema + tinta + azul) con acentos GHT.
+     Un solo archivo, sin dependencias externas. 16:9.
+     ============================================================ */
+  :root{
+    --cream-50:#FBFAF6; --cream-100:#F6F3EC; --cream-200:#EFEBE1; --cream-300:#E6E1D5;
+    --sand-400:#D8D2C4; --wg-400:#B6B4AE; --wg-500:#8E9093; --wg-600:#6E7072; --wg-700:#54565A;
+    --ink-800:#3A3A3C; --ink-900:#2A2A2C; --ink-950:#1A1A1C;
+    --brand-cyan:#11A0E2; --brand-blue:#1378C6; --brand-deep:#155FAE; --brand-indigo:#2A3C9B;
+    --grad-brand:linear-gradient(145deg,#34ADE8 0%,#1576C5 48%,#2A3C9B 100%);
+    --ght-green:#01905B; --ght-red:#E6351F;
+    --wa-green:#25D366; --wa-bg:#E5DDD5; --wa-bubble-in:#FFFFFF; --wa-bubble-out:#DCF8C6;
+    --green-700:#1F7A40; --amber-700:#9A6712; --red-700:#97342A;
+    --white:#fff;
+    --font-sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --font-serif:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:#14110d;
+    font-family:var(--font-sans);
+    color:var(--ink-900);
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+  /* ---- Stage 16:9 ---- */
+  #viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{
+    width:1280px;height:720px;position:relative;
+    transform-origin:center center;
+    background:var(--cream-100);
+    box-shadow:0 24px 80px rgba(0,0,0,.55);
+    overflow:hidden;
+  }
+  .slide{
+    position:absolute;inset:0;
+    padding:62px 76px 58px;
+    opacity:0;visibility:hidden;
+    transition:opacity .45s ease;
+    display:flex;flex-direction:column;
+  }
+  .slide.active{opacity:1;visibility:visible;z-index:2}
+
+  /* ---- Chrome: header / footer ---- */
+  .s-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+  .s-kicker{display:flex;align-items:center;gap:14px}
+  .s-num{
+    font-family:var(--font-serif);font-size:15px;color:var(--brand-deep);
+    border:1px solid var(--brand-deep);border-radius:50%;width:34px;height:34px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-weight:700;
+  }
+  .s-eyebrow{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--wg-600);font-weight:600}
+  .s-title{font-family:var(--font-serif);font-size:38px;line-height:1.06;color:var(--ink-900);font-weight:700;letter-spacing:-.01em}
+  .s-foot{position:absolute;left:76px;right:76px;bottom:22px;display:flex;align-items:center;justify-content:space-between;
+          font-size:11.5px;color:var(--wg-500);letter-spacing:.04em}
+  .s-foot .brand{display:flex;align-items:center;gap:10px}
+  .s-foot img{height:16px;width:auto;display:block;opacity:.9}
+  .s-foot .sep{width:1px;height:14px;background:var(--sand-400)}
+  .s-body{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+
+  /* generic helpers */
+  .lead{font-size:18px;line-height:1.5;color:var(--wg-700);max-width:62ch}
+  .accent{color:var(--brand-deep)}
+  .tag{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:.02em;
+       padding:5px 12px;border-radius:999px;background:var(--white);border:1px solid var(--sand-400);color:var(--wg-700)}
+  .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+
+  /* ============ COVER ============ */
+  #s1{padding:0;background:
+        radial-gradient(1100px 520px at 78% -8%, rgba(19,120,198,.14), transparent 60%),
+        radial-gradient(900px 600px at -6% 110%, rgba(42,60,155,.12), transparent 55%),
+        var(--cream-100);}
+  .cover-grid{position:absolute;inset:0;opacity:.5;
+     background-image:linear-gradient(var(--cream-300) 1px,transparent 1px),linear-gradient(90deg,var(--cream-300) 1px,transparent 1px);
+     background-size:46px 46px;mask-image:radial-gradient(circle at 50% 45%,#000,transparent 75%);}
+  .cover-inner{position:absolute;inset:0;padding:64px 84px;display:flex;flex-direction:column}
+  .cover-top{display:flex;align-items:center;justify-content:space-between}
+  .cobrand{display:flex;align-items:center;gap:16px}
+  .cobrand img.aliado{height:38px}
+  .cobrand img.ght{height:40px}
+  .cobrand .sep{width:1px;height:34px;background:var(--sand-400)}
+  .cover-center{margin:auto 0;display:flex;flex-direction:column;gap:22px}
+  .cover-eyebrow{font-size:14px;letter-spacing:.36em;text-transform:uppercase;color:var(--brand-deep);font-weight:700}
+  .cover-title{font-family:var(--font-serif);font-size:118px;line-height:.92;color:var(--ink-950);font-weight:700;letter-spacing:-.02em}
+  .cover-title .pi{color:var(--brand-deep)}
+  .cover-sub{font-size:23px;line-height:1.45;color:var(--wg-700);max-width:30ch;font-weight:400}
+  .cover-sub b{color:var(--ink-900);font-weight:600}
+  .cover-bottom{display:flex;align-items:flex-end;justify-content:space-between}
+  .cover-meta{font-size:13px;color:var(--wg-600);letter-spacing:.04em;line-height:1.7}
+  .cover-meta .k{color:var(--ink-900);font-weight:600}
+  .pill-row{display:flex;gap:10px}
+
+  /* ============ AGENDA ============ */
+  .agenda{display:grid;grid-template-columns:1fr 1fr;gap:14px 40px;align-self:stretch}
+  .ag-item{display:flex;align-items:center;gap:18px;padding:16px 20px;background:var(--white);
+           border:1px solid var(--cream-300);border-radius:14px;box-shadow:0 1px 0 var(--cream-200)}
+  .ag-n{font-family:var(--font-serif);font-size:22px;font-weight:700;color:var(--brand-deep);width:30px;flex:0 0 auto;text-align:center}
+  .ag-t{font-size:16.5px;font-weight:600;color:var(--ink-900)}
+  .ag-d{font-size:13px;color:var(--wg-600);margin-top:2px}
+
+  /* ============ THREE PILLARS (qué es) ============ */
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-self:stretch}
+  .pillar{background:var(--white);border:1px solid var(--cream-300);border-radius:18px;padding:30px 26px;
+          display:flex;flex-direction:column;gap:14px;box-shadow:0 10px 30px rgba(42,42,44,.05)}
+  .pillar .ic{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+  .pillar h3{font-size:20px;color:var(--ink-900);font-family:var(--font-serif)}
+  .pillar p{font-size:14.5px;line-height:1.5;color:var(--wg-700)}
+  .pillar .hl{color:var(--brand-deep);font-weight:600}
+
+  /* ============ FLOW DIAGRAM ============ */
+  .flow{display:flex;align-items:stretch;justify-content:center;gap:0;align-self:stretch;margin-top:6px}
+  .node{background:var(--white);border:1.5px solid var(--sand-400);border-radius:18px;padding:24px 22px;
+        width:262px;display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;
+        box-shadow:0 12px 30px rgba(42,42,44,.06)}
+  .node .badge{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+  .node h4{font-size:18px;color:var(--ink-900)}
+  .node p{font-size:13px;line-height:1.45;color:var(--wg-600)}
+  .node.center{border-color:var(--brand-deep);box-shadow:0 16px 40px rgba(19,120,198,.18)}
+  .conn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:96px;color:var(--wg-500)}
+  .conn .ln{position:relative;width:100%;height:2px;background:repeating-linear-gradient(90deg,var(--wg-400) 0 7px,transparent 7px 13px)}
+  .conn .cap{font-size:10.5px;text-align:center;line-height:1.3;color:var(--wg-600);font-weight:500}
+  .flow-sub{display:flex;gap:14px;justify-content:center;margin-top:26px}
+  .sub-chip{display:flex;align-items:center;gap:10px;background:var(--cream-50);border:1px dashed var(--sand-400);
+            border-radius:12px;padding:10px 16px;font-size:13px;color:var(--wg-700)}
+  .sub-chip b{color:var(--ink-900)}
+
+  /* ============ ENTITIES ============ */
+  .ent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-self:stretch}
+  .ent-col{background:var(--white);border:1px solid var(--cream-300);border-radius:16px;padding:20px 18px;display:flex;flex-direction:column;gap:12px}
+  .ent-col header{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--cream-200)}
+  .ent-col header .dot{width:11px;height:11px}
+  .ent-col header h4{font-size:15px;color:var(--ink-900)}
+  .ent-col ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+  .ent-col li{font-size:13.5px;color:var(--wg-700);display:flex;gap:9px;align-items:flex-start;line-height:1.35}
+  .ent-col li b{color:var(--ink-900);font-weight:600}
+  .ent-col li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--sand-400);margin-top:7px;flex:0 0 auto}
+  .ent-note{margin-top:18px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--wg-700);
+            background:var(--brand-deep);color:#eaf2fb;padding:13px 20px;border-radius:12px;align-self:flex-start}
+  .ent-note b{color:#fff}
+
+  /* ============ META RULES ============ */
+  .meta-wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:34px;align-self:stretch;align-items:center}
+  .meta-diagram{background:var(--white);border:1px solid var(--cream-300);border-radius:18px;padding:26px;display:flex;flex-direction:column;gap:16px}
+  .meta-flowrow{display:flex;align-items:center;gap:12px}
+  .mf-box{flex:1;border-radius:12px;padding:14px 12px;text-align:center;font-size:13px;font-weight:600;border:1.5px solid}
+  .mf-arrow{color:var(--wg-400);font-size:20px;font-weight:700}
+  .mf-meta{border-color:#1877F2;color:#1877F2;background:#eef4ff}
+  .mf-sys{border-color:var(--brand-deep);color:var(--brand-deep);background:#eef3fb}
+  .mf-user{border-color:var(--wa-green);color:#128C4B;background:#eafaf0}
+  .win24{margin-top:4px;border:1px dashed var(--sand-400);border-radius:12px;padding:14px;background:var(--cream-50)}
+  .win24 .h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--ink-900);margin-bottom:8px}
+  .win24 .row{display:flex;gap:10px;font-size:12.5px;color:var(--wg-700);line-height:1.4;margin-bottom:5px}
+  .win24 .row b{color:var(--ink-900)}
+  .meta-rules{display:flex;flex-direction:column;gap:13px}
+  .rule{display:flex;gap:14px;align-items:flex-start}
+  .rule .ic{width:38px;height:38px;border-radius:10px;background:var(--cream-200);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .rule h5{font-size:14.5px;color:var(--ink-900);margin-bottom:2px}
+  .rule p{font-size:13px;color:var(--wg-700);line-height:1.4}
+
+  /* ============ ADMIN / PARTICIPANT split ============ */
+  .split{display:grid;grid-template-columns:1.15fr 1fr;gap:34px;align-self:stretch;align-items:stretch}
+  .steps{display:flex;flex-direction:column;gap:13px}
+  .step{display:flex;gap:16px;align-items:flex-start}
+  .step .sn{width:32px;height:32px;border-radius:50%;background:var(--grad-brand);color:#fff;font-weight:700;
+            font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 4px 12px rgba(19,120,198,.3)}
+  .step h5{font-size:15.5px;color:var(--ink-900);margin-bottom:2px}
+  .step p{font-size:13px;color:var(--wg-700);line-height:1.4}
+
+  /* portal mockup */
+  .portal{background:var(--white);border:1px solid var(--cream-300);border-radius:16px;overflow:hidden;
+          box-shadow:0 16px 40px rgba(42,42,44,.1);display:flex;flex-direction:column}
+  .portal .bar{display:flex;align-items:center;gap:7px;padding:11px 14px;background:var(--ink-900)}
+  .portal .bar .d{width:9px;height:9px;border-radius:50%}
+  .portal .bar .ttl{margin-left:8px;color:var(--cream-200);font-size:11.5px;letter-spacing:.04em}
+  .portal .pbody{display:flex;flex:1}
+  .portal .pnav{width:122px;background:var(--cream-100);border-right:1px solid var(--cream-200);padding:12px 10px;display:flex;flex-direction:column;gap:5px}
+  .pnav .it{font-size:11px;color:var(--wg-700);padding:7px 9px;border-radius:7px;display:flex;align-items:center;gap:7px}
+  .pnav .it.on{background:var(--brand-deep);color:#fff;font-weight:600}
+  .pnav .it .b{width:6px;height:6px;border-radius:2px;background:var(--wg-400)}
+  .pnav .it.on .b{background:#fff}
+  .portal .pmain{flex:1;padding:14px}
+  .pmain .ph{font-size:12px;font-weight:700;color:var(--ink-900);margin-bottom:10px}
+  .pcards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
+  .pcard{background:var(--cream-50);border:1px solid var(--cream-200);border-radius:9px;padding:9px 11px}
+  .pcard .n{font-size:18px;font-weight:700;color:var(--brand-deep);font-family:var(--font-serif)}
+  .pcard .l{font-size:9.5px;color:var(--wg-600);letter-spacing:.02em}
+  .prow{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border:1px solid var(--cream-200);border-radius:8px;margin-bottom:6px;background:#fff}
+  .prow .pl{font-size:10.5px;color:var(--wg-700)}
+  .prow .badge2{font-size:9px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .b-green{background:#eafaf0;color:var(--green-700)}
+  .b-amber{background:#fbf3e1;color:var(--amber-700)}
+
+  /* whatsapp chat mockup */
+  .phone{width:330px;margin:0 auto;border-radius:30px;background:#0b141a;padding:11px;box-shadow:0 22px 50px rgba(0,0,0,.3)}
+  .wa{border-radius:21px;overflow:hidden;background:var(--wa-bg);display:flex;flex-direction:column;height:452px;
+      background-image:linear-gradient(rgba(229,221,213,.6),rgba(229,221,213,.6)),
+        repeating-linear-gradient(0deg,transparent 0 18px,rgba(0,0,0,.012) 18px 19px)}
+  .wa-top{background:#075E54;color:#fff;display:flex;align-items:center;gap:10px;padding:9px 13px}
+  .wa-top .av{width:32px;height:32px;border-radius:50%;background:#cfe9d6;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .wa-top .nm{font-size:13.5px;font-weight:600;line-height:1.1}
+  .wa-top .st{font-size:10.5px;color:#bfe6cf}
+  .wa-chat{flex:1;overflow:hidden;padding:10px 11px;display:flex;flex-direction:column;gap:6px}
+  .msg{max-width:80%;padding:6px 9px;border-radius:9px;font-size:11.5px;line-height:1.35;position:relative;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .msg .tm{font-size:8.5px;color:var(--wg-500);display:block;text-align:right;margin-top:1px}
+  .in{background:var(--wa-bubble-in);align-self:flex-start;border-top-left-radius:2px}
+  .out{background:var(--wa-bubble-out);align-self:flex-end;border-top-right-radius:2px}
+  .msg .sys{font-size:9px;font-weight:700;color:var(--brand-deep);letter-spacing:.04em;display:block;margin-bottom:2px}
+  .wa-note{font-size:13px;color:var(--wg-700);line-height:1.5;background:var(--cream-50);border:1px solid var(--cream-300);
+           border-radius:12px;padding:16px 18px}
+  .wa-note h5{font-size:14px;color:var(--ink-900);margin-bottom:8px}
+  .wa-note li{position:relative;margin:7px 0;padding-left:16px;font-size:12.5px;line-height:1.45}
+  .wa-note li::before{content:"›";position:absolute;left:0;top:0;color:var(--brand-deep);font-weight:700}
+
+  /* ============ TECH ============ */
+  .tech{display:grid;grid-template-columns:0.92fr 1.08fr;gap:34px;align-self:stretch;align-items:center}
+  .layers{display:flex;flex-direction:column;gap:9px}
+  .layer{border-radius:12px;padding:15px 18px;border:1px solid;display:flex;align-items:center;gap:14px}
+  .layer .ln{font-size:11px;font-weight:700;color:#fff;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .layer h5{font-size:14.5px;color:var(--ink-900)}
+  .layer p{font-size:11.5px;color:var(--wg-600);line-height:1.3}
+  .layer.l1{background:#eef3fb;border-color:#cfe0f4}.layer.l1 .ln{background:var(--brand-cyan)}
+  .layer.l2{background:#eef2fb;border-color:#d2dbf2}.layer.l2 .ln{background:var(--brand-blue)}
+  .layer.l3{background:#eef0f8;border-color:#d2d8ee}.layer.l3 .ln{background:var(--brand-deep)}
+  .layer.l4{background:#eeeef6;border-color:#d6d6ea}.layer.l4 .ln{background:var(--brand-indigo)}
+  .layer-note{font-size:11px;color:var(--wg-500);margin-top:8px;text-align:center}
+  .tfacts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .tfact{background:var(--white);border:1px solid var(--cream-300);border-radius:13px;padding:15px 16px}
+  .tfact .h{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .tfact .h .ic{width:30px;height:30px;border-radius:8px;background:var(--cream-200);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .tfact h5{font-size:13.5px;color:var(--ink-900)}
+  .tfact p{font-size:12px;color:var(--wg-700);line-height:1.45}
+  .tfact p b{color:var(--brand-deep)}
+
+  /* ============ DEMO divider ============ */
+  #s10{background:
+        radial-gradient(900px 500px at 50% 0%, rgba(19,120,198,.16), transparent 60%),var(--ink-950);padding:0}
+  .demo-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;text-align:center}
+  .demo-in .eb{font-size:14px;letter-spacing:.4em;text-transform:uppercase;color:var(--brand-cyan);font-weight:700}
+  .demo-in h2{font-family:var(--font-serif);font-size:96px;color:var(--cream-50);line-height:1;letter-spacing:-.01em}
+  .demo-in p{font-size:18px;color:var(--wg-400);max-width:40ch}
+  .demo-play{width:96px;height:96px;border-radius:50%;border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center}
+
+  /* ============ CLOSING ============ */
+  #s11{background:
+        radial-gradient(1000px 500px at 80% 110%, rgba(42,60,155,.16), transparent 55%),
+        radial-gradient(800px 460px at 0% -10%, rgba(19,120,198,.12), transparent 55%),var(--cream-100);padding:0}
+  .close-in{position:absolute;inset:0;padding:70px 84px;display:flex;flex-direction:column;justify-content:space-between}
+  .close-center{margin:auto 0}
+  .close-center .eb{font-size:14px;letter-spacing:.34em;text-transform:uppercase;color:var(--brand-deep);font-weight:700;margin-bottom:18px}
+  .close-center h2{font-family:var(--font-serif);font-size:84px;line-height:.95;color:var(--ink-950);letter-spacing:-.02em}
+  .close-center p{font-size:21px;color:var(--wg-700);margin-top:20px;max-width:34ch;line-height:1.4}
+
+  /* ---- placeholder for real screenshots ---- */
+  .shot-ph{border:2px dashed var(--brand-deep);border-radius:12px;background:repeating-linear-gradient(135deg,rgba(19,120,198,.05) 0 12px,transparent 12px 24px);
+           display:flex;align-items:center;justify-content:center;text-align:center;color:var(--brand-deep);font-size:11px;font-weight:600;padding:10px;gap:6px;flex-direction:column}
+  .shot-ph .cam{font-size:18px}
+
+  /* ============ NAV UI ============ */
+  .nav-zone{position:absolute;top:0;bottom:0;width:22%;z-index:30;cursor:pointer}
+  .nav-zone.left{left:0}.nav-zone.right{right:0}
+  .nav-ui{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:14px;
+          background:rgba(20,17,13,.78);backdrop-filter:blur(6px);padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}
+  .nav-ui button{background:none;border:none;color:#cfccc4;cursor:pointer;font-size:16px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .nav-ui button:hover{background:rgba(255,255,255,.12);color:#fff}
+  .dots{display:flex;gap:7px;align-items:center}
+  .dots .pd{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.28);cursor:pointer;transition:.2s}
+  .dots .pd.on{background:var(--brand-cyan);width:18px;border-radius:4px}
+  .counter{color:#bdbab2;font-size:12px;font-variant-numeric:tabular-nums;min-width:42px;text-align:center}
+  .hint{position:fixed;top:14px;right:18px;z-index:50;color:rgba(255,255,255,.5);font-size:11px;letter-spacing:.04em}
+  @media print{body{overflow:visible}.nav-ui,.hint,.nav-zone{display:none}}
+</style>
+</head>
+<body>
+<div class="hint">← → para navegar · F pantalla completa</div>
+<div id="viewport">
+  <div id="stage">
+
+    <!-- ============ 1 · COVER ============ -->
+    <section class="slide active" id="s1">
+      <div class="cover-grid"></div>
+      <div class="cover-inner">
+        <div class="cover-top">
+          <div class="cobrand">
+            <img class="aliado" alt="Aliado TI" />
+            <span class="sep"></span>
+            <img class="ght" alt="GHT" />
+          </div>
+          <span class="tag"><span class="dot" style="background:var(--wa-green)"></span> Sistema en producción · Azure</span>
+        </div>
+        <div class="cover-center">
+          <div class="cover-eyebrow">Presentación ejecutiva</div>
+          <h1 class="cover-title">El&nbsp;Tejido<span class="pi">.</span></h1>
+          <p class="cover-sub">Captura y evalúa las <b>ideas de tu gente</b> por WhatsApp, con <b>inteligencia artificial</b>.</p>
+        </div>
+        <div class="cover-bottom">
+          <div class="cover-meta">
+            <span class="k">Para:</span> Munir · Sponsor del proyecto<br/>
+            <span class="k">Presenta:</span> Aliado TI &nbsp;·&nbsp; <span class="k">Cliente:</span> GHT
+          </div>
+          <div class="pill-row">
+            <span class="tag">WhatsApp</span>
+            <span class="tag">Administrador</span>
+            <span class="tag">Base de datos</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · AGENDA ============ -->
+    <section class="slide" id="s2">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-eyebrow">Agenda</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:26px">Lo que veremos hoy</h2>
+        <div class="agenda">
+          <div class="ag-item"><span class="ag-n">1</span><div><div class="ag-t">El flujo general del sistema</div><div class="ag-d">WhatsApp · Administrador · Base de datos</div></div></div>
+          <div class="ag-item"><span class="ag-n">2</span><div><div class="ag-t">Qué se administra</div><div class="ag-d">Las entidades del módulo de administración</div></div></div>
+          <div class="ag-item"><span class="ag-n">3</span><div><div class="ag-t">La conexión con Meta (WhatsApp)</div><div class="ag-d">Sus reglas y condiciones</div></div></div>
+          <div class="ag-item"><span class="ag-n">4</span><div><div class="ag-t">Cómo trabaja un administrador</div><div class="ag-d">Del montaje de la campaña a los resultados</div></div></div>
+          <div class="ag-item"><span class="ag-n">5</span><div><div class="ag-t">Cómo participa una persona</div><div class="ag-d">La experiencia dentro de su WhatsApp</div></div></div>
+          <div class="ag-item"><span class="ag-n">6</span><div><div class="ag-t">Cómo está construido</div><div class="ag-d">Ingeniería de verdad, explicada simple</div></div></div>
+          <div class="ag-item" style="grid-column:1/-1"><span class="ag-n">7</span><div><div class="ag-t">Demo en vivo</div><div class="ag-d">El sistema funcionando</div></div></div>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 3 · QUÉ ES ============ -->
+    <section class="slide" id="s3">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-eyebrow">En una frase</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:8px">Una conversación que se convierte en información útil</h2>
+        <p class="lead" style="margin-bottom:30px">El Tejido le escribe a las personas por WhatsApp, les hace preguntas y <span class="accent">convierte sus respuestas en ideas evaluadas y organizadas</span> para el negocio.</p>
+        <div class="pillars">
+          <div class="pillar">
+            <div class="ic" style="background:#eafaf0"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#128C4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+            <h3>Conversa</h3>
+            <p>Llega a la gente <span class="hl">donde ya está</span>: su WhatsApp. Sin apps, sin contraseñas, sin fricción.</p>
+          </div>
+          <div class="pillar">
+            <div class="ic" style="background:#eef3fb"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2z"/><path d="M9 21h6"/></svg></div>
+            <h3>Evalúa</h3>
+            <p>Una <span class="hl">inteligencia artificial</span> califica cada respuesta con reglas que el negocio define, y devuelve retroalimentación.</p>
+          </div>
+          <div class="pillar">
+            <div class="ic" style="background:#fbf3e1"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9A6712" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/></svg></div>
+            <h3>Organiza</h3>
+            <p>Todo queda <span class="hl">guardado y listo para consultar</span>: por área, empresa, campaña o calificación.</p>
+          </div>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 4 · FLUJO GENERAL ============ -->
+    <section class="slide" id="s4">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-num">1</span><span class="s-eyebrow">Flujo general</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:6px">Tres grandes piezas que trabajan juntas</h2>
+        <p class="lead" style="margin-bottom:18px">Las personas conversan por <b>WhatsApp</b>; el <b>Administrador</b> es el cerebro que dirige todo; la <b>Base de datos</b> guarda cada interacción de forma segura.</p>
+        <div class="flow">
+          <div class="node">
+            <div class="badge" style="background:#eafaf0"><svg width="30" height="30" viewBox="0 0 24 24" fill="#128C4B"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.2 14.8l-.3-.2-2.8.9.9-2.7-.2-.3A8 8 0 0 1 12 4z"/></svg></div>
+            <h4>WhatsApp</h4>
+            <p>El canal de las personas (participantes y administradores).</p>
+          </div>
+          <div class="conn"><div class="cap">mensajes</div><div class="ln"></div><div class="cap">preguntas y retro</div></div>
+          <div class="node center">
+            <div class="badge" style="background:var(--grad-brand)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+            <h4>El Administrador</h4>
+            <p>El cerebro: dirige las campañas, evalúa con IA y aplica las reglas del negocio.</p>
+          </div>
+          <div class="conn"><div class="cap">guarda</div><div class="ln"></div><div class="cap">consulta</div></div>
+          <div class="node">
+            <div class="badge" style="background:#eef0f8"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2A3C9B" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+            <h4>Base de datos</h4>
+            <p>La memoria: usuarios, respuestas y evaluaciones, en la nube de Azure.</p>
+          </div>
+        </div>
+        <div class="flow-sub">
+          <div class="sub-chip"><span class="dot" style="background:#1877F2"></span><b>Meta / WhatsApp Cloud</b>&nbsp;— el puente oficial con WhatsApp</div>
+          <div class="sub-chip"><span class="dot" style="background:var(--brand-blue)"></span><b>Inteligencia Artificial</b>&nbsp;— evalúa cada respuesta</div>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 5 · ENTIDADES ============ -->
+    <section class="slide" id="s5">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-num">2</span><span class="s-eyebrow">Módulo de administración</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:6px">Qué se administra desde el sistema</h2>
+        <p class="lead" style="margin-bottom:20px">Cuatro familias de información. <span class="accent">Todo se configura desde el panel</span>, sin depender de programadores.</p>
+        <div class="ent-grid">
+          <div class="ent-col">
+            <header><span class="dot" style="background:var(--brand-blue)"></span><h4>Personas</h4></header>
+            <ul>
+              <li><span><b>Usuarios</b> — participantes, administradores y visores.</span></li>
+              <li><span><b>Etiquetas</b> — clasifican por área, empresa, etc.</span></li>
+            </ul>
+          </div>
+          <div class="ent-col">
+            <header><span class="dot" style="background:var(--ght-green)"></span><h4>Campañas</h4></header>
+            <ul>
+              <li><span><b>Campaña</b> — el ejercicio de captura de ideas.</span></li>
+              <li><span><b>Preguntas</b> — qué se les pregunta.</span></li>
+              <li><span><b>Mensajes</b> — el saludo y los textos de inicio.</span></li>
+              <li><span><b>Participantes</b> — quién está habilitado.</span></li>
+            </ul>
+          </div>
+          <div class="ent-col">
+            <header><span class="dot" style="background:var(--brand-indigo)"></span><h4>Cerebro de evaluación</h4></header>
+            <ul>
+              <li><span><b>Rúbricas</b> — los criterios y pesos de calificación.</span></li>
+              <li><span><b>Prompts</b> — las instrucciones para la IA (con aprobación).</span></li>
+              <li><span><b>Configuración de IA</b> — qué modelo se usa.</span></li>
+            </ul>
+          </div>
+          <div class="ent-col">
+            <header><span class="dot" style="background:var(--amber-700)"></span><h4>Resultados</h4></header>
+            <ul>
+              <li><span><b>Respuestas</b> — lo que aportó cada persona.</span></li>
+              <li><span><b>Evaluaciones</b> — la nota y la explicación de la IA.</span></li>
+              <li><span><b>Documentos</b> — cada aporte, listo para leer y exportar.</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="ent-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>Flexibilidad sin tocar código:</b> preguntas, criterios, reglas y mensajes se cambian desde el panel.</span></div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 6 · META / WHATSAPP RULES ============ -->
+    <section class="slide" id="s6">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-num">3</span><span class="s-eyebrow">Conexión con Meta · WhatsApp Cloud API</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:18px">Las reglas del juego de WhatsApp</h2>
+        <div class="meta-wrap">
+          <div class="meta-diagram">
+            <div class="meta-flowrow">
+              <div class="mf-box mf-sys">El Tejido</div>
+              <span class="mf-arrow">→</span>
+              <div class="mf-box mf-meta">Meta · WhatsApp Cloud</div>
+              <span class="mf-arrow">→</span>
+              <div class="mf-box mf-user">La persona</div>
+            </div>
+            <div style="text-align:center;font-size:11px;color:var(--wg-500)">Meta es el intermediario oficial obligatorio. Nadie habla con WhatsApp por fuera de él.</div>
+            <div class="win24">
+              <div class="h"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2A2A2C" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> La ventana de 24 horas</div>
+              <div class="row"><span class="dot" style="background:var(--green-700);margin-top:5px"></span><div><b>Dentro de 24 h</b> tras el último mensaje de la persona → podemos responder con <b>texto libre</b>.</div></div>
+              <div class="row"><span class="dot" style="background:var(--amber-700);margin-top:5px"></span><div><b>Fuera de 24 h</b> → solo se puede escribir con una <b>plantilla aprobada</b> por Meta.</div></div>
+            </div>
+          </div>
+          <div class="meta-rules">
+            <div class="rule">
+              <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div><h5>Número oficial verificado</h5><p>Una cuenta de WhatsApp Business verificada por Meta. No es un número personal.</p></div>
+            </div>
+            <div class="rule">
+              <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+              <div><h5>Conexión firmada y segura</h5><p>Cada mensaje entrante se verifica con una firma de seguridad. Nadie puede inyectar mensajes falsos.</p></div>
+            </div>
+            <div class="rule">
+              <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/></svg></div>
+              <div><h5>Plantillas aprobadas (HSM)</h5><p>Para iniciar una conversación, Meta exige plantillas pre-aprobadas. El sistema las usa para el saludo inicial.</p></div>
+            </div>
+            <div class="rule">
+              <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div><h5>Solo gente habilitada</h5><p>Quien no esté autorizado en una campaña activa es ignorado. Cero spam, control total.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 7 · ADMINISTRADOR ============ -->
+    <section class="slide" id="s7">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-num">4</span><span class="s-eyebrow">El administrador</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:20px">Cómo trabaja un administrador</h2>
+        <div class="split">
+          <div class="steps">
+            <div class="step"><span class="sn">1</span><div><h5>Entra sin contraseñas</h5><p>Recibe un código de un solo uso por WhatsApp. Seguro y sin claves que recordar.</p></div></div>
+            <div class="step"><span class="sn">2</span><div><h5>Crea la campaña y sus preguntas</h5><p>Define el objetivo y qué se va a preguntar a las personas.</p></div></div>
+            <div class="step"><span class="sn">3</span><div><h5>Define las reglas de evaluación</h5><p>Elige la rúbrica, los criterios y el mensaje de saludo y cierre.</p></div></div>
+            <div class="step"><span class="sn">4</span><div><h5>Carga y habilita participantes</h5><p>Selecciona quién recibe la campaña, por área o empresa.</p></div></div>
+            <div class="step"><span class="sn">5</span><div><h5>Envía y monitorea</h5><p>Lanza el envío y ve en vivo quién respondió y quién falta.</p></div></div>
+            <div class="step"><span class="sn">6</span><div><h5>Consulta y exporta resultados</h5><p>Filtra por área, tema o calificación y descarga los aportes.</p></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="portal">
+              <div class="bar"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="ttl">Portal El Tejido — Panel</span></div>
+              <div class="pbody">
+                <div class="pnav">
+                  <div class="it on"><span class="b"></span>Campañas</div>
+                  <div class="it"><span class="b"></span>Usuarios</div>
+                  <div class="it"><span class="b"></span>Rúbricas</div>
+                  <div class="it"><span class="b"></span>Resultados</div>
+                </div>
+                <div class="pmain">
+                  <div class="ph">Convención 2026 — Ideas</div>
+                  <div class="pcards">
+                    <div class="pcard"><div class="n">120</div><div class="l">PARTICIPANTES</div></div>
+                    <div class="pcard"><div class="n">87%</div><div class="l">RESPONDIERON</div></div>
+                  </div>
+                  <div class="prow"><span class="pl">Ana Pérez · Operaciones</span><span class="badge2 b-green">Evaluada · 4.1</span></div>
+                  <div class="prow"><span class="pl">Luis Gómez · Comercial</span><span class="badge2 b-green">Evaluada · 3.6</span></div>
+                  <div class="prow"><span class="pl">Sara Ruiz · Logística</span><span class="badge2 b-amber">Pendiente</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="shot-ph" style="height:60px"><span><span class="cam">📷</span> Espacio para captura real del portal</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 8 · PARTICIPANTE ============ -->
+    <section class="slide" id="s8">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-num">5</span><span class="s-eyebrow">El participante</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:18px">Cómo se vive en su propio WhatsApp</h2>
+        <div class="split" style="grid-template-columns:1fr 1.15fr;align-items:center">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="wa-note">
+              <h5>Una conversación natural, guiada paso a paso</h5>
+              <ul style="list-style:none">
+                <li>Recibe un <b>saludo y una pregunta</b> en su WhatsApp.</li>
+                <li>Responde con sus palabras, como en cualquier chat.</li>
+                <li>La IA le da <b>retroalimentación</b> y lo invita a mejorar.</li>
+                <li>Puede enviar una <b>versión mejorada</b> (opcional).</li>
+                <li>El sistema <b>cierra con un agradecimiento</b> y guarda el aporte.</li>
+              </ul>
+            </div>
+            <div class="wa-note" style="background:var(--brand-deep);border:none;color:#eaf2fb">
+              <h5 style="color:#fff">Sin fricción</h5>
+              <p style="font-size:13px;line-height:1.5;color:#dbe8f7">No instala nada, no crea cuentas, no recuerda contraseñas. Todo ocurre en una herramienta que ya usa todos los días.</p>
+            </div>
+            <div class="shot-ph" style="height:54px"><span><span class="cam">📷</span> Espacio para captura real de un chat</span></div>
+          </div>
+          <div class="phone">
+            <div class="wa">
+              <div class="wa-top"><div class="av">🧵</div><div><div class="nm">El Tejido</div><div class="st">en línea</div></div></div>
+              <div class="wa-chat">
+                <div class="msg in">Hola Ana 👋 Ayúdanos con una idea para <b>mejorar los ingresos</b>. Sé concreta: qué harías y por qué ayudaría.<span class="tm">9:01</span></div>
+                <div class="msg out">Ofrecer despacho a domicilio para clientes de la zona norte.<span class="tm">9:03</span></div>
+                <div class="msg in"><span class="sys">✦ EVALUACIÓN IA</span>Buena idea, clara y viable. ¿Podrías estimar <b>cuánto aumentaría</b> las ventas al mes? Puedes mejorar tu respuesta 👇<span class="tm">9:03</span></div>
+                <div class="msg out">Unos 200 pedidos extra al mes, ~15% más de ventas en esa zona.<span class="tm">9:06</span></div>
+                <div class="msg in"><span class="sys">✦ CIERRE</span>¡Excelente aporte! Quedó registrado correctamente. Gracias por participar 🙌<span class="tm">9:06</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 9 · TÉCNICO ============ -->
+    <section class="slide" id="s9">
+      <div class="s-head">
+        <div class="s-kicker"><span class="s-num">6</span><span class="s-eyebrow">Cómo está construido</span></div>
+      </div>
+      <div class="s-body">
+        <h2 class="s-title" style="margin-bottom:16px">Ingeniería de verdad, explicada simple</h2>
+        <div class="tech">
+          <div>
+            <div class="layers">
+              <div class="layer l1"><span class="ln">1</span><div><h5>Canal</h5><p>Recibe WhatsApp y atiende el panel del administrador.</p></div></div>
+              <div class="layer l2"><span class="ln">2</span><div><h5>Aplicación</h5><p>El cerebro: campañas, conversación, evaluación y seguridad.</p></div></div>
+              <div class="layer l3"><span class="ln">3</span><div><h5>Datos y artefactos</h5><p>Guarda todo: base de datos, documentos y secretos.</p></div></div>
+              <div class="layer l4"><span class="ln">4</span><div><h5>Integraciones</h5><p>Se conecta con Meta (WhatsApp) y con la inteligencia artificial.</p></div></div>
+            </div>
+            <div class="layer-note">Cada capa hace una sola cosa y bien — como los pisos de un edificio.</div>
+          </div>
+          <div class="tfacts">
+            <div class="tfact">
+              <div class="h"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/></svg></span><h5>Base de datos</h5></div>
+              <p><b>Azure Cosmos DB</b> — una base moderna en la nube que <b>escala sola</b> y responde rápido a millones de registros.</p>
+            </div>
+            <div class="tfact">
+              <div class="h"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><h5>Forma de construir</h5></div>
+              <p><b>Arquitectura limpia por capas y módulos</b>: piezas independientes, fáciles de mantener y de cambiar sin romper el resto.</p>
+            </div>
+            <div class="tfact">
+              <div class="h"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><h5>Seguridad de fábrica</h5></div>
+              <p>Acceso con código de un solo uso, <b>secretos en bóveda</b> (Key Vault), y registro de cada evento sensible.</p>
+            </div>
+            <div class="tfact">
+              <div class="h"><span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#155FAE" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><h5>Buenas prácticas</h5></div>
+              <p><b>Versiona</b> rúbricas y prompts, <b>no duplica</b> mensajes, se <b>monitorea solo</b> y tiene <b>pruebas automáticas</b>.</p>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+          <span class="tag">Reproducible</span>
+          <span class="tag">Configurable sin programar</span>
+          <span class="tag">Portable</span>
+          <span class="tag">Observable</span>
+          <span class="tag">Listo para escalar</span>
+        </div>
+      </div>
+      <div class="s-foot"><div class="brand"><img class="f-aliado" alt=""/><span class="sep"></span><img class="f-ght" alt=""/></div><span>El Tejido · Presentación ejecutiva</span></div>
+    </section>
+
+    <!-- ============ 10 · DEMO ============ -->
+    <section class="slide" id="s10">
+      <div class="demo-in">
+        <div class="eb">Punto 7</div>
+        <div class="demo-play"><svg width="34" height="34" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></div>
+        <h2>Demo en vivo</h2>
+        <p>Veamos El Tejido funcionando.</p>
+      </div>
+    </section>
+
+    <!-- ============ 11 · CIERRE ============ -->
+    <section class="slide" id="s11">
+      <div class="close-in">
+        <div class="cover-top">
+          <div class="cobrand">
+            <img class="aliado" alt="Aliado TI" />
+            <span class="sep"></span>
+            <img class="ght" alt="GHT" />
+          </div>
+          <span class="tag"><span class="dot" style="background:var(--wa-green)"></span> Gracias</span>
+        </div>
+        <div class="close-center">
+          <div class="eb">El Tejido</div>
+          <h2>Conversaciones que<br/>se vuelven decisiones.</h2>
+          <p>Una herramienta simple para las personas, con ingeniería seria por dentro.</p>
+        </div>
+        <div class="cover-meta" style="font-size:13px;color:var(--wg-600)">
+          <span style="color:var(--ink-900);font-weight:600">Aliado TI</span> &nbsp;para&nbsp; <span style="color:var(--ink-900);font-weight:600">GHT</span> &nbsp;·&nbsp; Presentación ejecutiva · 2026
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- nav zones -->
+<div class="nav-zone left"  onclick="go(-1)"></div>
+<div class="nav-zone right" onclick="go(1)"></div>
+
+<!-- nav UI -->
+<div class="nav-ui">
+  <button onclick="go(-1)" aria-label="Anterior">‹</button>
+  <div class="dots" id="dots"></div>
+  <button onclick="go(1)" aria-label="Siguiente">›</button>
+  <span class="counter" id="counter">1 / 11</span>
+</div>
+
+<script>
+  // ---- logos (base64, sin red) ----
+  var GHT = "data:image/png;base64,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";
+  var ALIADO = "data:image/png;base64,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";
+  document.querySelectorAll('.cobrand img.aliado, .f-aliado').forEach(function(i){i.src=ALIADO});
+  document.querySelectorAll('.cobrand img.ght, .f-ght').forEach(function(i){i.src=GHT});
+
+  // ---- navegación ----
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var idx=0, total=slides.length;
+  var dotsWrap=document.getElementById('dots');
+  slides.forEach(function(_,i){
+    var d=document.createElement('span');d.className='pd'+(i===0?' on':'');
+    d.onclick=function(){show(i)};dotsWrap.appendChild(d);
+  });
+  var dots=[].slice.call(dotsWrap.children);
+  function show(n){
+    idx=Math.max(0,Math.min(total-1,n));
+    slides.forEach(function(s,i){s.classList.toggle('active',i===idx)});
+    dots.forEach(function(d,i){d.classList.toggle('on',i===idx)});
+    document.getElementById('counter').textContent=(idx+1)+' / '+total;
+  }
+  function go(step){show(idx+step)}
+  window.go=go;window.show=show;
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();go(1)}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(-1)}
+    else if(e.key==='Home'){show(0)}else if(e.key==='End'){show(total-1)}
+    else if(e.key==='f'||e.key==='F'){toggleFs()}
+  });
+  function toggleFs(){
+    if(!document.fullscreenElement){document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()}
+    else{document.exitFullscreen&&document.exitFullscreen()}
+  }
+  // ---- escalado 16:9 ----
+  function fit(){
+    var s=Math.min(window.innerWidth/1280, window.innerHeight/720);
+    document.getElementById('stage').style.transform='scale('+s+')';
+  }
+  window.addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

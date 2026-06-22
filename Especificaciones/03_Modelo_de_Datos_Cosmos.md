@@ -323,7 +323,8 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "actualizadoEn": "2026-06-10T11:00:00Z"
 }
 ```
-- **Versionada** (`REQ §17.3.2`). Cada edición crea una nueva versión (nuevo documento con mismo `nombre`/familia e `id` que incluye versión, o `id` estable + colección de versiones; ver `07 §4` para la estrategia de versionado elegida).
+- **Versionada** (`REQ §17.3.2`). Cada edición *comprometida* crea una nueva versión (nuevo documento con mismo `nombre`/familia e `id` que incluye versión, o `id` estable + colección de versiones; ver `07 §4` para la estrategia de versionado elegida).
+- `estado` ∈ `borrador` | `activa` | `archivada`. `borrador` es un estado **no comprometido**: una rúbrica en borrador nunca se usa para evaluar (el orquestador exige `activa`), por lo que su versión vigente puede editarse **en sitio** (`PUT`, ver `04 §5.5`) sin romper snapshots; al activarse queda inmutable y toda edición posterior es nueva versión. Ver `SUPUESTOS.md#edicion-config-hibrida`.
 - `escala` y `criterios`/`pesos` son la fuente; el `contenidoMarkdown` es lo que recibe el LLM (`REQ §17.3.6`).
 
 ### 3.12 `Prompt` (contenedor `config`) — `REQ §29.9`, `§18`

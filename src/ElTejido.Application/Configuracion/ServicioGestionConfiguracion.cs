@@ -65,6 +65,34 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         return rubrica;
     }
 
+    public async Task<Rubrica> ActualizarRubricaAsync(
+        string id,
+        SolicitudGuardarRubrica solicitud,
+        CancellationToken cancellationToken)
+    {
+        var actual = await ObtenerRubricaAsync(id, cancellationToken);
+        if (actual.Estado != EstadoRubrica.Borrador)
+        {
+            throw new ErrorConflicto(
+                "Solo se puede editar en sitio una rubrica en borrador. Crea una nueva version para conservar el historial.");
+        }
+
+        // Edicion in-place: misma version, conserva creadoEn, mantiene el borrador (la activacion va por estado).
+        var rubrica = Rubrica.Crear(
+            actual.Id,
+            solicitud.Nombre,
+            solicitud.Descripcion,
+            solicitud.ContenidoMarkdown,
+            solicitud.Escala,
+            solicitud.Criterios,
+            actual.Version,
+            EstadoRubrica.Borrador,
+            actual.CreadoEn,
+            _tiempo.GetUtcNow());
+        await _repositorio.GuardarRubricaAsync(rubrica, cancellationToken);
+        return rubrica;
+    }
+
     public async Task<Rubrica> CambiarEstadoRubricaAsync(
         string id,
         EstadoRubrica estado,
@@ -126,6 +154,34 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
             actual.CreadoEn,
             aprobadoPor: null,
             fechaAprobacion: null);
+        await _repositorio.GuardarPromptAsync(prompt, cancellationToken);
+        return prompt;
+    }
+
+    public async Task<Prompt> ActualizarPromptAsync(
+        string id,
+        SolicitudGuardarPrompt solicitud,
+        CancellationToken cancellationToken)
+    {
+        var actual = await ObtenerPromptAsync(id, cancellationToken);
+        if (actual.Estado != EstadoPrompt.Borrador)
+        {
+            throw new ErrorConflicto(
+                "Solo se puede editar en sitio un prompt en borrador. Crea una nueva version para conservar el historial.");
+        }
+
+        // Edicion in-place: misma version, conserva creadoEn, sigue en borrador sin aprobacion.
+        var prompt = Prompt.Crear(
+            actual.Id,
+            solicitud.Nombre,
+            solicitud.TipoPrompt,
+            solicitud.Contenido,
+            actual.Version,
+            EstadoPrompt.Borrador,
+            aprobadoPor: null,
+            fechaAprobacion: null,
+            actual.CreadoEn,
+            _tiempo.GetUtcNow());
         await _repositorio.GuardarPromptAsync(prompt, cancellationToken);
         return prompt;
     }

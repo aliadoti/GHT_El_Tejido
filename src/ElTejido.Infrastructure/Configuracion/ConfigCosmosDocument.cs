@@ -214,13 +214,20 @@ internal sealed class ConfigCosmosDocument
         };
 
     private static string ToCosmosEstadoRubrica(EstadoRubrica estado)
-        => estado == EstadoRubrica.Activa ? "activa" : "archivada";
+        => estado switch
+        {
+            EstadoRubrica.Activa => "activa",
+            EstadoRubrica.Archivada => "archivada",
+            EstadoRubrica.Borrador => "borrador",
+            _ => throw new InvalidOperationException($"Estado de rubrica no soportado: {estado}."),
+        };
 
     private static EstadoRubrica ParseEstadoRubrica(string estado)
         => estado switch
         {
             "activa" => EstadoRubrica.Activa,
             "archivada" => EstadoRubrica.Archivada,
+            "borrador" => EstadoRubrica.Borrador,
             _ => throw new InvalidOperationException($"Estado de rubrica no soportado: {estado}."),
         };
 
