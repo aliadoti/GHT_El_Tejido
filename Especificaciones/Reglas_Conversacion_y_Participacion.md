@@ -3,7 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-06-17.
+> y `09` (Markdown). Última revisión: 2026-06-23.
 
 ## 1. Visión general del flujo
 
@@ -40,6 +40,9 @@ participante escribe despues de una pregunta cerrada y aun hay preguntas pendien
 para abrir/enviar la siguiente pregunta y no se evalua como respuesta. Si todas las preguntas activas ya
 estan cerradas, los mensajes posteriores se ignoran.
 
+El avance entre preguntas no exige siempre agotar las revisiones: una pregunta puede cerrarse antes por
+**calificacion alta** o porque el **participante pide continuar** (ver §2.3, "Dos salidas anticipadas").
+
 ### 2.2 Evaluación con LLM
 Cada respuesta se evalúa con el LLM usando la **rúbrica**, el **prompt** aprobado y la **ConfigLLM**
 activos de la pregunta/campaña. El modelo debe devolver un JSON con el esquema acordado (el sistema le
@@ -64,6 +67,24 @@ con base en la retroalimentacion (envia retro + invitacion) mientras
 El numero de revisiones lo controla `MaxRepreguntas` (default **1**); con `MaxRepreguntas = 0` se cierra
 sin ofrecer mejora. En fallback **no** se ofrece mejora (se cierra con retro neutra). Cada evaluacion
 valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
+
+**Dos salidas anticipadas** evitan que el participante quede atrapado en revisiones cuando ya esta bien
+(ambas conviven con `MaxRepreguntas`):
+
+1. **Cierre por calificacion alta (decision del sistema).** Si una evaluacion valida alcanza el umbral
+   `Conversacion:UmbralCierreAnticipado` (fraccion de la escala de la rubrica en `[0,1]`; **0 = desactivado**,
+   default), el sistema **no insiste con una revision** aunque queden repreguntas: antepone una felicitacion
+   (`Conversacion:Mensajes:MensajeCalificacionAlta`) al cierre, compila el Markdown y avanza a la siguiente
+   pregunta. El umbral se compara como `CalificacionTotal >= Min + Umbral * (Max - Min)`.
+2. **Continuar por intencion del participante (salida conversacional).** Estando en `esperandoRepregunta`
+   (ya se ofrecio una mejora), si el participante responde con una frase de conformidad
+   (`Conversacion:FrasesContinuar`, p. ej. *"asi esta bien"*, *"sigamos"*, *"listo"*), el mensaje **se
+   registra como `recibida`, no se evalua**, el sistema antepone un acuse calido
+   (`Conversacion:Mensajes:AcuseContinuar`) al `MensajeCierre` y avanza. La deteccion es **hibrida
+   determinista**: igualdad exacta con una frase, o contencion de la frase solo si el mensaje es corto
+   (`Conversacion:MaxCaracteresIntencionContinuar`, default 40), comparando sin mayusculas/acentos/puntuacion.
+   Esta deteccion **solo** aplica a la respuesta de revision; el primer mensaje (la respuesta real) siempre
+   se evalua. La invitacion a mejorar (§3) ya ensena la frase de salida para que el camino feliz coincida.
 
 ### 2.4 Cierre y Markdown
 Hay dos cierres normales: si la evaluacion valida decide cerrar sin ofrecer revision, se envia
@@ -95,6 +116,11 @@ campaña activa o sin pregunta vigente) se **rechaza de forma neutral**; el moti
 | Parámetro | Dónde se configura | Default | Efecto |
 |---|---|---|---|
 | `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Cuántas revisiones/mejoras se ofrecen antes de cerrar (0 = ninguna). |
+| `Conversacion:UmbralCierreAnticipado` | App config / env `Conversacion__UmbralCierreAnticipado` | 0 (**desactivado**) | Fracción de la escala de la rúbrica `[0,1]`; si la calificación la alcanza, cierra/avanza sin ofrecer más revisiones. |
+| `Conversacion:FrasesContinuar` | App config / env `Conversacion__FrasesContinuar__0`, `...__1` | (lista compilada) | Frases con las que el participante pide continuar a la siguiente pregunta. Vacío = usa la lista por defecto. |
+| `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
+| `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
+| `Conversacion:Mensajes:AcuseContinuar` | App config / env `Conversacion__Mensajes__AcuseContinuar` | "¡Perfecto, sigamos!" | Acuse que antecede al cierre cuando el participante pide continuar. |
 | `MensajeCierre` (config conversacional) | Portal admin (campaña) | "Gracias. Tu aporte quedó registrado…" | Texto que acompaña la retro al cerrar. |
 | `Conversacion:Mensajes:SaludoPrimerContacto` | App config / env `Conversacion__Mensajes__SaludoPrimerContacto` | "Hola! Gracias por escribirnos..." | Texto que antecede la primera pregunta cuando el participante abre un hilo nuevo. |
 | `Conversacion:Mensajes:SaludoSiguientePregunta` | App config / env `Conversacion__Mensajes__SaludoSiguientePregunta` | "Continuemos con la siguiente pregunta:" | Texto que antecede una pregunta pendiente posterior. |

@@ -42,6 +42,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
     private readonly OpcionesMensajesConversacion _mensajes;
+    private readonly DetectorIntencionContinuar _intencionContinuar;
+    private readonly double _umbralCierreAnticipado;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -67,6 +69,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
         _mensajes = opciones.Mensajes;
+        _umbralCierreAnticipado = opciones.UmbralCierreAnticipado;
+        IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
+            ? opciones.FrasesContinuar
+            : DetectorIntencionContinuar.FrasesPorDefecto;
+        _intencionContinuar = new DetectorIntencionContinuar(frases, opciones.MaxCaracteresIntencionContinuar);
         _tiempo = tiempo;
     }
 
@@ -103,6 +110,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         conversacion ??= DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora);
         var esRepregunta = conversacion.EstadoMaquina == EstadoMaquinaConversacion.EsperandoRepregunta;
         var revisionesAgotadas = esRepregunta && conversacion.RepreguntasUsadas >= pregunta.MaxRepreguntas;
+        // Salida conversacional (05 §4.4): solo cuando ya ofrecimos una mejora (esperandoRepregunta) y el
+        // participante senala que esta conforme; el primer mensaje (su respuesta real) nunca se interpreta asi.
+        var deseaContinuar = esRepregunta && _intencionContinuar.DeseaContinuar(mensaje.Texto);
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
@@ -110,8 +120,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
 
-        if (revisionesAgotadas)
+        if (revisionesAgotadas || deseaContinuar)
         {
+            // Se agoto el cupo de revisiones, o el participante pidio continuar: se registra sin evaluar
+            // y se cierra. Si pidio continuar, se antepone un acuse calido para que no se sienta cortante.
             conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp);
             await GuardarRespuestaAsync(
                 respuestaId,
@@ -124,7 +136,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 EstadoRespuesta.Recibida,
                 ahora,
                 cancellationToken);
-            await CerrarConAgradecimientoAsync(conversacion, numero, campania, ahora, cancellationToken);
+            var acuse = deseaContinuar
+                ? TextoConfigurado(_mensajes.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault)
+                : null;
+            await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, ahora, cancellationToken);
             await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
             return;
         }
@@ -161,10 +176,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
         }
 
+        // Cierre anticipado por calificacion alta (05 §4.4): si la calificacion supera el umbral
+        // configurado, no se insiste con una revision aunque queden repreguntas; se felicita y cierra.
+        var calificacionAlta = !esFallback && UmbralAlcanzado(evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala);
+
         // Mejora deterministica (05 §4.4): tras una evaluacion valida se ofrece una revision
         // (hasta MaxRepreguntas, default 1) con la retro como base. Si el siguiente mensaje llega
         // con el cupo agotado, se registra sin evaluarlo y se cierra con agradecimiento.
-        var ofrecerMejora = !esFallback && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
+        var ofrecerMejora = !esFallback && !calificacionAlta && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
         if (ofrecerMejora)
         {
             var invitacionMejora = TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault);
@@ -179,8 +198,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        // Cierre: retro + agradecimiento en un solo mensaje (tipo Cierre).
-        var cierre = Combinar(evaluacion.RetroalimentacionEnviada, campania.ConfigConversacional.MensajeCierre);
+        // Cierre: retro + agradecimiento en un solo mensaje (tipo Cierre). Si cerro por calificacion
+        // alta se intercala una felicitacion para que el corte temprano se sienta natural.
+        var cierreFinal = calificacionAlta
+            ? Combinar(
+                TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
+                campania.ConfigConversacional.MensajeCierre)
+            : campania.ConfigConversacional.MensajeCierre;
+        var cierre = Combinar(evaluacion.RetroalimentacionEnviada, cierreFinal);
         await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
 
         conversacion = conversacion.Cerrar(ahora);
@@ -304,13 +329,33 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DominioConversacion conversacion,
         NumeroWhatsApp numero,
         Campania campania,
+        string? acusePrevio,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        await EnviarAsync(conversacion, numero, campania.ConfigConversacional.MensajeCierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+        var texto = string.IsNullOrWhiteSpace(acusePrevio)
+            ? campania.ConfigConversacional.MensajeCierre
+            : Combinar(acusePrevio, campania.ConfigConversacional.MensajeCierre);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
+    }
+
+    /// <summary>
+    /// ¿La calificacion total alcanza el umbral de cierre anticipado? El umbral es una fraccion de la
+    /// escala de la rubrica en [0,1]; <c>&lt;= 0</c> lo desactiva (default).
+    /// </summary>
+    private bool UmbralAlcanzado(decimal calificacionTotal, EscalaRubrica escala)
+    {
+        if (_umbralCierreAnticipado <= 0)
+        {
+            return false;
+        }
+
+        var fraccion = (decimal)Math.Min(_umbralCierreAnticipado, 1.0);
+        var valorUmbral = escala.Min + (fraccion * (escala.Max - escala.Min));
+        return calificacionTotal >= valorUmbral;
     }
 
     private async Task CerrarPorConfiguracionNoDisponibleAsync(

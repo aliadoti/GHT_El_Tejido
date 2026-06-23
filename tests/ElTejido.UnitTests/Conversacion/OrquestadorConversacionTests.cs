@@ -358,6 +358,92 @@ public sealed class OrquestadorConversacionTests
         _conversaciones.Conversaciones.Should().ContainSingle(c => c.PreguntaId == "p_2" && c.Estado == EstadoConversacion.Cerrada);
     }
 
+    [Fact]
+    public async Task Procesar_CalificacionAlta_NoOfreceMejoraYCierraConFelicitacion()
+    {
+        // Escala 1..5, umbral 0.85 -> 4.4; calificacion 5 lo supera. Aunque queda 1 repregunta (default),
+        // no se ofrece mejora: se felicita y cierra.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", "Buena idea", calificacionTotal: 5m)));
+        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.85 });
+        var participante = Participante();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea excelente"), CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains(OpcionesMensajesConversacion.MensajeCalificacionAltaDefault, StringComparison.Ordinal)),
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>());
+        await _compilador.Received(1).CompilarAsync(Arg.Any<SolicitudCompilacion>(), Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    [Fact]
+    public async Task Procesar_CalificacionBajoUmbral_OfreceMejoraComoSiempre()
+    {
+        // Misma escala/umbral, pero calificacion 3 < 4.4: el umbral no aplica y se ofrece la mejora.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, "Buena idea", calificacionTotal: 3m)));
+        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.85 });
+        var participante = Participante();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+    }
+
+    [Fact]
+    public async Task Procesar_IntencionContinuar_RegistraSinEvaluarYCierraConAcuse()
+    {
+        // MaxRepreguntas=2: tras ofrecer la mejora, queda cupo; el participante igual pide continuar.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        var orquestador = Construir();
+        var participante = Participante(maxRepreguntas: 2);
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea real"), CancellationToken.None);
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Asi esta bien, sigamos"), CancellationToken.None);
+
+        // Solo se evaluo la primera respuesta; el "sigamos" no se manda al LLM.
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains(OpcionesMensajesConversacion.AcuseContinuarDefault, StringComparison.Ordinal)),
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>());
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.Estado == EstadoRespuesta.Recibida && r.Texto == "Asi esta bien, sigamos"), Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    [Fact]
+    public async Task Procesar_IntencionEnRespuestaInicial_SeEvaluaIgual()
+    {
+        // Una frase de continuar como PRIMERA respuesta no se interpreta como intencion: se evalua.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        var orquestador = Construir();
+        var participante = Participante(maxRepreguntas: 2);
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("sigamos"), CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+    }
+
     private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null)
         => new(
             _conversaciones,
@@ -438,13 +524,13 @@ public sealed class OrquestadorConversacionTests
             LimitesSeguridad.Crear(1500, 10, 2),
             usuariosHabilitados: null, Epoca, Epoca);
 
-    private static DominioEvaluacion CrearEvaluacion(RecomendacionEvaluacion recomendacion, string? repregunta, string retro = "Buena idea")
+    private static DominioEvaluacion CrearEvaluacion(RecomendacionEvaluacion recomendacion, string? repregunta, string retro = "Buena idea", decimal calificacionTotal = 4m)
         => DominioEvaluacion.Crear(
             "eval_1", "c_1", "resp_1", "u_1", "p_1", "rub_1", 1, "pr_eval", 1, "llm_1",
             new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
             new Dictionary<string, decimal> { ["claridad"] = 1m },
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
-            4m, "explica", retro, recomendacion, repregunta, new[] { "tema" }, new[] { "ent" }, false, Epoca);
+            calificacionTotal, "explica", retro, recomendacion, repregunta, new[] { "tema" }, new[] { "ent" }, false, Epoca);
 
     private static Rubrica CrearRubrica(EstadoRubrica estado = EstadoRubrica.Activa)
         => Rubrica.Crear("rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
