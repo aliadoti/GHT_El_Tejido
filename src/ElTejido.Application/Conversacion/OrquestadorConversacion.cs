@@ -1,3 +1,4 @@
+using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Evaluacion;
@@ -137,7 +138,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora,
                 cancellationToken);
             var acuse = deseaContinuar
-                ? TextoConfigurado(_mensajes.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault)
+                ? SeleccionarAcuseContinuar(conversacion)
                 : null;
             await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, ahora, cancellationToken);
             await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
@@ -147,7 +148,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
 
-        var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, respuestaId, mensaje.Texto, cancellationToken);
+        var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacionId, respuestaId, mensaje.Texto, cancellationToken);
 
         if (contexto.Contexto is null)
         {
@@ -186,10 +187,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var ofrecerMejora = !esFallback && !calificacionAlta && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
         if (ofrecerMejora)
         {
-            var invitacionMejora = TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault);
-            var invitacion = string.IsNullOrWhiteSpace(evaluacion.RepreguntaSugerida)
-                ? invitacionMejora
-                : evaluacion.RepreguntaSugerida!.Trim() + "\n\n" + invitacionMejora;
+            var invitacion = ConstruirInvitacionMejora(conversacion, evaluacion.RepreguntaSugerida);
             var texto = Combinar(evaluacion.RetroalimentacionEnviada, invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
 
@@ -273,10 +271,31 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
-        var texto = Combinar(TextoConfigurado(_mensajes.SaludoPrimerContacto, OpcionesMensajesConversacion.SaludoPrimerContactoDefault), pregunta.Texto);
+        var texto = Combinar(ResolverSaludoPrimerContacto(campania, usuario), pregunta.Texto);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+    }
+
+    /// <summary>
+    /// Saludo del primer entrante: el <see cref="MensajeInicial"/> activo guardado en la BD de la
+    /// campania (renderizado con las variables del usuario). Si la campania no tiene mensaje inicial
+    /// activo, cae al texto configurable <c>Conversacion:Mensajes:SaludoPrimerContacto</c> para no
+    /// enviar un saludo vacio. La plantilla de Meta del primer contacto proactivo es independiente.
+    /// </summary>
+    private string ResolverSaludoPrimerContacto(Campania campania, Usuario usuario)
+    {
+        var mensajeInicial = RenderizadorMensaje.MensajeInicialActivo(campania);
+        if (mensajeInicial is not null)
+        {
+            var texto = RenderizadorMensaje.Renderizar(mensajeInicial, usuario, campania);
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                return texto.Trim();
+            }
+        }
+
+        return TextoConfigurado(_mensajes.SaludoPrimerContacto, OpcionesMensajesConversacion.SaludoPrimerContactoDefault);
     }
 
     private async Task EnviarSiguientePreguntaPendienteAsync(
@@ -396,6 +415,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         Campania campania,
         Pregunta pregunta,
         Usuario usuario,
+        string conversacionId,
         string respuestaId,
         string texto,
         CancellationToken cancellationToken)
@@ -445,6 +465,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return ContextoDisponible.NoDisponible("config_llm_no_activa");
         }
 
+        var historial = await ConstruirHistorialAsync(campania.Id, conversacionId, cancellationToken);
+
         return ContextoDisponible.Disponible(
             new ContextoEvaluacion(
                 campania,
@@ -452,10 +474,44 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 usuario,
                 respuestaId,
                 texto,
-                Array.Empty<string>(),
+                historial,
                 rubrica,
                 prompt,
                 configLlm));
+    }
+
+    /// <summary>
+    /// Historial reciente del hilo (turnos previos persistidos) para que el LLM vea la conversacion y
+    /// no repita preguntas/retro ni entre en bucles. Se excluye el ultimo entrante (la respuesta que se
+    /// esta evaluando ahora, que ya viaja como <c>RESPUESTA_DEL_USUARIO</c>) y se acota en turnos y largo.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ConstruirHistorialAsync(
+        string campaniaId,
+        string conversacionId,
+        CancellationToken cancellationToken)
+    {
+        const int maxTurnos = 8;
+        const int maxCaracteresPorTurno = 300;
+
+        var mensajes = await _conversaciones.ListarMensajesAsync(campaniaId, conversacionId, cancellationToken);
+        if (mensajes.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var ordenados = mensajes.OrderBy(mensaje => mensaje.Timestamp).ToList();
+        var ultimoEntrante = ordenados.FindLastIndex(mensaje => mensaje.Direccion == DireccionMensaje.In);
+        if (ultimoEntrante >= 0)
+        {
+            ordenados.RemoveAt(ultimoEntrante);
+        }
+
+        return ordenados
+            .TakeLast(maxTurnos)
+            .Select(mensaje =>
+                (mensaje.Direccion == DireccionMensaje.In ? "Participante: " : "El Tejido: ")
+                + Acotar(mensaje.Texto, maxCaracteresPorTurno))
+            .ToList();
     }
 
     private Task RegistrarConfiguracionNoDisponibleAsync(
@@ -602,6 +658,83 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         return null;
     }
+
+    /// <summary>
+    /// Arma la invitacion a mejorar de forma conversacional y variada (Opcion B): el nucleo es la
+    /// <c>RepreguntaSugerida</c> del LLM cuando existe (natural y distinta cada turno) y, si no, una
+    /// variante de respaldo rotada; siempre se anexa una coletilla rotada que ensena la salida del "no
+    /// quiero mejorar" (ej. "asi esta bien"), para que el participante nunca quede atrapado.
+    /// </summary>
+    private string ConstruirInvitacionMejora(DominioConversacion conversacion, string? repreguntaSugerida)
+    {
+        var semilla = SemillaVariante(conversacion);
+        var nucleo = string.IsNullOrWhiteSpace(repreguntaSugerida)
+            ? SeleccionarInvitacionMejoraRespaldo(semilla)
+            : repreguntaSugerida!.Trim();
+
+        var coletilla = SeleccionarVariante(
+            _mensajes.InvitacionContinuarVariantes,
+            OpcionesMensajesConversacion.InvitacionContinuarVariantesDefault,
+            semilla);
+
+        return string.IsNullOrWhiteSpace(coletilla) ? nucleo : nucleo + "\n\n" + coletilla;
+    }
+
+    private string SeleccionarInvitacionMejoraRespaldo(int semilla)
+    {
+        var elegido = SeleccionarVariante(_mensajes.InvitacionMejoraVariantes, semilla);
+        return string.IsNullOrWhiteSpace(elegido)
+            ? TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault)
+            : elegido!;
+    }
+
+    private string SeleccionarAcuseContinuar(DominioConversacion conversacion)
+    {
+        var elegido = SeleccionarVariante(_mensajes.AcuseContinuarVariantes, SemillaVariante(conversacion));
+        return string.IsNullOrWhiteSpace(elegido)
+            ? TextoConfigurado(_mensajes.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault)
+            : elegido!;
+    }
+
+    /// <summary>Elige una variante de la lista configurada o, si esta vacia, de la lista por defecto.</summary>
+    private static string? SeleccionarVariante(IReadOnlyList<string>? variantes, IReadOnlyList<string> porDefecto, int semilla)
+        => SeleccionarVariante(variantes is { Count: > 0 } ? variantes : porDefecto, semilla);
+
+    /// <summary>Seleccion deterministica (reproducible y testeable) de una variante por la semilla del hilo.</summary>
+    private static string? SeleccionarVariante(IReadOnlyList<string>? variantes, int semilla)
+    {
+        if (variantes is null || variantes.Count == 0)
+        {
+            return null;
+        }
+
+        var indice = ((semilla % variantes.Count) + variantes.Count) % variantes.Count;
+        return variantes[indice];
+    }
+
+    /// <summary>
+    /// Semilla determinista para rotar variantes: combina el id del hilo (varia entre participantes/
+    /// preguntas) y las repreguntas usadas (varia entre turnos del mismo hilo).
+    /// </summary>
+    private static int SemillaVariante(DominioConversacion conversacion)
+        => HashEstable(conversacion.Id) + conversacion.RepreguntasUsadas;
+
+    private static int HashEstable(string texto)
+    {
+        unchecked
+        {
+            var hash = 17;
+            foreach (var caracter in texto)
+            {
+                hash = (hash * 31) + caracter;
+            }
+
+            return hash & 0x7fffffff;
+        }
+    }
+
+    private static string Acotar(string texto, int maximo)
+        => texto.Length > maximo ? texto[..maximo] : texto;
 
     private static string Combinar(string? primero, string segundo)
         => string.IsNullOrWhiteSpace(primero) ? segundo : primero.Trim() + "\n\n" + segundo;

@@ -149,6 +149,10 @@ La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo e
 
 #### Textos operativos configurables
 Los textos no generados por el LLM se leen de la seccion `Conversacion:Mensajes` y pueden cambiarse por variables de entorno: `Conversacion__Mensajes__SaludoPrimerContacto`, `Conversacion__Mensajes__SaludoSiguientePregunta`, `Conversacion__Mensajes__InvitacionMejora` y `Conversacion__Mensajes__MensajeConfiguracionNoDisponible`. Si el valor falta o esta vacio, se usa el default compilado. `ConfigConversacional.MensajeCierre` sigue viniendo de la campania/portal.
+
+**Saludo del primer entrante (BD):** el saludo combinado con la pregunta inicial **no** sale de `SaludoPrimerContacto` cuando la campania tiene un `MensajeInicial` activo; en ese caso se usa ese mensaje inicial (BD, variables resueltas por `RenderizadorMensaje`). `Conversacion__Mensajes__SaludoPrimerContacto` queda como **respaldo** para campanias sin mensaje inicial activo (ver `Reglas_Conversacion_y_Participacion.md §2.1`).
+
+**Invitacion a mejorar natural y variada (Opcion B):** ademas de `InvitacionMejora`, hay variantes rotadas `Conversacion__Mensajes__InvitacionMejoraVariantes__N` (respaldo del nucleo si el LLM no devuelve `repregunta_sugerida`), `Conversacion__Mensajes__InvitacionContinuarVariantes__N` (coletilla que ensena la salida del "no quiero seguir") y `Conversacion__Mensajes__AcuseContinuarVariantes__N`. La rotacion es determinista por hilo+turno. El orquestador ademas pasa el **historial reciente** del hilo al LLM (`08`) para que no repita ni loopee (ver `Reglas_Conversacion_y_Participacion.md §2.2/§2.3`).
 ### 4.6 Manejo de errores
 - Si la evaluación cae en **fallback** (`08 §6`): el orquestador envía una retroalimentación neutra ("Gracias, registramos tu aporte") y cierra sin romper el hilo; la `Respuesta` queda `evaluacionPendiente` (`REQ §20.3.10`).
 - Si el envío saliente falla: se reintenta (Gateway) y se registra; la conversación no se pierde (el estado persiste en Cosmos).

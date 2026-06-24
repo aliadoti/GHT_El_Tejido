@@ -54,8 +54,7 @@ public sealed class OpcionesMensajesConversacion
 
     public const string InvitacionMejoraDefault =
         "Si quieres, puedes enviarme una version mejorada de tu respuesta con base en esta "
-        + "retroalimentacion y la tomare en cuenta. Si ya te sientes conforme, escribeme algo como "
-        + "\"asi esta bien\" y seguimos.";
+        + "retroalimentacion y la tomare en cuenta.";
 
     public const string MensajeConfiguracionNoDisponibleDefault =
         "Hay un problema con la configuracion de esta campania. Contacta al administrador del sistema.";
@@ -66,11 +65,37 @@ public sealed class OpcionesMensajesConversacion
     public const string AcuseContinuarDefault =
         "¡Perfecto, sigamos!";
 
+    /// <summary>
+    /// Coletillas (variantes) que invitan al participante a quedarse o seguir, ensenando ademas la frase
+    /// de salida del "no quiero mejorar". Se rotan por turno/hilo para que el flujo no repita siempre la
+    /// misma frase y se sienta conversacional. Si la lista queda vacia, no se anexa coletilla.
+    /// </summary>
+    public static readonly IReadOnlyList<string> InvitacionContinuarVariantesDefault = new[]
+    {
+        "Si ya te sientes conforme, escribeme algo como \"asi esta bien\" y seguimos.",
+        "Y si prefieres dejarla asi, solo dime \"listo\" y continuamos.",
+        "Cuando quieras cerrar este punto, respondeme \"sigamos\" y pasamos a lo siguiente.",
+    };
+
     public string SaludoPrimerContacto { get; set; } = SaludoPrimerContactoDefault;
 
     public string SaludoSiguientePregunta { get; set; } = SaludoSiguientePreguntaDefault;
 
     public string InvitacionMejora { get; set; } = InvitacionMejoraDefault;
+
+    /// <summary>
+    /// Variantes de la invitacion a mejorar usadas como respaldo cuando el LLM no devuelve una
+    /// <c>RepreguntaSugerida</c> natural. Se rotan por turno/hilo para variar el texto. Vacia = usa
+    /// <see cref="InvitacionMejora"/>.
+    /// </summary>
+    public IReadOnlyList<string> InvitacionMejoraVariantes { get; set; } = new List<string>();
+
+    /// <summary>
+    /// Coletillas que invitan a seguir/cerrar y ensenan la frase de salida (manejo natural del "no
+    /// quiero mejorar"). Se anexan a la invitacion y se rotan por turno/hilo. Vacia = usa
+    /// <see cref="InvitacionContinuarVariantesDefault"/>.
+    /// </summary>
+    public IReadOnlyList<string> InvitacionContinuarVariantes { get; set; } = new List<string>();
 
     public string MensajeConfiguracionNoDisponible { get; set; } = MensajeConfiguracionNoDisponibleDefault;
 
@@ -79,4 +104,10 @@ public sealed class OpcionesMensajesConversacion
 
     /// <summary>Acuse calido que antecede al cierre cuando el participante pide continuar a la siguiente pregunta.</summary>
     public string AcuseContinuar { get; set; } = AcuseContinuarDefault;
+
+    /// <summary>
+    /// Variantes del acuse de continuar; se rotan por hilo para no repetir siempre la misma frase.
+    /// Vacia = usa <see cref="AcuseContinuar"/>.
+    /// </summary>
+    public IReadOnlyList<string> AcuseContinuarVariantes { get; set; } = new List<string>();
 }

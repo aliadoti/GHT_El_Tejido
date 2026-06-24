@@ -1,4 +1,3 @@
-using System.Globalization;
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Participantes;
@@ -148,7 +147,7 @@ public sealed class ServicioEnvios : IServicioEnvios
                 continue;
             }
 
-            var variables = ConstruirVariables(usuario, campania);
+            var variables = RenderizadorMensaje.ConstruirVariables(usuario, campania);
             var trabajo = new TrabajoEnvio(
                 job.Id,
                 id,
@@ -157,7 +156,7 @@ public sealed class ServicioEnvios : IServicioEnvios
                 mensaje.Id,
                 plantilla,
                 variables,
-                ReemplazarVariables(mensaje.Texto, variables),
+                RenderizadorMensaje.Reemplazar(mensaje.Texto, variables),
                 tipo);
 
             await _cola.EncolarAsync(trabajo, cancellationToken);
@@ -211,39 +210,6 @@ public sealed class ServicioEnvios : IServicioEnvios
 
         return activos.OrderBy(mensaje => mensaje.Orden).FirstOrDefault()
             ?? throw new ErrorReglaNegocio("La campania no tiene un mensaje inicial activo.");
-    }
-
-    private static IReadOnlyDictionary<string, string> ConstruirVariables(
-        Domain.Usuarios.Usuario usuario,
-        Campania campania)
-    {
-        var variables = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["nombre"] = usuario.Nombre,
-            ["area"] = usuario.Area,
-            ["empresa"] = usuario.Empresa,
-            ["campaña"] = campania.Nombre,
-            ["campania"] = campania.Nombre,
-        };
-
-        // Propiedades dinamicas del usuario tambien quedan disponibles como variables (REQ §15.3).
-        foreach (var propiedad in usuario.PropiedadesDinamicas)
-        {
-            variables[propiedad.Key] = Convert.ToString(propiedad.Value, CultureInfo.InvariantCulture) ?? string.Empty;
-        }
-
-        return variables;
-    }
-
-    private static string ReemplazarVariables(string texto, IReadOnlyDictionary<string, string> variables)
-    {
-        var resultado = texto;
-        foreach (var variable in variables)
-        {
-            resultado = resultado.Replace("{{" + variable.Key + "}}", variable.Value, StringComparison.Ordinal);
-        }
-
-        return resultado;
     }
 
     private static string RequerirId(string id)

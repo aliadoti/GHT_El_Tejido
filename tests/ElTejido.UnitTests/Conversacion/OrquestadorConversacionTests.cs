@@ -444,6 +444,100 @@ public sealed class OrquestadorConversacionTests
         _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
     }
 
+    [Fact]
+    public async Task Procesar_PrimerContacto_UsaMensajeInicialDeLaCampania()
+    {
+        // Bug #1: el saludo del primer entrante sale del MensajeInicial guardado en la campania
+        // (con variables resueltas), no del texto de App Settings.
+        var participante = ParticipanteConMensajeInicial("Bienvenido {{nombre}} a {{campania}}.");
+
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto =>
+                texto.Contains("Bienvenido Admin a Campania c_1.", StringComparison.Ordinal)
+                && texto.Contains(participante.PreguntaVigente.Texto, StringComparison.Ordinal)
+                && !texto.Contains("{{", StringComparison.Ordinal)
+                && !texto.Contains(OpcionesMensajesConversacion.SaludoPrimerContactoDefault, StringComparison.Ordinal)),
+            TipoEnvioMensaje.Inicial,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_PrimerContactoSinMensajeInicial_CaeAlSaludoConfigurado()
+    {
+        // Bug #1 (fallback aprobado): sin MensajeInicial activo, usa Conversacion:Mensajes:SaludoPrimerContacto.
+        var orquestador = Construir(new OpcionesConversacion
+        {
+            Mensajes = new OpcionesMensajesConversacion { SaludoPrimerContacto = "Saludo de respaldo" },
+        });
+
+        await orquestador.ProcesarMensajeEntranteAsync(ParticipanteFrio(), Mensaje("Hola"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Saludo de respaldo", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Inicial,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_SegundoTurno_PasaHistorialAlEvaluador()
+    {
+        // Bug #2: la iteracion previa persistida se pasa al LLM (para no repetir/loopear); la respuesta
+        // que se esta evaluando ahora no se duplica en el historial.
+        ContextoEvaluacion? capturado = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(c => capturado = c), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        var orquestador = Construir();
+        var participante = Participante();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea real"), CancellationToken.None);
+
+        capturado.Should().NotBeNull();
+        capturado!.HistorialReciente.Should().Contain(t => t.Contains("Participante: Hola", StringComparison.Ordinal));
+        capturado.HistorialReciente.Should().NotContain(t => t.Contains("Mi idea real", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Procesar_InvitacionMejora_EnsenaLaSalidaPorDefecto()
+    {
+        // Bug #2: la invitacion a mejorar siempre ensena la salida del "no quiero seguir" (coletilla).
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => OpcionesMensajesConversacion.InvitacionContinuarVariantesDefault
+                .Any(variante => texto.Contains(variante, StringComparison.Ordinal))),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_ConRepreguntaSugerida_LaUsaComoInvitacionNatural()
+    {
+        // Bug #2 (Opcion B): si el LLM devuelve una repregunta natural, esa es el nucleo de la invitacion.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Podrias dar un ejemplo concreto?")));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Podrias dar un ejemplo concreto?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
     private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null)
         => new(
             _conversaciones,
@@ -485,6 +579,17 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
+    private static ParticipanteResuelto ParticipanteConMensajeInicial(string textoInicial)
+    {
+        var pregunta = CrearPregunta("p_1", 1, 1);
+        var mensajeInicial = MensajeInicial.Crear(
+            "mi_1", "bienvenida", textoInicial, 1, variablesDinamicas: null, EstadoRegistro.Activo, plantillaWhatsApp: null);
+        var campania = CrearCampania(new[] { pregunta }, new[] { mensajeInicial });
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
     private static ParticipanteResuelto ParticipanteMultipregunta()
     {
         var pregunta1 = FabricasDominio.CrearPregunta("p_1", 1);
@@ -512,10 +617,12 @@ public sealed class OrquestadorConversacionTests
             LimitesSeguridad.ParaPregunta(1500, 2),
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta));
 
-    private static Campania CrearCampania(IEnumerable<Pregunta> preguntas)
+    private static Campania CrearCampania(
+        IEnumerable<Pregunta> preguntas,
+        IEnumerable<MensajeInicial>? mensajesIniciales = null)
         => Campania.Crear(
             "c_1", "Campania c_1", "Descripcion", "Objetivo", EstadoCampania.Activa,
-            mensajesIniciales: null, preguntas,
+            mensajesIniciales, preguntas,
             "rub_1",
             new Dictionary<string, string> { ["evaluar"] = "pr_eval" },
             "llm_1",
@@ -547,12 +654,13 @@ public sealed class OrquestadorConversacionTests
     private sealed class FakeConversaciones : IRepositorioConversaciones
     {
         private readonly Dictionary<string, DominioConversacion> _conversaciones = new(StringComparer.Ordinal);
+        private readonly List<Mensaje> _mensajes = new();
 
         public DominioConversacion? Ultima { get; private set; }
 
         public IReadOnlyCollection<DominioConversacion> Conversaciones => _conversaciones.Values.ToArray();
 
-        public int MensajesGuardados { get; private set; }
+        public int MensajesGuardados => _mensajes.Count;
 
         public Task GuardarConversacionAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
         {
@@ -572,11 +680,12 @@ public sealed class OrquestadorConversacionTests
                 _conversaciones.Values.Where(c => c.Estado == EstadoConversacion.Abierta).ToArray());
 
         public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
-            => Task.FromResult<IReadOnlyCollection<Mensaje>>(Array.Empty<Mensaje>());
+            => Task.FromResult<IReadOnlyCollection<Mensaje>>(
+                _mensajes.Where(m => m.CampaniaId == campaniaId && m.ConversacionId == conversacionId).ToArray());
 
         public Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken)
         {
-            MensajesGuardados++;
+            _mensajes.Add(mensaje);
             return Task.CompletedTask;
         }
     }
