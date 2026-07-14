@@ -1,6 +1,7 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
+using ElTejido.Application.Reinicio;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Configuracion;
@@ -40,6 +41,9 @@ internal static class EndpointsAdminFase4
         campanias.MapDelete("/{id}/participantes/{usuarioId}", DesasociarParticipanteAsync);
         campanias.MapGet("/{id}/participantes/preview", PreviewParticipantesGetAsync);
         campanias.MapPost("/{id}/participantes/preview", PreviewParticipantesPostAsync);
+        // P-03: reinicio de datos de prueba (borra flujo, conserva campania/config/usuarios).
+        campanias.MapPost("/{id}/participantes/{usuarioId}/reiniciar", ReiniciarParticipanteAsync);
+        campanias.MapPost("/{id}/reiniciar-datos", ReiniciarDatosCampaniaAsync);
 
         var rubricas = grupo.MapGroup("/rubricas");
         rubricas.MapGet("", ListarRubricasAsync);
@@ -342,6 +346,54 @@ internal static class EndpointsAdminFase4
     private static async Task<IResult> CambiarEstadoConfigLlmAsync(string id, CambiarEstadoRequest request, HttpContext contexto, CancellationToken ct)
         => Results.Ok(MapearConfigLlm(await ServicioConfig(contexto).CambiarEstadoConfigLlmAsync(id, ParseEstadoRegistro(request.Estado, "estado"), ct)));
 
+    // P-03 — reinicio de datos del flujo. El borrado por participante queda gateado solo por el guard
+    // admin + CSRF; el masivo, ademas, por el flag operativo Seguridad:PermitirReinicioDatos (default
+    // true; se apaga en el acta del freeze para el dia-D). Ambos devuelven el reporte de conteos.
+    private static async Task<IResult> ReiniciarParticipanteAsync(
+        string id,
+        string usuarioId,
+        ReiniciarParticipanteRequest? request,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        var reporte = await ServicioReinicio(contexto).ReiniciarParticipanteAsync(id, usuarioId, request?.ReiniciarEnvios ?? false, ct);
+        return Results.Ok(MapearReporteReinicio(reporte));
+    }
+
+    private static async Task<IResult> ReiniciarDatosCampaniaAsync(
+        string id,
+        ReiniciarCampaniaRequest? request,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!PermitirReinicioDatos(contexto))
+        {
+            throw new ErrorConflicto("El reinicio masivo de datos esta deshabilitado (Seguridad:PermitirReinicioDatos).");
+        }
+
+        var reporte = await ServicioReinicio(contexto).ReiniciarCampaniaAsync(id, request?.UsuarioIds, request?.ReiniciarEnvios ?? false, ct);
+        return Results.Ok(MapearReporteReinicio(reporte));
+    }
+
+    private static bool PermitirReinicioDatos(HttpContext contexto)
+        => contexto.RequestServices.GetRequiredService<IConfiguration>().GetValue("Seguridad:PermitirReinicioDatos", true);
+
+    private static object MapearReporteReinicio(ReporteReinicioDatos reporte)
+        => new
+        {
+            reporte.Conversaciones,
+            reporte.Mensajes,
+            reporte.Respuestas,
+            reporte.Evaluaciones,
+            reporte.Artefactos,
+            reporte.BlobsBorrados,
+            reporte.BlobsFallidos,
+            reporte.ParticipantesReseteados,
+        };
+
+    private static IServicioReinicioDatos ServicioReinicio(HttpContext contexto)
+        => contexto.RequestServices.GetRequiredService<IServicioReinicioDatos>();
+
     private static IServicioGestionCampanias ServicioCampanias(HttpContext contexto)
         => contexto.RequestServices.GetRequiredService<IServicioGestionCampanias>();
 
@@ -437,7 +489,11 @@ internal static class EndpointsAdminFase4
         => ConfigConversacional.Crear(request?.MaxRepreguntas ?? 1, RequerirTexto(request?.MensajeCierre ?? "Gracias. Tu aporte quedo registrado correctamente.", "mensajeCierre"));
 
     private static LimitesSeguridad ToLimitesCampania(LimitesSeguridadRequest? request)
-        => LimitesSeguridad.Crear(request?.MaxCaracteresMensaje ?? 1500, request?.MaxMensajesPorUsuario ?? 10, request?.MaxLlamadasLlmPorUsuario ?? 2);
+        => LimitesSeguridad.Crear(
+            request?.MaxCaracteresMensaje ?? 1500,
+            request?.MaxMensajesPorUsuario ?? 10,
+            request?.MaxLlamadasLlmPorUsuario ?? 2,
+            request?.PresupuestoTokensCampania ?? 0);
 
     private static LimitesSeguridad ToLimitesPregunta(LimitesSeguridadPreguntaRequest? request)
         => LimitesSeguridad.ParaPregunta(request?.MaxCaracteresMensaje ?? 1500, request?.MaxLlamadasLlm ?? 2);
@@ -581,7 +637,7 @@ internal static class EndpointsAdminFase4
         => new { config.MaxRepreguntas, config.MensajeCierre };
 
     private static object MapearLimitesCampania(LimitesSeguridad limites)
-        => new { limites.MaxCaracteresMensaje, limites.MaxMensajesPorUsuario, limites.MaxLlamadasLlmPorUsuario };
+        => new { limites.MaxCaracteresMensaje, limites.MaxMensajesPorUsuario, limites.MaxLlamadasLlmPorUsuario, limites.PresupuestoTokensCampania };
 
     private static object MapearLimitesPregunta(LimitesSeguridad limites)
         => new { limites.MaxCaracteresMensaje, maxLlamadasLlm = limites.MaxLlamadasLlmPorUsuario };
@@ -721,7 +777,7 @@ internal static class EndpointsAdminFase4
     private sealed record CampaniaPatchRequest(string? Nombre, string? Descripcion, string? Objetivo, string? RubricaRef, IReadOnlyDictionary<string, string>? PromptRefs, string? ConfigLlmRef, ConfigMarkdownRequest? ConfigMarkdown, ConfigConversacionalRequest? ConfigConversacional, LimitesSeguridadRequest? ConfigSeguridad);
     private sealed record ConfigMarkdownRequest(string? TipoArtefacto);
     private sealed record ConfigConversacionalRequest(int? MaxRepreguntas, string? MensajeCierre);
-    private sealed record LimitesSeguridadRequest(int? MaxCaracteresMensaje, int? MaxMensajesPorUsuario, int? MaxLlamadasLlmPorUsuario);
+    private sealed record LimitesSeguridadRequest(int? MaxCaracteresMensaje, int? MaxMensajesPorUsuario, int? MaxLlamadasLlmPorUsuario, int? PresupuestoTokensCampania);
     private sealed record LimitesSeguridadPreguntaRequest(int? MaxCaracteresMensaje, int? MaxLlamadasLlm);
     private sealed record PlantillaWhatsAppRequest(string? Nombre, string? Idioma, IReadOnlyCollection<string>? Componentes);
     private sealed record MensajeInicialRequest(string? NombreInterno, string? Texto, int? Orden, IReadOnlyCollection<string>? VariablesDinamicas, string? Estado, PlantillaWhatsAppRequest? PlantillaWhatsApp);
@@ -729,6 +785,8 @@ internal static class EndpointsAdminFase4
     private sealed record PreguntaRequest(string? Texto, string? Instruccion, string? Categoria, int? Orden, string? Estado, string? RubricaRef, int? VersionRubrica, IReadOnlyDictionary<string, string>? PromptRefs, int? MaxRepreguntas, LimitesSeguridadPreguntaRequest? LimitesSeguridad, ConfigMarkdownRequest? ConfigMarkdown);
     private sealed record PreguntaPatchRequest(string? Texto, string? Instruccion, string? Categoria, int? Orden, string? Estado, string? RubricaRef, int? VersionRubrica, IReadOnlyDictionary<string, string>? PromptRefs, int? MaxRepreguntas, LimitesSeguridadPreguntaRequest? LimitesSeguridad, ConfigMarkdownRequest? ConfigMarkdown);
     private sealed record AsociarParticipantesRequest(IReadOnlyCollection<string>? UsuarioIds, FiltroParticipantesRequest? Filtro);
+    private sealed record ReiniciarParticipanteRequest(bool? ReiniciarEnvios);
+    private sealed record ReiniciarCampaniaRequest(IReadOnlyCollection<string>? UsuarioIds, bool? ReiniciarEnvios);
     private sealed record FiltroParticipantesRequest(string? Area, string? Empresa, IReadOnlyCollection<string>? Tags, string? Busqueda);
     private sealed record RubricaRequest(string? Id, string? Nombre, string? Descripcion, string? ContenidoMarkdown, EscalaRequest? Escala, IReadOnlyCollection<CriterioRequest>? Criterios, string? Estado);
     private sealed record EscalaRequest(int Min, int Max);

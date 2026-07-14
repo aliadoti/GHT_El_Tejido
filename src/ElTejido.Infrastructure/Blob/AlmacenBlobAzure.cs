@@ -29,4 +29,21 @@ public sealed class AlmacenBlobAzure : IAlmacenBlob
             cancellationToken);
         return ruta;
     }
+
+    public async Task<bool> EliminarAsync(string ruta, CancellationToken cancellationToken)
+    {
+        // Borrado tolerante a fallos (P-03): el artefacto es regenerable (REQ §22.4.6), asi que un
+        // error de almacen no debe abortar el reinicio. Devuelve true solo si el blob existia y se
+        // elimino; cualquier fallo se traga como false para que el servicio lo cuente como fallido.
+        try
+        {
+            var blob = _contenedor.GetBlobClient(ruta);
+            var respuesta = await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+            return respuesta.Value;
+        }
+        catch (Azure.RequestFailedException)
+        {
+            return false;
+        }
+    }
 }

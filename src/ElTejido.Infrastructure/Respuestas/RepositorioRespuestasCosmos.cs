@@ -89,6 +89,33 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.Select(d => d.ToDomain()).ToArray();
     }
 
+    public async Task<int> ContarEvaluacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(usuarioId);
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId")
+            .WithParameter("@type", EvaluacionCosmosDocument.DocumentType)
+            .WithParameter("@usuarioId", usuarioId.Trim());
+
+        var documentos = await _container.QueryAsync<EvaluacionCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Count;
+    }
+
+    public async Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
+            .WithParameter("@type", EvaluacionCosmosDocument.DocumentType);
+
+        var documentos = await _container.QueryAsync<EvaluacionCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Sum(d => (long)((d.UsoTokens?.PromptTokens ?? 0) + (d.UsoTokens?.CompletionTokens ?? 0)));
+    }
+
     public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
         => _container.UpsertAsync(ArtefactoMarkdownCosmosDocument.FromDomain(artefacto), artefacto.CampaniaId, cancellationToken);
 
@@ -118,5 +145,58 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
 
         var documentos = await _container.QueryAsync<ArtefactoMarkdownCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
         return documentos.Select(d => d.ToDomain()).ToArray();
+    }
+
+    public async Task<ConteoBorradoRespuestas> EliminarPorUsuarioAsync(
+        string campaniaId,
+        string? usuarioId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        var pk = campaniaId.Trim();
+        var usuario = string.IsNullOrWhiteSpace(usuarioId) ? null : usuarioId.Trim();
+
+        var respuestas = await ConsultarPorTipoAsync<RespuestaCosmosDocument>(RespuestaCosmosDocument.DocumentType, pk, usuario, cancellationToken);
+        var evaluaciones = await ConsultarPorTipoAsync<EvaluacionCosmosDocument>(EvaluacionCosmosDocument.DocumentType, pk, usuario, cancellationToken);
+        var artefactos = await ConsultarPorTipoAsync<ArtefactoMarkdownCosmosDocument>(ArtefactoMarkdownCosmosDocument.DocumentType, pk, usuario, cancellationToken);
+
+        foreach (var respuesta in respuestas)
+        {
+            await _container.DeleteAsync(respuesta.Id, pk, cancellationToken);
+        }
+
+        foreach (var evaluacion in evaluaciones)
+        {
+            await _container.DeleteAsync(evaluacion.Id, pk, cancellationToken);
+        }
+
+        foreach (var artefacto in artefactos)
+        {
+            await _container.DeleteAsync(artefacto.Id, pk, cancellationToken);
+        }
+
+        var rutas = artefactos
+            .Select(a => a.BlobPath)
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return new ConteoBorradoRespuestas(respuestas.Count, evaluaciones.Count, artefactos.Count, rutas);
+    }
+
+    // Consulta acotada a la particion (campaniaId), filtrando por tipo y, si se pide, por usuario.
+    private Task<IReadOnlyCollection<T>> ConsultarPorTipoAsync<T>(
+        string tipo,
+        string partitionKey,
+        string? usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var query = usuarioId is null
+            ? new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
+                .WithParameter("@type", tipo)
+            : new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId")
+                .WithParameter("@type", tipo)
+                .WithParameter("@usuarioId", usuarioId);
+        return _container.QueryAsync<T>(query, partitionKey, cancellationToken);
     }
 }

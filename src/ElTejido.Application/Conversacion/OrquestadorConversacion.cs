@@ -45,6 +45,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly OpcionesMensajesConversacion _mensajes;
     private readonly DetectorIntencionContinuar _intencionContinuar;
     private readonly double _umbralCierreAnticipado;
+    private readonly bool _cuposHabilitados;
+    private readonly int _maxTurnosPorHilo;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -71,6 +73,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _correlacion = correlacion;
         _mensajes = opciones.Mensajes;
         _umbralCierreAnticipado = opciones.UmbralCierreAnticipado;
+        _cuposHabilitados = opciones.CuposHabilitados;
+        _maxTurnosPorHilo = opciones.MaxTurnosPorHilo;
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
             ? opciones.FrasesContinuar
             : DetectorIntencionContinuar.FrasesPorDefecto;
@@ -87,6 +91,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var campania = participante.Campania;
         var numero = usuario.WhatsappNormalizado;
         var ahora = _tiempo.GetUtcNow();
+
+        // Cupo de mensajes por usuario/campania (10 §2, Campania.ConfigSeguridad): al exceder, el
+        // entrante se descarta con rechazo neutral silencioso (como una conversacion cerrada) y el
+        // motivo queda solo en LogSeguridad. Gateado por Conversacion:CuposHabilitados (default off).
+        if (_cuposHabilitados && await CupoMensajesExcedidoAsync(campania, usuario.Id, cancellationToken))
+        {
+            await RegistrarRateLimitAsync(usuario, "cupo_mensajes_usuario", ahora, cancellationToken);
+            return;
+        }
 
         var hilo = await ResolverHiloTrabajoAsync(campania, usuario.Id, participante.PreguntaVigente, cancellationToken);
         if (hilo is null)
@@ -115,16 +128,32 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // participante senala que esta conforme; el primer mensaje (su respuesta real) nunca se interpreta asi.
         var deseaContinuar = esRepregunta && _intencionContinuar.DeseaContinuar(mensaje.Texto);
 
+        // Techos deterministas (10 §2 / D2): el tope duro de turnos por hilo garantiza terminacion
+        // aunque otras reglas pidan seguir; el cupo de llamadas LLM por usuario/campania evita costo
+        // sin limite. Ambos cierran elegante con lo aportado (mismo camino que revisiones agotadas).
+        var turnosExcedidos = !revisionesAgotadas && !deseaContinuar
+            && await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
+        // Cupo LLM de la campania: por usuario (llamadas) o por presupuesto de tokens (P-10). Ambos
+        // cierran la campania para el hilo (no se abre la siguiente pregunta); el motivo se distingue
+        // en LogSeguridad. Gateados por Conversacion:CuposHabilitados.
+        var evaluarCupoLlm = !revisionesAgotadas && !deseaContinuar && !turnosExcedidos && _cuposHabilitados;
+        var cupoLlamadasUsuarioExcedido = evaluarCupoLlm
+            && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
+        var presupuestoTokensExcedido = evaluarCupoLlm && !cupoLlamadasUsuarioExcedido
+            && await PresupuestoTokensExcedidoAsync(campania, cancellationToken);
+        var cupoLlmExcedido = cupoLlamadasUsuarioExcedido || presupuestoTokensExcedido;
+
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
         await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
 
         var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
 
-        if (revisionesAgotadas || deseaContinuar)
+        if (revisionesAgotadas || deseaContinuar || turnosExcedidos || cupoLlmExcedido)
         {
-            // Se agoto el cupo de revisiones, o el participante pidio continuar: se registra sin evaluar
-            // y se cierra. Si pidio continuar, se antepone un acuse calido para que no se sienta cortante.
+            // Se agoto el cupo de revisiones/turnos/LLM, o el participante pidio continuar: se registra
+            // sin evaluar y se cierra. Si pidio continuar, se antepone un acuse calido para que no se
+            // sienta cortante. Los techos deterministas dejan ademas rastro RateLimit en LogSeguridad.
             conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp);
             await GuardarRespuestaAsync(
                 respuestaId,
@@ -137,11 +166,25 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 EstadoRespuesta.Recibida,
                 ahora,
                 cancellationToken);
+            if (turnosExcedidos || cupoLlmExcedido)
+            {
+                var motivo = turnosExcedidos
+                    ? "tope_turnos_hilo"
+                    : cupoLlamadasUsuarioExcedido ? "cupo_llamadas_llm_usuario" : "presupuesto_tokens_campania";
+                await RegistrarRateLimitAsync(usuario, motivo, ahora, cancellationToken);
+            }
+
             var acuse = deseaContinuar
                 ? SeleccionarAcuseContinuar(conversacion)
                 : null;
             await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, ahora, cancellationToken);
-            await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+            if (!cupoLlmExcedido)
+            {
+                // Con el cupo LLM de la campania agotado no tiene sentido abrir la siguiente pregunta
+                // (tampoco podria evaluarse); en los demas cierres se avanza como siempre.
+                await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+            }
+
             return;
         }
 
@@ -513,6 +556,108 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 + Acotar(mensaje.Texto, maxCaracteresPorTurno))
             .ToList();
     }
+
+    /// <summary>
+    /// ¿El usuario ya consumio su cupo de mensajes entrantes en la campania?
+    /// (<c>Campania.ConfigSeguridad.MaxMensajesPorUsuario</c>, 10 §2). Cuenta los <c>Mensaje(in)</c>
+    /// ya persistidos en los hilos del usuario; el entrante actual (aun sin persistir) seria el excedente.
+    /// </summary>
+    private async Task<bool> CupoMensajesExcedidoAsync(
+        Campania campania,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var maximo = campania.ConfigSeguridad.MaxMensajesPorUsuario;
+        if (maximo <= 0)
+        {
+            return false;
+        }
+
+        var conversaciones = await _conversaciones.ListarConversacionesAsync(campania.Id, cancellationToken);
+        var total = 0;
+        foreach (var conversacion in conversaciones.Where(c => c.UsuarioId == usuarioId))
+        {
+            var mensajes = await _conversaciones.ListarMensajesAsync(campania.Id, conversacion.Id, cancellationToken);
+            total += mensajes.Count(m => m.Direccion == DireccionMensaje.In);
+            if (total >= maximo)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// ¿El hilo ya alcanzo el techo duro de turnos entrantes (<c>Conversacion:MaxTurnosPorHilo</c>)?
+    /// Garantiza la terminacion de cualquier hilo con independencia del LLM. 0 o negativo desactiva.
+    /// </summary>
+    private async Task<bool> TurnosHiloExcedidosAsync(
+        DominioConversacion conversacion,
+        CancellationToken cancellationToken)
+    {
+        if (_maxTurnosPorHilo <= 0)
+        {
+            return false;
+        }
+
+        var mensajes = await _conversaciones.ListarMensajesAsync(conversacion.CampaniaId, conversacion.Id, cancellationToken);
+        return mensajes.Count(m => m.Direccion == DireccionMensaje.In) >= _maxTurnosPorHilo;
+    }
+
+    /// <summary>
+    /// ¿El usuario ya consumio su cupo de llamadas al LLM en la campania?
+    /// (<c>Campania.ConfigSeguridad.MaxLlamadasLlmPorUsuario</c>, 10 §2). Cada llamada persiste una
+    /// <c>Evaluacion</c> (valida o fallback), asi que el conteo de evaluaciones es el contador.
+    /// </summary>
+    private async Task<bool> CupoLlamadasLlmExcedidoAsync(
+        Campania campania,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var maximo = campania.ConfigSeguridad.MaxLlamadasLlmPorUsuario;
+        if (maximo <= 0)
+        {
+            return false;
+        }
+
+        var evaluaciones = await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken);
+        return evaluaciones >= maximo;
+    }
+
+    /// <summary>
+    /// P-10 — ¿La campania ya consumio su presupuesto de tokens LLM?
+    /// (<c>Campania.ConfigSeguridad.PresupuestoTokensCampania</c>, 10 §2). El acumulado se deriva de la
+    /// suma de tokens de las evaluaciones (sin documentos contadores nuevos). 0 = desactivado.
+    /// </summary>
+    private async Task<bool> PresupuestoTokensExcedidoAsync(Campania campania, CancellationToken cancellationToken)
+    {
+        var presupuesto = campania.ConfigSeguridad.PresupuestoTokensCampania;
+        if (presupuesto <= 0)
+        {
+            return false;
+        }
+
+        var consumidos = await _respuestas.SumarTokensCampaniaAsync(campania.Id, cancellationToken);
+        return consumidos >= presupuesto;
+    }
+
+    private Task RegistrarRateLimitAsync(
+        Usuario usuario,
+        string motivo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.RateLimit,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                "rechazado",
+                motivo,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
 
     private Task RegistrarConfiguracionNoDisponibleAsync(
         Usuario usuario,

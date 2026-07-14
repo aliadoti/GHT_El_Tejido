@@ -347,6 +347,14 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
     public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
 
+    public Task<int> ContarEvaluacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
+        => Task.FromResult(_evaluaciones.Values.Count(e => e.CampaniaId == campaniaId && e.UsuarioId == usuarioId));
+
+    public Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+        => Task.FromResult(_evaluaciones.Values
+            .Where(e => e.CampaniaId == campaniaId)
+            .Sum(e => (long)(e.UsoTokens?.Total ?? 0)));
+
     public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
     {
         _artefactos[artefacto.Id] = artefacto;
@@ -358,6 +366,39 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
 
     public Task<IReadOnlyCollection<ArtefactoMarkdown>> ListarArtefactosAsync(string campaniaId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyCollection<ArtefactoMarkdown>>(_artefactos.Values.Where(a => a.CampaniaId == campaniaId).ToArray());
+
+    public Task<ConteoBorradoRespuestas> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+    {
+        bool EnAlcance(string campania, string usuario)
+            => campania == campaniaId && (usuarioId is null || usuario == usuarioId);
+
+        var respuestas = _respuestas.Values.Where(r => EnAlcance(r.CampaniaId, r.UsuarioId)).ToArray();
+        var evaluaciones = _evaluaciones.Values.Where(e => EnAlcance(e.CampaniaId, e.UsuarioId)).ToArray();
+        var artefactos = _artefactos.Values.Where(a => EnAlcance(a.CampaniaId, a.UsuarioId)).ToArray();
+
+        foreach (var respuesta in respuestas)
+        {
+            _respuestas.TryRemove(respuesta.Id, out _);
+        }
+
+        foreach (var evaluacion in evaluaciones)
+        {
+            _evaluaciones.TryRemove(evaluacion.RespuestaId, out _);
+        }
+
+        foreach (var artefacto in artefactos)
+        {
+            _artefactos.TryRemove(artefacto.Id, out _);
+        }
+
+        var rutas = artefactos
+            .Select(a => a.BlobPath)
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return Task.FromResult(new ConteoBorradoRespuestas(respuestas.Length, evaluaciones.Length, artefactos.Length, rutas));
+    }
 }
 
 internal sealed class RepositorioConversacionesMemoria : IRepositorioConversaciones
@@ -415,6 +456,28 @@ internal sealed class RepositorioConversacionesMemoria : IRepositorioConversacio
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task<ConteoBorradoConversaciones> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+    {
+        var conversaciones = _conversaciones.Values
+            .Where(c => c.CampaniaId == campaniaId && (usuarioId is null || c.UsuarioId == usuarioId))
+            .ToArray();
+        var idsConversaciones = conversaciones.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var conversacion in conversaciones)
+        {
+            _conversaciones.TryRemove(conversacion.Id, out _);
+            _ultimaActividad.TryRemove(conversacion.Id, out _);
+        }
+
+        int mensajesBorrados;
+        lock (_msgLock)
+        {
+            mensajesBorrados = _mensajes.RemoveAll(m => m.CampaniaId == campaniaId && idsConversaciones.Contains(m.ConversacionId));
+        }
+
+        return Task.FromResult(new ConteoBorradoConversaciones(conversaciones.Length, mensajesBorrados));
     }
 }
 

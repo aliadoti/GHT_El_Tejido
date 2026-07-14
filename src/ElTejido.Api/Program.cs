@@ -7,6 +7,7 @@ using ElTejido.Api.Seguridad;
 using ElTejido.Api.WhatsApp;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
+using ElTejido.Application.Reinicio;
 using ElTejido.Infrastructure.Configuracion;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,7 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
+    builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
 }
 
 builder.Services.AgregarLimitadorTasa(opcionesSeguridad);

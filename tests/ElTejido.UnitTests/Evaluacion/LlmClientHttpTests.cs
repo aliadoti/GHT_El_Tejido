@@ -20,7 +20,8 @@ public sealed class LlmClientHttpTests
                 {
                   "content": [
                     { "type": "text", "text": "{\"recomendacion\":\"cerrar\"}" }
-                  ]
+                  ],
+                  "usage": { "input_tokens": 130, "output_tokens": 45 }
                 }
                 """),
         });
@@ -47,7 +48,11 @@ public sealed class LlmClientHttpTests
                 0),
             CancellationToken.None);
 
-        resultado.Should().Be("{\"recomendacion\":\"cerrar\"}");
+        resultado.Texto.Should().Be("{\"recomendacion\":\"cerrar\"}");
+        // P-10: parsea el uso de tokens de Anthropic (input_tokens/output_tokens).
+        resultado.Uso.Should().NotBeNull();
+        resultado.Uso!.PromptTokens.Should().Be(130);
+        resultado.Uso.CompletionTokens.Should().Be(45);
         handler.Request!.RequestUri!.ToString().Should().Be("https://api.anthropic.com/v1/messages");
         handler.Request.Headers.GetValues("x-api-key").Should().ContainSingle().Which.Should().Be("secret-value");
         handler.Request.Headers.GetValues("anthropic-version").Should().ContainSingle().Which.Should().Be("2023-06-01");

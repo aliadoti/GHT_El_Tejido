@@ -77,6 +77,10 @@ internal sealed class EvaluacionCosmosDocument
     [JsonProperty("fecha")]
     public DateTimeOffset Fecha { get; init; }
 
+    // P-10: uso de tokens (aditivo). Ausente en documentos previos -> uso null -> suma 0.
+    [JsonProperty("usoTokens", NullValueHandling = NullValueHandling.Ignore)]
+    public UsoTokensDocument? UsoTokens { get; init; }
+
     public static EvaluacionCosmosDocument FromDomain(DominioEvaluacion evaluacion)
         => new()
         {
@@ -116,6 +120,13 @@ internal sealed class EvaluacionCosmosDocument
             Entidades = evaluacion.Entidades.ToList(),
             AnomaliaSeguridad = evaluacion.AnomaliaSeguridad,
             Fecha = evaluacion.Fecha,
+            UsoTokens = evaluacion.UsoTokens is null
+                ? null
+                : new UsoTokensDocument
+                {
+                    PromptTokens = evaluacion.UsoTokens.PromptTokens,
+                    CompletionTokens = evaluacion.UsoTokens.CompletionTokens,
+                },
         };
 
     public DominioEvaluacion ToDomain()
@@ -147,7 +158,8 @@ internal sealed class EvaluacionCosmosDocument
             Temas,
             Entidades,
             AnomaliaSeguridad,
-            Fecha);
+            Fecha,
+            UsoTokens is null ? null : UsoTokensLlm.Crear(UsoTokens.PromptTokens, UsoTokens.CompletionTokens));
 
     private static string MapearRecomendacion(RecomendacionEvaluacion recomendacion)
         => recomendacion == RecomendacionEvaluacion.Repreguntar ? "repreguntar" : "cerrar";
@@ -180,5 +192,14 @@ internal sealed class EvaluacionCosmosDocument
 
         [JsonProperty("justificacion")]
         public string Justificacion { get; init; } = string.Empty;
+    }
+
+    internal sealed class UsoTokensDocument
+    {
+        [JsonProperty("promptTokens")]
+        public int PromptTokens { get; init; }
+
+        [JsonProperty("completionTokens")]
+        public int CompletionTokens { get; init; }
     }
 }

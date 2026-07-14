@@ -19,5 +19,8 @@ public sealed class AlmacenBlobMemoria : IAlmacenBlob
         return Task.FromResult(ruta);
     }
 
+    public Task<bool> EliminarAsync(string ruta, CancellationToken cancellationToken)
+        => Task.FromResult(_blobs.TryRemove(ruta, out _));
+
     public string? Leer(string ruta) => _blobs.GetValueOrDefault(ruta);
 }

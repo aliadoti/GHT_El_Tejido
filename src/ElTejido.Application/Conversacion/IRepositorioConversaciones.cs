@@ -34,4 +34,18 @@ public interface IRepositorioConversaciones
         CancellationToken cancellationToken);
 
     Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Borra fisicamente las conversaciones y sus mensajes dentro de una campania (P-03, reinicio de
+    /// datos de prueba). Con <paramref name="usuarioId"/> = null borra todas las de la campania; con
+    /// un usuario, solo las de ese usuario. Acotado a la particion <c>campaniaId</c>; idempotente
+    /// (re-invocar sobre datos ya limpios devuelve ceros). Devuelve los conteos borrados.
+    /// </summary>
+    Task<ConteoBorradoConversaciones> EliminarPorUsuarioAsync(
+        string campaniaId,
+        string? usuarioId,
+        CancellationToken cancellationToken);
 }
+
+/// <summary>Conteos del borrado de conversaciones/mensajes de un alcance (P-03).</summary>
+public sealed record ConteoBorradoConversaciones(int Conversaciones, int Mensajes);

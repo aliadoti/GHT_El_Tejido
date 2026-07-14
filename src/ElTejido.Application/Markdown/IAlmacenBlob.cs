@@ -7,4 +7,12 @@ namespace ElTejido.Application.Markdown;
 public interface IAlmacenBlob
 {
     Task<string> GuardarTextoAsync(string ruta, string contenido, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Borra el blob de la ruta indicada (P-03, reinicio de datos de prueba). Devuelve <c>true</c> si
+    /// existia y se elimino, <c>false</c> si no estaba. El artefacto Markdown es regenerable
+    /// (REQ §22.4.6), asi que un fallo del almacen se tolera: la implementacion no debe propagar la
+    /// excepcion, sino devolver <c>false</c> para que el servicio lo reporte como blob fallido.
+    /// </summary>
+    Task<bool> EliminarAsync(string ruta, CancellationToken cancellationToken);
 }

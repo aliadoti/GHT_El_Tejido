@@ -1,5 +1,8 @@
+using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Identidad;
+using ElTejido.Application.Seguridad;
+using ElTejido.Domain.Seguridad;
 
 namespace ElTejido.Application.WhatsApp;
 
@@ -11,6 +14,12 @@ public enum ResultadoProcesoEntrante
 
     /// <summary>Mensaje repetido por reintento de Meta; descartado por idempotencia (03 §4).</summary>
     Duplicado,
+
+    /// <summary>
+    /// El numero excedio el rate por minuto (P-10, 10 §2); descartado silenciosamente antes de
+    /// resolver el participante. Ya registrado en LogSeguridad como <c>rate_numero</c>.
+    /// </summary>
+    RateLimitado,
 
     /// <summary>Numero no autorizado; rechazo neutral ya registrado por la resolucion (06 §3.3).</summary>
     NoAutorizado,
@@ -35,21 +44,30 @@ public sealed class ProcesadorWebhookEntrante
 {
     private readonly IWhatsAppGateway _gateway;
     private readonly IRegistroWebhookDedupe _dedupe;
+    private readonly ILimitadorNumeroEntrante _limitadorNumero;
     private readonly IResolutorParticipante _resolutor;
     private readonly IOrquestadorConversacion _orquestador;
+    private readonly IRepositorioLogSeguridad _logSeguridad;
+    private readonly IProveedorCorrelacion _correlacion;
     private readonly TimeProvider _tiempo;
 
     public ProcesadorWebhookEntrante(
         IWhatsAppGateway gateway,
         IRegistroWebhookDedupe dedupe,
+        ILimitadorNumeroEntrante limitadorNumero,
         IResolutorParticipante resolutor,
         IOrquestadorConversacion orquestador,
+        IRepositorioLogSeguridad logSeguridad,
+        IProveedorCorrelacion correlacion,
         TimeProvider tiempo)
     {
         _gateway = gateway;
         _dedupe = dedupe;
+        _limitadorNumero = limitadorNumero;
         _resolutor = resolutor;
         _orquestador = orquestador;
+        _logSeguridad = logSeguridad;
+        _correlacion = correlacion;
         _tiempo = tiempo;
     }
 
@@ -73,6 +91,15 @@ public sealed class ProcesadorWebhookEntrante
             return new ResultadoEntrante(ResultadoProcesoEntrante.Duplicado);
         }
 
+        // Rate por numero (P-10, 10 §2): protege la plataforma de una rafaga dirigida a un numero
+        // ANTES de resolver el participante. Al exceder, descarte silencioso + auditoria (sin PII
+        // extra: solo el numero, como los demas eventos de LogSeguridad).
+        if (!await _limitadorNumero.RegistrarYPermitirAsync(mensaje.NumeroE164, cancellationToken))
+        {
+            await RegistrarRateNumeroAsync(mensaje.NumeroE164, cancellationToken);
+            return new ResultadoEntrante(ResultadoProcesoEntrante.RateLimitado);
+        }
+
         var resolucion = await _resolutor.ResolverAsync(mensaje.NumeroE164, cancellationToken);
         if (resolucion is not ResultadoResolucion.Autorizado autorizado)
         {
@@ -93,4 +120,17 @@ public sealed class ProcesadorWebhookEntrante
         await _orquestador.ProcesarMensajeEntranteAsync(participante, mensajeAcotado, cancellationToken);
         return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
     }
+
+    private Task RegistrarRateNumeroAsync(string numero, CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.RateLimit,
+                usuarioId: null,
+                numero,
+                "rechazado",
+                "rate_numero",
+                _correlacion.CorrelationIdActual,
+                _tiempo.GetUtcNow()),
+            cancellationToken);
 }

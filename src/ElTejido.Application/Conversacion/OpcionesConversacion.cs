@@ -40,6 +40,26 @@ public sealed class OpcionesConversacion
     /// </summary>
     public IList<string> FrasesContinuar { get; set; } = new List<string>();
 
+    /// <summary>
+    /// Interruptor global de los <b>cupos por usuario/campania</b> (10 §2): cuando esta en <c>true</c>,
+    /// el orquestador aplica <c>Campania.ConfigSeguridad.MaxMensajesPorUsuario</c> (al exceder, el
+    /// entrante se descarta con rechazo neutral silencioso y se registra <c>RateLimit</c>) y
+    /// <c>MaxLlamadasLlmPorUsuario</c> (al exceder, no se llama al LLM: la respuesta queda
+    /// <c>recibida</c> y el hilo cierra elegante con el mensaje de cierre). <b>Default <c>false</c></b>
+    /// (D1: nada nuevo activo por defecto); antes de habilitarlo hay que dimensionar los limites de la
+    /// campania (&#8776; preguntas x (1 + MaxRepreguntas) + margen).
+    /// </summary>
+    public bool CuposHabilitados { get; set; }
+
+    /// <summary>
+    /// Techo duro de <b>turnos entrantes por hilo</b> (incluido el primer contacto): garantiza la
+    /// terminacion de cualquier conversacion aunque el LLM u otras reglas pidan seguir. Al alcanzarlo,
+    /// el siguiente entrante se registra como <c>recibida</c> sin evaluar y el hilo cierra elegante
+    /// (mismo camino que las revisiones agotadas), registrando <c>RateLimit</c>.
+    /// <b>0 o negativo desactiva</b> (default desactivado).
+    /// </summary>
+    public int MaxTurnosPorHilo { get; set; }
+
     /// <summary>Textos operativos del orquestador que se pueden sobreescribir por configuracion.</summary>
     public OpcionesMensajesConversacion Mensajes { get; set; } = new();
 }

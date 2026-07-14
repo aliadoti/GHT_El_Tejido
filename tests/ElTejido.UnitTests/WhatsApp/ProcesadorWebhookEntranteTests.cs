@@ -1,9 +1,12 @@
+using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Identidad;
 using ElTejido.Application.Participantes;
+using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
 using ElTejido.UnitTests.Soporte;
 using FluentAssertions;
@@ -17,9 +20,18 @@ public sealed class ProcesadorWebhookEntranteTests
 
     private readonly IWhatsAppGateway _gateway = Substitute.For<IWhatsAppGateway>();
     private readonly IRegistroWebhookDedupe _dedupe = Substitute.For<IRegistroWebhookDedupe>();
+    private readonly ILimitadorNumeroEntrante _limitadorNumero = Substitute.For<ILimitadorNumeroEntrante>();
     private readonly IResolutorParticipante _resolutor = Substitute.For<IResolutorParticipante>();
     private readonly IOrquestadorConversacion _orquestador = Substitute.For<IOrquestadorConversacion>();
+    private readonly IRepositorioLogSeguridad _logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
+    private readonly IProveedorCorrelacion _correlacion = Substitute.For<IProveedorCorrelacion>();
     private readonly MensajeEntrante _mensaje = new(Numero, "Mi idea", "wamid.ABC", DateTimeOffset.UnixEpoch);
+
+    public ProcesadorWebhookEntranteTests()
+    {
+        // Por defecto el rate por numero permite (los casos que lo prueban lo sobrescriben).
+        _limitadorNumero.RegistrarYPermitirAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+    }
 
     [Fact]
     public async Task Procesar_PayloadSinMensaje_DevuelveNoMensaje()
@@ -102,8 +114,30 @@ public sealed class ProcesadorWebhookEntranteTests
         entregado!.Texto.Length.Should().Be(1500);
     }
 
+    [Fact]
+    public async Task Procesar_NumeroExcedeRate_DescartaYRegistraRateNumero()
+    {
+        _gateway.ParsearWebhook(Arg.Any<WhatsAppWebhookPayload>()).Returns(_mensaje);
+        _dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _limitadorNumero.RegistrarYPermitirAsync(Numero, Arg.Any<CancellationToken>()).Returns(false);
+        LogSeguridad? capturado = null;
+        _logSeguridad.When(x => x.RegistrarAsync(Arg.Any<LogSeguridad>(), Arg.Any<CancellationToken>()))
+            .Do(ci => capturado = ci.Arg<LogSeguridad>());
+
+        var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.RateLimitado);
+        await _resolutor.DidNotReceiveWithAnyArgs().ResolverAsync(default!, default);
+        await _orquestador.DidNotReceiveWithAnyArgs().ProcesarMensajeEntranteAsync(default!, default!, default);
+        capturado.Should().NotBeNull();
+        capturado!.TipoEvento.Should().Be(TipoEventoSeguridad.RateLimit);
+        capturado.Detalle.Should().Be("rate_numero");
+        capturado.Numero.Should().Be(Numero);
+    }
+
     private ProcesadorWebhookEntrante Construir()
-        => new(_gateway, _dedupe, _resolutor, _orquestador, new RelojFijo(DateTimeOffset.UnixEpoch));
+        => new(_gateway, _dedupe, _limitadorNumero, _resolutor, _orquestador, _logSeguridad, _correlacion, new RelojFijo(DateTimeOffset.UnixEpoch));
 
     private static ParticipanteResuelto CrearParticipanteResuelto()
     {

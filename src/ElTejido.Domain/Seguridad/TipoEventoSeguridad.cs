@@ -14,4 +14,8 @@ public enum TipoEventoSeguridad
     AnomaliaLlm,
     PromptInjectionSospechoso,
     ErrorEnvio,
+
+    // P-03: accion administrativa auditable (p. ej. reinicio de datos de prueba de una campania o
+    // participante). Aditivo al final para preservar los valores existentes (03 §3.15).
+    AccionAdministrativa,
 }

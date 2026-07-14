@@ -724,6 +724,16 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             lock (_sync) return Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
         }
 
+        public Task<int> ContarEvaluacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
+        {
+            lock (_sync) return Task.FromResult(_evaluaciones.Values.Count(e => e.CampaniaId == campaniaId && e.UsuarioId == usuarioId));
+        }
+
+        public Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+        {
+            lock (_sync) return Task.FromResult(_evaluaciones.Values.Where(e => e.CampaniaId == campaniaId).Sum(e => (long)(e.UsoTokens?.Total ?? 0)));
+        }
+
         public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
         {
             lock (_sync) _artefactos[artefacto.Id] = artefacto;
@@ -738,6 +748,33 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         public Task<IReadOnlyCollection<ArtefactoMarkdown>> ListarArtefactosAsync(string campaniaId, CancellationToken cancellationToken)
         {
             lock (_sync) return Task.FromResult<IReadOnlyCollection<ArtefactoMarkdown>>(_artefactos.Values.Where(a => a.CampaniaId == campaniaId).ToArray());
+        }
+
+        Task<ConteoBorradoRespuestas> IRepositorioRespuestas.EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                var respuestas = _respuestas.Values.Where(r => r.CampaniaId == campaniaId && (usuarioId is null || r.UsuarioId == usuarioId)).ToArray();
+                var evaluaciones = _evaluaciones.Values.Where(e => e.CampaniaId == campaniaId && (usuarioId is null || e.UsuarioId == usuarioId)).ToArray();
+                var artefactos = _artefactos.Values.Where(a => a.CampaniaId == campaniaId && (usuarioId is null || a.UsuarioId == usuarioId)).ToArray();
+                foreach (var r in respuestas)
+                {
+                    _respuestas.Remove(r.Id);
+                }
+
+                foreach (var e in evaluaciones)
+                {
+                    _evaluaciones.Remove(e.Id);
+                }
+
+                foreach (var a in artefactos)
+                {
+                    _artefactos.Remove(a.Id);
+                }
+
+                return Task.FromResult(new ConteoBorradoRespuestas(
+                    respuestas.Length, evaluaciones.Length, artefactos.Length, artefactos.Select(a => a.BlobPath).ToArray()));
+            }
         }
 
         public Task GuardarConversacionAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
@@ -771,6 +808,22 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         {
             lock (_sync) _mensajes.Add(mensaje);
             return Task.CompletedTask;
+        }
+
+        Task<ConteoBorradoConversaciones> IRepositorioConversaciones.EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                var conversaciones = _conversaciones.Values.Where(c => c.CampaniaId == campaniaId && (usuarioId is null || c.UsuarioId == usuarioId)).ToArray();
+                var ids = conversaciones.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+                foreach (var c in conversaciones)
+                {
+                    _conversaciones.Remove(c.Id);
+                }
+
+                var mensajes = _mensajes.RemoveAll(m => m.CampaniaId == campaniaId && ids.Contains(m.ConversacionId));
+                return Task.FromResult(new ConteoBorradoConversaciones(conversaciones.Length, mensajes));
+            }
         }
 
         public Task GuardarAsync(CodigoAuthAdmin codigo, CancellationToken cancellationToken)
@@ -842,8 +895,9 @@ public sealed class Fase9AceptacionE2EIntegrationTests
 
     private sealed class LlmClientFake : ILlmClient
     {
-        public Task<string> CompletarJsonAsync(LlmRequest request, CancellationToken cancellationToken)
-            => Task.FromResult("""
+        public Task<LlmRespuesta> CompletarJsonAsync(LlmRequest request, CancellationToken cancellationToken)
+            => Task.FromResult(new LlmRespuesta(
+                """
                 {
                   "calificacion_total": 4,
                   "calificacion_por_criterio": [
@@ -856,7 +910,8 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                   "entidades": ["operaciones"],
                   "anomalia_seguridad": false
                 }
-                """);
+                """,
+                UsoTokensLlm.Crear(120, 60)));
     }
 
     private sealed class GeneradorFijo : IGeneradorCodigoOtp

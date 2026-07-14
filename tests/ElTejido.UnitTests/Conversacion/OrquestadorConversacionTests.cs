@@ -538,6 +538,150 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Procesar_CupoMensajesUsuarioExcedido_DescartaSilenciosoYRegistraRateLimit()
+    {
+        // Cupos habilitados (10 §2): el usuario ya consumio su MaxMensajesPorUsuario (1) en la campania;
+        // el siguiente entrante se descarta con rechazo neutral silencioso y solo queda LogSeguridad.
+        await PrepararConversacionAsync();
+        await SembrarEntranteAsync("hola previo");
+        var opciones = new OpcionesConversacion { CuposHabilitados = true };
+
+        await Construir(opciones).ProcesarMensajeEntranteAsync(
+            ParticipanteConCupos(maxMensajesPorUsuario: 1, maxLlamadasLlm: 2), Mensaje("otro mensaje"), CancellationToken.None);
+
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoEnvioMensaje>(), Arg.Any<CancellationToken>());
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.DidNotReceive().GuardarRespuestaAsync(Arg.Any<Respuesta>(), Arg.Any<CancellationToken>());
+        _conversaciones.MensajesGuardados.Should().Be(1, "el entrante excedente no se persiste");
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l =>
+                l.TipoEvento == TipoEventoSeguridad.RateLimit
+                && l.Detalle == "cupo_mensajes_usuario"
+                && l.UsuarioId == "u_1"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_TopeTurnosHiloAlcanzado_RegistraRecibidaYCierraElegante()
+    {
+        // Techo duro de turnos por hilo (D2): garantiza terminacion sin depender del LLM. Con
+        // MaxTurnosPorHilo=1 y un entrante previo, este turno se registra sin evaluar y cierra.
+        await PrepararConversacionAsync();
+        await SembrarEntranteAsync("mi respuesta previa");
+        var opciones = new OpcionesConversacion { MaxTurnosPorHilo = 1 };
+
+        await Construir(opciones).ProcesarMensajeEntranteAsync(Participante(), Mensaje("otra idea"), CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.Estado == EstadoRespuesta.Recibida), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto == "Gracias por participar."),
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l =>
+                l.TipoEvento == TipoEventoSeguridad.RateLimit
+                && l.Detalle == "tope_turnos_hilo"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_CupoLlamadasLlmExcedido_CierraSinEvaluarNiEnviarSiguientePregunta()
+    {
+        // Cupo de llamadas LLM por usuario/campania (10 §2): agotado el cupo no se llama al LLM; el
+        // hilo cierra elegante y NO se abre la siguiente pregunta (tampoco podria evaluarse).
+        await PrepararConversacionAsync();
+        _respuestas.ContarEvaluacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(1);
+        var opciones = new OpcionesConversacion { CuposHabilitados = true };
+
+        await Construir(opciones).ProcesarMensajeEntranteAsync(
+            ParticipanteConCupos(maxMensajesPorUsuario: 10, maxLlamadasLlm: 1, dosPreguntas: true),
+            Mensaje("Mi idea"),
+            CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.Estado == EstadoRespuesta.Recibida), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero, Arg.Any<string>(), TipoEnvioMensaje.Inicial, Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l =>
+                l.TipoEvento == TipoEventoSeguridad.RateLimit
+                && l.Detalle == "cupo_llamadas_llm_usuario"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_PresupuestoTokensCampaniaExcedido_CierraSinEvaluar()
+    {
+        // P-10: agotado el presupuesto de tokens de la campania, se cierra elegante sin llamar al LLM
+        // y NO se abre la siguiente pregunta; queda rastro RateLimit con el motivo especifico.
+        await PrepararConversacionAsync();
+        _respuestas.ContarEvaluacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(0);
+        _respuestas.SumarTokensCampaniaAsync("c_1", Arg.Any<CancellationToken>()).Returns(1200L);
+        var opciones = new OpcionesConversacion { CuposHabilitados = true };
+
+        await Construir(opciones).ProcesarMensajeEntranteAsync(
+            ParticipanteConCupos(maxMensajesPorUsuario: 10, maxLlamadasLlm: 5, dosPreguntas: true, presupuestoTokens: 1000),
+            Mensaje("Mi idea"),
+            CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Inicial, Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l =>
+                l.TipoEvento == TipoEventoSeguridad.RateLimit
+                && l.Detalle == "presupuesto_tokens_campania"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_PresupuestoTokensBajoElTecho_EvaluaNormalmente()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+        await SembrarEntranteAsync("hola previo");
+        _respuestas.ContarEvaluacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(0);
+        _respuestas.SumarTokensCampaniaAsync("c_1", Arg.Any<CancellationToken>()).Returns(500L);
+        var opciones = new OpcionesConversacion { CuposHabilitados = true };
+
+        await Construir(opciones).ProcesarMensajeEntranteAsync(
+            ParticipanteConCupos(maxMensajesPorUsuario: 10, maxLlamadasLlm: 5, presupuestoTokens: 1000),
+            Mensaje("Mi idea"),
+            CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_CuposDeshabilitados_IgnoraLimitesDeCampania()
+    {
+        // Default off (D1): aunque los limites de la campania ya esten consumidos, sin
+        // Conversacion:CuposHabilitados el flujo evalua como siempre (cero regresion).
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+        await SembrarEntranteAsync("hola previo");
+        _respuestas.ContarEvaluacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(5);
+
+        await Construir().ProcesarMensajeEntranteAsync(
+            ParticipanteConCupos(maxMensajesPorUsuario: 1, maxLlamadasLlm: 1), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _logSeguridad.DidNotReceive().RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.RateLimit), Arg.Any<CancellationToken>());
+    }
+
     private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null)
         => new(
             _conversaciones,
@@ -555,6 +699,19 @@ public sealed class OrquestadorConversacionTests
     private Task PrepararConversacionAsync()
         => _conversaciones.GuardarConversacionAsync(
             DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca),
+            CancellationToken.None);
+
+    /// <summary>Persiste un Mensaje(in) previo en el hilo estandar, para los contadores de cupos.</summary>
+    private Task SembrarEntranteAsync(string texto)
+        => _conversaciones.GuardarMensajeAsync(
+            ElTejido.Domain.Conversaciones.Mensaje.Crear(
+                "msg_seed_" + Guid.NewGuid().ToString("N"),
+                "c_1",
+                "conv_c_1_u_1_p_1",
+                DireccionMensaje.In,
+                texto,
+                "wamid.seed",
+                Epoca),
             CancellationToken.None);
 
     private static ParticipanteResuelto Participante(int maxRepreguntas = 1)
@@ -590,6 +747,25 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
+    /// <summary>Participante cuya campania define limites de cupo propios (10 §2).</summary>
+    private static ParticipanteResuelto ParticipanteConCupos(
+        int maxMensajesPorUsuario,
+        int maxLlamadasLlm,
+        bool dosPreguntas = false,
+        int presupuestoTokens = 0)
+    {
+        var pregunta1 = CrearPregunta("p_1", 1, 1);
+        var preguntas = dosPreguntas
+            ? new[] { pregunta1, CrearPregunta("p_2", 2, 1) }
+            : new[] { pregunta1 };
+        var campania = CrearCampania(
+            preguntas,
+            limites: LimitesSeguridad.Crear(1500, maxMensajesPorUsuario, maxLlamadasLlm, presupuestoTokens));
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta1);
+    }
+
     private static ParticipanteResuelto ParticipanteMultipregunta()
     {
         var pregunta1 = FabricasDominio.CrearPregunta("p_1", 1);
@@ -619,7 +795,8 @@ public sealed class OrquestadorConversacionTests
 
     private static Campania CrearCampania(
         IEnumerable<Pregunta> preguntas,
-        IEnumerable<MensajeInicial>? mensajesIniciales = null)
+        IEnumerable<MensajeInicial>? mensajesIniciales = null,
+        LimitesSeguridad? limites = null)
         => Campania.Crear(
             "c_1", "Campania c_1", "Descripcion", "Objetivo", EstadoCampania.Activa,
             mensajesIniciales, preguntas,
@@ -628,7 +805,7 @@ public sealed class OrquestadorConversacionTests
             "llm_1",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
             ConfigConversacional.Crear(1, "Gracias por participar."),
-            LimitesSeguridad.Crear(1500, 10, 2),
+            limites ?? LimitesSeguridad.Crear(1500, 10, 2),
             usuariosHabilitados: null, Epoca, Epoca);
 
     private static DominioEvaluacion CrearEvaluacion(RecomendacionEvaluacion recomendacion, string? repregunta, string retro = "Buena idea", decimal calificacionTotal = 4m)
@@ -687,6 +864,21 @@ public sealed class OrquestadorConversacionTests
         {
             _mensajes.Add(mensaje);
             return Task.CompletedTask;
+        }
+
+        public Task<ConteoBorradoConversaciones> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+        {
+            var conversaciones = _conversaciones.Values
+                .Where(c => c.CampaniaId == campaniaId && (usuarioId is null || c.UsuarioId == usuarioId))
+                .ToArray();
+            var ids = conversaciones.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+            foreach (var c in conversaciones)
+            {
+                _conversaciones.Remove(c.Id);
+            }
+
+            var mensajes = _mensajes.RemoveAll(m => m.CampaniaId == campaniaId && ids.Contains(m.ConversacionId));
+            return Task.FromResult(new ConteoBorradoConversaciones(conversaciones.Length, mensajes));
         }
     }
 }

@@ -93,4 +93,45 @@ public sealed class RepositorioConversacionesCosmos : IRepositorioConversaciones
             MensajeCosmosDocument.FromDomain(mensaje),
             mensaje.CampaniaId,
             cancellationToken);
+
+    public async Task<ConteoBorradoConversaciones> EliminarPorUsuarioAsync(
+        string campaniaId,
+        string? usuarioId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        var pk = campaniaId.Trim();
+        var usuario = string.IsNullOrWhiteSpace(usuarioId) ? null : usuarioId.Trim();
+
+        var queryConv = usuario is null
+            ? new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
+                .WithParameter("@type", ConversacionCosmosDocument.DocumentType)
+            : new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId")
+                .WithParameter("@type", ConversacionCosmosDocument.DocumentType)
+                .WithParameter("@usuarioId", usuario);
+        var conversaciones = await _container.QueryAsync<ConversacionCosmosDocument>(queryConv, pk, cancellationToken);
+        var idsConversaciones = conversaciones.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+
+        // Mensaje no lleva usuarioId (pertenece a una conversacion): para toda la campania se borran
+        // todos; para un usuario, solo los de sus conversaciones.
+        var mensajes = await _container.QueryAsync<MensajeCosmosDocument>(
+            new QueryDefinition("SELECT * FROM c WHERE c.type = @type").WithParameter("@type", MensajeCosmosDocument.DocumentType),
+            pk,
+            cancellationToken);
+        IReadOnlyCollection<MensajeCosmosDocument> mensajesEnAlcance = usuario is null
+            ? mensajes
+            : mensajes.Where(m => idsConversaciones.Contains(m.ConversacionId)).ToArray();
+
+        foreach (var mensaje in mensajesEnAlcance)
+        {
+            await _container.DeleteAsync(mensaje.Id, pk, cancellationToken);
+        }
+
+        foreach (var conversacion in conversaciones)
+        {
+            await _container.DeleteAsync(conversacion.Id, pk, cancellationToken);
+        }
+
+        return new ConteoBorradoConversaciones(conversaciones.Count, mensajesEnAlcance.Count);
+    }
 }

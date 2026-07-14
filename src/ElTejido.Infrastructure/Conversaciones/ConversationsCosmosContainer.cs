@@ -47,6 +47,18 @@ internal sealed class ConversationsCosmosContainer : IConversationsCosmosContain
         await _container.CreateItemAsync(document, new PartitionKey(partitionKey), cancellationToken: cancellationToken);
     }
 
+    public async Task DeleteAsync(string id, string partitionKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _container.DeleteItemAsync<object>(id, new PartitionKey(partitionKey), cancellationToken: cancellationToken);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Idempotente: si otro barrido ya lo borro, no es un error.
+        }
+    }
+
     public async Task<IReadOnlyCollection<T>> QueryAsync<T>(
         QueryDefinition query,
         string partitionKey,

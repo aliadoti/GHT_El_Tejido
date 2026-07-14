@@ -251,5 +251,18 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             => Task.FromResult<IReadOnlyCollection<Mensaje>>(Array.Empty<Mensaje>());
 
         public Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task<ConteoBorradoConversaciones> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+        {
+            var conversaciones = _conversaciones.Values
+                .Where(c => c.CampaniaId == campaniaId && (usuarioId is null || c.UsuarioId == usuarioId))
+                .ToArray();
+            foreach (var c in conversaciones)
+            {
+                _conversaciones.Remove(c.Id);
+            }
+
+            return Task.FromResult(new ConteoBorradoConversaciones(conversaciones.Length, 0));
+        }
     }
 }

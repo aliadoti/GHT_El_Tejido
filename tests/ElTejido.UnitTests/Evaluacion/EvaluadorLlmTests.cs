@@ -27,7 +27,8 @@ public sealed class EvaluadorLlmTests
     [Fact]
     public async Task Evaluar_SalidaValida_DevuelveExitoConSnapshots()
     {
-        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(SalidaValida);
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(SalidaValida, UsoTokensLlm.Crear(100, 50)));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 
@@ -43,6 +44,21 @@ public sealed class EvaluadorLlmTests
         evaluacion.ConfigLlmRef.Should().Be("llm_default");
         evaluacion.PesosUsados.Should().ContainKey("claridad");
         evaluacion.Temas.Should().Contain("eficiencia");
+        // P-10: el uso de tokens reportado se persiste en la evaluacion.
+        evaluacion.UsoTokens!.Total.Should().Be(150);
+    }
+
+    [Fact]
+    public async Task Evaluar_PropagaCampaniaEnElRequest()
+    {
+        LlmRequest? capturado = null;
+        _client.CompletarJsonAsync(Arg.Do<LlmRequest>(r => capturado = r), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(SalidaValida, UsoTokensLlm.Crear(1, 1)));
+
+        await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        capturado.Should().NotBeNull();
+        capturado!.CampaniaId.Should().Be("c_1");
     }
 
     [Fact]
@@ -62,7 +78,7 @@ public sealed class EvaluadorLlmTests
     [Fact]
     public async Task Evaluar_JsonInvalido_DevuelveFallback()
     {
-        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns("no es json");
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta("no es json", null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 
@@ -74,7 +90,7 @@ public sealed class EvaluadorLlmTests
     public async Task Evaluar_RepreguntarSinRepregunta_DevuelveFallback()
     {
         const string salida = "{\"calificacion_total\":3,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"repreguntar\"}";
-        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(salida);
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 
@@ -85,7 +101,7 @@ public sealed class EvaluadorLlmTests
     public async Task Evaluar_PuntajeFueraDeEscala_DevuelveFallback()
     {
         const string salida = "{\"calificacion_total\":99,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"cerrar\"}";
-        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(salida);
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 
@@ -96,7 +112,7 @@ public sealed class EvaluadorLlmTests
     public async Task Evaluar_AnomaliaSeguridad_RegistraLogSeguridad()
     {
         const string salida = "{\"calificacion_total\":3,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"cerrar\",\"anomalia_seguridad\":true}";
-        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(salida);
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 

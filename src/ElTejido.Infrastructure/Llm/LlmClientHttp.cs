@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ElTejido.Application.Evaluacion;
 using ElTejido.Application.Seguridad;
+using ElTejido.Domain.Evaluacion;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -38,7 +39,7 @@ public sealed class LlmClientHttp : ILlmClient
         _logger = logger;
     }
 
-    public async Task<string> CompletarJsonAsync(LlmRequest request, CancellationToken cancellationToken)
+    public async Task<LlmRespuesta> CompletarJsonAsync(LlmRequest request, CancellationToken cancellationToken)
     {
         var apiKey = await _secretos.ObtenerSecretoAsync(request.ApiKeyRef, cancellationToken);
         var proveedor = ResolverProveedor(request.Proveedor);
@@ -61,7 +62,9 @@ public sealed class LlmClientHttp : ILlmClient
                 using var respuesta = await _httpClient.SendAsync(solicitud, timeoutCts.Token);
                 if (respuesta.IsSuccessStatusCode)
                 {
-                    return await LeerContenidoAsync(respuesta, proveedor, timeoutCts.Token);
+                    var (texto, uso) = await LeerContenidoAsync(respuesta, proveedor, timeoutCts.Token);
+                    RegistrarUso(request, uso);
+                    return new LlmRespuesta(texto, uso);
                 }
 
                 if (!EsTransitorio(respuesta.StatusCode) || intento >= request.MaxReintentos)
@@ -197,13 +200,14 @@ public sealed class LlmClientHttp : ILlmClient
         }
     }
 
-    private static async Task<string> LeerContenidoAsync(
+    private static async Task<(string Texto, UsoTokensLlm? Uso)> LeerContenidoAsync(
         HttpResponseMessage respuesta,
         TipoProveedorLlm proveedor,
         CancellationToken cancellationToken)
     {
         await using var stream = await respuesta.Content.ReadAsStreamAsync(cancellationToken);
         using var documento = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        var uso = ExtraerUso(documento.RootElement, proveedor);
 
         if (proveedor == TipoProveedorLlm.Anthropic
             && documento.RootElement.TryGetProperty("content", out var contenidoAnthropic)
@@ -212,7 +216,7 @@ public sealed class LlmClientHttp : ILlmClient
             && contenidoAnthropic[0].TryGetProperty("text", out var textoAnthropic)
             && textoAnthropic.GetString() is { } textoAnthropicValue)
         {
-            return textoAnthropicValue;
+            return (textoAnthropicValue, uso);
         }
 
         if (documento.RootElement.TryGetProperty("choices", out var choices)
@@ -222,10 +226,56 @@ public sealed class LlmClientHttp : ILlmClient
             && message.TryGetProperty("content", out var content)
             && content.GetString() is { } texto)
         {
-            return texto;
+            return (texto, uso);
         }
 
         throw new InvalidOperationException("La respuesta del LLM no contiene contenido utilizable.");
+    }
+
+    // P-10 — extrae el consumo de tokens del bloque `usage` (OpenAI/compatible: prompt_tokens /
+    // completion_tokens; Anthropic: input_tokens / output_tokens). Null si el proveedor no lo reporta.
+    private static UsoTokensLlm? ExtraerUso(JsonElement root, TipoProveedorLlm proveedor)
+    {
+        if (!root.TryGetProperty("usage", out var usage) || usage.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var (clavePrompt, claveCompletion) = proveedor == TipoProveedorLlm.Anthropic
+            ? ("input_tokens", "output_tokens")
+            : ("prompt_tokens", "completion_tokens");
+
+        var prompt = LeerEntero(usage, clavePrompt);
+        var completion = LeerEntero(usage, claveCompletion);
+        if (prompt is null && completion is null)
+        {
+            return null;
+        }
+
+        return UsoTokensLlm.Crear(prompt ?? 0, completion ?? 0);
+    }
+
+    private static int? LeerEntero(JsonElement objeto, string propiedad)
+        => objeto.TryGetProperty(propiedad, out var valor) && valor.ValueKind == JsonValueKind.Number && valor.TryGetInt32(out var n)
+            ? n
+            : null;
+
+    // Métrica de costo (P-10): tokens por llamada, atribuidos a la campaña, sin secretos ni PII.
+    private void RegistrarUso(LlmRequest request, UsoTokensLlm? uso)
+    {
+        if (uso is null)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "LLM uso de tokens campania={CampaniaId} proveedor={Proveedor} modelo={Modelo} promptTokens={PromptTokens} completionTokens={CompletionTokens} totalTokens={TotalTokens}",
+            request.CampaniaId ?? "(desconocida)",
+            request.Proveedor,
+            request.Modelo,
+            uso.PromptTokens,
+            uso.CompletionTokens,
+            uso.Total);
     }
 
     private static async Task<string> LeerErrorSeguroAsync(HttpResponseMessage respuesta, CancellationToken cancellationToken)

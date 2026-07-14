@@ -12,6 +12,9 @@ internal interface IConversationsCosmosContainer
 
     Task CreateMensajeAsync(MensajeCosmosDocument document, string partitionKey, CancellationToken cancellationToken);
 
+    /// <summary>Borra un documento por id dentro de su particion (P-03). Tolera 404 (ya borrado).</summary>
+    Task DeleteAsync(string id, string partitionKey, CancellationToken cancellationToken);
+
     Task<IReadOnlyCollection<T>> QueryAsync<T>(
         Microsoft.Azure.Cosmos.QueryDefinition query,
         string partitionKey,

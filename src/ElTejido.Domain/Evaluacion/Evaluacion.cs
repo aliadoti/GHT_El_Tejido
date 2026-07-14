@@ -32,7 +32,8 @@ public sealed class Evaluacion
         IReadOnlyCollection<string> temas,
         IReadOnlyCollection<string> entidades,
         bool anomaliaSeguridad,
-        DateTimeOffset fecha)
+        DateTimeOffset fecha,
+        UsoTokensLlm? usoTokens)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -56,6 +57,7 @@ public sealed class Evaluacion
         Entidades = entidades;
         AnomaliaSeguridad = anomaliaSeguridad;
         Fecha = fecha;
+        UsoTokens = usoTokens;
     }
 
     public string Id { get; }
@@ -102,6 +104,9 @@ public sealed class Evaluacion
 
     public DateTimeOffset Fecha { get; }
 
+    /// <summary>P-10 — tokens consumidos por esta evaluación (null si el proveedor no lo reportó o doc previo).</summary>
+    public UsoTokensLlm? UsoTokens { get; }
+
     public static Evaluacion Crear(
         string id,
         string campaniaId,
@@ -124,7 +129,8 @@ public sealed class Evaluacion
         IEnumerable<string>? temas,
         IEnumerable<string>? entidades,
         bool anomaliaSeguridad,
-        DateTimeOffset fecha)
+        DateTimeOffset fecha,
+        UsoTokensLlm? usoTokens = null)
     {
         if (versionRubrica <= 0 || versionPrompt <= 0)
         {
@@ -165,7 +171,8 @@ public sealed class Evaluacion
             NormalizarLista(temas),
             NormalizarLista(entidades),
             anomaliaSeguridad,
-            fecha.ToUniversalTime());
+            fecha.ToUniversalTime(),
+            usoTokens);
     }
 
     private static IReadOnlyCollection<string> NormalizarLista(IEnumerable<string>? valores)

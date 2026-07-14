@@ -48,10 +48,10 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     {
         var request = ConstruirRequest(contexto);
 
-        string crudo;
+        LlmRespuesta respuesta;
         try
         {
-            crudo = await _client.CompletarJsonAsync(request, cancellationToken);
+            respuesta = await _client.CompletarJsonAsync(request, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -60,13 +60,17 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
         catch (Exception)
         {
             // Timeout/5xx tras reintentos o cualquier fallo del proveedor: fallback seguro (08 §6).
-            return await FallbackAsync(contexto, "error_proveedor", cancellationToken);
+            // Sin respuesta no hay uso de tokens que contabilizar.
+            return await FallbackAsync(contexto, "error_proveedor", uso: null, cancellationToken);
         }
+
+        // Aunque la salida sea invalida, el proveedor ya cobro los tokens: se contabiliza el uso (P-10).
+        var uso = respuesta.Uso;
 
         SalidaLlmEvaluacion? salida = null;
         try
         {
-            salida = JsonSerializer.Deserialize<SalidaLlmEvaluacion>(crudo, OpcionesJson);
+            salida = JsonSerializer.Deserialize<SalidaLlmEvaluacion>(respuesta.Texto, OpcionesJson);
         }
         catch (JsonException)
         {
@@ -75,12 +79,12 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
 
         if (salida is null)
         {
-            return await FallbackAsync(contexto, "salida_invalida:no_json", cancellationToken);
+            return await FallbackAsync(contexto, "salida_invalida:no_json", uso, cancellationToken);
         }
 
         if (!EsSalidaValida(salida, contexto.RubricaSnapshot.Escala, out var recomendacion, out var razonInvalida))
         {
-            return await FallbackAsync(contexto, "salida_invalida:" + razonInvalida, cancellationToken);
+            return await FallbackAsync(contexto, "salida_invalida:" + razonInvalida, uso, cancellationToken);
         }
 
         if (salida.AnomaliaSeguridad)
@@ -88,7 +92,7 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             await RegistrarAnomaliaAsync(contexto, cancellationToken);
         }
 
-        return new ResultadoEvaluacion.Exito(ConstruirEvaluacion(contexto, salida, recomendacion));
+        return new ResultadoEvaluacion.Exito(ConstruirEvaluacion(contexto, salida, recomendacion, uso));
     }
 
     private LlmRequest ConstruirRequest(ContextoEvaluacion contexto)
@@ -103,7 +107,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             config.Parametros,
             config.LimitesTokens.MaxCompletion,
             config.TimeoutSegundos,
-            config.MaxReintentos);
+            config.MaxReintentos,
+            contexto.Campania.Id);
     }
 
     private static bool EsSalidaValida(
@@ -153,7 +158,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     private DominioEvaluacion ConstruirEvaluacion(
         ContextoEvaluacion contexto,
         SalidaLlmEvaluacion salida,
-        RecomendacionEvaluacion recomendacion)
+        RecomendacionEvaluacion recomendacion,
+        UsoTokensLlm? uso)
     {
         var calificaciones = (salida.CalificacionPorCriterio ?? Array.Empty<SalidaCalificacionCriterio>())
             .Select(c => CalificacionCriterio.Crear(c.Criterio ?? "criterio", c.Puntaje, c.Justificacion ?? string.Empty))
@@ -181,12 +187,14 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             salida.Temas,
             salida.Entidades,
             salida.AnomaliaSeguridad,
-            _tiempo.GetUtcNow());
+            _tiempo.GetUtcNow(),
+            uso);
     }
 
     private async Task<ResultadoEvaluacion> FallbackAsync(
         ContextoEvaluacion contexto,
         string motivo,
+        UsoTokensLlm? uso,
         CancellationToken cancellationToken)
     {
         await RegistrarFallbackAsync(contexto, motivo, cancellationToken);
@@ -213,7 +221,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             null,
             null,
             anomaliaSeguridad: false,
-            _tiempo.GetUtcNow());
+            _tiempo.GetUtcNow(),
+            uso);
 
         return new ResultadoEvaluacion.Fallback(evaluacion, motivo);
     }

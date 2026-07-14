@@ -163,6 +163,12 @@ public sealed class CompiladorMarkdownTests
         public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
 
+        public Task<int> ContarEvaluacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
+            => Task.FromResult(_evaluaciones.Values.Count(e => e.CampaniaId == campaniaId && e.UsuarioId == usuarioId));
+
+        public Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult(_evaluaciones.Values.Where(e => e.CampaniaId == campaniaId).Sum(e => (long)(e.UsoTokens?.Total ?? 0)));
+
         public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
         {
             _artefactos[artefacto.Id] = artefacto;
@@ -174,5 +180,32 @@ public sealed class CompiladorMarkdownTests
 
         public Task<IReadOnlyCollection<ArtefactoMarkdown>> ListarArtefactosAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<ArtefactoMarkdown>>(_artefactos.Values.Where(a => a.CampaniaId == campaniaId).ToArray());
+
+        public Task<ConteoBorradoRespuestas> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+        {
+            var respuestas = _respuestas.Values.Where(r => r.CampaniaId == campaniaId && (usuarioId is null || r.UsuarioId == usuarioId)).ToArray();
+            var evaluaciones = _evaluaciones.Values.Where(e => e.CampaniaId == campaniaId && (usuarioId is null || e.UsuarioId == usuarioId)).ToArray();
+            var artefactos = _artefactos.Values.Where(a => a.CampaniaId == campaniaId && (usuarioId is null || a.UsuarioId == usuarioId)).ToArray();
+            foreach (var r in respuestas)
+            {
+                _respuestas.Remove(r.Id);
+            }
+
+            foreach (var e in evaluaciones)
+            {
+                _evaluaciones.Remove(e.RespuestaId);
+            }
+
+            foreach (var a in artefactos)
+            {
+                _artefactos.Remove(a.Id);
+            }
+
+            return Task.FromResult(new ConteoBorradoRespuestas(
+                respuestas.Length,
+                evaluaciones.Length,
+                artefactos.Length,
+                artefactos.Select(a => a.BlobPath).ToArray()));
+        }
     }
 }

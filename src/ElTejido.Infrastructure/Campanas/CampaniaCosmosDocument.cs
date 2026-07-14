@@ -385,6 +385,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("maxLlamadasLlmPorUsuario")]
         public int MaxLlamadasLlmPorUsuario { get; init; }
 
+        // P-10: presupuesto de tokens de la campaña (aditivo, default 0 = off). Ausente en docs previos.
+        [JsonProperty("presupuestoTokensCampania")]
+        public int PresupuestoTokensCampania { get; init; }
+
         public static LimitesSeguridadDocument FromDomain(LimitesSeguridad limites)
         {
             return new LimitesSeguridadDocument
@@ -392,6 +396,7 @@ internal sealed class CampaniaCosmosDocument
                 MaxCaracteresMensaje = limites.MaxCaracteresMensaje,
                 MaxMensajesPorUsuario = limites.MaxMensajesPorUsuario,
                 MaxLlamadasLlmPorUsuario = limites.MaxLlamadasLlmPorUsuario,
+                PresupuestoTokensCampania = limites.PresupuestoTokensCampania,
             };
         }
 
@@ -400,7 +405,8 @@ internal sealed class CampaniaCosmosDocument
             return LimitesSeguridad.Crear(
                 MaxCaracteresMensaje,
                 MaxMensajesPorUsuario,
-                MaxLlamadasLlmPorUsuario);
+                MaxLlamadasLlmPorUsuario,
+                PresupuestoTokensCampania);
         }
     }
 

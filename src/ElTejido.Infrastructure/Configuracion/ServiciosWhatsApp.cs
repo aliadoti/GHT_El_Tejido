@@ -1,7 +1,9 @@
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Infrastructure.Conversaciones;
+using ElTejido.Infrastructure.Seguridad;
 using ElTejido.Infrastructure.WhatsApp;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -40,6 +42,15 @@ public static class ServiciosWhatsApp
 
         services.AddHostedService<TrabajadorWebhook>();
         services.AddHostedService<TrabajadorEnvios>();
+
+        // Rate por numero WhatsApp (P-10, 10 §2): ventana deslizante en memoria, aplicada en el
+        // procesador entrante. Valor 0/ausente = deshabilitado (patron D1, nace apagado).
+        services.AddMemoryCache();
+        var rateNumeroPorMinuto = configuration.GetValue("Seguridad:RateNumeroWhatsAppPorMinuto", 0);
+        services.AddSingleton<ILimitadorNumeroEntrante>(sp => new LimitadorNumeroEntranteMemoria(
+            sp.GetRequiredService<IMemoryCache>(),
+            rateNumeroPorMinuto,
+            sp.GetRequiredService<TimeProvider>()));
 
         if (OpcionesPersistencia.HayAlmacen(configuration))
         {
