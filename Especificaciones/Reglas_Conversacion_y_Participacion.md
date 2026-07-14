@@ -3,7 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-06-23.
+> y `09` (Markdown). Última revisión: 2026-07-13.
 
 ## 1. Visión general del flujo
 
@@ -133,6 +133,34 @@ Un número que no resuelve a un participante válido (no matriculado, inactivo, 
 campaña activa o sin pregunta vigente) se **rechaza de forma neutral**; el motivo solo se registra en
 `LogSeguridad` y en el log del webhook (nunca se revela al usuario).
 
+### 2.8 Cupos y techos deterministas (guardrails, `10 §2` / D2 del plan de Hito 1)
+Tres límites deterministas acotan el consumo por participante. **El LLM propone, el sistema dispone**:
+estos techos garantizan terminación y costo acotado con independencia del comportamiento del modelo.
+Todos dejan rastro `RateLimit` en `LogSeguridad` con el motivo interno; nada de esto se revela al
+participante más allá del cierre normal.
+
+1. **Cupo de mensajes por usuario/campaña** (`Campania.ConfigSeguridad.maxMensajesPorUsuario`, editable
+   por el portal). Al exceder, el entrante se **descarta con rechazo neutral silencioso** (como una
+   conversación cerrada): no se persiste, no se responde, no se evalúa. Motivo `cupo_mensajes_usuario`.
+2. **Cupo de llamadas LLM por usuario/campaña** (`Campania.ConfigSeguridad.maxLlamadasLlmPorUsuario`).
+   El contador es el número de `Evaluacion` registradas (cada llamada al LLM persiste exactamente una,
+   válida o fallback). Al exceder, **no se llama al LLM**: la respuesta se registra como `recibida` y el
+   hilo **cierra elegante** con el `MensajeCierre`, **sin** abrir la siguiente pregunta (tampoco podría
+   evaluarse). Motivo `cupo_llamadas_llm_usuario`.
+3. **Techo duro de turnos por hilo** (`Conversacion:MaxTurnosPorHilo`, global). Cuenta los entrantes del
+   hilo (incluido el primer contacto). Al alcanzarlo, el siguiente entrante se registra como `recibida`
+   sin evaluar y el hilo cierra elegante, avanzando a la siguiente pregunta si la hay. Motivo
+   `tope_turnos_hilo`. Dimensionar ≈ `2 + MaxRepreguntas` + margen.
+
+Los cupos 1 y 2 están **gateados por `Conversacion:CuposHabilitados` (default `false`)**: los límites ya
+viven en la campaña (contrato `03`), pero no se aplican hasta encender el flag (regla D1: nada nuevo
+activo por defecto; el flag se enciende en staging y en el freeze). **Antes de habilitarlo hay que
+dimensionar los límites de la campaña**: `maxLlamadasLlmPorUsuario ≈ preguntas × (1 + MaxRepreguntas)` y
+`maxMensajesPorUsuario ≈ preguntas × (2 + MaxRepreguntas)` + margen (los defaults del portal, 10 y 2,
+se pensaron para una campaña de una pregunta). El techo 3 es independiente del flag (0 = desactivado).
+Regla del equipo (D2): **no se retira el tope determinístico de revisiones (I-01) hasta que estos cupos
+estén activos en producción.**
+
 ## 3. Parámetros configurables
 
 | Parámetro | Dónde se configura | Default | Efecto |
@@ -152,6 +180,9 @@ campaña activa o sin pregunta vigente) se **rechaza de forma neutral**; el moti
 | `Conversacion:Mensajes:InvitacionMejoraVariantes` | App config / env `Conversacion__Mensajes__InvitacionMejoraVariantes__0`, `...__1` | (vacía) | Variantes de respaldo del núcleo de la invitación; se rotan por hilo+turno. Vacía = usa `InvitacionMejora`. |
 | `Conversacion:Mensajes:InvitacionContinuarVariantes` | App config / env `Conversacion__Mensajes__InvitacionContinuarVariantes__0`, `...__1` | (lista compilada) | Coletillas que enseñan la salida del "no quiero seguir"; se anexan a la invitación y se rotan. Vacía = usa la lista por defecto. |
 | `Conversacion:Mensajes:MensajeConfiguracionNoDisponible` | App config / env `Conversacion__Mensajes__MensajeConfiguracionNoDisponible` | "Hay un problema con la configuracion..." | Texto visible cuando falta rubrica, prompt o ConfigLLM valida y no se llama al LLM. |
+| `Conversacion:CuposHabilitados` | App config / env `Conversacion__CuposHabilitados` | `false` (**desactivado**) | Enciende la aplicación de `maxMensajesPorUsuario`/`maxLlamadasLlmPorUsuario` de la campaña (§2.8). Dimensionar los límites de la campaña antes de activar. |
+| `Conversacion:MaxTurnosPorHilo` | App config / env `Conversacion__MaxTurnosPorHilo` | 0 (**desactivado**) | Techo duro de entrantes por hilo (§2.8); garantiza terminación. Recomendado ≈ `2 + MaxRepreguntas`. |
+| `maxMensajesPorUsuario` / `maxLlamadasLlmPorUsuario` (campaña) | Portal admin (campaña, `configSeguridad`) | 10 / 2 | Cupos por usuario dentro de la campaña (§2.8); solo se aplican con `CuposHabilitados=true`. |
 | `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo. Recomendado p. ej. `72`. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |
