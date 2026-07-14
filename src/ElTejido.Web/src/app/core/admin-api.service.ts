@@ -14,6 +14,7 @@ import {
   ParticipantePreview,
   Pregunta,
   PromptConfig,
+  ReporteReinicioDatos,
   Respuesta,
   Rubrica,
   TagAdmin,
@@ -98,6 +99,24 @@ export class AdminApiService {
     return this.api.post<ParticipanteCampania[]>(
       `/api/admin/campanias/${campaniaId}/participantes`,
       { usuarioIds },
+    );
+  }
+
+  // P-03: reinicio de datos de prueba (conserva campania/config/usuarios).
+  reiniciarParticipante(campaniaId: string, usuarioId: string, reiniciarEnvios: boolean) {
+    return this.api.post<ReporteReinicioDatos>(
+      `/api/admin/campanias/${campaniaId}/participantes/${usuarioId}/reiniciar`,
+      { reiniciarEnvios },
+    );
+  }
+
+  reiniciarDatosCampania(
+    campaniaId: string,
+    opciones: { usuarioIds?: string[]; reiniciarEnvios?: boolean },
+  ) {
+    return this.api.post<ReporteReinicioDatos>(
+      `/api/admin/campanias/${campaniaId}/reiniciar-datos`,
+      opciones,
     );
   }
 

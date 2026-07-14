@@ -65,9 +65,18 @@ export interface Campania {
   rubricaRef?: string;
   promptRefs?: Record<string, string>;
   configLLMRef?: string;
+  configSeguridad?: ConfigSeguridad;
   usuariosHabilitados?: string[];
   creadoEn: string;
   actualizadoEn: string;
+}
+
+// P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).
+export interface ConfigSeguridad {
+  maxCaracteresMensaje: number;
+  maxMensajesPorUsuario: number;
+  maxLlamadasLlmPorUsuario: number;
+  presupuestoTokensCampania: number;
 }
 
 export interface MensajeInicial {
@@ -240,4 +249,16 @@ export interface ArtefactoMarkdown {
   version: number;
   creadoEn: string;
   actualizadoEn: string;
+}
+
+// P-03: reporte de conteos que devuelven los endpoints de reinicio de datos.
+export interface ReporteReinicioDatos {
+  conversaciones: number;
+  mensajes: number;
+  respuestas: number;
+  evaluaciones: number;
+  artefactos: number;
+  blobsBorrados: number;
+  blobsFallidos: number;
+  participantesReseteados: number;
 }

@@ -254,6 +254,15 @@ interface PreguntaForm {
                     </select>
                   </label>
                   <label>
+                    Presupuesto de tokens LLM (0 = sin límite)
+                    <input
+                      type="number"
+                      min="0"
+                      name="editarPresupuestoTokens"
+                      [(ngModel)]="edicion.presupuestoTokensCampania"
+                    />
+                  </label>
+                  <label>
                     Prompt de evaluacion
                     <select name="editarPromptEvaluarRef" [(ngModel)]="edicion.promptEvaluarRef">
                       <option value="">Sin prompt por defecto</option>
@@ -577,6 +586,17 @@ interface PreguntaForm {
                           <td>{{ nombreUsuario(participante.usuarioId) }}</td>
                           <td>{{ participante.estadoEnvio }}</td>
                           <td>{{ participante.estadoRespuesta }}</td>
+                          @if (auth.isAdmin()) {
+                            <td>
+                              <button
+                                type="button"
+                                class="ghost-button"
+                                (click)="reiniciarParticipante(campania.id, participante)"
+                              >
+                                Reiniciar conversacion
+                              </button>
+                            </td>
+                          }
                         </tr>
                       } @empty {
                         <tr>
@@ -586,6 +606,19 @@ interface PreguntaForm {
                     </tbody>
                   </table>
                 </div>
+                @if (auth.isAdmin() && participantes().length > 0) {
+                  <p class="muted">
+                    Reinicio de datos de prueba: borra conversaciones, respuestas, evaluaciones y
+                    Markdown; conserva la campania, su configuracion y los usuarios.
+                  </p>
+                  <button
+                    type="button"
+                    class="ghost-button danger"
+                    (click)="reiniciarDatosCampania(campania)"
+                  >
+                    Reiniciar datos de prueba (toda la campania)
+                  </button>
+                }
               </article>
             }
           </div>
@@ -752,6 +785,16 @@ export class CampaniasPage {
         rubricaRef: this.edicion.rubricaRef,
         promptRefs,
         configLLMRef: this.edicion.configLlmRef,
+        // P-10: conserva los cupos actuales y actualiza el presupuesto de tokens de la campaña.
+        configSeguridad: {
+          maxCaracteresMensaje: this.selected()?.configSeguridad?.maxCaracteresMensaje ?? 1500,
+          maxMensajesPorUsuario: this.selected()?.configSeguridad?.maxMensajesPorUsuario ?? 10,
+          maxLlamadasLlmPorUsuario: this.selected()?.configSeguridad?.maxLlamadasLlmPorUsuario ?? 2,
+          presupuestoTokensCampania: Math.max(
+            0,
+            Number(this.edicion.presupuestoTokensCampania) || 0,
+          ),
+        },
       })
       .subscribe({
         next: (campania) => {
@@ -892,6 +935,50 @@ export class CampaniasPage {
     });
   }
 
+  // P-03: reinicio por participante. Confirmacion simple (destruye datos del flujo de ese usuario).
+  reiniciarParticipante(campaniaId: string, participante: ParticipanteCampania) {
+    const nombre = this.nombreUsuario(participante.usuarioId);
+    if (
+      !window.confirm(`Reiniciar la conversacion de ${nombre}? Se borraran sus datos del flujo.`)
+    ) {
+      return;
+    }
+    this.api.reiniciarParticipante(campaniaId, participante.usuarioId, false).subscribe({
+      next: (reporte) => {
+        this.loadParticipantes(campaniaId);
+        this.notificaciones.exito(
+          `Reiniciado ${nombre}: ${reporte.respuestas} respuestas, ${reporte.conversaciones} conversaciones borradas.`,
+        );
+      },
+      error: (err: unknown) => this.reportarError(err),
+    });
+  }
+
+  // P-03: reinicio masivo. Confirmacion fuerte: exige escribir el nombre exacto de la campania.
+  reiniciarDatosCampania(campania: Campania) {
+    const escrito = window.prompt(
+      `Esto borrara los datos de prueba de TODOS los participantes de "${campania.nombre}". ` +
+        `Escribe el nombre de la campania para confirmar:`,
+    );
+    if (escrito === null) {
+      return;
+    }
+    if (escrito.trim() !== campania.nombre) {
+      this.notificaciones.error('El nombre no coincide; no se reinicio nada.');
+      return;
+    }
+    this.api.reiniciarDatosCampania(campania.id, { reiniciarEnvios: false }).subscribe({
+      next: (reporte) => {
+        this.loadParticipantes(campania.id);
+        this.notificaciones.exito(
+          `Campania reiniciada: ${reporte.respuestas} respuestas, ${reporte.conversaciones} conversaciones, ` +
+            `${reporte.participantesReseteados} participantes reseteados.`,
+        );
+      },
+      error: (err: unknown) => this.reportarError(err),
+    });
+  }
+
   private emptyCampaniaForm() {
     return {
       nombre: '',
@@ -900,6 +987,7 @@ export class CampaniasPage {
       rubricaRef: '',
       configLlmRef: '',
       promptEvaluarRef: '',
+      presupuestoTokensCampania: 0,
     };
   }
 
@@ -926,6 +1014,7 @@ export class CampaniasPage {
       rubricaRef: campania.rubricaRef ?? '',
       configLlmRef: campania.configLLMRef ?? '',
       promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
+      presupuestoTokensCampania: campania.configSeguridad?.presupuestoTokensCampania ?? 0,
     };
   }
 
