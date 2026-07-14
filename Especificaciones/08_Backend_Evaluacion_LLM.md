@@ -23,9 +23,17 @@ public interface IEvaluadorLlm
 // Adaptador por proveedor (Infrastructure)
 public interface ILlmClient
 {
-    Task<string> CompletarJsonAsync(LlmRequest request, CancellationToken ct); // devuelve el texto crudo del modelo
+    // P-10 (aditivo): devuelve el texto crudo del modelo + el uso de tokens reportado por el proveedor.
+    Task<LlmRespuesta> CompletarJsonAsync(LlmRequest request, CancellationToken ct);
 }
+public sealed record LlmRespuesta(string Texto, UsoTokensLlm? Uso); // Uso null si el proveedor no lo reporta
 ```
+
+> **P-10 (metering de costo):** el `ILlmClient` parsea el bloque `usage` del proveedor (OpenAI:
+> `prompt_tokens`/`completion_tokens`; Anthropic: `input_tokens`/`output_tokens`) y emite un log
+> estructurado con `campaniaId`+tokens (sin secretos) para alerta de costo. El uso se persiste en la
+> `Evaluacion` (`03 §3.9`, `usoTokens`) y alimenta el presupuesto por campaña (`10 §2`). **El contrato
+> de salida del modelo (`§4`) NO cambia**: los tokens vienen del envoltorio del proveedor, no del JSON.
 
 `ContextoEvaluacion`: `{ Campania, Pregunta, Respuesta (texto), HistorialReciente, Usuario(tags), RubricaSnapshot, PromptSnapshot, ConfigLLMSnapshot }`.
 `ResultadoEvaluacion`: `Exito(Evaluacion)` | `Fallback(EvaluacionParcial, motivo)`.

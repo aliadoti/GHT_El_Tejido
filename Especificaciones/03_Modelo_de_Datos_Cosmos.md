@@ -127,7 +127,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
   "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente." },
-  "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2 },
+  "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
   "actualizadoEn": "2026-06-11T09:00:00Z"
@@ -137,6 +137,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - Solo `activa` permite envío y recepción (`REQ §11.3.1–2`).
 - `promptRefs` y `rubricaRef` a nivel campaña son defaults; cada pregunta puede sobreescribirlos.
 - La pregunta guarda `versionRubrica` para snapshot; la evaluación persistirá la versión efectiva usada.
+- `configSeguridad.presupuestoTokensCampania` (P-10, **aditivo**, default `0` = sin límite): techo de tokens LLM acumulados de toda la campaña; con `Conversacion:CuposHabilitados` activo, al alcanzarlo la campaña se trata como cupo LLM agotado (cierre elegante). Documento viejo sin el campo = comportamiento actual.
 
 ### 3.4 `ParticipanteCampania` (contenedor `participants`) — `REQ §29.4`
 
@@ -272,10 +273,12 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "temas": ["eficiencia"],
   "entidades": ["bodega norte"],
   "anomaliaSeguridad": false,
-  "fecha": "2026-06-11T14:05:10Z"
+  "fecha": "2026-06-11T14:05:10Z",
+  "usoTokens": { "promptTokens": 620, "completionTokens": 180 }
 }
 ```
 - `recomendacion` ∈ `cerrar` | `repreguntar`.
+- `usoTokens` (P-10, **aditivo**, ausente = uso desconocido → suma 0): tokens reportados por el proveedor en la llamada; el costo acumulado de la campaña se deriva sumando este campo sobre las evaluaciones (sin documentos contadores). Ver `Campania.configSeguridad.presupuestoTokensCampania` y `10 §2`.
 - Si la evaluación cayó en fallback (proveedor falló o salida inválida): `estado` de la `Respuesta` = `evaluacionPendiente`, y este documento se guarda con los campos disponibles + `anomaliaSeguridad`/marca de fallo en `explicacion` (ver `08 §6`).
 
 ### 3.10 `ArtefactoMarkdown` (contenedor `responses`) — `REQ §29.14`, `§22`

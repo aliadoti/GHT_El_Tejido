@@ -170,6 +170,23 @@ Asociar por filtro (ejemplo):
 { "filtro": { "area": "Operaciones", "tags": ["t_emp_ght"], "estado": "activo" } }
 ```
 
+#### Reinicio de datos de prueba — `P-03`, `REQ §26`
+> Cambio **aditivo** (dos rutas nuevas). Borra físicamente lo producido por las interacciones
+> (conversaciones, mensajes, respuestas, evaluaciones, artefactos Markdown y su blob) y resetea el
+> estado de los participantes, **conservando** la campaña, su configuración y los usuarios. Habilita
+> repetir las pruebas humanas del flujo sin recrear la campaña (cold-start real, `Reglas §2.1`).
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/api/admin/campanias/{id}/participantes/{usuarioId}/reiniciar` | Reinicia los datos de un participante. Cuerpo opcional `{ "reiniciarEnvios": bool }` (default `false`). |
+| POST | `/api/admin/campanias/{id}/reiniciar-datos` | Reinicia los datos de toda la campaña. Cuerpo opcional `{ "usuarioIds": [..], "reiniciarEnvios": bool }` (`usuarioIds` acota a un subconjunto; vacío/ausente = todos). Gateado por `Seguridad:PermitirReinicioDatos` (default `true`): si está en `false` responde **409 CONFLICT**. |
+
+Ambos responden **200** con el reporte de conteos:
+```json
+{ "conversaciones": 1, "mensajes": 3, "respuestas": 1, "evaluaciones": 1, "artefactos": 1, "blobsBorrados": 1, "blobsFallidos": 0, "participantesReseteados": 1 }
+```
+Reset de participante (`03 §3.4`, campos existentes): `estadoRespuesta=sinRespuesta`, `fechaUltimaRespuesta=null`; con `reiniciarEnvios=true` además `estadoEnvio=pendiente` y `fechaPrimerEnvio=null` (permite re-disparar el envío inicial desde Envíos). La acción queda auditada en `LogSeguridad` (`AccionAdministrativa`) con conteos y `correlationId`; sin PII.
+
 ### 5.4 Envíos — `REQ §15`, `§26.2`
 | Método | Ruta | Descripción |
 |---|---|---|

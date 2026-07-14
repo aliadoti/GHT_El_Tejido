@@ -23,9 +23,10 @@ Servicio `IGuardrails` consumido por el Gateway (`05`) y la Evaluación (`08`). 
 | Máx. repreguntas | 1 (MVP) | No enviar más; cerrar. |
 | Máx. mensajes por usuario/campaña | 10 | `429`/rechazo controlado; registrar. |
 | Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. |
+| **Presupuesto de tokens LLM por campaña (P-10)** | `Campania.configSeguridad.presupuestoTokensCampania` (0 = off) | Con `Conversacion:CuposHabilitados` activo, al alcanzarlo se cierra elegante (cupo LLM agotado) y `LogSeguridad(rateLimit, "presupuesto_tokens_campania")`. Metering: cada llamada emite log de tokens con `campaniaId` (sin secretos) para alerta al 80% en App Insights. |
 | Timeout LLM | 30 s | Reintentar (hasta `maxReintentos`), luego fallback. |
 | Máx. reintentos LLM | 2 | Fallback seguro. |
-| Rate limit por número WhatsApp | p. ej. 10/min | Descartar/encolar con backoff; registrar. |
+| Rate limit por número WhatsApp (P-10) | `Seguridad:RateNumeroWhatsAppPorMinuto` (0 = off) | Ventana deslizante en memoria aplicada antes de resolver el participante; al exceder, **descarte silencioso** + `LogSeguridad(rateLimit, "rate_numero")`. |
 | Rate limit por IP (endpoints públicos) | p. ej. 30/min | `429` con `Retry-After`. |
 | Intentos de login admin | 5 por código | Invalida código; registrar. |
 | Solicitudes de OTP por número | p. ej. 5/hora | Ignora en silencio (respuesta neutra); registrar. |
