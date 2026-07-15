@@ -8,6 +8,7 @@ using ElTejido.Api.WhatsApp;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Reinicio;
+using ElTejido.Application.Usuarios.CargaMasiva;
 using ElTejido.Infrastructure.Configuracion;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,10 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
     builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
+    // I-08: carga masiva de participantes. Lector CSV sin dependencia (Sprint 1a); el puerto admite
+    // sumar un lector .xlsx en Infraestructura mas adelante sin tocar el servicio.
+    builder.Services.AddSingleton<ILectorArchivoParticipantes, LectorCsvParticipantes>();
+    builder.Services.AddScoped<IServicioCargaMasiva, ServicioCargaMasiva>();
 }
 
 builder.Services.AgregarLimitadorTasa(opcionesSeguridad);

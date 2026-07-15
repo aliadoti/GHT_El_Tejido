@@ -1,6 +1,7 @@
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Usuarios;
+using ElTejido.Application.Usuarios.CargaMasiva;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Usuarios;
 using Microsoft.Extensions.Primitives;
@@ -12,6 +13,7 @@ internal static class EndpointsAdminConfiguracion
     private const int PaginaPorDefecto = 1;
     private const int TamanoPaginaPorDefecto = 25;
     private const int TamanoPaginaMaximo = 100;
+    private const long TamanoCargaMasivaPorDefecto = 2 * 1024 * 1024; // 2 MB (I-08 §3.1).
 
     public static IEndpointRouteBuilder MapearEndpointsAdminConfiguracion(this IEndpointRouteBuilder app)
     {
@@ -21,6 +23,10 @@ internal static class EndpointsAdminConfiguracion
         var usuarios = grupo.MapGroup("/usuarios");
         usuarios.MapGet("", ListarUsuariosAsync);
         usuarios.MapPost("", CrearUsuarioAsync);
+        // I-08: carga masiva desde archivo (multipart). El CSRF lo exige el filtro admin (04 §5.1);
+        // se desactiva la antiforgery automatica de forms de minimal API porque el MVP usa el header
+        // X-CSRF-Token propio, no el token antiforgery.
+        usuarios.MapPost("/carga-masiva", CargaMasivaUsuariosAsync).DisableAntiforgery();
         usuarios.MapGet("/{id}", ObtenerUsuarioAsync);
         usuarios.MapPut("/{id}", ActualizarUsuarioAsync);
         usuarios.MapPatch("/{id}/estado", CambiarEstadoUsuarioDesdeRequestAsync);
@@ -77,6 +83,61 @@ internal static class EndpointsAdminConfiguracion
             cancellationToken);
 
         return Results.Created($"/api/admin/usuarios/{usuario.Id}", MapearUsuario(usuario));
+    }
+
+    // I-08 (04 §5.1): sube un archivo (CSV en Sprint 1a) y hace upsert por numero normalizado. El
+    // parseo/validacion por fila viven en el servicio de aplicacion; aqui solo se valida el transporte
+    // (archivo presente, extension .csv, tamano <= limite) y se traduce el reporte a JSON.
+    private static async Task<IResult> CargaMasivaUsuariosAsync(
+        HttpContext contexto,
+        CancellationToken cancellationToken)
+    {
+        var formulario = await contexto.Request.ReadFormAsync(cancellationToken);
+        var archivo = formulario.Files.GetFile("archivo") ?? formulario.Files.FirstOrDefault();
+        if (archivo is null || archivo.Length == 0)
+        {
+            throw new ErrorValidacion(
+                "Debe adjuntar un archivo en el campo 'archivo'.",
+                new[] { new DetalleError("archivo", "obligatorio") });
+        }
+
+        var extension = Path.GetExtension(archivo.FileName);
+        if (!string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ErrorValidacion(
+                "Solo se admite archivo .csv.",
+                new[] { new DetalleError("archivo", "formato_no_soportado") });
+        }
+
+        var limite = contexto.RequestServices.GetRequiredService<IConfiguration>()
+            .GetValue<long?>("Seguridad:CargaMasivaMaxBytes") ?? TamanoCargaMasivaPorDefecto;
+        if (archivo.Length > limite)
+        {
+            throw new ErrorValidacion(
+                $"El archivo excede el limite de {limite} bytes.",
+                new[] { new DetalleError("archivo", "archivo_excede_limite") });
+        }
+
+        var campaniaId = ResolverCampaniaId(contexto, formulario);
+
+        await using var contenido = archivo.OpenReadStream();
+        var reporte = await contexto.RequestServices
+            .GetRequiredService<IServicioCargaMasiva>()
+            .CargarAsync(archivo.FileName, contenido, campaniaId, cancellationToken);
+
+        return Results.Ok(MapearReporteCargaMasiva(reporte));
+    }
+
+    private static string? ResolverCampaniaId(HttpContext contexto, IFormCollection formulario)
+    {
+        var desdeQuery = contexto.Request.Query["campaniaId"].ToString();
+        if (!string.IsNullOrWhiteSpace(desdeQuery))
+        {
+            return desdeQuery.Trim();
+        }
+
+        var desdeForm = formulario["campaniaId"].ToString();
+        return string.IsNullOrWhiteSpace(desdeForm) ? null : desdeForm.Trim();
     }
 
     private static async Task<IResult> ObtenerUsuarioAsync(
@@ -362,6 +423,17 @@ internal static class EndpointsAdminConfiguracion
             usuario.CreadoEn,
             usuario.ActualizadoEn);
 
+    private static ReporteCargaMasivaDto MapearReporteCargaMasiva(ReporteCargaMasiva reporte)
+        => new(
+            reporte.TotalFilas,
+            reporte.Creados,
+            reporte.Actualizados,
+            reporte.Rechazados,
+            reporte.Asociados,
+            reporte.Filas
+                .Select(f => new ResultadoFilaCargaDto(f.Fila, f.Resultado, f.UsuarioId, f.Motivo))
+                .ToArray());
+
     private static TagAdminDto MapearTag(Tag tag)
         => new(
             tag.Id,
@@ -425,6 +497,20 @@ internal static class EndpointsAdminConfiguracion
         string? Descripcion,
         string Estado,
         DateTimeOffset CreadoEn);
+
+    private sealed record ReporteCargaMasivaDto(
+        int TotalFilas,
+        int Creados,
+        int Actualizados,
+        int Rechazados,
+        int Asociados,
+        IReadOnlyCollection<ResultadoFilaCargaDto> Filas);
+
+    private sealed record ResultadoFilaCargaDto(
+        int Fila,
+        string Resultado,
+        string? UsuarioId,
+        string? Motivo);
 
     private sealed record RespuestaPaginada<T>(
         IReadOnlyCollection<T> Items,
