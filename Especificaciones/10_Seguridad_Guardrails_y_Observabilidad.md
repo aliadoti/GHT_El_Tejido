@@ -83,7 +83,9 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`. Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+
+- **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 
 ---
 

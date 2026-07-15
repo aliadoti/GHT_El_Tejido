@@ -380,6 +380,15 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
         await _compilador.Received(1).CompilarAsync(Arg.Any<SolicitudCompilacion>(), Arg.Any<CancellationToken>());
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        // I-01: telemetria de calibracion del cierre anticipado (10 §6.2/§6.4). Escala 1..5, umbral
+        // 0.85 -> valor 4.4; el detalle lleva score y valor de corte, sin PII de texto.
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l =>
+                l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado
+                && l.Resultado == "cierre_anticipado"
+                && l.Detalle!.Contains("score:5", StringComparison.Ordinal)
+                && l.Detalle!.Contains("valor:4.4", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -397,6 +406,10 @@ public sealed class OrquestadorConversacionTests
         await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
         await _gateway.DidNotReceive().EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
         _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+        // I-01: por debajo del umbral no se emite la telemetria de cierre anticipado.
+        await _logSeguridad.DidNotReceive().RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

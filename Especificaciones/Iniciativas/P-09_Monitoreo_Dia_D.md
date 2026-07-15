@@ -26,6 +26,18 @@ Parcial: `TrabajadorWebhook` ya loguea estados de entrega (`sent/delivered/read/
    (`SegmentacionIdeas`, `tejidoColectivo`, `UmbralCierreAnticipado`, cupos) y el procedimiento de
    rollback. Nunca hotfix en caliente el 10-ago.
 
+### 3.4 Acta de flags del día-D (6-ago) — decisión registrada, no omisión
+Cada flag queda **ON solo si pasó** su precondición (calibración/carga/UAT/costo); en el acta se marca
+la decisión explícita (evita que una activación se quede implícita en un runbook). Rollback de todos:
+poner el valor en `0`/`false` sin redeploy (App Setting), coherente con el runbook §3.3.
+
+- [ ] **`Conversacion:SegmentacionIdeas` (I-06 multi-idea)** — ON/OFF. Precondición: carga + UAT + costo.
+- [ ] **`tejidoColectivo` por campaña (I-09/I-10)** — ON/OFF. Precondición: carga + UAT + costo + consentimiento (P-07).
+- [ ] **`Conversacion:UmbralCierreAnticipado` (I-01)** — valor/OFF. Precondición: **rúbrica I-11 congelada
+  (18-jul)** + **corrido D5 real** + valor elegido (P85–P90). Regla D2: no aflojar el tope determinístico
+  de revisiones hasta que los cupos P-10 estén activos en producción. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md`.
+- [ ] **Cupos/costo P-10** (`Conversacion:CuposHabilitados`, presupuesto por campaña, rate por número) — activos y dimensionados.
+
 ## 4. Criterios de aceptación
 - El workbook queda validado en la semana de pruebas (ensayo de monitoreo, T-41).
 - El día del envío se ve en tiempo casi real cuántos mensajes salieron, cuántos se entregaron y

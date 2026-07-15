@@ -71,8 +71,14 @@
   cola/jobs/RU); I-10 flag por campaña; I-12 seed thoughts embebidos; I-13 decisión; I-14 tags;
   P-07 consentimiento; P-10 restante (costo LLM + rate por número); resiliencia LLM (D6).
 - **Pruebas (4–8 ago):** UAT conjunta Felipe/Munir/Jason; calibración con el banco como árbitro;
-  P-09 workbook + runbook; **acta de flags del día-D (6-ago)**: multi-idea y tejido solo quedan ON
-  si pasaron carga + UAT + costo.
+  P-09 workbook + runbook; **acta de flags del día-D (6-ago)**: multi-idea, tejido **y el umbral de
+  cierre I-01** solo quedan ON si pasaron carga + UAT + costo (checklist en `P-09 §3.4`).
+- **Activar + calibrar umbral I-01 en staging (op humana, ventana Pruebas):** precondición: **rúbrica
+  I-11 congelada (18-jul)** + **corrido D5 real** contra staging. Pasos: elegir el valor sobre la
+  distribución de scores del banco (P85–P90 conservador), flip del App Setting
+  `Conversacion__UmbralCierreAnticipado`, verificar vía `LogSeguridad(CierreUmbralAnticipado)` en App
+  Insights, y llevar la decisión on/off al **acta de flags del día-D (6-ago)**. Responsable: humano/ops.
+  Ver `Especificaciones/Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **Freeze (8–9 ago):** code freeze; carga real (I-08); dry-run E2E; congelar rúbrica/prompts/seeds.
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según
   runbook, nunca hotfix en caliente.

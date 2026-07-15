@@ -241,6 +241,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         // Cierre: retro + agradecimiento en un solo mensaje (tipo Cierre). Si cerro por calificacion
         // alta se intercala una felicitacion para que el corte temprano se sienta natural.
+        if (calificacionAlta)
+        {
+            var escala = contexto.Contexto.RubricaSnapshot.Escala;
+            await RegistrarCierreUmbralAsync(
+                usuario, evaluacion.CalificacionTotal, ValorUmbral(escala), escala, ahora, cancellationToken);
+        }
+
         var cierreFinal = calificacionAlta
             ? Combinar(
                 TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
@@ -415,10 +422,38 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return false;
         }
 
-        var fraccion = (decimal)Math.Min(_umbralCierreAnticipado, 1.0);
-        var valorUmbral = escala.Min + (fraccion * (escala.Max - escala.Min));
-        return calificacionTotal >= valorUmbral;
+        return calificacionTotal >= ValorUmbral(escala);
     }
+
+    /// <summary>Valor absoluto del umbral en la escala de la rubrica (fraccion acotada a [0,1]).</summary>
+    private decimal ValorUmbral(EscalaRubrica escala)
+    {
+        var fraccion = (decimal)Math.Min(_umbralCierreAnticipado, 1.0);
+        return escala.Min + (fraccion * (escala.Max - escala.Min));
+    }
+
+    // I-01: telemetria de calibracion del cierre anticipado. Se registra en LogSeguridad (consultable,
+    // 10 §6.2/§6.4) cada vez que el umbral dispara, con el score y el valor de corte (sin PII de texto).
+    // Permite dimensionar el umbral en staging: cuantos cierres tempranos y a que calificacion.
+    private Task RegistrarCierreUmbralAsync(
+        Usuario usuario,
+        decimal calificacionTotal,
+        decimal valorUmbral,
+        EscalaRubrica escala,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.CierreUmbralAnticipado,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                "cierre_anticipado",
+                FormattableString.Invariant(
+                    $"umbral:{_umbralCierreAnticipado:0.###};score:{calificacionTotal};valor:{valorUmbral};escala:{escala.Min}-{escala.Max}"),
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
 
     private async Task CerrarPorConfiguracionNoDisponibleAsync(
         DominioConversacion conversacion,
