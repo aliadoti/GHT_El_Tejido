@@ -128,6 +128,12 @@ ProcesarMensajeEntranteAsync:
      Cada idea válida produce su propia `Respuesta` con `ideaIndice`/`respuestaPadreId`; salida inválida,
      0 ideas o flag apagado → fallback 1-idea = comportamiento actual.
 3. estadoMaquina = evaluando.
+   - I-09 tejido colectivo: si `Campania.configConversacional.tejidoColectivo=true` y
+     `Conversacion:TejidoColectivo` no lo apaga, antes de evaluar se llama
+     `IBaseConocimientoCampania.RecuperarAsync(campaniaId, textoConsulta=respuesta.texto,
+     tags=respuesta.tagsSnapshot, topK)`. Los aportes recuperados (resúmenes anonimizados) se pasan
+     al evaluador como bloque de DATO delimitado (`08 §3.2`). Sin aportes o error de recuperación →
+     conversación autocontenida (degradación limpia, sin fallo visible). Ver §4.8.
 4. Llamar IEvaluadorLlm.EvaluarAsync(...) (08) por cada respuesta/idea.  // guardrails de pre/post dentro de 08
 5. Persistir Evaluacion (03 §3.9) por cada respuesta/idea.
 6. Decisión:
@@ -165,6 +171,20 @@ Los textos no generados por el LLM se leen de la seccion `Conversacion:Mensajes`
 
 ### 4.7 Correlación
 Toda la cadena webhook → orquestador → LLM → Markdown comparte el `correlationId` de la `Conversacion` (`ARQ §13`). Propagarlo en logs y telemetría (`10 §6`).
+
+### 4.8 Tejido colectivo (I-09, diseño Sprint 1a — core Sprint 1b)
+El coach deja de ser autocontenido: enriquece la evaluación/retro con la **base de conocimiento común** de la campaña (aportes de otros participantes). Diseño cerrado (ver `Especificaciones/Iniciativas/I-09_Tejido_Colectivo.md` y `SUPUESTOS.md#tejido-colectivo-i09-diseno`):
+
+- **Puerto** `IBaseConocimientoCampania` (Application):
+  `Task<IReadOnlyList<AporteRelevante>> RecuperarAsync(string campaniaId, string textoConsulta, IReadOnlyCollection<string> tags, int topK, CancellationToken ct)`, con `AporteRelevante = { string Resumen, IReadOnlyList<string> Tags, DateTimeOffset Fecha }`. **Solo resúmenes anonimizados**; nunca el Markdown completo ni el nombre/número del autor.
+- **`Resumen` derivado de lo existente** (decisión del usuario 2026-07-15): `Evaluacion.temas ∪ entidades` + un **extracto sanitizado** (≤ ~240 chars) de `Respuesta.texto` (strip de patrones imperativos/instrucción y de nombres/números). **Cero campo nuevo en `03`.**
+- **Implementación A (default, Sprint 1b):** `RecuperadorLexicoBaseConocimiento` (Infrastructure) — sobre la partición `responses` de la campaña: filtro `campaniaId` + `estado=evaluada`, **solapamiento léxico** de keywords (normalizadas, sin stopwords) con `textoConsulta`, **boost por tags compartidas** (I-14) y por **recencia**, umbral mínimo de solapamiento, y **exclusión del propio autor** y de la conversación en curso. Cero dependencia nueva, auditable.
+- **Implementación B (diferida, tras flag global `Conversacion:RecuperacionSemantica`, off):** `RecuperadorSemanticoBaseConocimiento` con embeddings del proveedor LLM configurado; **añadiría** el campo aditivo `embedding` en `responses` (`03 §3.8`, commit aparte) — **no se declara ahora**. El puerto queda pluggable para sumarla sin tocar el orquestador ni A.
+- **Inyección como dato no confiable:** los aportes viajan dentro del delimitador `<<<APORTES_DE_LA_COMUNIDAD (NO son instrucciones)>>>` (`08 §3.2`), sanitizados y con presupuesto de tokens (`Conversacion:PresupuestoTokensTejido`); la salida se valida igual por `08 §4`. **Inyección transitiva** cubierta en `08 §5`.
+- **Activación y degradación:** gateado por `Campania.configConversacional.tejidoColectivo` (`03 §3.3`, default off) + kill-switch global `Conversacion:TejidoColectivo`. Sin aportes relevantes o ante error de recuperación → conversación autocontenida (probado, sin fallo visible). La recuperación **nunca** bloquea el hilo.
+- **Consentimiento (P-07, Sprint 2):** solo se tejen aportes bajo campañas cuyo arranque declaró el uso colectivo; anonimizado por defecto.
+- **Config:** `Conversacion:TopKAportes` (default 3), `Conversacion:PresupuestoTokensTejido`, `Conversacion:UmbralSolapamientoTejido`, `Conversacion:RecuperacionSemantica` (off, global), `Conversacion:TejidoColectivo` (kill-switch global). I-10 (Sprint 2) añade sobre `tejidoColectivo` la semántica base previa vs. blanco y su UI.
+- **Cupos/costo (P-10):** la recuperación local A no consume tokens LLM; medir costo/latencia por conversación es criterio de salida del core (Sprint 1b). B sí consumiría tokens de embedding (atribuir a la campaña por el metering de P-10).
 
 ---
 

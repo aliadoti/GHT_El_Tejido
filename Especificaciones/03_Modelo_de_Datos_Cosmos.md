@@ -126,7 +126,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "tejidoColectivo": false },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -139,6 +139,8 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - La pregunta guarda `versionRubrica` para snapshot; la evaluación persistirá la versión efectiva usada.
 - `configSeguridad.presupuestoTokensCampania` (P-10, **aditivo**, default `0` = sin límite): techo de tokens LLM acumulados de toda la campaña; con `Conversacion:CuposHabilitados` activo, al alcanzarlo la campaña se trata como cupo LLM agotado (cierre elegante). Documento viejo sin el campo = comportamiento actual.
 - `configConversacional.segmentacionIdeas` (I-06, **aditivo**, default `false`): habilita que una respuesta con varias ideas se segmente en N `Respuesta`/`Evaluacion`/Markdown. Documento viejo sin el campo = comportamiento 1-idea actual. El kill-switch global `Conversacion:SegmentacionIdeas=false` lo anula para todas las campañas.
+- `configConversacional.tejidoColectivo` (I-09, **aditivo**, default `false`): habilita el **tejido colectivo** — el coach recupera e inyecta (como dato no confiable delimitado, `08 §3.2`) resúmenes **anonimizados** de aportes de otros participantes de la misma campaña antes de evaluar/retroalimentar. Documento viejo sin el campo = conversación autocontenida (comportamiento actual). Gateado además por el kill-switch operativo global `Conversacion:TejidoColectivo=false`. I-10 (Sprint 2) añade sobre este mismo campo la semántica *base previa vs. blanco* y su UI. Requiere consentimiento de uso colectivo declarado en el arranque de la campaña (P-07). Ver `SUPUESTOS.md#tejido-colectivo-i09-diseno`.
+- `configConversacional.umbralCierreAnticipado` (P-13, **aditivo**, default **ausente/null**): **override por campaña** del umbral de cierre anticipado por calificación alta (`05 §4.4`; fracción de la escala de la rúbrica en `[0,1]`, `<= 0` lo desactiva para esa campaña). Ausente/null = la campaña **hereda** el global `Conversacion:UmbralCierreAnticipado` (comportamiento actual). El global permanece como default de sistema y kill-switch de operación; la resolución efectiva es `campaña ?? global`. Documento viejo sin el campo = usa el global. Ver `Iniciativas/P-13_Umbral_Cierre_Por_Campania.md`.
 
 ### 3.4 `ParticipanteCampania` (contenedor `participants`) — `REQ §29.4`
 

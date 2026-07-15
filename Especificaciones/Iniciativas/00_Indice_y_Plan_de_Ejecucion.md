@@ -17,7 +17,7 @@
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | Pendiente                                                                                                               |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Diseño DONE 2026-07-15**; implementación pendiente Sprint 1b (gran apuesta)                                           |
 | I-08 | [I-08_Carga_Masiva_Participantes.md](I-08_Carga_Masiva_Participantes.md)                                                                                                                                                                             | S1a backend / S1b UI  | Pendiente                                                                                                               |
-| I-09 | [I-09_Tejido_Colectivo.md](I-09_Tejido_Colectivo.md)                                                                                                                                                                                                 | S1a diseño / S1b core | Pendiente (gran apuesta)                                                                                                |
+| I-09 | [I-09_Tejido_Colectivo.md](I-09_Tejido_Colectivo.md)                                                                                                                                                                                                 | S1a diseño / S1b core | **Diseño DONE 2026-07-15**; core pendiente Sprint 1b (gran apuesta; `IBaseConocimientoCampania` + recuperación léxica A + inyección delimitada) |
 | I-10 | [I-10_Flag_Base_Previa_vs_Blanco.md](I-10_Flag_Base_Previa_vs_Blanco.md)                                                                                                                                                                             | Sprint 2              | Pendiente (depende I-09)                                                                                                |
 | I-12 | [I-12_Seed_Thoughts.md](I-12_Seed_Thoughts.md)                                                                                                                                                                                                       | Sprint 2              | Pendiente (insumo Felipe 18-jul)                                                                                        |
 | I-16 | [I-16_Fix_Calificacion_Markdown.md](I-16_Fix_Calificacion_Markdown.md)                                                                                                                                                                               | Sprint 1a             | **DONE 2026-07-15** (Markdown usa la evaluación más reciente por `fecha`; regresión determinística verde)               |
@@ -30,6 +30,7 @@
 | P-06 | [P-06_Destilacion_Por_Lotes.md](P-06_Destilacion_Por_Lotes.md)                                                                                                                                                                                       | Post-convención       | Diferida                                                                                                                |
 | P-08 | [P-08_Recordatorios_Nudges.md](P-08_Recordatorios_Nudges.md)                                                                                                                                                                                         | Rama deseable         | Diferida                                                                                                                |
 | P-11 | [P-11_Informe_Consolidado.md](P-11_Informe_Consolidado.md)                                                                                                                                                                                           | Rama deseable / post  | Diferida                                                                                                                |
+| P-13 | [P-13_Umbral_Cierre_Por_Campania.md](P-13_Umbral_Cierre_Por_Campania.md)                                                                                                                                                                             | post-Hito (adelantable S1b) | **Diseño DONE 2026-07-15**; impl pendiente (override `configConversacional.umbralCierreAnticipado` por campaña; global sigue como default/kill-switch) |
 
 ### 1.2 Omitidas (no se implementan en código) — con el porqué
 
@@ -60,8 +61,8 @@
   **1.º P-03 sistema de reinicio de datos** (decisión del usuario 2026-07-13: sin él, cada prueba
   humana de las demás iniciativas exige limpiar Cosmos a mano — es el multiplicador de velocidad
   de todo el Hito); 2.º cerrar P-10 cupos (verificar/commit); luego banco de calibración (D5);
-  I-16 (fix, visible en demo); I-08 backend; diseño I-06 **DONE 2026-07-15**; sigue diseño I-09 (½ día);
-  activar I-01 en staging.
+  I-16 (fix, visible en demo); I-08 backend; diseño I-06 **DONE 2026-07-15**; diseño I-09 **DONE
+  2026-07-15**; sigue activar I-01 en staging.
 - **Sprint 1b (21–25 jul) — desarrollo mayor tras flags:** I-06 implementación + pruebas de no
   determinismo; I-09 recuperación top-k + inyección delimitada; I-05 parafraseo; I-08 UI;
   I-03 prompts sobre rúbrica congelada. Criterio de salida: I-06/I-09 funcionales en staging bajo
@@ -75,13 +76,14 @@
 - **Freeze (8–9 ago):** code freeze; carga real (I-08); dry-run E2E; congelar rúbrica/prompts/seeds.
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según
   runbook, nunca hotfix en caliente.
-- **Post:** P-04, P-11, P-08, P-06, P-05, I-15, P-12 en rama de deseables.
+- **Post:** P-04, P-11, P-08, P-06, P-05, I-15, P-12, **P-13** (override umbral por campaña; diseño
+  DONE, adelantable a S1b) en rama de deseables.
 
 ## 3. Dependencias duras (ruta crítica)
 
 `P-01/P-02 (Meta)` → `I-11 (rúbrica)` → `I-03` · `I-12 (seeds)` → `I-04/I-13` ·
-`P-10 cupos` → `I-01 (activar)` · `I-09` → `I-10` → (post: `P-05/P-06/P-11`) ·
-`I-08` → carga real del freeze · `P-07` → apertura a participantes reales.
+`P-10 cupos` → `I-01 (activar)` → `P-13 (override umbral por campaña)` · `I-09` → `I-10` →
+(post: `P-05/P-06/P-11`) · `I-08` → carga real del freeze · `P-07` → apertura a participantes reales.
 
 ## 4. Parametrización por campaña (análisis 2026-07-13, decisión del usuario: no perder flexibilidad)
 
@@ -108,7 +110,7 @@
 
 | Iniciativa | Campo de campaña | "Apagado" natural |
 |---|---|---|
-| I-09/I-10 tejido colectivo | `tejidoColectivo` (bool, default `false`) | `false` = conversación autocontenida |
+| I-09/I-10 tejido colectivo | `tejidoColectivo` (bool, default `false`) — **declarado por I-09** en `configConversacional` (diseño 2026-07-15); I-10 añade base-previa-vs-blanco + UI | `false` = conversación autocontenida |
 | I-12 seed thoughts | `seedThoughts` (texto/lista, default vacío) | **vacío = la campaña no los tiene** (el ejemplo del usuario) |
 | I-06 multi-idea | `segmentacionIdeas` (bool, default `false`) — **por campaña** (spec I-06 ajustada 2026-07-13; antes era solo flag global) | `false` = modo 1-idea |
 
@@ -117,7 +119,7 @@
 | Iniciativa | Propuesta | Nota |
 |---|---|---|
 | I-05 parafraseo | `parafraseo` (bool) en `ConfigConversacional` | Una campaña formal/corta puede no quererlo; si no se agrega el campo, queda global-on con degradación por campo LLM ausente |
-| I-01 umbral de cierre | `umbralCierreAnticipado` por campaña/pregunta | Decisión vigente del plan (§12.2): **global para el Hito 1**, granularidad post-go-live |
+| I-01 umbral de cierre | `umbralCierreAnticipado` por campaña — **formalizado como spec [P-13](P-13_Umbral_Cierre_Por_Campania.md)** (diseño DONE 2026-07-15) | Decisión vigente del plan (§12.2): **global para el Hito 1**, granularidad post-go-live (P-13, adelantable a S1b para simplificar la calibración de I-01). Patrón: default global + override por campaña (`campaña ?? global`) |
 | P-08 nudges | `nudgesHabilitados` + plantilla por campaña | Post; requiere plantilla HSM aprobada |
 | P-02 plantilla de inicio | `MensajeInicial.PlantillaWhatsApp` ya existe en el dominio | Alternativa descartada en su momento (invariante crítico en operación manual); retomar solo si ARMA exige plantillas distintas |
 | Textos conversacionales (I-07) | `Conversacion:Mensajes:*` por campaña | Bajo valor hoy (un solo idioma/tono); post |

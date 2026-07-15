@@ -170,6 +170,22 @@ se pensaron para una campaña de una pregunta). El techo 3 es independiente del 
 Regla del equipo (D2): **no se retira el tope determinístico de revisiones (I-01) hasta que estos cupos
 estén activos en producción.**
 
+### 2.9 Tejido colectivo (I-09, diseño Sprint 1a — core Sprint 1b)
+Cuando la campaña tiene `configConversacional.tejidoColectivo=true` y el kill-switch global
+`Conversacion:TejidoColectivo` no está apagado, el coach **deja de ser autocontenido**: antes de
+evaluar/retroalimentar, recupera resúmenes **anonimizados** de aportes de otros participantes de la
+**misma campaña** (relevantes por solapamiento de tema y tags) y los teje en la conversación. El
+participante nunca ve nombres ni números de terceros; solo percibe un coach que conecta su aporte con
+lo que otros han dicho. Reglas duras de esta función:
+
+- Los aportes entran al modelo como **dato no confiable delimitado** (`08 §3.2`), nunca como
+  instrucción; se sanitizan y se acotan por presupuesto de tokens (inyección transitiva, `08 §5.9`).
+- **Anonimización obligatoria:** solo `temas/entidades` + un extracto sanitizado del texto; jamás el
+  autor. Solo se teje bajo campañas con consentimiento de uso colectivo (P-07).
+- **Degradación limpia:** si no hay aportes relevantes o falla la recuperación, la conversación es
+  **autocontenida** (modo probado), sin fallo visible. La recuperación nunca bloquea el hilo.
+- **Apagado por defecto:** `tejidoColectivo=false` por campaña → autocontenido, sin redeploy.
+
 ## 3. Parámetros configurables
 
 | Parámetro | Dónde se configura | Default | Efecto |
@@ -195,6 +211,12 @@ estén activos en producción.**
 | `Conversacion:SegmentacionIdeas` | App config / env `Conversacion__SegmentacionIdeas` | `true` | Kill-switch global de I-06. `true` respeta la campaña; `false` apaga multi-idea para todas las campañas sin redeploy. |
 | `Conversacion:MaxIdeasPorMensaje` | App config / env `Conversacion__MaxIdeasPorMensaje` | 5 | Máximo de ideas segmentadas por mensaje; excedentes se ignoran y se registra anomalía sin PII. |
 | `Conversacion:LongitudMinimaIdea` | App config / env `Conversacion__LongitudMinimaIdea` | 30 | Fragmentos más cortos se descartan para evitar sobre-fragmentación trivial. |
+| `configConversacional.tejidoColectivo` | Portal admin (campaña) | `false` | Habilita I-09 para esa campaña: el coach teje aportes anonimizados de otros participantes (§2.9). Campo ausente = `false` (autocontenido). |
+| `Conversacion:TejidoColectivo` | App config / env `Conversacion__TejidoColectivo` | `true` | Kill-switch global de I-09. `true` respeta la campaña; `false` apaga el tejido para todas sin redeploy. |
+| `Conversacion:TopKAportes` | App config / env `Conversacion__TopKAportes` | 3 | Máximo de aportes recuperados que se tejen por turno. |
+| `Conversacion:PresupuestoTokensTejido` | App config / env `Conversacion__PresupuestoTokensTejido` | (por definir en el core) | Presupuesto de tokens del bloque de aportes; se trunca antes de armar el prompt (respeta `maxPrompt`). |
+| `Conversacion:UmbralSolapamientoTejido` | App config / env `Conversacion__UmbralSolapamientoTejido` | (por definir en el core) | Solapamiento léxico mínimo para considerar relevante un aporte; por debajo → no se teje. |
+| `Conversacion:RecuperacionSemantica` | App config / env `Conversacion__RecuperacionSemantica` | `false` (**global, diferido**) | Opción B de I-09 (embeddings). Off en el Hito; su activación añadiría el campo `embedding` en `responses` (`03 §3.8`, commit aparte). |
 | `maxMensajesPorUsuario` / `maxLlamadasLlmPorUsuario` (campaña) | Portal admin (campaña, `configSeguridad`) | 10 / 2 | Cupos por usuario dentro de la campaña (§2.8); solo se aplican con `CuposHabilitados=true`. |
 | `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo. Recomendado p. ej. `72`. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
