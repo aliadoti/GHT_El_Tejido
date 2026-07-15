@@ -122,3 +122,6 @@ $RECYCLE.BIN/
 
 # Local agent/tool state
 .claude/
+
+# D5 banco de calibración: salida de corridos (reportes por timestamp; el baseline SÍ se versiona)
+tests/Calibracion/salida/

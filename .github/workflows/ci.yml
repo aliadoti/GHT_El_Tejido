@@ -17,7 +17,9 @@ jobs:
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release -warnaserror
       - run: dotnet format --verify-no-changes
-      - run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage"
+        # D5: el runner del banco de calibración (Category=Calibracion) llama al LLM real y cuesta
+        # dinero; se excluye del CI. El agregador/comparador SÍ corren (mockeados, verde en CI).
+      - run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --filter "Category!=Calibracion"
 
   frontend:
     runs-on: ubuntu-latest

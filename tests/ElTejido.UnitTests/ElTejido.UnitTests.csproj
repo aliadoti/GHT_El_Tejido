@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\ElTejido.Application\ElTejido.Application.csproj" />
     <ProjectReference Include="..\..\src\ElTejido.Infrastructure\ElTejido.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\ElTejido.Api\ElTejido.Api.csproj" />
+    <ProjectReference Include="..\..\src\ElTejido.Calibracion\ElTejido.Calibracion.csproj" />
   </ItemGroup>
 
 </Project>

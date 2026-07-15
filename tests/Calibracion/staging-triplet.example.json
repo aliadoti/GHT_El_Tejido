@@ -1,0 +1,40 @@
+{
+  "_comentario": "Plantilla de la tripleta de staging para el runner del banco de calibración (D5). COPIA este archivo, ajústalo a la campaña de staging y apúntale CALIBRACION_CONFIG. NO contiene secretos: la API key va SIEMPRE por la variable de entorno CALIBRACION_API_KEY (equivalente local de Key Vault). 'apiKeyRef' es solo el nombre canónico del secreto.",
+  "proveedor": "OpenAI",
+  "endpoint": "https://openrouter.ai/api/v1",
+  "modelo": "openai/gpt-4o-mini",
+  "apiKeyRef": "llm-key",
+  "parametros": { "temperature": 0.2 },
+  "maxPromptTokens": 6000,
+  "maxCompletionTokens": 800,
+  "timeoutSegundos": 30,
+  "maxReintentos": 2,
+  "n": 3,
+  "precio": { "porMilPrompt": 0.15, "porMilCompletion": 0.60 },
+  "campania": {
+    "id": "c_staging",
+    "nombre": "Campaña de staging",
+    "objetivo": "Recoger ideas de mejora del equipo"
+  },
+  "pregunta": {
+    "id": "p_1",
+    "texto": "¿Qué cambiarías para que el equipo aprenda más rápido de sus errores?"
+  },
+  "rubrica": {
+    "id": "r_general",
+    "version": 3,
+    "escalaMin": 1,
+    "escalaMax": 5,
+    "markdown": "# Rúbrica\n- Claridad: la idea se entiende.\n- Concreción: es accionable y específica.\n- Impacto: mejora algo relevante.",
+    "criterios": [
+      { "nombre": "claridad", "peso": 0.34 },
+      { "nombre": "concrecion", "peso": 0.33 },
+      { "nombre": "impacto", "peso": 0.33 }
+    ]
+  },
+  "prompt": {
+    "id": "pr_eval",
+    "version": 5,
+    "contenido": "Eres un evaluador de ideas para una convención de mejora. Evalúa la respuesta del participante contra la rúbrica y devuelve solo el JSON pedido."
+  }
+}

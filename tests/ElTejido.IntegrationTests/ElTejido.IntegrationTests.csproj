@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ElTejido.Api\ElTejido.Api.csproj" />
+    <ProjectReference Include="..\..\src\ElTejido.Calibracion\ElTejido.Calibracion.csproj" />
   </ItemGroup>
 
 </Project>

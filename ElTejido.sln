@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElTejido.UnitTests", "tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElTejido.IntegrationTests", "tests\ElTejido.IntegrationTests\ElTejido.IntegrationTests.csproj", "{85E9BC2F-9BEF-4F66-ADDD-DE8D5347676B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ElTejido.Calibracion", "src\ElTejido.Calibracion\ElTejido.Calibracion.csproj", "{099150C0-0B25-43EE-9043-551642470956}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -99,6 +101,18 @@ Global
 		{85E9BC2F-9BEF-4F66-ADDD-DE8D5347676B}.Release|x64.Build.0 = Release|Any CPU
 		{85E9BC2F-9BEF-4F66-ADDD-DE8D5347676B}.Release|x86.ActiveCfg = Release|Any CPU
 		{85E9BC2F-9BEF-4F66-ADDD-DE8D5347676B}.Release|x86.Build.0 = Release|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Debug|x64.Build.0 = Debug|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Debug|x86.Build.0 = Debug|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Release|Any CPU.Build.0 = Release|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Release|x64.ActiveCfg = Release|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Release|x64.Build.0 = Release|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Release|x86.ActiveCfg = Release|Any CPU
+		{099150C0-0B25-43EE-9043-551642470956}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -110,5 +124,6 @@ Global
 		{372A49E6-D9FA-4941-8BA5-0E2DEAE2C9B9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{7A2C8B78-30F1-4C58-B603-BCA42312E813} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{85E9BC2F-9BEF-4F66-ADDD-DE8D5347676B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{099150C0-0B25-43EE-9043-551642470956} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
