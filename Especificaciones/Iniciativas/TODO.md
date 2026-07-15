@@ -9,7 +9,7 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-**Vas a implementar una iniciativa concreta del backlog: `ID-INICIATIVA=I-16`** (fix de calificación en Markdown). No es un desarrollo desde cero: continúas un MVP vivo. **Contexto (Sprint 1a, ya HECHO y verificado en backend — 294 pruebas .NET en verde):** `P-03` reinicio de datos (`SUPUESTOS.md#reinicio-datos`), `P-10` completo — cupos (`#guardrails-cupos-conversacion`), rate por número (`#rate-numero-entrante`) y costo LLM por campaña (`#cupo-costo-llm`). **Tu objetivo ahora es `I-16`** (spec `Especificaciones/Iniciativas/I-16_Fix_Calificacion_Markdown.md`): primero **reproduce/verifica** el bug de la calificación que aparece en el artefacto Markdown, escribe una prueba que lo capture, corrígelo y confírmalo. Paralelamente, el plan pide el **banco de calibración (D5)** como golden set/regresión para las iniciativas con LLM (no es "código" de feature, es un activo de calibración; ver plan §2). El sub-paso de conteo multi-idea de P-10 sigue **diferido hasta que exista I-06**. Sin cambio de contratos salvo que sea aditivo con default seguro y su commit de spec aparte.
+**Vas a implementar la iniciativa objetivo de este TODO: `ID-INICIATIVA=D5` (banco de calibración de prompts). AGENTE ASIGNADO: `Codex`.** No es un desarrollo desde cero: continúas un MVP vivo. **Contexto (Sprint 1a, ya HECHO y verificado en backend — 294 pruebas .NET en verde, committeado):** `P-03` reinicio de datos (`SUPUESTOS.md#reinicio-datos`), `P-10` completo — cupos (`#guardrails-cupos-conversacion`), rate por número (`#rate-numero-entrante`) y costo LLM por campaña (`#cupo-costo-llm`). **Tu objetivo ahora es `D5`** (spec `Especificaciones/Iniciativas/D5_Banco_Calibracion.md`): golden set de 20–30 respuestas (reales anonimizadas + sintéticas: multi-idea, texto corto, hostil con instrucciones embebidas, "no quiero seguir") + harness que lo corre N veces contra el `ILlmClient` real de staging y reporta distribución de scores por eje, decisión cerrar/repreguntar, % de JSON inválido, ideas y **tokens/costo** (usa el metering de P-10); baseline congelado + comparador de regresión; el runner que llama al LLM real queda **opt-in fuera de CI** (cuesta dinero), y el **agregador/comparador se prueba mockeado y verde en CI**. Sin cambio de contratos `03`/`04`/`08 §4`. **Rotación de agentes: al terminar D5, deja este TODO listo para el siguiente ítem según §4 (I-16 → Claude), siguiendo el orden y la alternancia Codex/Claude.**
 
 ---
 
@@ -78,16 +78,40 @@ No rediseñes la arquitectura: está **aprobada**. Respeta lo excluido (`REQ §6
 
 El orden y las ventanas salen de `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md §2` (Cronograma + decisiones D1–D9) y de las **dependencias duras** de `§3`. No arranques una iniciativa cuya dependencia no esté lista.
 
-- **Sprint 1a (14–18 jul) — reinicio de datos primero, luego guardrails y prompts:**
-  ~~1.º `P-03` sistema de reinicio de datos~~ **(HECHO 2026-07-13, backend verde; portal pendiente por Node)**; ~~2.º `P-10` cupos + rate por número + costo LLM por campaña~~ **(HECHO 2026-07-14, backend verde 294)**; **AHORA: banco de calibración (D5) + `I-16`** (fix de calificación en Markdown, objetivo de este TODO); luego **`I-08` backend** (carga masiva); diseños revisados de `I-06` y `I-09` (½ día c/u); activar `I-01` en staging.
-- **Sprint 1b (21–25 jul) — desarrollo mayor tras flags:** `I-06` (multi-idea) implementación + pruebas de no determinismo; `I-09` (tejido colectivo) recuperación top-k + inyección delimitada; `I-05` parafraseo; `I-08` UI; **`I-03`** prompts sobre rúbrica congelada (`I-11`). Criterio de salida: `I-06`/`I-09` funcionales en staging bajo flag, costo por conversación medido.
-- **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7); `I-10` flag por campaña; `I-12` seed thoughts; `I-13` decisión agnóstica-vs-tailored; `I-14` tags; `P-07` consentimiento; `P-10` restante (costo LLM + rate por número); resiliencia LLM (D6).
-- **Pruebas (4–8 ago):** UAT conjunta; calibración con el banco como árbitro; `P-09` workbook + runbook; acta de flags del día-D (6-ago).
-- **Freeze (8–9 ago):** code freeze; carga real (`I-08`); dry-run E2E; congelar rúbrica/prompts/seeds.
-- **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
-- **Post (rama de deseables):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12`.
+**Orden canónico de implementación + rotación de agentes (decisión del usuario 2026-07-14).** Se
+implementa **un ítem a la vez**, **en este orden**, alternando agente: **Codex y Claude se turnan**
+(empezando por Codex en `D5`). Cada agente, al terminar su ítem, marca su fila `DONE`, **reescribe la
+cabecera de este TODO y `§8` para apuntar al siguiente ítem pendiente y su agente**, y hace el handoff
+por `AVANCES.md`. No arranques un ítem cuya dependencia dura (§3) no esté lista.
 
-**Dependencias duras (ruta crítica):** `P-01/P-02 (Meta)` → `I-11 (rúbrica)` → `I-03` · `I-12 (seeds)` → `I-04/I-13` · `P-10 cupos` → `I-01 (activar)` · `I-09` → `I-10` · `I-08` → carga real del freeze · `P-07` → apertura a participantes reales.
+| # | Ítem | Ventana | Agente | Estado |
+|---|---|---|---|---|
+| 1 | `P-03` reinicio de datos | Sprint 1a | Claude | **DONE** (2026-07-13/14; backend verde, committeado; portal verificado Node 24) |
+| 2 | `P-10` cupos + rate por número + costo LLM | Sprint 1a | Claude | **DONE** (2026-07-14; backend verde 294, committeado) |
+| 3 | **`D5` banco de calibración** | Sprint 1a | **Codex** | **← ACTUAL (objetivo de este TODO)** |
+| 4 | `I-16` fix de calificación en Markdown | Sprint 1a | Claude | TODO |
+| 5 | `I-08` carga masiva (backend) | Sprint 1a | Codex | TODO |
+| 6 | `I-06` multi-idea (diseño) | Sprint 1a | Claude | TODO |
+| 7 | `I-09` tejido colectivo (diseño) | Sprint 1a | Codex | TODO |
+| 8 | `I-01` activar umbral en staging | Sprint 1a | Claude | TODO (depende de `P-10 cupos` ✓ y calibración D5) |
+| 9 | `I-06` multi-idea (implementación) | Sprint 1b | Codex | TODO |
+| 10 | `I-09` tejido colectivo (core) | Sprint 1b | Claude | TODO |
+| 11 | `I-05` parafraseo | Sprint 1b | Codex | TODO |
+| 12 | `I-08` carga masiva (UI) | Sprint 1b | Claude | TODO |
+| 13 | `I-03` follow-ups eje débil | Sprint 1b | Codex | TODO (depende de `I-11` rúbrica congelada) |
+| 14 | `I-10` flag base previa/blanco | Sprint 2 | Claude | TODO (depende de `I-09`) |
+| 15 | `I-12` seed thoughts | Sprint 2 | Codex | TODO (insumo Felipe 18-jul) |
+| 16 | `I-13` decisión agnóstica-vs-tailored | Sprint 2 | Claude | TODO |
+| 17 | `I-14` tags | Sprint 2 | Codex | TODO |
+| 18 | `P-07` consentimiento de datos | Sprint 2 | Claude | TODO |
+| 19 | `P-10` costo LLM + rate por número | Sprint 2 | Codex | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
+| 20 | `P-09` monitoreo día-D (workbook + runbook) | Pruebas 4–8 ago | Claude | TODO |
+| 21 | `I-08` carga real | Freeze 8–9 ago | Codex | TODO |
+
+- **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
+- **Post (rama de deseables, fuera del orden anterior):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12`.
+
+**Dependencias duras (ruta crítica):** `P-01/P-02 (Meta)` → `I-11 (rúbrica)` → `I-03` · `I-12 (seeds)` → `I-04/I-13` · `P-10 cupos` → `I-01 (activar)` · `I-09` → `I-10` · `I-08` → carga real del freeze · `P-07` → apertura a participantes reales. **`D5` (banco) es árbitro de todo lo que toque prompts (I-03/I-05) y del umbral de I-01.**
 
 > **Parametrización por campaña (índice §4):** todo lo que define el **comportamiento del coach o el contenido** de una campaña es parametrizable **por campaña** (campo aditivo con default seguro, `03 §3.3` en commit aparte); las **salvaguardas de seguridad y costo** quedan **globales** como kill-switch de operación (aunque sus *valores* vivan en la campaña). Consúltalo antes de decidir dónde vive un flag nuevo.
 
@@ -130,7 +154,7 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. Identifica la iniciativa objetivo: **`I-16` (fix de calificación en Markdown)**. `P-03` y `P-10` completo (cupos + rate por número + costo LLM por campaña) ya están HECHOS y verificados en backend (ver `AVANCES.md` y `SUPUESTOS.md`). Empieza reproduciendo el bug con una prueba que lo capture; el banco de calibración (D5) corre en paralelo como golden set. Respeta las dependencias duras (§3).
+1. Identifica la iniciativa objetivo: **`D5` (banco de calibración de prompts)** — agente **Codex**. `P-03` y `P-10` completo ya están HECHOS, verificados en backend y committeados (ver `AVANCES.md`, `SUPUESTOS.md`, tabla §4). Lee la spec `D5_Banco_Calibracion.md`; empieza por el esquema del golden set + el agregador **mockeado** (verde en CI) antes del runner que llama al LLM real (opt-in, fuera de CI). Respeta las dependencias duras (§3). **Al terminar, reescribe la cabecera y §8 de este TODO para apuntar al ítem 4 (`I-16`, agente Claude) y haz el handoff (§5–§6).**
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
 4. Implementa en pasos pequeños siguiendo el bucle de §3: build `-warnaserror` + test + format (y frontend si aplica) verdes en cada paso.

@@ -1,0 +1,20 @@
+feat(conversacion): cupos deterministas por usuario/campania y techo de turnos por hilo
+
+Aplica los limites que ya vivian en Campania.ConfigSeguridad (10 §2,
+nunca aplicados): cupo de mensajes por usuario/campania (descarte
+neutral silencioso + LogSeguridad RateLimit) y cupo de llamadas LLM por
+usuario/campania (cierre elegante sin llamar al LLM; contador = conteo
+de Evaluacion via nuevo IRepositorioRespuestas.ContarEvaluacionesUsuarioAsync),
+ambos gateados por Conversacion:CuposHabilitados (default off, patron D1).
+Nuevo techo duro global Conversacion:MaxTurnosPorHilo (0=off) que
+garantiza la terminacion de cualquier hilo con independencia del LLM.
+
+Prerrequisito de I-01 (regla D2 del plan de Hito 1): no se retira el
+tope deterministico de revisiones hasta que estos cupos esten activos
+en produccion. Mitiga RL-1 (cierre sin techo / costo LLM sin limite).
+
+Sin cambio de contratos 03/04. 4 pruebas unit nuevas del orquestador.
+Docs: Reglas_Conversacion_y_Participacion §2.8/§3, 05 §4.4,
+SUPUESTOS#guardrails-cupos-conversacion, AVANCES (fila Fase 12 + log).
+
+ATI JPC

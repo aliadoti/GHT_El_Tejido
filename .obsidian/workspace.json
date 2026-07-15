@@ -4,24 +4,39 @@
     "type": "split",
     "children": [
       {
-        "id": "912af699a5620d16",
+        "id": "eaa21752e2d8f190",
         "type": "tabs",
         "children": [
           {
-            "id": "1a2e987bd13434b2",
+            "id": "78ecf8667b707440",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.md",
+                "file": "Especificaciones/Iniciativas/PROMPT_Inicio_Iniciativas.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Propuesta_Economica_El_Tejido"
+              "title": "PROMPT_Inicio_Iniciativas"
+            }
+          },
+          {
+            "id": "158ebd100da609ea",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Especificaciones/Iniciativas/TODO.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "TODO"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -183,49 +198,49 @@
       "bases:Create new base": false
     }
   },
-  "active": "1a2e987bd13434b2",
+  "active": "158ebd100da609ea",
   "lastOpenFiles": [
-    "src/ElTejido.Application/WhatsApp/OpcionesPlantillaEnvioInicial.cs",
-    "src/ElTejido.Api/wwwroot/chunk--wz1E-x4.js",
-    "src/ElTejido.Api/wwwroot/chunk-B-DHM0p4.js",
-    "src/ElTejido.Api/wwwroot/chunk-BDGQQGfB.js",
-    "src/ElTejido.Api/wwwroot/chunk-BEBqUhnW.js",
-    "src/ElTejido.Api/wwwroot/chunk-BXqHBD12.js",
-    "src/ElTejido.Api/wwwroot/chunk-CoYprN-R.js",
-    "src/ElTejido.Api/wwwroot/chunk-CXZIrODC.js",
-    "src/ElTejido.Api/wwwroot/chunk-DgV1GaSx.js",
-    "src/ElTejido.Api/wwwroot/chunk-DrK0g-DX.js",
-    "src/ElTejido.Api/wwwroot/chunk-HdZd1pHX.js",
-    "Especificaciones/Reglas_Conversacion_y_Participacion.md",
-    "Propuesta_Comercial/real/Evaluacion_Rubricas.md",
-    "Guias_Implementacion/Guia_WhatsApp_Cloud_API_Meta_Paso_a_Paso.md",
-    "Guias_Implementacion/Guia_Prueba_E2E_Simulada_WhatsApp.md",
-    "Propuesta_Comercial/real/Propuesta_Economica_El_Tejido.md",
+    "Especificaciones/AVANCES.md.tmp.1414.50b61581f6a9",
+    "Especificaciones/Iniciativas/TODO.md.tmp.1414.06ad03b74a10",
+    "Especificaciones/Iniciativas/TODO.md.tmp.1414.5ed86b2e311e",
+    "Especificaciones/Iniciativas/TODO.md.tmp.1414.24ec7dcd6213",
+    "Especificaciones/Iniciativas/D5_Banco_Calibracion.md",
+    "Especificaciones/Iniciativas/D5_Banco_Calibracion.md.tmp.1414.30027d198032",
+    "src/ElTejido.Api/wwwroot/chunk-CYeMvVyh.js",
+    "src/ElTejido.Api/wwwroot/chunk-yFpAh799.js",
+    "src/ElTejido.Api/wwwroot/chunk-D4lQorKm.js",
+    "src/ElTejido.Api/wwwroot/main-IIZPYBWY.js",
+    "src/ElTejido.Api/wwwroot/chunk-DawxHjGm.js",
+    "src/ElTejido.Api/wwwroot/chunk-DXwdiX0S.js",
+    "src/ElTejido.Web/node_modules/@algolia/ingestion/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/client-personalization/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/recommend/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/monitoring/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/client-search/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/client-query-suggestions/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/client-insights/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/client-analytics/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/abtesting/README.md",
+    "src/ElTejido.Web/node_modules/@algolia/client-abtesting/README.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/mcp/resources/best-practices.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/mcp/resources/ai-tutor.md",
+    "src/ElTejido.Web/node_modules/@angular/core/resources/best-practices.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/update/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/test/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/run/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/new/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/lint/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/deploy/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/config/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/completion/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/cache/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/build/long-description.md",
+    "src/ElTejido.Web/node_modules/@angular/cli/src/commands/analytics/long-description.md",
     "src/ElTejido.Api/wwwroot/brand/eltejido-logo.png",
-    "Propuesta_Comercial/real/Propuesta_Aliado_Digital_GHT.md",
     "src/ElTejido.Web/public/brand/eltejido-logo.png",
     "Marca/ElTejidoGHTbyGTA_1.png",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",
     "src/ElTejido.Web/public/brand/aliadoti-mark.png",
-    "Especificaciones/00_Indice_y_Guia_de_Uso.md",
-    "Arquitectura/El_Tejido_Arquitectura_Tecnica_MVP.md",
-    "Rubricas/_rubric.md",
-    "Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md",
-    "Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md",
-    "Especificaciones/10_Seguridad_Guardrails_y_Observabilidad.md",
-    "Especificaciones/AVANCES.md",
-    "Especificaciones/02_Arquitectura_y_Stack.md",
-    "Especificaciones/07_Backend_Campanas_y_Configuracion.md",
-    "Especificaciones/11_Frontend_Portal_Angular.md",
-    "Especificaciones/13_Plan_de_Pruebas_y_Aceptacion.md",
-    "src/ElTejido.Web/node_modules/@babel/helper-compilation-targets/node_modules/semver/README.md",
-    "src/ElTejido.Web/node_modules/@babel/core/node_modules/semver/README.md",
-    "src/ElTejido.Web/node_modules/@asamuzakjp/dom-selector/node_modules/lru-cache/LICENSE.md",
-    "src/ElTejido.Web/node_modules/@asamuzakjp/dom-selector/node_modules/lru-cache/README.md",
-    "src/ElTejido.Web/node_modules/jsdom/node_modules/https-proxy-agent/README.md",
-    "src/ElTejido.Web/node_modules/http-proxy-agent/node_modules/agent-base/README.md",
-    "src/ElTejido.Web/node_modules/minipass-pipeline/node_modules/minipass/README.md",
-    "src/ElTejido.Web/node_modules/minipass-flush/node_modules/yallist/README.md",
     "Marca/GTA/Aliado TI Design System/assets/logos/aliadoti-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/logos/brand-mark.png",
     "Marca/GTA/Aliado TI Design System/assets/imagery/cream-wall-shadow.png",

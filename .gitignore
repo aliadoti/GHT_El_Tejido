@@ -19,6 +19,23 @@ coverage-*/
 coverage.opencover.xml
 coverage.cobertura.xml
 
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+project.lock.json
+project.assets.json
+
+# MSBuild / diagnostics
+*.binlog
+msbuild.log
+*.tlog
+
+# Roslyn/JetBrains generated
+_ReSharper*/
+.idea.*/
+*.DotSettings.user
+
 # Build output - frontend
 node_modules/
 dist/
@@ -27,6 +44,26 @@ out-tsc/
 .cache/
 tmp/
 temp/
+*.tsbuildinfo
+
+# Frontend tooling caches / package managers
+.eslintcache
+.stylelintcache
+.prettiercache
+.vite/
+.vitest/
+.npm/
+.pnpm-store/
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/versions
+
+# E2E / Playwright
+playwright-report/
+test-results/
+playwright/.cache/
 
 # Generated API static assets
 src/ElTejido.Api/wwwroot/
@@ -62,7 +99,11 @@ appsettings.*.local.json
 *.vbproj.user
 *.fsproj.user
 .vscode/
+!.vscode/extensions.json
 .history/
+*.swp
+*.swo
+*~
 
 # Obsidian local workspace state
 .obsidian/workspace.json
@@ -71,8 +112,13 @@ appsettings.*.local.json
 
 # OS files
 .DS_Store
+.AppleDouble
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
 Desktop.ini
+$RECYCLE.BIN/
 
 # Local agent/tool state
 .claude/
