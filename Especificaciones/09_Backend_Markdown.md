@@ -32,7 +32,7 @@ public interface ICompiladorMarkdown
 ---
 
 ## 4. Ensamblaje (`ARQ §7 paso 2`)
-1. Cargar datos operativos: respuesta original, evaluación (con snapshots), metadatos de usuario/campaña/pregunta, rúbrica+versión, prompt+versión, calificación.
+1. Cargar datos operativos: respuesta original, **evaluación válida más reciente asociada a la respuesta** (ordenada por `fecha` descendente, con snapshots), metadatos de usuario/campaña/pregunta, rúbrica+versión, prompt+versión, calificación.
 2. Renderizar la **plantilla Markdown estándar** (§5) de forma **determinística** desde los datos.
 3. Opcional: un prompt de compilación (`tipoPrompt=compilar`, versionado) puede redactar **solo** la sección narrativa; el resto se arma siempre desde los datos (`ARQ §7 paso 2`).
 4. **Regla dura:** el Markdown **NO** contiene secretos ni API keys (`REQ §22.4.9`, `ARQ §7`).

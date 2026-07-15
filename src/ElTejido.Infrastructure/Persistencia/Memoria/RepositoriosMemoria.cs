@@ -334,12 +334,15 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
 
     public Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken)
     {
-        _evaluaciones[evaluacion.RespuestaId] = evaluacion;
+        _evaluaciones[evaluacion.Id] = evaluacion;
         return Task.CompletedTask;
     }
 
     public Task<DominioEvaluacion?> ObtenerEvaluacionPorRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
-        => Task.FromResult(_evaluaciones.GetValueOrDefault(respuestaId));
+        => Task.FromResult(_evaluaciones.Values
+            .Where(e => e.CampaniaId == campaniaId && e.RespuestaId == respuestaId)
+            .OrderByDescending(e => e.Fecha)
+            .FirstOrDefault());
 
     public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
         => Task.FromResult(_evaluaciones.Values.FirstOrDefault(e => e.Id == evaluacionId));
@@ -383,7 +386,7 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
 
         foreach (var evaluacion in evaluaciones)
         {
-            _evaluaciones.TryRemove(evaluacion.RespuestaId, out _);
+            _evaluaciones.TryRemove(evaluacion.Id, out _);
         }
 
         foreach (var artefacto in artefactos)

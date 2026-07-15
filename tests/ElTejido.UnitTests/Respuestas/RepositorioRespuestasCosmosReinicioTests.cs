@@ -18,6 +18,27 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
     private static readonly DateTimeOffset Epoca = DateTimeOffset.UnixEpoch;
 
     [Fact]
+    public async Task ObtenerEvaluacionPorRespuesta_DevuelveLaMasReciente()
+    {
+        var container = new FakeResponsesCosmosContainer
+        {
+            Evaluaciones =
+            [
+                DocEvaluacion("eval_vieja", "resp_1", "u_1", 2m, Epoca),
+                DocEvaluacion("eval_nueva", "resp_1", "u_1", 5m, Epoca.AddMinutes(10)),
+            ],
+        };
+        var repo = new RepositorioRespuestasCosmos(container);
+
+        var resultado = await repo.ObtenerEvaluacionPorRespuestaAsync("c_1", "resp_1", CancellationToken.None);
+
+        resultado.Should().NotBeNull();
+        resultado!.Id.Should().Be("eval_nueva");
+        resultado.CalificacionTotal.Should().Be(5m);
+        container.QueryTexts.Should().ContainSingle(q => q.Contains("ORDER BY c.fecha DESC", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task EliminarPorUsuario_BorraPorIdEnLaParticionYReportaRutasBlob()
     {
         var container = new FakeResponsesCosmosContainer
@@ -60,11 +81,14 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
             Respuesta.Crear(id, "c_1", usuarioId, "p_1", "conv_1", "Idea", "whatsapp", false, EstadoRespuesta.Recibida, Epoca, null));
 
     private static EvaluacionCosmosDocument DocEvaluacion(string id, string respuestaId, string usuarioId)
+        => DocEvaluacion(id, respuestaId, usuarioId, 3m, Epoca);
+
+    private static EvaluacionCosmosDocument DocEvaluacion(string id, string respuestaId, string usuarioId, decimal calificacionTotal, DateTimeOffset fecha)
         => EvaluacionCosmosDocument.FromDomain(
             DominioEvaluacion.Crear(
                 id, "c_1", respuestaId, usuarioId, "p_1", "r_general", 1, "pr_eval", 1, "llm_default",
                 new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
-                null, null, 3m, "ok", "Bien", RecomendacionEvaluacion.Cerrar, null, null, null, false, Epoca));
+                null, null, calificacionTotal, "ok", "Bien", RecomendacionEvaluacion.Cerrar, null, null, null, false, fecha));
 
     private static ArtefactoMarkdownCosmosDocument DocArtefacto(string id, string respuestaId, string usuarioId, string blobPath)
         => ArtefactoMarkdownCosmosDocument.FromDomain(
@@ -84,6 +108,8 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
 
         public List<bool> QueriesConUsuario { get; } = [];
 
+        public List<string> QueryTexts { get; } = [];
+
         public Task UpsertAsync<T>(T document, string partitionKey, CancellationToken cancellationToken)
             => Task.CompletedTask;
 
@@ -99,15 +125,26 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
 
         public Task<IReadOnlyCollection<T>> QueryAsync<T>(QueryDefinition query, string partitionKey, CancellationToken cancellationToken)
         {
+            QueryTexts.Add(query.QueryText);
             QueriesConUsuario.Add(query.QueryText.Contains("c.usuarioId", StringComparison.Ordinal));
             IReadOnlyCollection<object> resultado = typeof(T) switch
             {
                 var t when t == typeof(RespuestaCosmosDocument) => Respuestas,
-                var t when t == typeof(EvaluacionCosmosDocument) => Evaluaciones,
+                var t when t == typeof(EvaluacionCosmosDocument) => OrdenarEvaluaciones(query),
                 var t when t == typeof(ArtefactoMarkdownCosmosDocument) => Artefactos,
                 _ => Array.Empty<object>(),
             };
             return Task.FromResult<IReadOnlyCollection<T>>(resultado.Cast<T>().ToArray());
+        }
+
+        private IReadOnlyCollection<object> OrdenarEvaluaciones(QueryDefinition query)
+        {
+            if (query.QueryText.Contains("ORDER BY c.fecha DESC", StringComparison.OrdinalIgnoreCase))
+            {
+                return Evaluaciones.OrderByDescending(e => e.Fecha).Cast<object>().ToArray();
+            }
+
+            return Evaluaciones.Cast<object>().ToArray();
         }
     }
 }

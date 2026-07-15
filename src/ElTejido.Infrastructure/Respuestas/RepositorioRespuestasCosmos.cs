@@ -7,8 +7,8 @@ namespace ElTejido.Infrastructure.Respuestas;
 
 /// <summary>
 /// Adaptador Cosmos del contenedor <c>responses</c> (pk <c>campaniaId</c>) para Respuesta,
-/// Evaluacion y ArtefactoMarkdown (03 §3.8-§3.10). Upsert por id; la evaluacion se localiza por
-/// <c>respuestaId</c> (una evaluacion por respuesta, 03 §4).
+/// Evaluacion y ArtefactoMarkdown (03 §3.8-§3.10). Upsert por id; al localizar por
+/// <c>respuestaId</c>, se toma la evaluacion mas reciente para tolerar datos legacy (I-16).
 /// </summary>
 public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
 {
@@ -53,7 +53,8 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
         ArgumentException.ThrowIfNullOrWhiteSpace(respuestaId);
 
-        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.respuestaId = @respuestaId")
+        var query = new QueryDefinition(
+                "SELECT * FROM c WHERE c.type = @type AND c.respuestaId = @respuestaId ORDER BY c.fecha DESC")
             .WithParameter("@type", EvaluacionCosmosDocument.DocumentType)
             .WithParameter("@respuestaId", respuestaId.Trim());
 

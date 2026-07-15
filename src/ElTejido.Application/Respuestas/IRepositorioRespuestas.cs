@@ -16,6 +16,10 @@ public interface IRepositorioRespuestas
 
     Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Devuelve la evaluacion mas reciente asociada a una respuesta. Esto blinda campañas reutilizadas
+    /// o datos legacy con mas de una evaluacion para el mismo <c>respuestaId</c> (I-16, 09 §5/§7).
+    /// </summary>
     Task<DominioEvaluacion?> ObtenerEvaluacionPorRespuestaAsync(
         string campaniaId,
         string respuestaId,

@@ -59,6 +59,21 @@ public sealed class CompiladorMarkdownTests
     }
 
     [Fact]
+    public async Task Compilar_UsaUltimaEvaluacionValidaDeLaRespuesta()
+    {
+        SembrarRespuesta();
+        await _respuestas.GuardarEvaluacionAsync(CrearEvaluacion("eval_vieja", 2m, Epoca), CancellationToken.None);
+        await _respuestas.GuardarEvaluacionAsync(CrearEvaluacion("eval_nueva", 5m, Epoca.AddMinutes(10)), CancellationToken.None);
+
+        var artefacto = await Construir().CompilarAsync(Solicitud(), CancellationToken.None);
+
+        artefacto.EvaluacionRef.Should().Be("eval_nueva");
+        artefacto.ContenidoMarkdown.Should().Contain("- Calificación total: 5");
+        artefacto.ContenidoMarkdown.Should().Contain("ID de evaluación: eval_nueva");
+        artefacto.ContenidoMarkdown.Should().NotContain("- Calificación total: 2");
+    }
+
+    [Fact]
     public async Task Compilar_NoFiltraSecretos()
     {
         Sembrar();
@@ -102,15 +117,23 @@ public sealed class CompiladorMarkdownTests
 
     private void Sembrar()
     {
-        _respuestas.GuardarRespuestaAsync(
-            Respuesta.Crear("resp_1", "c_1", "u_1", "p_1", "conv_1", "Mi idea de mejora", "whatsapp", false, EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }),
-            CancellationToken.None).GetAwaiter().GetResult();
+        SembrarRespuesta();
         _respuestas.GuardarEvaluacionAsync(CrearEvaluacion(), CancellationToken.None).GetAwaiter().GetResult();
     }
 
+    private void SembrarRespuesta()
+    {
+        _respuestas.GuardarRespuestaAsync(
+            Respuesta.Crear("resp_1", "c_1", "u_1", "p_1", "conv_1", "Mi idea de mejora", "whatsapp", false, EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }),
+            CancellationToken.None).GetAwaiter().GetResult();
+    }
+
     private static DominioEvaluacion CrearEvaluacion()
+        => CrearEvaluacion("eval_1", 4m, Epoca);
+
+    private static DominioEvaluacion CrearEvaluacion(string id, decimal calificacionTotal, DateTimeOffset fecha)
         => DominioEvaluacion.Crear(
-            "eval_1",
+            id,
             "c_1",
             "resp_1",
             "u_1",
@@ -122,8 +145,8 @@ public sealed class CompiladorMarkdownTests
             "llm_default",
             new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://example.openai.azure.com/", new Dictionary<string, object?>()),
             new Dictionary<string, decimal> { ["claridad"] = 1m },
-            new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
-            4m,
+            new[] { CalificacionCriterio.Crear("claridad", calificacionTotal, "clara") },
+            calificacionTotal,
             "buena idea",
             "Buena idea",
             RecomendacionEvaluacion.Cerrar,
@@ -131,12 +154,12 @@ public sealed class CompiladorMarkdownTests
             new[] { "eficiencia" },
             new[] { "bodega" },
             anomaliaSeguridad: false,
-            Epoca);
+            fecha);
 
     private sealed class RepositorioRespuestasFake : IRepositorioRespuestas
     {
         private readonly Dictionary<string, Respuesta> _respuestas = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, DominioEvaluacion> _evaluaciones = new(StringComparer.Ordinal);
+        private readonly List<DominioEvaluacion> _evaluaciones = new();
         private readonly Dictionary<string, ArtefactoMarkdown> _artefactos = new(StringComparer.Ordinal);
 
         public Task GuardarRespuestaAsync(Respuesta respuesta, CancellationToken cancellationToken)
@@ -150,24 +173,27 @@ public sealed class CompiladorMarkdownTests
 
         public Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken)
         {
-            _evaluaciones[evaluacion.RespuestaId] = evaluacion;
+            _evaluaciones.Add(evaluacion);
             return Task.CompletedTask;
         }
 
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
-            => Task.FromResult(_evaluaciones.GetValueOrDefault(respuestaId));
+            => Task.FromResult(_evaluaciones
+                .Where(e => e.CampaniaId == campaniaId && e.RespuestaId == respuestaId)
+                .OrderByDescending(e => e.Fecha)
+                .FirstOrDefault());
 
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
-            => Task.FromResult(_evaluaciones.Values.FirstOrDefault(e => e.Id == evaluacionId));
+            => Task.FromResult(_evaluaciones.FirstOrDefault(e => e.CampaniaId == campaniaId && e.Id == evaluacionId));
 
         public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
 
         public Task<int> ContarEvaluacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
-            => Task.FromResult(_evaluaciones.Values.Count(e => e.CampaniaId == campaniaId && e.UsuarioId == usuarioId));
+            => Task.FromResult(_evaluaciones.Count(e => e.CampaniaId == campaniaId && e.UsuarioId == usuarioId));
 
         public Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
-            => Task.FromResult(_evaluaciones.Values.Where(e => e.CampaniaId == campaniaId).Sum(e => (long)(e.UsoTokens?.Total ?? 0)));
+            => Task.FromResult(_evaluaciones.Where(e => e.CampaniaId == campaniaId).Sum(e => (long)(e.UsoTokens?.Total ?? 0)));
 
         public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
         {
@@ -184,7 +210,7 @@ public sealed class CompiladorMarkdownTests
         public Task<ConteoBorradoRespuestas> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
         {
             var respuestas = _respuestas.Values.Where(r => r.CampaniaId == campaniaId && (usuarioId is null || r.UsuarioId == usuarioId)).ToArray();
-            var evaluaciones = _evaluaciones.Values.Where(e => e.CampaniaId == campaniaId && (usuarioId is null || e.UsuarioId == usuarioId)).ToArray();
+            var evaluaciones = _evaluaciones.Where(e => e.CampaniaId == campaniaId && (usuarioId is null || e.UsuarioId == usuarioId)).ToArray();
             var artefactos = _artefactos.Values.Where(a => a.CampaniaId == campaniaId && (usuarioId is null || a.UsuarioId == usuarioId)).ToArray();
             foreach (var r in respuestas)
             {
@@ -193,7 +219,7 @@ public sealed class CompiladorMarkdownTests
 
             foreach (var e in evaluaciones)
             {
-                _evaluaciones.Remove(e.RespuestaId);
+                _evaluaciones.Remove(e);
             }
 
             foreach (var a in artefactos)
