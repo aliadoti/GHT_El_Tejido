@@ -124,12 +124,58 @@ Devuelve el usuario de la sesión actual (para que el SPA restaure estado). `200
 | GET | `/api/admin/usuarios/{id}` | Detalle. |
 | PUT | `/api/admin/usuarios/{id}` | Actualiza datos, área, empresa, tags, propiedades. |
 | PATCH | `/api/admin/usuarios/{id}/estado` | Activa/inactiva. |
+| POST | `/api/admin/usuarios/carga-masiva` | Alta/actualización en lote desde archivo (`I-08`). Ver sub-sección. |
 
 Request de creación (ejemplo):
 ```json
 { "nombre": "Ana Pérez", "numero": "573001112233", "rol": "participante", "area": "Operaciones", "empresa": "GHT", "tags": ["t_area_oper"], "propiedadesDinamicas": {} }
 ```
 El backend **normaliza** el número (`06 §2`); si el formato es inválido → `400`.
+
+#### Carga masiva de participantes — `I-08`, `REQ §12`, `§26.3`
+> Cambio **aditivo** (una ruta nueva). No modifica `03`: usa las entidades existentes
+> `Usuario`/`Tag`/`ParticipanteCampania`. El alta individual (`POST /api/admin/usuarios`) sigue
+> disponible sin cambios. Sprint 1a entrega **solo CSV** (sin dependencia nueva); `.xlsx` queda como
+> lector pluggable para una entrega posterior (`I-08 §7`).
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/api/admin/usuarios/carga-masiva` | Sube un archivo de participantes y hace **upsert por número normalizado** (`06 §2`). `multipart/form-data`, rol `admin` + CSRF. Una fila mala **no aborta** el lote. |
+
+**Request** (`multipart/form-data`):
+- Campo `archivo` (requerido): el archivo `.csv` (UTF-8). Tamaño máximo configurable
+  (`Seguridad:CargaMasivaMaxBytes`, default **2 MB**); si se excede → `400`.
+- Query o campo `campaniaId` (opcional): si se envía, los usuarios creados/actualizados se **asocian**
+  a esa campaña al terminar el lote (reutiliza la asociación de `§5.3`; campaña inexistente → `404`).
+
+**Plantilla CSV** (fila de cabecera obligatoria, columnas fijas; `Tags` separadas por `;`):
+```csv
+Nombre,WhatsApp,Area,Empresa,Tags
+Ana Perez,573001112233,Operaciones,GHT,t_area_oper;t_lider
+```
+
+**Response `200`** — reporte por fila (sin PII: solo `usuarioId`, resultado y motivo):
+```json
+{
+  "totalFilas": 3,
+  "creados": 2,
+  "actualizados": 0,
+  "rechazados": 1,
+  "asociados": 2,
+  "filas": [
+    { "fila": 2, "resultado": "creado",     "usuarioId": "u_8f3c...", "motivo": null },
+    { "fila": 3, "resultado": "actualizado", "usuarioId": "u_1a2b...", "motivo": null },
+    { "fila": 4, "resultado": "rechazado",   "usuarioId": null,        "motivo": "numero_invalido" }
+  ]
+}
+```
+- `resultado` ∈ `creado | actualizado | rechazado`. `motivo` (solo en `rechazado`) ∈
+  `fila_incompleta` (falta `Nombre/WhatsApp/Area/Empresa`), `numero_invalido` (no normaliza a E.164),
+  `duplicado_en_archivo` (número repetido en el archivo: **el primero gana**, el resto se rechaza).
+- **Idempotencia:** re-subir el mismo archivo produce `actualizado` (no duplica). Las `Tags` que no
+  existan en el catálogo se **crean** (`tipoTag=importado`).
+- La operación queda auditada en `LogSeguridad` (`AccionAdministrativa`, acción `carga_masiva`) con
+  conteos y `correlationId`; **sin números ni nombres**.
 
 ### 5.2 Tags — `REQ §13`
 | Método | Ruta | Descripción |
