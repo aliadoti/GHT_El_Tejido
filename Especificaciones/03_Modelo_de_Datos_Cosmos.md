@@ -126,7 +126,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente." },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -138,6 +138,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - `promptRefs` y `rubricaRef` a nivel campaña son defaults; cada pregunta puede sobreescribirlos.
 - La pregunta guarda `versionRubrica` para snapshot; la evaluación persistirá la versión efectiva usada.
 - `configSeguridad.presupuestoTokensCampania` (P-10, **aditivo**, default `0` = sin límite): techo de tokens LLM acumulados de toda la campaña; con `Conversacion:CuposHabilitados` activo, al alcanzarlo la campaña se trata como cupo LLM agotado (cierre elegante). Documento viejo sin el campo = comportamiento actual.
+- `configConversacional.segmentacionIdeas` (I-06, **aditivo**, default `false`): habilita que una respuesta con varias ideas se segmente en N `Respuesta`/`Evaluacion`/Markdown. Documento viejo sin el campo = comportamiento 1-idea actual. El kill-switch global `Conversacion:SegmentacionIdeas=false` lo anula para todas las campañas.
 
 ### 3.4 `ParticipanteCampania` (contenedor `participants`) — `REQ §29.4`
 
@@ -237,11 +238,16 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "esRepregunta": false,
   "estado": "evaluada",
   "fecha": "2026-06-11T14:05:00Z",
-  "tagsSnapshot": ["t_area_oper", "t_emp_ght"]
+  "tagsSnapshot": ["t_area_oper", "t_emp_ght"],
+  "ideaIndice": 1,
+  "respuestaPadreId": "wamid.HBgM..."
 }
 ```
 - `estado` ∈ `recibida` | `evaluada` | `evaluacionPendiente`.
 - `tagsSnapshot`: tags vigentes del usuario al momento de responder (`REQ §30.1`).
+- `ideaIndice` (I-06, **aditivo**, opcional): índice 1-based de la idea dentro del mensaje original. Ausente/null = respuesta histórica de una sola idea.
+- `respuestaPadreId` (I-06, **aditivo**, opcional): id lógico del mensaje que originó las N ideas; preferir `whatsappMessageId` y, si no existe, el `Mensaje.id`. Ausente/null = respuesta histórica de una sola idea.
+- Para respuestas segmentadas, el `id` debe ser determinístico (`resp_<respuestaPadreIdNormalizado>_<ideaIndice>`) para que reintentos del webhook no dupliquen registros.
 
 ### 3.9 `Evaluacion` (contenedor `responses`) — `REQ §29.13`, `§20`
 

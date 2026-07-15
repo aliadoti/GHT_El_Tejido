@@ -114,6 +114,15 @@ Hay dos cierres normales: si la evaluacion valida decide cerrar sin ofrecer revi
 despues de agotar revisiones, se envia **solo el mensaje de cierre** y no se compila un Markdown nuevo.
 Una conversacion **cerrada ignora** cualquier mensaje posterior (se descarta en silencio).
 
+### 2.4.1 Multi-idea por mensaje (I-06, diseño Sprint 1a)
+Si la campaña tiene `configConversacional.segmentacionIdeas=true` y el kill-switch global
+`Conversacion:SegmentacionIdeas` no está apagado, una respuesta puede separarse en varias ideas antes
+de evaluarse. Cada idea válida se guarda como una `Respuesta` independiente, con su propia evaluación y
+Markdown, pero el participante no recibe N mensajes técnicos: el sistema debe contestar de forma breve
+y agregada para confirmar el registro del turno. Si el segmentador falla, devuelve una salida inválida
+o no quedan ideas válidas después de las guardas, el sistema vuelve al modo probado: **1 mensaje = 1
+respuesta**.
+
 ### 2.5 Ventana de 24 h y respuestas tardías
 - WhatsApp solo permite **texto libre** dentro de las **24 h** posteriores al último mensaje del
   participante. El sistema responde siempre con texto libre.
@@ -182,6 +191,10 @@ estén activos en producción.**
 | `Conversacion:Mensajes:MensajeConfiguracionNoDisponible` | App config / env `Conversacion__Mensajes__MensajeConfiguracionNoDisponible` | "Hay un problema con la configuracion..." | Texto visible cuando falta rubrica, prompt o ConfigLLM valida y no se llama al LLM. |
 | `Conversacion:CuposHabilitados` | App config / env `Conversacion__CuposHabilitados` | `false` (**desactivado**) | Enciende la aplicación de `maxMensajesPorUsuario`/`maxLlamadasLlmPorUsuario` de la campaña (§2.8). Dimensionar los límites de la campaña antes de activar. |
 | `Conversacion:MaxTurnosPorHilo` | App config / env `Conversacion__MaxTurnosPorHilo` | 0 (**desactivado**) | Techo duro de entrantes por hilo (§2.8); garantiza terminación. Recomendado ≈ `2 + MaxRepreguntas`. |
+| `configConversacional.segmentacionIdeas` | Portal admin (campaña) | `false` | Habilita I-06 para esa campaña: separar un mensaje con varias ideas en N respuestas/evaluaciones/Markdown. Campo ausente = `false`. |
+| `Conversacion:SegmentacionIdeas` | App config / env `Conversacion__SegmentacionIdeas` | `true` | Kill-switch global de I-06. `true` respeta la campaña; `false` apaga multi-idea para todas las campañas sin redeploy. |
+| `Conversacion:MaxIdeasPorMensaje` | App config / env `Conversacion__MaxIdeasPorMensaje` | 5 | Máximo de ideas segmentadas por mensaje; excedentes se ignoran y se registra anomalía sin PII. |
+| `Conversacion:LongitudMinimaIdea` | App config / env `Conversacion__LongitudMinimaIdea` | 30 | Fragmentos más cortos se descartan para evitar sobre-fragmentación trivial. |
 | `maxMensajesPorUsuario` / `maxLlamadasLlmPorUsuario` (campaña) | Portal admin (campaña, `configSeguridad`) | 10 / 2 | Cupos por usuario dentro de la campaña (§2.8); solo se aplican con `CuposHabilitados=true`. |
 | `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo. Recomendado p. ej. `72`. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |

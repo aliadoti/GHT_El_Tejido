@@ -2,68 +2,233 @@
 
 > **Origen:** hoja `Iniciativas` de `Presentacion/Plan_Trabajo_El_Tejido.xlsx`.
 > **Tipo:** Desarrollo · **Prioridad:** Alta (gran apuesta, ruta crítica) · **Ventana:** Sprint 1a
-> diseño / Sprint 1b implementación · **Dependencia:** — · **Riesgo:** Alto (no determinismo RL-2).
-> Cubre REQ §9/§22, ARQ §4.2/§6; specs base `03 §3.8`, `05 §4`, `08`, `09`.
+> diseño / Sprint 1b implementación · **Dependencia:** `P-10` para cupos/costo y `D5` para calibración.
+> **Riesgo:** Alto (no determinismo RL-2).
+> Cubre REQ §9/§22/§25, ARQ §4.2/§6/§7/§12/§13; specs base `03 §3.3/§3.8`,
+> `04 §5.3/§5.8`, `05 §4`, `08`, `09`, `10`.
+> **Estado:** diseño técnico cerrado 2026-07-15; implementación queda para Sprint 1b.
 
 ## 1. Qué pide GHT / por qué
+
 Detectar **varias ideas** en una misma respuesta, separarlas en **registros distintos** (BD +
-Markdown) y recorrer la rúbrica **por idea**. Hoy `Respuesta` guarda 1 idea por registro.
+Markdown) y recorrer la rúbrica **por idea**. Hoy `Respuesta` guarda 1 idea por registro y el
+orquestador evalúa una sola vez por mensaje entrante.
+
+La meta de Sprint 1a es **solo diseño**: dejar contratos, flujo, pruebas y rollback definidos para que
+la implementación de Sprint 1b sea mecánica y no reabra decisiones de arquitectura.
 
 ## 2. Estado actual del build
-Nuevo. `Domain/Respuestas/Respuesta.cs` es un único texto; el orquestador crea una `Respuesta`
-por mensaje entrante y compila un Markdown por respuesta evaluada.
 
-## 3. Diseño técnico (D3: segmentador validado + fallback)
-1. **Puerto** `ISegmentadorIdeas` (Application/Evaluacion o Conversacion):
-   `Task<SalidaSegmentacion> SegmentarAsync(string texto, CancellationToken ct)` con contrato fijo
-   `{ "ideas": [ { "texto": "string", "resumen": "string" } ] }` (1..N).
-2. **Implementación** `SegmentadorIdeasLlm` (Infrastructure/Llm): reutiliza `ILlmClient` con la
-   misma disciplina instrucción/dato y `response_format` JSON; validación estricta de esquema
-   (patrón de `EvaluadorLlm`).
-3. **Orquestador:** tras persistir el `Mensaje(in)` y ANTES de evaluar, si la **campaña** tiene
-   `segmentacionIdeas=true` (campo aditivo de campaña, default `false`; ajuste 2026-07-13 —
-   parametrización por campaña, ver `00_Indice §4.2`) **y** el kill-switch global
-   `Conversacion:SegmentacionIdeas` no lo apaga, llama al segmentador. Por **cada idea** crea una
-   `Respuesta` con campos aditivos `ideaIndice` (1..N) y `respuestaPadreId` (id lógico del mensaje
-   origen) y ejecuta el ciclo de evaluación + Markdown **por idea**.
-4. **Idempotencia de escritura:** id determinista `resp_<whatsappMessageId>_<ideaIndice>`; reintentos
-   del webhook no duplican registros; el Markdown sigue siendo regenerable (REQ §22.4.6) — un fallo
-   a mitad se completa al regenerar, no corrompe.
-5. **Guardas anti-fragmentación (deterministas):**
-   - `Conversacion:LongitudMinimaIdea` (default 30 chars): fragmentos menores se descartan.
-   - `Conversacion:MaxIdeasPorMensaje` (default 5): excedentes se ignoran + `LogSeguridad(AnomaliaLlm)`.
-   - Segmentador falla / salida inválida / 0 ideas → **fallback: 1 idea = mensaje completo**
-     (comportamiento actual, cero regresión).
-6. **Interacción con cupos (P-10):** la llamada de segmentación cuenta en el cupo de llamadas LLM;
-   con multi-idea el consumo por turno es `1 + N` — dimensionar `maxLlamadasLlmPorUsuario` acorde.
-7. **Observabilidad:** log estructurado con la distribución *ideas por mensaje* (detecta sobre/
-   sub-fragmentación en pruebas y día-D).
+- `OrquestadorConversacion` (`src/ElTejido.Application/Conversacion/OrquestadorConversacion.cs`) genera
+  un `respuestaId` aleatorio por entrante evaluable, persiste una `Respuesta`, llama una vez a
+  `IEvaluadorLlm` y compila un Markdown por evaluación válida.
+- `Respuesta` (`src/ElTejido.Domain/Respuestas/Respuesta.cs`) no tiene aún `ideaIndice` ni
+  `respuestaPadreId`.
+- `Campania.ConfigConversacional` no tiene aún `segmentacionIdeas`.
+- P-10 ya entrega cupos por usuario/campaña y presupuesto de tokens; D5 ya tiene golden set con casos
+  multi-idea, pero el baseline real contra staging sigue pendiente operativo.
 
-## 4. Contratos y configuración
-- `03 §3.8`: campos aditivos `ideaIndice`, `respuestaPadreId` en el doc de `responses`; `03 §3.3`
-  + `04 §5.3`: campo aditivo `segmentacionIdeas` (bool, default false) en campaña —
-  **actualizar specs en commit aparte**. Los GET de resultados devuelven los campos nuevos de
-  forma aditiva. Portal: checkbox en la pestaña Configuración (mismo patrón que `tejidoColectivo`, I-10).
-- Config global: `Conversacion:SegmentacionIdeas` (kill-switch de operación, **default true** =
-  respeta lo que diga la campaña; `false` apaga la segmentación en TODAS las campañas sin tocar BD),
-  `Conversacion:MaxIdeasPorMensaje`, `Conversacion:LongitudMinimaIdea`.
+## 3. Decisiones de diseño cerradas
 
-## 5. Riesgos y mitigación (RL-2 / R-01a)
-- *Sobre-fragmentar / sub-fragmentar* → guardas deterministas + métrica de distribución + banco de
-  calibración con casos multi-idea.
-- *Estado parcial (N escrituras sin transacción)* → ids idempotentes + Markdown regenerable.
-- *Costo LLM extra* → flag off por defecto; cupos P-10 contemplan la segmentación.
+1. **Flag por campaña + kill-switch global.** La decisión de parametrización por campaña del
+   2026-07-13 (`00_Indice §4.2`) aplica aquí: el comportamiento del coach vive en campaña y nace
+   apagado. Campo aditivo: `Campania.configConversacional.segmentacionIdeas` (`false` por defecto).
+   Kill-switch global: `Conversacion:SegmentacionIdeas` (`true` por defecto = respeta la campaña;
+   `false` apaga todo sin tocar BD).
+2. **Segmentador antes de evaluar.** Si ambos flags permiten segmentar, el orquestador llama un puerto
+   `ISegmentadorIdeas` después de persistir el `Mensaje(in)` y antes de construir `ContextoEvaluacion`.
+3. **Una idea = una respuesta/evaluación/Markdown.** Cada segmento validado produce su propia
+   `Respuesta`, su propia `Evaluacion` y su propio `ArtefactoMarkdown`. El mensaje original sigue
+   guardado como `Mensaje` del hilo.
+4. **Fallback sin regresión.** Segmentador caído, salida inválida, 0 ideas válidas o flag apagado
+   significa **1 idea = mensaje completo**, exactamente el flujo actual.
+5. **Sin transacción distribuida.** La consistencia se protege con ids deterministas por idea y Markdown
+   regenerable (`REQ §22.4.6`), no con infraestructura nueva.
 
-## 6. Criterios de aceptación / pruebas
-- Unit: mensaje con 2 ideas claras → 2 `Respuesta` + 2 evaluaciones + 2 Markdown, `ideaIndice` 1 y 2.
-- Unit: mensaje de 1 idea → 1 registro; "Hola" no genera fragmentos triviales (longitud mínima).
-- Unit: salida inválida del segmentador → fallback 1-idea, flujo idéntico al actual.
-- Unit: >`MaxIdeasPorMensaje` ideas → se registran las N primeras + anomalía logueada.
-- Unit: campaña con `segmentacionIdeas=false` (o doc viejo sin el campo) → cero llamadas al
-  segmentador y comportamiento byte a byte actual; kill-switch global en `false` anula una campaña con `true`.
-- Build/test/format verdes; spec `03` actualizada en commit aparte.
+## 4. Contratos aditivos
 
-## 7. Degradación
-Dos niveles, ambos sin redeploy: por campaña (`segmentacionIdeas=false`, editable en portal) y
-global (kill-switch `Conversacion:SegmentacionIdeas=false`, App Setting). Cualquiera devuelve el
-modo 1-idea probado. El Hito no depende de esta pieza; I-09 no depende de I-06.
+### 4.1 `03 §3.3` — Campaña
+
+Agregar `segmentacionIdeas` dentro de `configConversacional`:
+
+```json
+"configConversacional": {
+  "maxRepreguntas": 1,
+  "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
+  "segmentacionIdeas": false
+}
+```
+
+Regla de compatibilidad: documento viejo o campo ausente = `false`.
+
+### 4.2 `03 §3.8` — Respuesta
+
+Agregar campos opcionales:
+
+```json
+{
+  "id": "resp_wamidabc_1",
+  "texto": "Primera idea segmentada...",
+  "ideaIndice": 1,
+  "respuestaPadreId": "wamid.abc"
+}
+```
+
+- `ideaIndice`: índice 1-based dentro del mensaje original. Ausente/null = respuesta histórica de una
+  sola idea.
+- `respuestaPadreId`: id lógico del mensaje origen; preferir `whatsappMessageId`. Si el canal no lo
+  trae, usar el `Mensaje.id` persistido. Ausente/null = respuesta histórica de una sola idea.
+- `id`: para multi-idea debe ser determinístico: `resp_<respuestaPadreIdNormalizado>_<ideaIndice>`.
+  En modo 1-idea actual puede conservarse el id vigente hasta que la implementación lo endurezca.
+
+### 4.3 `04 §5.3` y `04 §5.8` — API admin
+
+- `GET/POST/PUT /api/admin/campanias*` exponen/aceptan `configConversacional.segmentacionIdeas` de forma
+  aditiva. Campo ausente en request = `false` o conserva valor existente, según la operación actual.
+- `GET /api/admin/respuestas` y `GET /api/admin/respuestas/{id}` devuelven `ideaIndice` y
+  `respuestaPadreId` cuando existan.
+- `GET /api/admin/markdown*` no cambia de ruta: cada Markdown de idea sigue siendo un artefacto tipo
+  `respuesta`, con `respuestaRef` distinto.
+
+### 4.4 `08 §4` — Salida del evaluador LLM
+
+No cambia. La segmentación es un paso previo y separado; cada idea se evalúa con el contrato existente
+de evaluación. Esto reduce blast radius y mantiene D5 como árbitro de prompts/evaluación.
+
+## 5. Puerto y salida del segmentador
+
+Ubicación propuesta: `Application/Evaluacion` si se considera parte del pipeline LLM, con wiring en
+`Infrastructure/Llm`; el orquestador lo consume por interfaz pública, igual que `IEvaluadorLlm`.
+
+```csharp
+public interface ISegmentadorIdeas
+{
+    Task<ResultadoSegmentacionIdeas> SegmentarAsync(ContextoSegmentacionIdeas contexto, CancellationToken ct);
+}
+
+public sealed record ContextoSegmentacionIdeas(
+    string CampaniaId,
+    string PreguntaId,
+    string Texto,
+    IReadOnlyList<string> HistorialReciente);
+
+public sealed record IdeaSegmentada(int Indice, string Texto, string? Resumen);
+```
+
+Contrato JSON solicitado al LLM:
+
+```json
+{
+  "ideas": [
+    { "texto": "string", "resumen": "string | null" }
+  ]
+}
+```
+
+Validaciones deterministas:
+
+- `ideas` debe existir y ser arreglo.
+- Cada `texto` debe estar no vacío tras trim.
+- Se descartan segmentos con menos de `Conversacion:LongitudMinimaIdea` caracteres (default 30).
+- Se limita a `Conversacion:MaxIdeasPorMensaje` ideas (default 5). Excedentes se ignoran y se registra
+  `LogSeguridad(anomaliaLlm, "segmentacion_excede_maximo")`.
+- Textos duplicados normalizados se colapsan conservando el primero.
+- Si tras validar quedan 0 ideas, fallback a mensaje completo.
+
+## 6. Flujo del orquestador
+
+Dentro de `ProcesarMensajeEntranteAsync`, solo en el camino que hoy evalúa:
+
+1. Resolver hilo, cupos y salidas anticipadas como hoy.
+2. Persistir `Mensaje(in)` y marcar participante respondió como hoy.
+3. Si `configConversacional.segmentacionIdeas != true` o `Conversacion:SegmentacionIdeas=false`:
+   ejecutar flujo actual 1-idea.
+4. Si multi-idea está activo:
+   - llamar `ISegmentadorIdeas`;
+   - validar/recortar ideas;
+   - por cada idea, crear `Respuesta` con `ideaIndice` y `respuestaPadreId`;
+   - construir `ContextoEvaluacion` con `RespuestaTexto = idea.Texto`;
+   - llamar `IEvaluadorLlm`, persistir `Evaluacion` y compilar Markdown si no hay fallback.
+5. Decisión conversacional:
+   - para Sprint 1b, responder al participante **un único mensaje agregado** por el turno, no N mensajes
+     separados. Debe ser breve y operacional: confirma que se registraron N ideas y, si aplica,
+     incluye una invitación de mejora general. El detalle por idea queda en Resultados/Markdown.
+   - `MaxRepreguntas` sigue siendo por hilo, no por idea, para preservar terminación.
+
+La implementación debe extraer un helper interno tipo `ProcesarIdeaAsync(...)` para evitar duplicar el
+camino actual de evaluación/Markdown; no introducir microservicios ni colas nuevas.
+
+## 7. Idempotencia y estado parcial
+
+- El webhook sigue deduplicando por `whatsappMessageId` en `leases`.
+- Los ids de `Respuesta` multi-idea son determinísticos (`respuestaPadreId + ideaIndice`) y los repos
+  usan upsert, así que un reintento no duplica.
+- Si el proceso cae tras escribir algunas ideas, una re-ejecución completa las faltantes o actualiza las
+  ya escritas con el mismo id.
+- Markdown es regenerable desde datos operativos; un fallo de compilación no debe abortar el hilo.
+
+## 8. Cupos, costo y observabilidad
+
+- La llamada de segmentación **también cuenta como llamada LLM** para efectos operativos, aunque no cree
+  `Evaluacion`. Como el contador actual de P-10 deriva de `Evaluacion`, la implementación debe añadir
+  una forma explícita de contabilizarla antes de activar el flag en staging: evento `LogSeguridad`/log
+  estructurado con tokens y motivo `segmentacion_ideas`, o extender el contador si se decide persistir
+  metering de segmentación. No usar documentos contadores nuevos salvo que una prueba de carga lo exija.
+- Consumo esperado por turno con multi-idea: `1 segmentación + N evaluaciones`; dimensionar
+  `maxLlamadasLlmPorUsuario` y `presupuestoTokensCampania` antes de encender la campaña.
+- Métricas mínimas:
+  - distribución de `ideasPorMensaje` por campaña;
+  - tasa de fallback de segmentación;
+  - tasa de truncamiento por `MaxIdeasPorMensaje`;
+  - tokens/latencia de segmentación separados de evaluación.
+- Logs sin PII: no registrar textos completos de ideas en telemetría técnica.
+
+## 9. Markdown y resultados
+
+- Cada idea genera Markdown independiente con `respuestaRef = resp_<padre>_<indice>`.
+- `09 §5` agrega trazabilidad opcional:
+  - `Idea índice: {{respuesta.ideaIndice}}`
+  - `Respuesta padre: {{respuesta.respuestaPadreId}}`
+- El listado de resultados debe poder ordenar por `fecha`, `respuestaPadreId`, `ideaIndice` para que N
+  ideas del mismo mensaje aparezcan juntas. Esto es presentación/consulta; no requiere nueva ruta.
+
+## 10. Seguridad y anti prompt-injection
+
+El segmentador usa las mismas defensas de `08`:
+
+- instrucciones en `system`, texto del participante delimitado como dato;
+- respuesta JSON estricta;
+- sin secretos ni datos innecesarios;
+- salida del modelo tratada como dato no confiable;
+- fallback al mensaje completo ante cualquier incumplimiento.
+
+El prompt del segmentador debe prohibir inferir datos personales, inventar ideas ausentes o mejorar el
+texto; solo separa ideas explícitas. La evaluación sigue aplicando la rúbrica a cada texto segmentado.
+
+## 11. Criterios de aceptación / pruebas Sprint 1b
+
+- Unit: campaña con `segmentacionIdeas=false` o documento viejo sin campo → cero llamadas al segmentador
+  y mismo comportamiento 1-idea.
+- Unit: kill-switch global `Conversacion:SegmentacionIdeas=false` anula una campaña con `true`.
+- Unit: mensaje con 2 ideas claras → 2 `Respuesta`, 2 `Evaluacion`, 2 Markdown; `ideaIndice` 1/2 y
+  mismo `respuestaPadreId`.
+- Unit: segmentador inválido/timeout/0 ideas válidas → fallback 1-idea; se registra anomalía sin PII.
+- Unit: ideas menores a `LongitudMinimaIdea` se descartan; si todas caen, fallback 1-idea.
+- Unit: >`MaxIdeasPorMensaje` ideas → se procesan las primeras N y se loguea truncamiento.
+- Unit/integration: ids determinísticos evitan duplicados si se reejecuta el mismo `whatsappMessageId`.
+- Integration: contrato `GET /respuestas` incluye campos nuevos de forma aditiva.
+- Markdown: artefacto por idea con trazabilidad de índice/padre.
+- Calibración: agregar/correr casos multi-idea del golden set D5 contra staging antes de activar el flag.
+- Gates de calidad: `dotnet build -c Release -warnaserror`, `dotnet test -c Release --filter
+  "Category!=Calibracion"`, `dotnet format --verify-no-changes`; frontend lint/test/build si se agrega
+  checkbox en portal.
+
+## 12. Degradación y rollback
+
+Dos niveles sin redeploy:
+
+1. Por campaña: `configConversacional.segmentacionIdeas=false`.
+2. Global: `Conversacion:SegmentacionIdeas=false`.
+
+Ambos devuelven el modo 1-idea ya probado. Si hay dudas de costo/no determinismo en UAT, el acta del
+día-D debe dejar multi-idea apagado y conservar el flujo actual.

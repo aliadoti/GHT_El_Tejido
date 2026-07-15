@@ -195,6 +195,20 @@ Ana Perez,573001112233,Operaciones,GHT,t_area_oper;t_lider
 | PATCH | `/api/admin/campanias/{id}/estado` | Cambia estado (`borrador→activa→cerrada→archivada`). Valida transición. |
 | POST | `/api/admin/campanias/{id}/duplicar` | Clona como plantilla (`REQ §11.3.8`). |
 
+Campos de configuración conversacional (aditivos; documento viejo/campo ausente conserva comportamiento actual):
+```json
+{
+  "configConversacional": {
+    "maxRepreguntas": 1,
+    "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
+    "segmentacionIdeas": false
+  }
+}
+```
+- `segmentacionIdeas` (`I-06`, default `false`): si está en `true` y el kill-switch global
+  `Conversacion:SegmentacionIdeas` no lo apaga, el backend puede separar un mensaje con varias ideas en
+  N respuestas/evaluaciones/Markdown. El portal lo expone como checkbox en Configuración de campaña.
+
 #### Sub-recursos embebidos de campaña
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -297,6 +311,20 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 | GET | `/api/admin/markdown/{id}` | Contenido Markdown + metadatos. |
 | POST | `/api/admin/markdown/{id}/regenerar` | Regenera el artefacto desde datos operativos (`REQ §22.4.6`). |
 | GET | `/api/admin/markdown/{id}/raw` | Descarga el `.md` (text/markdown). |
+
+Campos aditivos de respuesta para I-06:
+```json
+{
+  "id": "resp_wamidabc_1",
+  "texto": "Idea segmentada...",
+  "ideaIndice": 1,
+  "respuestaPadreId": "wamid.abc"
+}
+```
+- `ideaIndice`/`respuestaPadreId` solo aparecen poblados en respuestas segmentadas; clientes existentes
+  pueden ignorarlos.
+- Los endpoints de Markdown no cambian: cada idea segmentada produce un artefacto `tipoArtefacto=respuesta`
+  con `respuestaRef` propio.
 
 ### 5.9 Catálogos auxiliares
 | Método | Ruta | Descripción |

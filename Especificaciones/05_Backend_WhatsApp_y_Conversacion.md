@@ -123,9 +123,13 @@ Estados de `Conversacion.estadoMaquina` (`03 §3.6`):
 ProcesarMensajeEntranteAsync:
 1. Cargar/crear Conversacion (usuario, campaña, pregunta vigente).
 2. Persistir Respuesta (esRepregunta según estadoMaquina) con tagsSnapshot.
+   - I-06 multi-idea: si `Campania.configConversacional.segmentacionIdeas=true` y
+     `Conversacion:SegmentacionIdeas` no lo apaga, antes de evaluar se llama `ISegmentadorIdeas`.
+     Cada idea válida produce su propia `Respuesta` con `ideaIndice`/`respuestaPadreId`; salida inválida,
+     0 ideas o flag apagado → fallback 1-idea = comportamiento actual.
 3. estadoMaquina = evaluando.
-4. Llamar IEvaluadorLlm.EvaluarAsync(...) (08).  // guardrails de pre/post dentro de 08
-5. Persistir Evaluacion (03 §3.9).
+4. Llamar IEvaluadorLlm.EvaluarAsync(...) (08) por cada respuesta/idea.  // guardrails de pre/post dentro de 08
+5. Persistir Evaluacion (03 §3.9) por cada respuesta/idea.
 6. Decisión:
    - Si Evaluacion.recomendacion == repreguntar
         AND conversacion.repreguntasUsadas < campaña/pregunta.maxRepreguntas (MVP=1):
@@ -135,7 +139,7 @@ ProcesarMensajeEntranteAsync:
    - En caso contrario (cerrar, o repreguntas agotadas):
         → enviar retroalimentación (si no se envió ya como parte del flujo)
         → enviar mensaje de cierre (Gateway, tipo=Cierre) (REQ §26.8)
-        → encolar compilación Markdown (09) para la(s) respuesta(s) del hilo
+        → encolar compilación Markdown (09) para la(s) respuesta(s) válida(s) del hilo
         → estadoMaquina = cerrada; cerrar Conversacion (fechaCierre).
 7. Enviar la retroalimentación breve al usuario por WhatsApp (outbound).
 ```
@@ -143,7 +147,7 @@ ProcesarMensajeEntranteAsync:
 ### 4.4 Tope duro del MVP
 **Revisiones como oportunidades:** `MaxRepreguntas` controla cuantas invitaciones a mejorar se ofrecen. Cuando el hilo esta en `esperandoRepregunta` y `repreguntasUsadas >= maxRepreguntas`, el siguiente entrante se registra como respuesta `recibida`, no se evalua, no genera retro/Markdown y se cierra con solo el mensaje de cierre (`REQ §25.2`, `§26.6`).
 
-**Cupos y techos deterministas (`10 §2`):** el orquestador ademas aplica, gateados por `Conversacion:CuposHabilitados` (default off), los cupos `maxMensajesPorUsuario` (descarte silencioso + `LogSeguridad(RateLimit)`) y `maxLlamadasLlmPorUsuario` (cierre elegante sin llamar al LLM) de `Campania.configSeguridad`, y un techo duro global de turnos por hilo `Conversacion:MaxTurnosPorHilo` (0=off) que garantiza terminacion. Ver `Reglas_Conversacion_y_Participacion.md §2.8` y `SUPUESTOS.md#guardrails-cupos-conversacion`.
+**Cupos y techos deterministas (`10 §2`):** el orquestador ademas aplica, gateados por `Conversacion:CuposHabilitados` (default off), los cupos `maxMensajesPorUsuario` (descarte silencioso + `LogSeguridad(RateLimit)`) y `maxLlamadasLlmPorUsuario` (cierre elegante sin llamar al LLM) de `Campania.configSeguridad`, y un techo duro global de turnos por hilo `Conversacion:MaxTurnosPorHilo` (0=off) que garantiza terminacion. Con I-06 activo, un turno puede consumir `1` llamada LLM de segmentacion + `N` llamadas de evaluacion; por eso los cupos deben dimensionarse antes de activar `segmentacionIdeas`. Ver `Reglas_Conversacion_y_Participacion.md §2.8` y `SUPUESTOS.md#guardrails-cupos-conversacion`.
 
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
@@ -166,6 +170,7 @@ Toda la cadena webhook → orquestador → LLM → Markdown comparte el `correla
 
 ## 5. Criterios de aceptación del módulo (resumen; ver `13`)
 - Un mensaje entrante de un participante autorizado genera Respuesta + Evaluación + retroalimentación enviada.
+- Con I-06 activo y configurado, un mensaje con N ideas genera N `Respuesta`/`Evaluacion`/Markdown sin duplicar ante reintentos; con flag apagado o segmentador inválido, conserva el flujo 1-idea.
 - Como máximo se envía **una** repregunta; el segundo turno siempre cierra.
 - El cierre envía mensaje de agradecimiento y dispara compilación Markdown.
 - Mensajes repetidos por reintento de Meta no duplican Respuestas ni Evaluaciones (idempotencia).

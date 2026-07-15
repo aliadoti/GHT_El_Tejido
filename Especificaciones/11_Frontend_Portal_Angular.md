@@ -86,7 +86,7 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 
 **Usuarios/Tags** (`REQ §33.1.5–6`): tabla con filtros (rol, estado, área, empresa, tag, búsqueda); alta/edición con validación de número; asignación de área/empresa/tags; activar/inactivar. CRUD de tags.
 
-**Campañas** (`REQ §33.1.7–9`): lista por estado; detalle con tabs (datos, mensajes iniciales, preguntas, participantes); asociación de participantes manual o por filtro con **preview de destinatarios**; cambio de estado.
+**Campañas** (`REQ §33.1.7–9`): lista por estado; detalle con tabs (datos, mensajes iniciales, preguntas, participantes); asociación de participantes manual o por filtro con **preview de destinatarios**; cambio de estado. Para I-06, la pestaña Configuración expone `segmentacionIdeas` como checkbox de campaña, apagado por defecto.
 
 **Envíos** (`REQ §33.1.10–11`, `§27.2`): seleccionar campaña/participantes; ver cantidad de destinatarios; botón de envío; tabla de estado por participante (enviado/error/pendiente); reintentar fallidos; reenviar a sin respuesta. Monitorea el `jobId`.
 

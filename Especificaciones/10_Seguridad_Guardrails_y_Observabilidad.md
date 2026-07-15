@@ -24,6 +24,7 @@ Servicio `IGuardrails` consumido por el Gateway (`05`) y la Evaluación (`08`). 
 | Máx. mensajes por usuario/campaña | 10 | `429`/rechazo controlado; registrar. |
 | Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. |
 | **Presupuesto de tokens LLM por campaña (P-10)** | `Campania.configSeguridad.presupuestoTokensCampania` (0 = off) | Con `Conversacion:CuposHabilitados` activo, al alcanzarlo se cierra elegante (cupo LLM agotado) y `LogSeguridad(rateLimit, "presupuesto_tokens_campania")`. Metering: cada llamada emite log de tokens con `campaniaId` (sin secretos) para alerta al 80% en App Insights. |
+| **Segmentación multi-idea (I-06)** | `Conversacion:SegmentacionIdeas=true`, `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30` | Solo se aplica si la campaña tiene `configConversacional.segmentacionIdeas=true`. Salida inválida/0 ideas -> fallback 1-idea. Excedentes -> procesar primeras N + `LogSeguridad(anomaliaLlm, "segmentacion_excede_maximo")`. |
 | Timeout LLM | 30 s | Reintentar (hasta `maxReintentos`), luego fallback. |
 | Máx. reintentos LLM | 2 | Fallback seguro. |
 | Rate limit por número WhatsApp (P-10) | `Seguridad:RateNumeroWhatsAppPorMinuto` (0 = off) | Ventana deslizante en memoria aplicada antes de resolver el participante; al exceder, **descarte silencioso** + `LogSeguridad(rateLimit, "rate_numero")`. |
@@ -73,6 +74,7 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - Trazas de request, dependencias (Cosmos, WhatsApp, LLM), latencias y errores.
 - Un **`correlationId`** por conversación atraviesa webhook → orquestador → LLM → Markdown (`ARQ §13`). Se genera al crear la `Conversacion` y se propaga vía `Activity`/scope de logging.
 - Métricas de consumo LLM (tokens, costo aprox.) y **alertas** por umbral de error o de gasto.
+- Para I-06, métricas agregadas por campaña: distribución de `ideasPorMensaje`, tasa de fallback de segmentación, truncamientos por `MaxIdeasPorMensaje`, tokens/latencia de segmentación separados de evaluación. No registrar textos completos de ideas en telemetría técnica.
 - **Sin PII sensible ni secretos** en telemetría; los textos completos viven en el plano de negocio, no en logs técnicos.
 
 ### 6.3 Logging estructurado

@@ -40,6 +40,30 @@ public sealed record LlmRespuesta(string Texto, UsoTokensLlm? Uso); // Uso null 
 
 El `ILlmClient` tiene una implementación por `proveedor` (`AzureOpenAI`, compatibles OpenAI como `OpenAI`/`OpenRouter`/`Otro`, y `Anthropic` nativo); se selecciona por `ConfigLLM.proveedor`. El resto del módulo es agnóstico del proveedor.
 
+### 2.1 Segmentación de ideas (I-06)
+
+La detección multi-idea es un paso previo al evaluador, no un cambio al contrato de salida de `§4`.
+El puerto propuesto es `ISegmentadorIdeas`, consumido por el orquestador (`05 §4`) y respaldado por el
+mismo `ILlmClient`:
+
+```csharp
+public interface ISegmentadorIdeas
+{
+    Task<ResultadoSegmentacionIdeas> SegmentarAsync(ContextoSegmentacionIdeas contexto, CancellationToken ct);
+}
+```
+
+La salida esperada del modelo de segmentación es JSON estricto:
+
+```json
+{ "ideas": [ { "texto": "string", "resumen": "string | null" } ] }
+```
+
+La respuesta del participante sigue tratándose como dato no confiable y delimitado. Si el JSON no
+cumple esquema, si el proveedor falla o si tras aplicar guardas no queda ninguna idea válida, el
+orquestador usa fallback 1-idea y llama `IEvaluadorLlm` con el mensaje completo. Cada idea válida se
+evalúa con el esquema existente de `§4`.
+
 ---
 
 ## 3. Flujo (`ARQ §6`)

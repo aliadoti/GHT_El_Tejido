@@ -28,6 +28,7 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Estados: `borrador → activa → cerrada → archivada` (`REQ §11.2`). El servicio valida transiciones (p. ej. no se reactiva una `archivada`; documentar la matriz de transición permitida en el código).
 - Una campaña embebe `mensajesIniciales[]` y `preguntas[]` (`03 §3.3`).
 - Asocia por referencia: `rubricaRef` (+versión), `promptRefs`, `configLLMRef`, y configs de markdown/conversacional/seguridad.
+- I-06 agrega `configConversacional.segmentacionIdeas` (aditivo, default `false`) como comportamiento por campaña; el kill-switch global `Conversacion:SegmentacionIdeas` queda fuera del CRUD de campaña.
 
 ### 2.2 Reglas de negocio (`REQ §11.3`)
 - Solo `activa` permite envío de mensajes iniciales y recepción de respuestas (`§11.3.1–2`).
