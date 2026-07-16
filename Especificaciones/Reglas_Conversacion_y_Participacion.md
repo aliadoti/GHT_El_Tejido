@@ -114,7 +114,7 @@ Hay dos cierres normales: si la evaluacion valida decide cerrar sin ofrecer revi
 despues de agotar revisiones, se envia **solo el mensaje de cierre** y no se compila un Markdown nuevo.
 Una conversacion **cerrada ignora** cualquier mensaje posterior (se descarta en silencio).
 
-### 2.4.1 Multi-idea por mensaje (I-06, diseño Sprint 1a)
+### 2.4.1 Multi-idea por mensaje (I-06, implementado; flags apagados)
 Si la campaña tiene `configConversacional.segmentacionIdeas=true` y el kill-switch global
 `Conversacion:SegmentacionIdeas` no está apagado, una respuesta puede separarse en varias ideas antes
 de evaluarse. Cada idea válida se guarda como una `Respuesta` independiente, con su propia evaluación y

@@ -60,6 +60,18 @@ public sealed class OpcionesConversacion
     /// </summary>
     public int MaxTurnosPorHilo { get; set; }
 
+    /// <summary>
+    /// Kill-switch global de I-06. Por defecto respeta la configuracion por campania; en <c>false</c>
+    /// fuerza el flujo 1-idea sin modificar datos ni requerir redeploy.
+    /// </summary>
+    public bool SegmentacionIdeas { get; set; } = true;
+
+    /// <summary>Maximo de ideas procesadas por mensaje cuando I-06 esta activo. Default 5.</summary>
+    public int MaxIdeasPorMensaje { get; set; } = 5;
+
+    /// <summary>Largo minimo de una idea valida tras trim para evitar fragmentacion. Default 30.</summary>
+    public int LongitudMinimaIdea { get; set; } = 30;
+
     /// <summary>Textos operativos del orquestador que se pueden sobreescribir por configuracion.</summary>
     public OpcionesMensajesConversacion Mensajes { get; set; } = new();
 }

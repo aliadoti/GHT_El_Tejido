@@ -195,6 +195,8 @@ internal static class EndpointsAdminResultados
             estado = MinusculaInicial(r.Estado.ToString()),
             r.Fecha,
             tagsSnapshot = r.TagsSnapshot,
+            r.IdeaIndice,
+            r.RespuestaPadreId,
         };
 
     private static object MapearEvaluacion(DominioEvaluacion e)

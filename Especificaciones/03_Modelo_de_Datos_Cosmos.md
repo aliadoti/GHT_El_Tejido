@@ -419,8 +419,9 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "timestamp": "2026-06-12T15:06:00Z"
 }
 ```
-- Append-only. `tipoEvento` ∈ `solicitudOtp` | `loginExitoso` | `loginFallido` | `rechazoParticipacion` | `rateLimit` | `anomaliaLlm` | `promptInjectionSospechoso` | `errorEnvio` | `accionAdministrativa` (P-03) | `cierreUmbralAnticipado` (I-01) | ...
+- Append-only. `tipoEvento` ∈ `solicitudOtp` | `loginExitoso` | `loginFallido` | `rechazoParticipacion` | `rateLimit` | `anomaliaLlm` | `promptInjectionSospechoso` | `errorEnvio` | `accionAdministrativa` (P-03) | `cierreUmbralAnticipado` (I-01) | `segmentacionIdeas` (I-06) | ...
 - `cierreUmbralAnticipado` (I-01, **aditivo** al final del enum, preserva valores): marca de telemetría/calibración emitida cuando el cierre anticipado por umbral de rúbrica dispara (`resultado=cierre_anticipado`; `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`, sin PII de texto). Ver `10 §6.4` y `SUPUESTOS.md#activacion-umbral-i01`.
+- `segmentacionIdeas` (I-06, **aditivo** al final del enum, preserva valores): telemetría por intento de segmentación (`detalle=ideas:<n>;fallback:<bool>;truncada:<bool>;motivo:<...>;promptTokens:<n>;completionTokens:<n>`, sin texto de ideas ni PII). Ver `10 §6.2`.
 - **Sin** códigos, secretos ni PII innecesaria.
 
 ### 3.16 `WebhookDedupe` (contenedor `leases`) — idempotencia

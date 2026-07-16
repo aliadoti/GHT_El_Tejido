@@ -65,10 +65,17 @@ export interface Campania {
   rubricaRef?: string;
   promptRefs?: Record<string, string>;
   configLLMRef?: string;
+  configConversacional?: ConfigConversacional;
   configSeguridad?: ConfigSeguridad;
   usuariosHabilitados?: string[];
   creadoEn: string;
   actualizadoEn: string;
+}
+
+export interface ConfigConversacional {
+  maxRepreguntas: number;
+  mensajeCierre: string;
+  segmentacionIdeas: boolean;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).
@@ -217,6 +224,8 @@ export interface Respuesta {
   estado: string;
   fecha: string;
   tagsSnapshot: string[];
+  ideaIndice?: number | null;
+  respuestaPadreId?: string | null;
 }
 
 export interface Evaluacion {

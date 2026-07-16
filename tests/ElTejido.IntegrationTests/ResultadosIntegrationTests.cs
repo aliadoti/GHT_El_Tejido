@@ -38,13 +38,17 @@ public sealed class ResultadosIntegrationTests
 
         using var lista = await client.GetAsync($"/api/admin/respuestas?campaniaId={CampaniaId}");
         lista.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await lista.Content.ReadAsStringAsync()).Should().Contain("resp_1");
+        var listaJson = await lista.Content.ReadAsStringAsync();
+        listaJson.Should().Contain("resp_1");
+        listaJson.Should().Contain("\"ideaIndice\":1");
+        listaJson.Should().Contain("\"respuestaPadreId\":\"wamid.1\"");
 
         using var detalle = await client.GetAsync($"/api/admin/respuestas/resp_1?campaniaId={CampaniaId}");
         detalle.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await detalle.Content.ReadAsStringAsync();
         json.Should().Contain("\"recomendacion\":\"cerrar\"");
         json.Should().Contain("eval_1");
+        json.Should().Contain("\"ideaIndice\":1");
     }
 
     [Fact]
@@ -102,7 +106,9 @@ public sealed class ResultadosIntegrationTests
     private static WebApplicationFactory<Program> Construir()
     {
         var respuestas = Substitute.For<IRepositorioRespuestas>();
-        var respuesta = Respuesta.Crear("resp_1", CampaniaId, "u_1", "p_1", "conv_1", "Mi idea", "whatsapp", false, EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" });
+        var respuesta = Respuesta.Crear(
+            "resp_1", CampaniaId, "u_1", "p_1", "conv_1", "Mi idea", "whatsapp", false,
+            EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }, ideaIndice: 1, respuestaPadreId: "wamid.1");
         respuestas.ListarRespuestasAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { respuesta });
         respuestas.ObtenerRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(respuesta);
         respuestas.ObtenerEvaluacionPorRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(CrearEvaluacion());

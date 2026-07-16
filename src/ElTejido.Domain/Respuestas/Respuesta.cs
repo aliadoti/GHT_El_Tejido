@@ -19,7 +19,9 @@ public sealed class Respuesta
         bool esRepregunta,
         EstadoRespuesta estado,
         DateTimeOffset fecha,
-        IReadOnlyCollection<string> tagsSnapshot)
+        IReadOnlyCollection<string> tagsSnapshot,
+        int? ideaIndice,
+        string? respuestaPadreId)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -32,6 +34,8 @@ public sealed class Respuesta
         Estado = estado;
         Fecha = fecha;
         TagsSnapshot = tagsSnapshot;
+        IdeaIndice = ideaIndice;
+        RespuestaPadreId = respuestaPadreId;
     }
 
     public string Id { get; }
@@ -56,6 +60,12 @@ public sealed class Respuesta
 
     public IReadOnlyCollection<string> TagsSnapshot { get; }
 
+    /// <summary>Indice 1-based de una idea segmentada; null conserva la respuesta historica 1-idea.</summary>
+    public int? IdeaIndice { get; }
+
+    /// <summary>Identificador del mensaje origen para agrupar respuestas segmentadas; null = historica.</summary>
+    public string? RespuestaPadreId { get; }
+
     public static Respuesta Crear(
         string id,
         string campaniaId,
@@ -67,8 +77,25 @@ public sealed class Respuesta
         bool esRepregunta,
         EstadoRespuesta estado,
         DateTimeOffset fecha,
-        IEnumerable<string>? tagsSnapshot)
-        => new(
+        IEnumerable<string>? tagsSnapshot,
+        int? ideaIndice = null,
+        string? respuestaPadreId = null)
+    {
+        if (ideaIndice is <= 0)
+        {
+            throw new DomainValidationException(
+                "IDEA_INDICE_INVALIDO",
+                "El indice de idea debe ser mayor que cero.");
+        }
+
+        if (ideaIndice.HasValue != !string.IsNullOrWhiteSpace(respuestaPadreId))
+        {
+            throw new DomainValidationException(
+                "TRAZABILIDAD_IDEA_INCOMPLETA",
+                "ideaIndice y respuestaPadreId deben informarse juntos.");
+        }
+
+        return new(
             DomainGuards.Required(id, nameof(id)),
             DomainGuards.Required(campaniaId, nameof(campaniaId)),
             DomainGuards.Required(usuarioId, nameof(usuarioId)),
@@ -79,7 +106,10 @@ public sealed class Respuesta
             esRepregunta,
             estado,
             fecha.ToUniversalTime(),
-            NormalizarTags(tagsSnapshot));
+            NormalizarTags(tagsSnapshot),
+            ideaIndice,
+            string.IsNullOrWhiteSpace(respuestaPadreId) ? null : respuestaPadreId.Trim());
+    }
 
     public static IReadOnlyCollection<string> NormalizarTags(IEnumerable<string>? tags)
         => tags is null

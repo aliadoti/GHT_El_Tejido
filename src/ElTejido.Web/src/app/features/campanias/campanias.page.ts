@@ -262,6 +262,14 @@ interface PreguntaForm {
                       [(ngModel)]="edicion.presupuestoTokensCampania"
                     />
                   </label>
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="editarSegmentacionIdeas"
+                      [(ngModel)]="edicion.segmentacionIdeas"
+                    />
+                    Separar varias ideas de un mismo mensaje
+                  </label>
                   <label>
                     Prompt de evaluacion
                     <select name="editarPromptEvaluarRef" [(ngModel)]="edicion.promptEvaluarRef">
@@ -753,6 +761,7 @@ export class CampaniasPage {
         configConversacional: {
           maxRepreguntas: 1,
           mensajeCierre: 'Gracias. Tu aporte quedo registrado.',
+          segmentacionIdeas: false,
         },
         configSeguridad: {
           maxCaracteresMensaje: 1500,
@@ -785,6 +794,13 @@ export class CampaniasPage {
         rubricaRef: this.edicion.rubricaRef,
         promptRefs,
         configLLMRef: this.edicion.configLlmRef,
+        configConversacional: {
+          maxRepreguntas: this.selected()?.configConversacional?.maxRepreguntas ?? 1,
+          mensajeCierre:
+            this.selected()?.configConversacional?.mensajeCierre ??
+            'Gracias. Tu aporte quedo registrado correctamente.',
+          segmentacionIdeas: Boolean(this.edicion.segmentacionIdeas),
+        },
         // P-10: conserva los cupos actuales y actualiza el presupuesto de tokens de la campaña.
         configSeguridad: {
           maxCaracteresMensaje: this.selected()?.configSeguridad?.maxCaracteresMensaje ?? 1500,
@@ -988,6 +1004,7 @@ export class CampaniasPage {
       configLlmRef: '',
       promptEvaluarRef: '',
       presupuestoTokensCampania: 0,
+      segmentacionIdeas: false,
     };
   }
 
@@ -1015,6 +1032,7 @@ export class CampaniasPage {
       configLlmRef: campania.configLLMRef ?? '',
       promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
       presupuestoTokensCampania: campania.configSeguridad?.presupuestoTokensCampania ?? 0,
+      segmentacionIdeas: campania.configConversacional?.segmentacionIdeas ?? false,
     };
   }
 

@@ -359,18 +359,22 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("mensajeCierre")]
         public string MensajeCierre { get; init; } = string.Empty;
 
+        [JsonProperty("segmentacionIdeas")]
+        public bool SegmentacionIdeas { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
             {
                 MaxRepreguntas = config.MaxRepreguntas,
                 MensajeCierre = config.MensajeCierre,
+                SegmentacionIdeas = config.SegmentacionIdeas,
             };
         }
 
         public ConfigConversacional ToDomain()
         {
-            return ElTejido.Domain.Campanas.ConfigConversacional.Crear(MaxRepreguntas, MensajeCierre);
+            return ElTejido.Domain.Campanas.ConfigConversacional.Crear(MaxRepreguntas, MensajeCierre, SegmentacionIdeas);
         }
     }
 

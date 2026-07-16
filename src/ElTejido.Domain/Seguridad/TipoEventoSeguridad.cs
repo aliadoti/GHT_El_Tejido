@@ -23,4 +23,8 @@ public enum TipoEventoSeguridad
     // (Conversacion:UmbralCierreAnticipado) dispara. No es una amenaza: sirve para calibrar el
     // umbral en staging (10 §6.2). Aditivo al final para preservar los valores existentes.
     CierreUmbralAnticipado,
+
+    // I-06: metrica operativa de una llamada de segmentacion. El detalle no contiene texto del
+    // participante; solo conteos, fallback, truncamiento y tokens reportados por el proveedor.
+    SegmentacionIdeas,
 }

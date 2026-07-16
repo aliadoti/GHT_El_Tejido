@@ -6,7 +6,7 @@
 > **Riesgo:** Alto (no determinismo RL-2).
 > Cubre REQ §9/§22/§25, ARQ §4.2/§6/§7/§12/§13; specs base `03 §3.3/§3.8`,
 > `04 §5.3/§5.8`, `05 §4`, `08`, `09`, `10`.
-> **Estado:** diseño técnico cerrado 2026-07-15; implementación queda para Sprint 1b.
+> **Estado:** implementación local terminada 2026-07-15; flags apagados. Falta validación operativa en staging (D5 real, UAT y medición de costo) antes de activarla.
 
 ## 1. Qué pide GHT / por qué
 
@@ -14,17 +14,18 @@ Detectar **varias ideas** en una misma respuesta, separarlas en **registros dist
 Markdown) y recorrer la rúbrica **por idea**. Hoy `Respuesta` guarda 1 idea por registro y el
 orquestador evalúa una sola vez por mensaje entrante.
 
-La meta de Sprint 1a es **solo diseño**: dejar contratos, flujo, pruebas y rollback definidos para que
-la implementación de Sprint 1b sea mecánica y no reabra decisiones de arquitectura.
+El diseño de Sprint 1a se implementó en Sprint 1b sin reabrir decisiones de arquitectura. La capacidad
+permanece apagada por defecto y su activación exige la validación operativa indicada en los criterios de salida.
 
 ## 2. Estado actual del build
 
-- `OrquestadorConversacion` (`src/ElTejido.Application/Conversacion/OrquestadorConversacion.cs`) genera
-  un `respuestaId` aleatorio por entrante evaluable, persiste una `Respuesta`, llama una vez a
-  `IEvaluadorLlm` y compila un Markdown por evaluación válida.
-- `Respuesta` (`src/ElTejido.Domain/Respuestas/Respuesta.cs`) no tiene aún `ideaIndice` ni
-  `respuestaPadreId`.
-- `Campania.ConfigConversacional` no tiene aún `segmentacionIdeas`.
+- `OrquestadorConversacion` (`src/ElTejido.Application/Conversacion/OrquestadorConversacion.cs`) usa
+  `ISegmentadorIdeas` antes de evaluar cuando ambos flags están activos; procesa y compila cada idea
+  válida de forma independiente y responde una sola vez al participante.
+- `Respuesta` tiene `ideaIndice` y `respuestaPadreId` aditivos; para multi-idea se generan ids
+  determinísticos `resp_<padre>_<indice>`.
+- `Campania.ConfigConversacional.segmentacionIdeas` existe, persiste en Cosmos, se expone por API admin
+  y se configura en el portal; su default es `false`.
 - P-10 ya entrega cupos por usuario/campaña y presupuesto de tokens; D5 ya tiene golden set con casos
   multi-idea, pero el baseline real contra staging sigue pendiente operativo.
 
@@ -170,10 +171,10 @@ camino actual de evaluación/Markdown; no introducir microservicios ni colas nue
 ## 8. Cupos, costo y observabilidad
 
 - La llamada de segmentación **también cuenta como llamada LLM** para efectos operativos, aunque no cree
-  `Evaluacion`. Como el contador actual de P-10 deriva de `Evaluacion`, la implementación debe añadir
-  una forma explícita de contabilizarla antes de activar el flag en staging: evento `LogSeguridad`/log
-  estructurado con tokens y motivo `segmentacion_ideas`, o extender el contador si se decide persistir
-  metering de segmentación. No usar documentos contadores nuevos salvo que una prueba de carga lo exija.
+  `Evaluacion`. La implementación emite `LogSeguridad(segmentacionIdeas)` con cantidades, fallback,
+  truncamiento y tokens, sin texto/PII. El contador persistente de P-10 sigue derivando de
+  `Evaluacion`; antes de activar en staging, operaciones debe dimensionar `1 + N` llamadas por turno y
+  observar estos eventos. No se agregan documentos contadores nuevos.
 - Consumo esperado por turno con multi-idea: `1 segmentación + N evaluaciones`; dimensionar
   `maxLlamadasLlmPorUsuario` y `presupuestoTokensCampania` antes de encender la campaña.
 - Métricas mínimas:
@@ -206,6 +207,10 @@ El prompt del segmentador debe prohibir inferir datos personales, inventar ideas
 texto; solo separa ideas explícitas. La evaluación sigue aplicando la rúbrica a cada texto segmentado.
 
 ## 11. Criterios de aceptación / pruebas Sprint 1b
+
+Verificación local completada: build Release con warnings-as-errors, 291 pruebas unitarias y 51 de
+integración, y format limpio. Permanecen pendientes D5 real, UAT y medición de costo en staging bajo
+flag antes de encender el feature.
 
 - Unit: campaña con `segmentacionIdeas=false` o documento viejo sin campo → cero llamadas al segmentador
   y mismo comportamiento 1-idea.

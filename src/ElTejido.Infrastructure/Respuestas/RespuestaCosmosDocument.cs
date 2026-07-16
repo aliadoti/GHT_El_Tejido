@@ -43,6 +43,12 @@ internal sealed class RespuestaCosmosDocument
     [JsonProperty("tagsSnapshot")]
     public IReadOnlyCollection<string> TagsSnapshot { get; init; } = Array.Empty<string>();
 
+    [JsonProperty("ideaIndice")]
+    public int? IdeaIndice { get; init; }
+
+    [JsonProperty("respuestaPadreId")]
+    public string? RespuestaPadreId { get; init; }
+
     public static RespuestaCosmosDocument FromDomain(Respuesta respuesta)
         => new()
         {
@@ -58,6 +64,8 @@ internal sealed class RespuestaCosmosDocument
             Estado = MapearEstado(respuesta.Estado),
             Fecha = respuesta.Fecha,
             TagsSnapshot = respuesta.TagsSnapshot,
+            IdeaIndice = respuesta.IdeaIndice,
+            RespuestaPadreId = respuesta.RespuestaPadreId,
         };
 
     public Respuesta ToDomain()
@@ -72,7 +80,9 @@ internal sealed class RespuestaCosmosDocument
             EsRepregunta,
             MapearEstado(Estado),
             Fecha,
-            TagsSnapshot);
+            TagsSnapshot,
+            IdeaIndice,
+            RespuestaPadreId);
 
     private static string MapearEstado(EstadoRespuesta estado)
         => estado switch

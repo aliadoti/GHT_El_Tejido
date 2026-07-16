@@ -24,7 +24,7 @@ Servicio `IGuardrails` consumido por el Gateway (`05`) y la Evaluación (`08`). 
 | Máx. mensajes por usuario/campaña | 10 | `429`/rechazo controlado; registrar. |
 | Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. |
 | **Presupuesto de tokens LLM por campaña (P-10)** | `Campania.configSeguridad.presupuestoTokensCampania` (0 = off) | Con `Conversacion:CuposHabilitados` activo, al alcanzarlo se cierra elegante (cupo LLM agotado) y `LogSeguridad(rateLimit, "presupuesto_tokens_campania")`. Metering: cada llamada emite log de tokens con `campaniaId` (sin secretos) para alerta al 80% en App Insights. |
-| **Segmentación multi-idea (I-06)** | `Conversacion:SegmentacionIdeas=true`, `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30` | Solo se aplica si la campaña tiene `configConversacional.segmentacionIdeas=true`. Salida inválida/0 ideas -> fallback 1-idea. Excedentes -> procesar primeras N + `LogSeguridad(anomaliaLlm, "segmentacion_excede_maximo")`. |
+| **Segmentación multi-idea (I-06)** | `Conversacion:SegmentacionIdeas=true`, `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30` | Solo se aplica si la campaña tiene `configConversacional.segmentacionIdeas=true`. Salida inválida/0 ideas -> fallback 1-idea. Excedentes -> procesar primeras N. Cada intento emite `LogSeguridad(segmentacionIdeas)` con conteos, fallback, truncamiento y tokens, sin texto. |
 | Timeout LLM | 30 s | Reintentar (hasta `maxReintentos`), luego fallback. |
 | Máx. reintentos LLM | 2 | Fallback seguro. |
 | Rate limit por número WhatsApp (P-10) | `Seguridad:RateNumeroWhatsAppPorMinuto` (0 = off) | Ventana deslizante en memoria aplicada antes de resolver el participante; al exceder, **descarte silencioso** + `LogSeguridad(rateLimit, "rate_numero")`. |
@@ -83,9 +83,10 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
+- **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.
 
 ---
 

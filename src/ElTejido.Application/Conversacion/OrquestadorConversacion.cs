@@ -12,6 +12,7 @@ using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Conversaciones;
+using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
@@ -38,6 +39,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IRepositorioParticipantes _participantes;
     private readonly IRepositorioConfiguracion _configuracion;
     private readonly IEvaluadorLlm _evaluador;
+    private readonly ISegmentadorIdeas _segmentadorIdeas;
     private readonly ICompiladorMarkdown _compilador;
     private readonly IWhatsAppGateway _gateway;
     private readonly IRepositorioLogSeguridad _logSeguridad;
@@ -47,6 +49,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly double _umbralCierreAnticipado;
     private readonly bool _cuposHabilitados;
     private readonly int _maxTurnosPorHilo;
+    private readonly bool _segmentacionIdeasHabilitada;
+    private readonly int _maxIdeasPorMensaje;
+    private readonly int _longitudMinimaIdea;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -55,6 +60,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IRepositorioParticipantes participantes,
         IRepositorioConfiguracion configuracion,
         IEvaluadorLlm evaluador,
+        ISegmentadorIdeas segmentadorIdeas,
         ICompiladorMarkdown compilador,
         IWhatsAppGateway gateway,
         IRepositorioLogSeguridad logSeguridad,
@@ -67,6 +73,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _participantes = participantes;
         _configuracion = configuracion;
         _evaluador = evaluador;
+        _segmentadorIdeas = segmentadorIdeas;
         _compilador = compilador;
         _gateway = gateway;
         _logSeguridad = logSeguridad;
@@ -75,6 +82,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _umbralCierreAnticipado = opciones.UmbralCierreAnticipado;
         _cuposHabilitados = opciones.CuposHabilitados;
         _maxTurnosPorHilo = opciones.MaxTurnosPorHilo;
+        _segmentacionIdeasHabilitada = opciones.SegmentacionIdeas;
+        _maxIdeasPorMensaje = Math.Max(1, opciones.MaxIdeasPorMensaje);
+        _longitudMinimaIdea = Math.Max(1, opciones.LongitudMinimaIdea);
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
             ? opciones.FrasesContinuar
             : DetectorIntencionContinuar.FrasesPorDefecto;
@@ -143,7 +153,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             && await PresupuestoTokensExcedidoAsync(campania, cancellationToken);
         var cupoLlmExcedido = cupoLlamadasUsuarioExcedido || presupuestoTokensExcedido;
 
-        await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
+        var mensajeId = await GuardarMensajeAsync(
+            conversacion,
+            DireccionMensaje.In,
+            mensaje.Texto,
+            mensaje.WhatsappMessageId,
+            mensaje.Timestamp,
+            cancellationToken);
 
         await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
 
@@ -200,6 +216,26 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await RegistrarConfiguracionNoDisponibleAsync(usuario, contexto.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
             await GuardarRespuestaAsync(respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta, EstadoRespuesta.EvaluacionPendiente, ahora, cancellationToken);
             await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, ahora, cancellationToken);
+            return;
+        }
+
+        if (_segmentacionIdeasHabilitada && campania.ConfigConversacional.SegmentacionIdeas)
+        {
+            var respuestaPadreId = string.IsNullOrWhiteSpace(mensaje.WhatsappMessageId)
+                ? mensajeId
+                : mensaje.WhatsappMessageId;
+            await ProcesarIdeasSegmentadasAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                contexto.Contexto,
+                mensaje.Texto,
+                respuestaPadreId,
+                esRepregunta,
+                ahora,
+                cancellationToken);
             return;
         }
 
@@ -261,6 +297,190 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
     }
+
+    private async Task ProcesarIdeasSegmentadasAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        ContextoEvaluacion contextoBase,
+        string textoOriginal,
+        string respuestaPadreId,
+        bool esRepregunta,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var resolucion = await ResolverIdeasAsync(contextoBase, textoOriginal, cancellationToken);
+        await RegistrarSegmentacionAsync(usuario, resolucion, ahora, cancellationToken);
+
+        var resultados = new List<(ResultadoEvaluacion Resultado, ContextoEvaluacion Contexto)>();
+        foreach (var idea in resolucion.Ideas)
+        {
+            var respuestaId = resolucion.FueSegmentada
+                ? CrearRespuestaIdIdea(respuestaPadreId, idea.Indice)
+                : "resp_" + Guid.NewGuid().ToString("N");
+            var contexto = contextoBase with { RespuestaId = respuestaId, RespuestaTexto = idea.Texto };
+            var resultado = await _evaluador.EvaluarAsync(contexto, cancellationToken);
+            await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
+
+            var esFallback = resultado is ResultadoEvaluacion.Fallback;
+            await GuardarRespuestaAsync(
+                respuestaId,
+                campania.Id,
+                usuario,
+                pregunta,
+                conversacion.Id,
+                idea.Texto,
+                esRepregunta,
+                esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada,
+                ahora,
+                cancellationToken,
+                resolucion.FueSegmentada ? idea.Indice : null,
+                resolucion.FueSegmentada ? respuestaPadreId : null);
+
+            if (!esFallback)
+            {
+                await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
+            }
+
+            resultados.Add((resultado, contexto));
+        }
+
+        if (resultados.Any(resultado => resultado.Resultado is ResultadoEvaluacion.Fallback))
+        {
+            await CerrarNeutroAsync(conversacion, numero, campania, ahora, cancellationToken);
+            return;
+        }
+
+        foreach (var resultado in resultados)
+        {
+            if (UmbralAlcanzado(resultado.Resultado.Evaluacion.CalificacionTotal, resultado.Contexto.RubricaSnapshot.Escala))
+            {
+                await RegistrarCierreUmbralAsync(
+                    usuario,
+                    resultado.Resultado.Evaluacion.CalificacionTotal,
+                    ValorUmbral(resultado.Contexto.RubricaSnapshot.Escala),
+                    resultado.Contexto.RubricaSnapshot.Escala,
+                    ahora,
+                    cancellationToken);
+            }
+        }
+
+        // Una respuesta al participante por turno: las evaluaciones y Markdown quedan individualizados
+        // para resultados, pero el hilo conserva su limite de repreguntas por pregunta.
+        var calificacionAlta = resultados.All(resultado =>
+            UmbralAlcanzado(resultado.Resultado.Evaluacion.CalificacionTotal, resultado.Contexto.RubricaSnapshot.Escala));
+        var confirmacion = ConfirmacionIdeas(resolucion.Ideas.Count);
+        var ofrecerMejora = !calificacionAlta && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
+        if (ofrecerMejora)
+        {
+            var texto = Combinar(confirmacion, ConstruirInvitacionMejora(conversacion, repreguntaSugerida: null));
+            await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
+            conversacion = conversacion.RegistrarRepregunta();
+            await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+            return;
+        }
+
+        var cierreFinal = calificacionAlta
+            ? Combinar(
+                TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
+                campania.ConfigConversacional.MensajeCierre)
+            : campania.ConfigConversacional.MensajeCierre;
+        await EnviarAsync(conversacion, numero, Combinar(confirmacion, cierreFinal), TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+
+        conversacion = conversacion.Cerrar(ahora);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+        await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+    }
+
+    private async Task<IdeasResueltas> ResolverIdeasAsync(
+        ContextoEvaluacion contexto,
+        string textoOriginal,
+        CancellationToken cancellationToken)
+    {
+        ResultadoSegmentacionIdeas resultado;
+        try
+        {
+            resultado = await _segmentadorIdeas.SegmentarAsync(
+                new ContextoSegmentacionIdeas(
+                    contexto.Campania,
+                    contexto.Pregunta,
+                    textoOriginal,
+                    contexto.HistorialReciente,
+                    contexto.ConfigLlmSnapshot),
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return IdeasResueltas.CrearFallback(textoOriginal, "error_segmentador", uso: null);
+        }
+
+        if (resultado is ResultadoSegmentacionIdeas.Fallback fallback)
+        {
+            return IdeasResueltas.CrearFallback(textoOriginal, fallback.Motivo, fallback.Uso);
+        }
+
+        var exito = (ResultadoSegmentacionIdeas.Exito)resultado;
+        var textosVistos = new HashSet<string>(StringComparer.Ordinal);
+        var ideasValidas = exito.Ideas
+            .Select(idea => idea.Texto.Trim())
+            .Where(texto => texto.Length >= _longitudMinimaIdea)
+            .Where(texto => textosVistos.Add(NormalizarTextoIdea(texto)))
+            .ToArray();
+        if (ideasValidas.Length == 0)
+        {
+            return IdeasResueltas.CrearFallback(textoOriginal, "sin_ideas_validas", exito.Uso);
+        }
+
+        var truncada = ideasValidas.Length > _maxIdeasPorMensaje;
+        var ideas = ideasValidas
+            .Take(_maxIdeasPorMensaje)
+            .Select((texto, indice) => new IdeaSegmentada(indice + 1, texto, Resumen: null))
+            .ToArray();
+        return new IdeasResueltas(ideas, true, false, truncada, null, exito.Uso);
+    }
+
+    private Task RegistrarSegmentacionAsync(
+        Usuario usuario,
+        IdeasResueltas resolucion,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var uso = resolucion.Uso;
+        var detalle = FormattableString.Invariant(
+            $"ideas:{resolucion.Ideas.Count};fallback:{resolucion.Fallback};truncada:{resolucion.Truncada};motivo:{resolucion.Motivo ?? "ninguno"};promptTokens:{uso?.PromptTokens ?? 0};completionTokens:{uso?.CompletionTokens ?? 0}");
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.SegmentacionIdeas,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                resolucion.Fallback ? "fallback" : "segmentada",
+                detalle,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+    }
+
+    private static string NormalizarTextoIdea(string texto)
+        => string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+
+    private static string CrearRespuestaIdIdea(string respuestaPadreId, int ideaIndice)
+    {
+        var normalizado = new string(respuestaPadreId
+            .Select(caracter => char.IsAsciiLetterOrDigit(caracter) ? char.ToLowerInvariant(caracter) : '_')
+            .ToArray())
+            .Trim('_');
+        return "resp_" + (normalizado.Length == 0 ? "mensaje" : normalizado) + "_" + ideaIndice;
+    }
+
+    private static string ConfirmacionIdeas(int cantidad)
+        => cantidad == 1 ? "Registramos tu idea." : $"Registramos {cantidad} ideas de tu mensaje.";
 
     private async Task<HiloTrabajo?> ResolverHiloTrabajoAsync(
         Campania campania,
@@ -758,23 +978,25 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         return resultado;
     }
 
-    private Task GuardarMensajeAsync(
+    private async Task<string> GuardarMensajeAsync(
         DominioConversacion conversacion,
         DireccionMensaje direccion,
         string texto,
         string? whatsappMessageId,
         DateTimeOffset timestamp,
         CancellationToken cancellationToken)
-        => _conversaciones.GuardarMensajeAsync(
-            Mensaje.Crear(
-                "msg_" + Guid.NewGuid().ToString("N"),
-                conversacion.CampaniaId,
-                conversacion.Id,
-                direccion,
-                texto,
-                whatsappMessageId,
-                timestamp),
-            cancellationToken);
+    {
+        var mensajePersistido = Mensaje.Crear(
+            "msg_" + Guid.NewGuid().ToString("N"),
+            conversacion.CampaniaId,
+            conversacion.Id,
+            direccion,
+            texto,
+            whatsappMessageId,
+            timestamp);
+        await _conversaciones.GuardarMensajeAsync(mensajePersistido, cancellationToken);
+        return mensajePersistido.Id;
+    }
 
     private Task GuardarRespuestaAsync(
         string respuestaId,
@@ -786,7 +1008,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         bool esRepregunta,
         EstadoRespuesta estado,
         DateTimeOffset ahora,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? ideaIndice = null,
+        string? respuestaPadreId = null)
         => _respuestas.GuardarRespuestaAsync(
             RespuestaUsuario.Crear(
                 respuestaId,
@@ -799,7 +1023,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 esRepregunta,
                 estado,
                 ahora,
-                usuario.Tags),
+                usuario.Tags,
+                ideaIndice,
+                respuestaPadreId),
             cancellationToken);
 
     private Task MarcarParticipanteRespondioAsync(
@@ -933,6 +1159,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         => $"conv_{campaniaId}_{usuarioId}_{preguntaId}";
 
     private sealed record HiloTrabajo(Pregunta Pregunta, string ConversacionId, DominioConversacion? Conversacion);
+
+    private sealed record IdeasResueltas(
+        IReadOnlyList<IdeaSegmentada> Ideas,
+        bool FueSegmentada,
+        bool Fallback,
+        bool Truncada,
+        string? Motivo,
+        UsoTokensLlm? Uso)
+    {
+        public static IdeasResueltas CrearFallback(string texto, string motivo, UsoTokensLlm? uso)
+            => new(new[] { new IdeaSegmentada(1, texto, Resumen: null) }, false, true, false, motivo, uso);
+    }
 
     private sealed record ContextoDisponible(ContextoEvaluacion? Contexto, string? Motivo)
     {

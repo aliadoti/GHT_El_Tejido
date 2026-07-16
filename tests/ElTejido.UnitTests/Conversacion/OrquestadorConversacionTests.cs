@@ -36,6 +36,7 @@ public sealed class OrquestadorConversacionTests
     private readonly IRepositorioParticipantes _participantes = Substitute.For<IRepositorioParticipantes>();
     private readonly IRepositorioConfiguracion _configuracion = Substitute.For<IRepositorioConfiguracion>();
     private readonly IEvaluadorLlm _evaluador = Substitute.For<IEvaluadorLlm>();
+    private readonly ISegmentadorIdeas _segmentadorIdeas = Substitute.For<ISegmentadorIdeas>();
     private readonly ICompiladorMarkdown _compilador = Substitute.For<ICompiladorMarkdown>();
     private readonly IWhatsAppGateway _gateway = Substitute.For<IWhatsAppGateway>();
     private readonly IRepositorioLogSeguridad _logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
@@ -695,6 +696,116 @@ public sealed class OrquestadorConversacionTests
             Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.RateLimit), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Procesar_SegmentacionActiva_PersisteEvaluaYCompilaUnaVezPorIdea()
+    {
+        var respuestas = new List<Respuesta>();
+        _respuestas.GuardarRespuestaAsync(Arg.Do<Respuesta>(respuesta => respuestas.Add(respuesta)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _segmentadorIdeas.SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoSegmentacionIdeas.Exito(
+                new[]
+                {
+                    new IdeaSegmentada(1, "Primera idea suficientemente larga para ser procesada.", null),
+                    new IdeaSegmentada(2, "Segunda idea suficientemente larga para ser procesada.", null),
+                },
+                UsoTokensLlm.Crear(11, 4)));
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(
+            ParticipanteConSegmentacion(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.multi-idea", Epoca),
+            CancellationToken.None);
+
+        await _segmentadorIdeas.Received(1).SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>());
+        await _evaluador.Received(2).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _compilador.Received(2).CompilarAsync(Arg.Any<SolicitudCompilacion>(), Arg.Any<CancellationToken>());
+        respuestas.Should().HaveCount(2);
+        respuestas.Select(respuesta => respuesta.IdeaIndice).Should().Equal(1, 2);
+        respuestas.Select(respuesta => respuesta.RespuestaPadreId).Should().OnlyContain(id => id!.StartsWith("wamid.", StringComparison.Ordinal));
+        respuestas.Select(respuesta => respuesta.Id).Should().Equal("resp_wamid_multi_idea_1", "resp_wamid_multi_idea_2");
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Registramos 2 ideas", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.SegmentacionIdeas
+                && log.Resultado == "segmentada"
+                && log.Detalle!.Contains("ideas:2", StringComparison.Ordinal)
+                && log.Detalle.Contains("promptTokens:11", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_KillSwitchSegmentacionApagado_MantieneFlujoUnaIdea()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir(new OpcionesConversacion { SegmentacionIdeas = false })
+            .ProcesarMensajeEntranteAsync(ParticipanteConSegmentacion(), Mensaje("Una idea"), CancellationToken.None);
+
+        await _segmentadorIdeas.DidNotReceiveWithAnyArgs().SegmentarAsync(default!, default);
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_SegmentacionInvalida_CaeAMensajeCompletoSinTrazabilidadDeIdea()
+    {
+        var respuestas = new List<Respuesta>();
+        _respuestas.GuardarRespuestaAsync(Arg.Do<Respuesta>(respuesta => respuestas.Add(respuesta)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _segmentadorIdeas.SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoSegmentacionIdeas.Fallback("salida_invalida:no_json", UsoTokensLlm.Crear(3, 2)));
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(ParticipanteConSegmentacion(), Mensaje("Idea completa de respaldo"), CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        respuestas.Should().ContainSingle();
+        respuestas[0].IdeaIndice.Should().BeNull();
+        respuestas[0].RespuestaPadreId.Should().BeNull();
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.SegmentacionIdeas
+                && log.Resultado == "fallback"
+                && log.Detalle!.Contains("motivo:salida_invalida:no_json", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_SegmentacionDescartaDuplicadosYTruncaAntesDeEvaluar()
+    {
+        _segmentadorIdeas.SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoSegmentacionIdeas.Exito(
+                new[]
+                {
+                    new IdeaSegmentada(1, "Idea uno suficientemente larga para pasar el minimo.", null),
+                    new IdeaSegmentada(2, "  Idea uno suficientemente larga para pasar el minimo.  ", null),
+                    new IdeaSegmentada(3, "Idea dos suficientemente larga para pasar el minimo.", null),
+                    new IdeaSegmentada(4, "Idea tres suficientemente larga para pasar el minimo.", null),
+                    new IdeaSegmentada(5, "corta", null),
+                },
+                UsoTokensLlm.Crear(1, 1)));
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir(new OpcionesConversacion { MaxIdeasPorMensaje = 2, LongitudMinimaIdea = 30 })
+            .ProcesarMensajeEntranteAsync(ParticipanteConSegmentacion(), Mensaje("Varias ideas"), CancellationToken.None);
+
+        await _evaluador.Received(2).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.SegmentacionIdeas
+                && log.Detalle!.Contains("truncada:True", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
     private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null)
         => new(
             _conversaciones,
@@ -702,6 +813,7 @@ public sealed class OrquestadorConversacionTests
             _participantes,
             _configuracion,
             _evaluador,
+            _segmentadorIdeas,
             _compilador,
             _gateway,
             _logSeguridad,
@@ -731,6 +843,17 @@ public sealed class OrquestadorConversacionTests
     {
         var pregunta = CrearPregunta("p_1", 1, maxRepreguntas);
         var campania = CrearCampania(new[] { pregunta });
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    private static ParticipanteResuelto ParticipanteConSegmentacion()
+    {
+        var pregunta = CrearPregunta("p_1", 1, 1);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(1, "Gracias por participar.", segmentacionIdeas: true));
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
@@ -809,7 +932,8 @@ public sealed class OrquestadorConversacionTests
     private static Campania CrearCampania(
         IEnumerable<Pregunta> preguntas,
         IEnumerable<MensajeInicial>? mensajesIniciales = null,
-        LimitesSeguridad? limites = null)
+        LimitesSeguridad? limites = null,
+        ConfigConversacional? configConversacional = null)
         => Campania.Crear(
             "c_1", "Campania c_1", "Descripcion", "Objetivo", EstadoCampania.Activa,
             mensajesIniciales, preguntas,
@@ -817,7 +941,7 @@ public sealed class OrquestadorConversacionTests
             new Dictionary<string, string> { ["evaluar"] = "pr_eval" },
             "llm_1",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
-            ConfigConversacional.Crear(1, "Gracias por participar."),
+            configConversacional ?? ConfigConversacional.Crear(1, "Gracias por participar."),
             limites ?? LimitesSeguridad.Crear(1500, 10, 2),
             usuariosHabilitados: null, Epoca, Epoca);
 

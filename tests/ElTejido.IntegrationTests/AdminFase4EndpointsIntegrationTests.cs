@@ -96,6 +96,44 @@ public sealed class AdminFase4EndpointsIntegrationTests
     }
 
     [Fact]
+    public async Task Campanias_ConfigConversacionalExponeSegmentacionIdeasAditiva()
+    {
+        using var fabrica = Construir(
+            new RepositorioUsuariosMemoria(),
+            new RepositorioCampaniasMemoria(),
+            new RepositorioParticipantesMemoria());
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/campanias",
+            new
+            {
+                nombre = "Convencion 2026",
+                descripcion = "Ideas",
+                objetivo = "Capturar ideas",
+                rubricaRef = "r_general",
+                configLLMRef = "llm_default",
+                configConversacional = new
+                {
+                    maxRepreguntas = 1,
+                    mensajeCierre = "Gracias.",
+                    segmentacionIdeas = true,
+                },
+            });
+
+        creacion.StatusCode.Should().Be(HttpStatusCode.Created);
+        var cuerpo = await creacion.Content.ReadAsStringAsync();
+        cuerpo.Should().Contain("\"segmentacionIdeas\":true");
+        var campaniaId = await LeerStringAsync(creacion, "id");
+
+        using var detalle = await client.GetAsync($"/api/admin/campanias/{campaniaId}");
+        detalle.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await detalle.Content.ReadAsStringAsync()).Should().Contain("\"segmentacionIdeas\":true");
+    }
+
+    [Fact]
     public async Task Configuracion_AdminVersionaPromptYConfigLlmNoExponeApiKey()
     {
         using var fabrica = Construir(
