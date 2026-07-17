@@ -46,6 +46,30 @@ public sealed class RepositorioCampaniasCosmosTests
         result.Preguntas.Should().ContainSingle().Which.LimitesSeguridad.MaxLlamadasLlmPorUsuario.Should().Be(2);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConfigConversacional_TejidoColectivo_SobreviveElRoundTripCosmos(bool tejido)
+    {
+        // I-09 (aditivo, 03 §3.3): el flag por campaña debe conservarse al serializar/deserializar.
+        var campania = CrearCampania(tejidoColectivo: tejido);
+
+        var documento = CampaniaCosmosDocument.FromDomain(campania);
+        var reconstruida = documento.ToDomain();
+
+        documento.ConfigConversacional.TejidoColectivo.Should().Be(tejido);
+        reconstruida.ConfigConversacional.TejidoColectivo.Should().Be(tejido);
+    }
+
+    [Fact]
+    public void ConfigConversacional_TejidoColectivo_PorDefectoEsFalse()
+    {
+        // Documento viejo sin el campo = conversación autocontenida (comportamiento actual).
+        var config = ConfigConversacional.Crear(1, "Gracias.");
+
+        config.TejidoColectivo.Should().BeFalse();
+    }
+
     [Fact]
     public async Task BuscarCampaniasAsync_UsesCosmosFilterAndMapsResults()
     {
@@ -63,7 +87,7 @@ public sealed class RepositorioCampaniasCosmosTests
         result.Should().ContainSingle().Which.Nombre.Should().Be("Convencion 2026 - Ideas");
     }
 
-    private static Campania CrearCampania()
+    private static Campania CrearCampania(bool tejidoColectivo = false)
     {
         return Campania.Crear(
             "c_2026conv",
@@ -77,7 +101,7 @@ public sealed class RepositorioCampaniasCosmosTests
             new Dictionary<string, string> { ["evaluar"] = "pr_eval", ["retro"] = "pr_retro" },
             "llm_default",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
-            ConfigConversacional.Crear(1, "Gracias. Tu aporte quedo registrado correctamente."),
+            ConfigConversacional.Crear(1, "Gracias. Tu aporte quedo registrado correctamente.", tejidoColectivo: tejidoColectivo),
             LimitesSeguridad.Crear(1500, 10, 2),
             ["u_1", "u_2"],
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),

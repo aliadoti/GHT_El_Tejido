@@ -4,11 +4,12 @@ namespace ElTejido.Domain.Campanas;
 
 public sealed class ConfigConversacional
 {
-    private ConfigConversacional(int maxRepreguntas, string mensajeCierre, bool segmentacionIdeas)
+    private ConfigConversacional(int maxRepreguntas, string mensajeCierre, bool segmentacionIdeas, bool tejidoColectivo)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
         SegmentacionIdeas = segmentacionIdeas;
+        TejidoColectivo = tejidoColectivo;
     }
 
     public int MaxRepreguntas { get; }
@@ -21,7 +22,21 @@ public sealed class ConfigConversacional
     /// </summary>
     public bool SegmentacionIdeas { get; }
 
-    public static ConfigConversacional Crear(int maxRepreguntas, string mensajeCierre, bool segmentacionIdeas = false)
+    /// <summary>
+    /// I-09: habilita el <b>tejido colectivo</b> para esta campania — el coach recupera e inyecta como
+    /// dato no confiable delimitado (08 §3.2) resumenes anonimizados de aportes de otros participantes
+    /// de la misma campania antes de evaluar. El valor por defecto es <c>false</c> para que los
+    /// documentos historicos mantengan la conversacion autocontenida (comportamiento actual). El
+    /// kill-switch global <c>Conversacion:TejidoColectivo=false</c> lo anula para todas las campanias.
+    /// I-10 (Sprint 2) anade sobre este mismo campo la semantica base previa vs. blanco y su UI.
+    /// </summary>
+    public bool TejidoColectivo { get; }
+
+    public static ConfigConversacional Crear(
+        int maxRepreguntas,
+        string mensajeCierre,
+        bool segmentacionIdeas = false,
+        bool tejidoColectivo = false)
     {
         if (maxRepreguntas < 0)
         {
@@ -33,6 +48,7 @@ public sealed class ConfigConversacional
         return new ConfigConversacional(
             maxRepreguntas,
             DomainGuards.Required(mensajeCierre, nameof(mensajeCierre)),
-            segmentacionIdeas);
+            segmentacionIdeas,
+            tejidoColectivo);
     }
 }

@@ -800,6 +800,9 @@ export class CampaniasPage {
             this.selected()?.configConversacional?.mensajeCierre ??
             'Gracias. Tu aporte quedo registrado correctamente.',
           segmentacionIdeas: Boolean(this.edicion.segmentacionIdeas),
+          // I-09: preserva el valor actual (la UI de activación llega con I-10) para no
+          // reiniciarlo a false en cada edición de la campaña.
+          tejidoColectivo: Boolean(this.selected()?.configConversacional?.tejidoColectivo),
         },
         // P-10: conserva los cupos actuales y actualiza el presupuesto de tokens de la campaña.
         configSeguridad: {

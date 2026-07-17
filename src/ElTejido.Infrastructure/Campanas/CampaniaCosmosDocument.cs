@@ -362,6 +362,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("segmentacionIdeas")]
         public bool SegmentacionIdeas { get; init; }
 
+        // I-09 (aditivo, 03 §3.3): documento viejo sin el campo deserializa false = autocontenido.
+        [JsonProperty("tejidoColectivo")]
+        public bool TejidoColectivo { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -369,12 +373,14 @@ internal sealed class CampaniaCosmosDocument
                 MaxRepreguntas = config.MaxRepreguntas,
                 MensajeCierre = config.MensajeCierre,
                 SegmentacionIdeas = config.SegmentacionIdeas,
+                TejidoColectivo = config.TejidoColectivo,
             };
         }
 
         public ConfigConversacional ToDomain()
         {
-            return ElTejido.Domain.Campanas.ConfigConversacional.Crear(MaxRepreguntas, MensajeCierre, SegmentacionIdeas);
+            return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
+                MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo);
         }
     }
 

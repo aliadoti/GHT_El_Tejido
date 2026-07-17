@@ -76,6 +76,9 @@ export interface ConfigConversacional {
   maxRepreguntas: number;
   mensajeCierre: string;
   segmentacionIdeas: boolean;
+  // I-09 (aditivo): tejido colectivo por campaña. La UI de activación la aporta I-10 (Sprint 2);
+  // aquí solo se modela para preservar el valor en el round-trip de edición.
+  tejidoColectivo?: boolean;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).
