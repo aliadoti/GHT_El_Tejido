@@ -10,8 +10,17 @@ Cada conversación se enriquece con la **base de conocimiento común de la campa
 teje los aportes de otros expertos en la conversación (deja de ser autocontenida).
 
 ## 2. Estado actual del build
-Nuevo. El LLM recibe solo `HistorialReciente` del propio hilo. No hay embeddings ni vector store.
-**Diseño cerrado el 2026-07-15 (Sprint 1a, agente Codex)** — ver §8 y `SUPUESTOS.md#tejido-colectivo-i09-diseno`. El **core** de recuperación/inyección se implementa en Sprint 1b.
+**Core DONE local (2026-07-17, Sprint 1b, agente Claude).** Implementada la **Opción A léxica** aprobada:
+puerto `IBaseConocimientoCampania` + `AporteRelevante`, `RecuperadorLexicoBaseConocimiento`
+(Infrastructure) sobre `responses` (filtro `estado=evaluada`, exclusión de autor/conversación en curso,
+solapamiento léxico + boost por tags + recencia + umbral + topK), resumen anonimizado derivado de
+`Evaluacion.temas ∪ entidades` + extracto sanitizado, inyección delimitada como dato no confiable
+(`ConstructorBloqueAportes` + `ConstructorMensajesEvaluacion`) con sanitización/presupuesto de tokens,
+degradación autocontenida en el orquestador (`05 §4.8`), flag por campaña `configConversacional.tejidoColectivo`
++ kill-switch global `Conversacion:TejidoColectivo`, y observabilidad (`LogSeguridad(tejidoColectivo)` +
+`promptInjectionSospechoso`). Sin embeddings (Opción B diferida). Build/test/format verdes (367 pruebas).
+**Flags apagados por defecto;** criterio de salida operativo: medir costo/latencia por conversación bajo
+flag en staging. Diseño cerrado el 2026-07-15 (§8) — ver `SUPUESTOS.md#tejido-colectivo-i09-core`.
 
 ## 3. Diseño técnico (D4: acotado por diseño)
 1. **Puerto** `IBaseConocimientoCampania` (Application):
