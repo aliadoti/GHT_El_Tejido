@@ -27,4 +27,9 @@ public enum TipoEventoSeguridad
     // I-06: metrica operativa de una llamada de segmentacion. El detalle no contiene texto del
     // participante; solo conteos, fallback, truncamiento y tokens reportados por el proveedor.
     SegmentacionIdeas,
+
+    // I-09: metrica operativa del tejido colectivo por conversacion. El detalle NO contiene los
+    // resumenes ni texto: solo conteos (aportes recuperados/tejidos), degradacion, error y latencia
+    // de recuperacion. Aditivo al final para preservar los valores existentes (03 §3.15, 10 §6.2).
+    TejidoColectivo,
 }

@@ -37,6 +37,7 @@ public sealed class OrquestadorConversacionTests
     private readonly IRepositorioConfiguracion _configuracion = Substitute.For<IRepositorioConfiguracion>();
     private readonly IEvaluadorLlm _evaluador = Substitute.For<IEvaluadorLlm>();
     private readonly ISegmentadorIdeas _segmentadorIdeas = Substitute.For<ISegmentadorIdeas>();
+    private readonly IBaseConocimientoCampania _baseConocimiento = Substitute.For<IBaseConocimientoCampania>();
     private readonly ICompiladorMarkdown _compilador = Substitute.For<ICompiladorMarkdown>();
     private readonly IWhatsAppGateway _gateway = Substitute.For<IWhatsAppGateway>();
     private readonly IRepositorioLogSeguridad _logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
@@ -806,6 +807,101 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Procesar_TejidoActivo_RecuperaAportesLosInyectaAlEvaluarYRegistraTelemetria()
+    {
+        ContextoEvaluacion? contextoVisto = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(c => contextoVisto = c), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        _baseConocimiento.RecuperarAsync(
+                "c_1", Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(),
+                "u_1", Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { new AporteRelevante("huerta comunitaria", new[] { "verde" }, Epoca) });
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(ParticipanteConTejido(), Mensaje("Mi idea sobre huertas"), CancellationToken.None);
+
+        // Excluye al propio autor y a la conversación en curso, y respeta el topK por defecto (3).
+        await _baseConocimiento.Received(1).RecuperarAsync(
+            "c_1", "Mi idea sobre huertas", Arg.Any<IReadOnlyCollection<string>>(),
+            "u_1", "conv_c_1_u_1_p_1", 3, Arg.Any<CancellationToken>());
+        contextoVisto.Should().NotBeNull();
+        contextoVisto!.AportesComunidad.Should().ContainSingle().Which.Should().Contain("huerta comunitaria");
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.TejidoColectivo
+                && l.Resultado == "tejida"
+                && l.Detalle!.Contains("recuperados:1", StringComparison.Ordinal)
+                && l.Detalle.Contains("tejidos:1", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_CampaniaSinTejido_NoLlamaRecuperacionNiInyecta()
+    {
+        ContextoEvaluacion? contextoVisto = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(c => contextoVisto = c), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _baseConocimiento.DidNotReceiveWithAnyArgs().RecuperarAsync(
+            default!, default!, default!, default!, default, default, default);
+        contextoVisto!.AportesComunidad.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Procesar_KillSwitchGlobalApagado_NoLlamaRecuperacionAunqueLaCampaniaLoActive()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir(new OpcionesConversacion { TejidoColectivo = false })
+            .ProcesarMensajeEntranteAsync(ParticipanteConTejido(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _baseConocimiento.DidNotReceiveWithAnyArgs().RecuperarAsync(
+            default!, default!, default!, default!, default, default, default);
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_RecuperacionFalla_DegradaAutocontenidoSinRomperElHilo()
+    {
+        ContextoEvaluacion? contextoVisto = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(c => contextoVisto = c), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        _baseConocimiento
+            .When(x => x.RecuperarAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(),
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("cosmos caido"));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(ParticipanteConTejido(), Mensaje("Mi idea"), CancellationToken.None);
+
+        // El hilo sigue: evalúa sin aportes (autocontenido) y ofrece la mejora como siempre.
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        contextoVisto!.AportesComunidad.Should().BeEmpty();
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.TejidoColectivo
+                && l.Resultado == "error"
+                && l.Detalle!.Contains("error:True", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static ParticipanteResuelto ParticipanteConTejido()
+    {
+        var pregunta = CrearPregunta("p_1", 1, 1);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(1, "Gracias por participar.", tejidoColectivo: true));
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
     private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null)
         => new(
             _conversaciones,
@@ -814,6 +910,7 @@ public sealed class OrquestadorConversacionTests
             _configuracion,
             _evaluador,
             _segmentadorIdeas,
+            _baseConocimiento,
             _compilador,
             _gateway,
             _logSeguridad,

@@ -1,5 +1,7 @@
 using ElTejido.Application.Conversacion;
+using ElTejido.Application.Respuestas;
 using ElTejido.Application.WhatsApp;
+using ElTejido.Infrastructure.Conocimiento;
 using ElTejido.Infrastructure.Conversaciones;
 using ElTejido.Infrastructure.Seguridad;
 using ElTejido.Infrastructure.WhatsApp;
@@ -54,6 +56,14 @@ public static class ServiciosWhatsApp
 
         if (OpcionesPersistencia.HayAlmacen(configuration))
         {
+            // I-09 tejido colectivo (Opcion A lexica, 05 §4.8): recuperador sobre la particion
+            // `responses`. La Opcion B (embeddings, Conversacion:RecuperacionSemantica) queda diferida
+            // tras este mismo puerto y no se registra en el Hito. El umbral de solapamiento sale de
+            // OpcionesConversacion (POCO ya registrado por AgregarWhatsApp).
+            services.AddScoped<IBaseConocimientoCampania>(sp => new RecuperadorLexicoBaseConocimiento(
+                sp.GetRequiredService<IRepositorioRespuestas>(),
+                sp.GetRequiredService<OpcionesConversacion>().UmbralSolapamientoTejido));
+
             // El orquestador real (05 §4) consume los repos (Cosmos o Memoria), evaluador (08) y
             // compilador (09); se gatilla con la presencia de un almacen, igual que el resto.
             services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();

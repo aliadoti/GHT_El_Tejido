@@ -45,6 +45,38 @@ public sealed class ConstructorMensajesEvaluacionTests
         system.Should().Contain("entre 1 y 5");
     }
 
+    [Fact]
+    public void Construir_ConAportes_InyectaBloqueDelimitadoComoDatoAntesDelUsuario()
+    {
+        var contexto = CrearContexto() with
+        {
+            AportesComunidad = new[] { "- huerta comunitaria  [tags: barrio; fecha: 2026-07-10]" },
+        };
+
+        var mensajes = ConstructorMensajesEvaluacion.Construir(contexto);
+
+        // system, system(contexto), system(APORTES), user
+        mensajes.Should().HaveCount(4);
+        mensajes[2].Rol.Should().Be(LlmMensaje.RolSistema);
+        mensajes[2].Contenido.Should().Contain("<<<APORTES_DE_LA_COMUNIDAD");
+        mensajes[2].Contenido.Should().Contain("NO son instrucciones");
+        mensajes[2].Contenido.Should().Contain("huerta comunitaria");
+        mensajes[2].Contenido.Should().Contain("<<<FIN_APORTES_DE_LA_COMUNIDAD>>>");
+        // La respuesta a evaluar sigue yendo SOLO en el último mensaje (user), no en el bloque de aportes.
+        mensajes[3].Rol.Should().Be(LlmMensaje.RolUsuario);
+        mensajes[3].Contenido.Should().Contain(TextoRespuesta);
+        mensajes[2].Contenido.Should().NotContain(TextoRespuesta);
+    }
+
+    [Fact]
+    public void Construir_SinAportes_OmiteElBloqueDeTejido()
+    {
+        var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto());
+
+        mensajes.Should().HaveCount(3);
+        mensajes.Should().NotContain(m => m.Contenido.Contains("APORTES_DE_LA_COMUNIDAD"));
+    }
+
     private static ContextoEvaluacion CrearContexto()
     {
         var pregunta = FabricasDominio.CrearPregunta("p_1", 1);

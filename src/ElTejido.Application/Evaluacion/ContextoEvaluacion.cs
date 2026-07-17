@@ -18,4 +18,13 @@ public sealed record ContextoEvaluacion(
     IReadOnlyList<string> HistorialReciente,
     Rubrica RubricaSnapshot,
     Prompt PromptSnapshot,
-    ConfigLlm ConfigLlmSnapshot);
+    ConfigLlm ConfigLlmSnapshot)
+{
+    /// <summary>
+    /// I-09 tejido colectivo: líneas del bloque <c>APORTES_DE_LA_COMUNIDAD</c> ya <b>sanitizadas y
+    /// presupuestadas</b> que el orquestador inyecta como <b>dato no confiable</b> (08 §3.2). Vacío
+    /// (default) = conversación autocontenida, sin bloque de tejido. Es aditivo: los llamadores
+    /// existentes construyen el contexto sin tejido y se comportan igual.
+    /// </summary>
+    public IReadOnlyList<string> AportesComunidad { get; init; } = Array.Empty<string>();
+}

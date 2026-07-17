@@ -40,6 +40,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IRepositorioConfiguracion _configuracion;
     private readonly IEvaluadorLlm _evaluador;
     private readonly ISegmentadorIdeas _segmentadorIdeas;
+    private readonly IBaseConocimientoCampania _baseConocimiento;
     private readonly ICompiladorMarkdown _compilador;
     private readonly IWhatsAppGateway _gateway;
     private readonly IRepositorioLogSeguridad _logSeguridad;
@@ -52,6 +53,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly bool _segmentacionIdeasHabilitada;
     private readonly int _maxIdeasPorMensaje;
     private readonly int _longitudMinimaIdea;
+    private readonly bool _tejidoColectivoHabilitado;
+    private readonly int _topKAportes;
+    private readonly int _presupuestoTokensTejido;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -61,6 +65,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IRepositorioConfiguracion configuracion,
         IEvaluadorLlm evaluador,
         ISegmentadorIdeas segmentadorIdeas,
+        IBaseConocimientoCampania baseConocimiento,
         ICompiladorMarkdown compilador,
         IWhatsAppGateway gateway,
         IRepositorioLogSeguridad logSeguridad,
@@ -74,6 +79,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _configuracion = configuracion;
         _evaluador = evaluador;
         _segmentadorIdeas = segmentadorIdeas;
+        _baseConocimiento = baseConocimiento;
         _compilador = compilador;
         _gateway = gateway;
         _logSeguridad = logSeguridad;
@@ -85,6 +91,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _segmentacionIdeasHabilitada = opciones.SegmentacionIdeas;
         _maxIdeasPorMensaje = Math.Max(1, opciones.MaxIdeasPorMensaje);
         _longitudMinimaIdea = Math.Max(1, opciones.LongitudMinimaIdea);
+        _tejidoColectivoHabilitado = opciones.TejidoColectivo;
+        _topKAportes = Math.Max(1, opciones.TopKAportes);
+        _presupuestoTokensTejido = opciones.PresupuestoTokensTejido;
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
             ? opciones.FrasesContinuar
             : DetectorIntencionContinuar.FrasesPorDefecto;
@@ -219,6 +228,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        // I-09 tejido colectivo (05 §4.8): si la campania lo activa y el kill-switch global no lo apaga,
+        // se enriquece el contexto con aportes anonimizados de otros participantes ANTES de evaluar. La
+        // recuperacion nunca bloquea el hilo: sin aportes o ante error degrada a autocontenido.
+        var contextoEval = contexto.Contexto;
+        if (_tejidoColectivoHabilitado && campania.ConfigConversacional.TejidoColectivo)
+        {
+            contextoEval = await AplicarTejidoColectivoAsync(
+                contextoEval, usuario, conversacionId, mensaje.Texto, ahora, cancellationToken);
+        }
+
         if (_segmentacionIdeasHabilitada && campania.ConfigConversacional.SegmentacionIdeas)
         {
             var respuestaPadreId = string.IsNullOrWhiteSpace(mensaje.WhatsappMessageId)
@@ -230,7 +249,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 usuario,
                 pregunta,
                 numero,
-                contexto.Contexto,
+                contextoEval,
                 mensaje.Texto,
                 respuestaPadreId,
                 esRepregunta,
@@ -239,7 +258,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var resultado = await _evaluador.EvaluarAsync(contexto.Contexto, cancellationToken);
+        var resultado = await _evaluador.EvaluarAsync(contextoEval, cancellationToken);
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
         var esFallback = resultado is ResultadoEvaluacion.Fallback;
@@ -671,6 +690,99 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 "cierre_anticipado",
                 FormattableString.Invariant(
                     $"umbral:{_umbralCierreAnticipado:0.###};score:{calificacionTotal};valor:{valorUmbral};escala:{escala.Min}-{escala.Max}"),
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+
+    /// <summary>
+    /// I-09 tejido colectivo (05 §4.8, 08 §3.2): recupera aportes anonimizados de otros participantes,
+    /// arma el bloque de dato no confiable (sanitizado + presupuestado) y lo adjunta al contexto. La
+    /// recuperacion <b>nunca</b> bloquea el hilo: ante error o sin aportes devuelve el contexto sin
+    /// tejido (conversacion autocontenida). Registra telemetria de aportes/latencia/degradacion y, si
+    /// un aporte traia un patron de inyeccion, <c>PromptInjectionSospechoso</c> (08 §5.9).
+    /// </summary>
+    private async Task<ContextoEvaluacion> AplicarTejidoColectivoAsync(
+        ContextoEvaluacion contexto,
+        Usuario usuario,
+        string conversacionId,
+        string textoConsulta,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var inicio = _tiempo.GetTimestamp();
+        IReadOnlyList<AporteRelevante> aportes;
+        try
+        {
+            aportes = await _baseConocimiento.RecuperarAsync(
+                contexto.Campania.Id,
+                textoConsulta,
+                usuario.Tags,
+                usuario.Id,
+                conversacionId,
+                _topKAportes,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // Degradacion limpia: un fallo de recuperacion no rompe el hilo (05 §4.8).
+            await RegistrarTejidoAsync(usuario, recuperados: 0, tejidos: 0, error: true, LatenciaMs(inicio), ahora, cancellationToken);
+            return contexto;
+        }
+
+        var bloque = ConstructorBloqueAportes.Construir(aportes, _presupuestoTokensTejido);
+        if (bloque.InyeccionSospechosa)
+        {
+            await RegistrarPromptInjectionTejidoAsync(usuario, ahora, cancellationToken);
+        }
+
+        await RegistrarTejidoAsync(usuario, aportes.Count, bloque.Lineas.Count, error: false, LatenciaMs(inicio), ahora, cancellationToken);
+
+        return bloque.TieneAportes ? contexto with { AportesComunidad = bloque.Lineas } : contexto;
+    }
+
+    private long LatenciaMs(long inicio)
+        => (long)_tiempo.GetElapsedTime(inicio).TotalMilliseconds;
+
+    // I-09: telemetria operativa del tejido (10 §6.2). El detalle NO contiene resumenes ni texto:
+    // solo conteos (recuperados/tejidos), degradacion, error y latencia de recuperacion, para medir
+    // el criterio de salida (costo/latencia por conversacion) en staging bajo flag.
+    private Task RegistrarTejidoAsync(
+        Usuario usuario,
+        int recuperados,
+        int tejidos,
+        bool error,
+        long latenciaMs,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.TejidoColectivo,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                error ? "error" : tejidos > 0 ? "tejida" : "autocontenida",
+                FormattableString.Invariant(
+                    $"recuperados:{recuperados};tejidos:{tejidos};error:{error};latenciaMs:{latenciaMs}"),
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+
+    private Task RegistrarPromptInjectionTejidoAsync(
+        Usuario usuario,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.PromptInjectionSospechoso,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                "neutralizado",
+                "tejido_colectivo:aporte_con_patron_inyeccion",
                 _correlacion.CorrelationIdActual,
                 ahora),
             cancellationToken);

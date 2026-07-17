@@ -72,6 +72,36 @@ public sealed class OpcionesConversacion
     /// <summary>Largo minimo de una idea valida tras trim para evitar fragmentacion. Default 30.</summary>
     public int LongitudMinimaIdea { get; set; } = 30;
 
+    /// <summary>
+    /// Kill-switch global del <b>tejido colectivo</b> (I-09, 05 §4.8). Por defecto respeta la
+    /// configuracion por campania (<c>Campania.ConfigConversacional.TejidoColectivo</c>); en
+    /// <c>false</c> apaga el tejido para todas las campanias sin redeploy (rollback operativo).
+    /// </summary>
+    public bool TejidoColectivo { get; set; } = true;
+
+    /// <summary>Maximo de aportes de la comunidad a recuperar por conversacion (I-09). Default 3.</summary>
+    public int TopKAportes { get; set; } = 3;
+
+    /// <summary>
+    /// Presupuesto de tokens del bloque <c>APORTES_DE_LA_COMUNIDAD</c> (I-09, 08 §3.2): el bloque se
+    /// trunca antes de armar el prompt para acotar costo/latencia. <b>0 o negativo omite el bloque</b>
+    /// (tejido efectivamente apagado). Default 300.
+    /// </summary>
+    public int PresupuestoTokensTejido { get; set; } = 300;
+
+    /// <summary>
+    /// Fraccion minima de keywords de la consulta que un aporte debe cubrir para ser candidato del
+    /// tejido (I-09, Opcion A lexica), en [0,1]. Acota el ruido. Default 0.1.
+    /// </summary>
+    public double UmbralSolapamientoTejido { get; set; } = 0.1;
+
+    /// <summary>
+    /// Flag global de la <b>Opcion B (embeddings)</b> del tejido (I-09). <b>Default <c>false</c></b>
+    /// (diferida tras el Hito); el core Sprint 1b implementa solo la Opcion A lexica. Reservado para
+    /// enchufar <c>RecuperadorSemanticoBaseConocimiento</c> sin tocar el orquestador.
+    /// </summary>
+    public bool RecuperacionSemantica { get; set; }
+
     /// <summary>Textos operativos del orquestador que se pueden sobreescribir por configuracion.</summary>
     public OpcionesMensajesConversacion Mensajes { get; set; } = new();
 }
