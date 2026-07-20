@@ -79,6 +79,8 @@ export interface ConfigConversacional {
   // I-09 (aditivo): tejido colectivo por campaña. La UI de activación la aporta I-10 (Sprint 2);
   // aquí solo se modela para preservar el valor en el round-trip de edición.
   tejidoColectivo?: boolean;
+  // I-05 (aditivo): el portal preserva el flag aunque la activación UI se defina después.
+  parafraseo?: boolean;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).
@@ -240,6 +242,7 @@ export interface Evaluacion {
   calificacionTotal: number;
   explicacion: string;
   retroalimentacionEnviada: string;
+  parafraseoDevuelto?: string | null;
   recomendacion: string;
   repreguntaSugerida?: string | null;
   temas: string[];

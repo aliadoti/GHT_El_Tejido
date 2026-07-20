@@ -9,7 +9,7 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-**Vas a implementar la iniciativa objetivo de este TODO: `ID-INICIATIVA=I-05` (parafraseo). AGENTE ASIGNADO: `Codex`. VENTANA: Sprint 1b.** No es un desarrollo desde cero: continúas un MVP vivo. **Contexto ya HECHO y verificado:** P-03, P-10, D5 (baseline real pendiente), I-16, I-08 backend, I-06 diseño+implementación local, I-09 diseño **e I-09 core**; I-01 queda BLOCKED para su activación real en staging. **I-09 core (tejido colectivo) está DONE local (2026-07-17, Claude):** puerto `IBaseConocimientoCampania` + `RecuperadorLexicoBaseConocimiento` (Opción A léxica), resúmenes anonimizados, inyección delimitada como dato no confiable con sanitización/presupuesto, degradación autocontenida (`05 §4.8`), flag por campaña `tejidoColectivo` + kill-switch global `Conversacion:TejidoColectivo`, observabilidad (`LogSeguridad(tejidoColectivo)`/`promptInjectionSospechoso`); build/test/format verdes (367). Flags apagados; criterio de salida = medir costo/latencia bajo flag en staging; embeddings (Opción B) e I-10 y consentimiento P-07 quedan para después. **I-06** también queda listo pero apagado hasta D5/UAT/costo en staging. **Tu objetivo ahora es I-05 parafraseo:** lee su spec y el índice; I-05 toca prompts, así que **D5 (banco de calibración) es árbitro de no-regresión**. Si aparece una decisión A/B/C o un cambio de contrato no previsto en el diseño, **confírmalo con el usuario antes de cerrarlo**. **Al terminar, rota este TODO al siguiente ítem según §4 y actualiza siempre cabecera, tabla, §8 y AVANCES.md.**
+**Vas a implementar la iniciativa objetivo de este TODO: `ID-INICIATIVA=I-08` (carga masiva — UI). AGENTE ASIGNADO: `Claude`. VENTANA: Sprint 1b.** No es un desarrollo desde cero: continúas un MVP vivo. **Contexto ya HECHO y verificado:** P-03, P-10, D5 (baseline real pendiente), I-16, I-08 backend, I-06 diseño+implementación local, I-09 diseño **e I-09 core**, e **I-05 parafraseo DONE local (2026-07-20, Codex)**: `configConversacional.parafraseo` default `false` + kill-switch `Conversacion:Parafraseo`, salida/persistencia opcional y truncado por frase; D5 real contra staging pendiente. I-01 queda BLOCKED para activación real. **Tu objetivo ahora es I-08 UI:** lee su spec y el índice; consume el endpoint CSV ya implementado sin alterar su contrato. Al terminar, rota este TODO al siguiente ítem según §4 y actualiza siempre cabecera, tabla, §8 y AVANCES.md.
 
 ---
 
@@ -100,22 +100,23 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 8 | **`I-01` activar umbral en staging** | Sprint 1a | **Claude** | **DONE parcial / BLOCKED** (2026-07-15; runbook + observabilidad `LogSeguridad(cierreUmbralAnticipado)` + regresión, verde 335; cierre real bloqueado en baseline D5 real + freeze I-11 + flip humano; `SUPUESTOS.md#activacion-umbral-i01`) |
 | 9 | **`I-06` multi-idea (implementación)** | Sprint 1b | **Codex** | **DONE local** (código, pruebas y documentación; flags apagados hasta D5/UAT/costo en staging) |
 | 10 | **`I-09` tejido colectivo (core)** | Sprint 1b | **Claude** | **DONE local** (2026-07-17; Opción A léxica, inyección delimitada/sanitizada, degradación autocontenida, flags apagados, observabilidad; verde 367; costo/latencia en staging pendiente) |
-| 11 | `I-05` parafraseo | Sprint 1b | Codex | **← ACTUAL (objetivo de este TODO)** (toca prompts → D5 árbitro; leer spec I-05 + índice) |
-| 12 | `I-08` carga masiva (UI) | Sprint 1b | Claude | TODO |
-| 13 | `I-03` follow-ups eje débil | Sprint 1b | Codex | TODO (depende de `I-11` rúbrica congelada) |
-| 14 | `I-10` flag base previa/blanco | Sprint 2 | Claude | TODO (depende de `I-09`) |
-| 15 | `I-12` seed thoughts | Sprint 2 | Codex | TODO (insumo Felipe 18-jul) |
-| 16 | `I-13` decisión agnóstica-vs-tailored | Sprint 2 | Claude | TODO |
-| 17 | `I-14` tags | Sprint 2 | Codex | TODO |
-| 18 | `P-07` consentimiento de datos | Sprint 2 | Claude | TODO |
-| 19 | `P-10` costo LLM + rate por número | Sprint 2 | Codex | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
-| 20 | `P-09` monitoreo día-D (workbook + runbook) | Pruebas 4–8 ago | Claude | TODO |
-| 21 | `I-08` carga real | Freeze 8–9 ago | Codex | TODO |
+| 11 | `I-05` parafraseo | Sprint 1b | Codex | **DONE local 2026-07-20** (decisión de usuario: flag por campaña false + kill-switch; salida/persistencia opcional, truncado determinista, regresión verde; baseline D5 real pendiente) |
+| 12 | `I-08` carga masiva (UI) | Sprint 1b | Claude | **← ACTUAL (objetivo de este TODO)** |
+| 13 | `I-03` follow-ups eje débil | Sprint 1b | Codex | TODO — **DESBLOQUEADA 2026-07-20** (rúbrica I-11 congelada 18-jul; D5 árbitro, baseline real pendiente) |
+| 14 | `P-13` umbral de cierre por campaña | Sprint 1b–2 | Claude | TODO — **ADELANTADA del post-Hito (decisión del usuario 2026-07-20)**: habilita calibrar I-01 en una campaña de prueba (reversible, sin flip global); diseño DONE 2026-07-15 |
+| 15 | `I-10` flag base previa/blanco | Sprint 2 | Codex | TODO (depende de `I-09` ✓ core) |
+| 16 | `I-12` seed thoughts | Sprint 2 | Claude | **BLOCKED — insumo vencido** (seeds de Felipe no recibidos al 2026-07-20; **escalar**); al recibirlos, implementar |
+| 17 | `I-13` decisión agnóstica-vs-tailored | Sprint 2 | Codex | TODO (decisión GHT 25-jul) |
+| 18 | `I-14` tags | Sprint 2 | Claude | TODO |
+| 19 | `P-07` consentimiento de datos | Sprint 2 | Codex | TODO |
+| 20 | `P-10` costo LLM + rate por número | Sprint 2 | Claude | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
+| 21 | `P-09` monitoreo día-D (workbook + runbook) | Pruebas 4–8 ago | Codex | TODO |
+| 22 | `I-08` carga real | Freeze 8–9 ago | Claude | TODO |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
-- **Post (rama de deseables, fuera del orden anterior):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12`, **`P-13` (override del umbral de cierre por campaña — diseño DONE 2026-07-15; aditivo `03 §3.3`; global sigue como default/kill-switch; adelantable a Sprint 1b si se quiere simplificar la calibración de `I-01`)**.
+- **Post (rama de deseables, fuera del orden anterior):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12`. (**`P-13` salió de esta lista: adelantada a Sprint 1b como ítem 14** por decisión del usuario 2026-07-20; los agentes de los ítems 14–22 quedaron re-alternados tras la inserción.)
 
-**Dependencias duras (ruta crítica):** `P-01/P-02 (Meta)` → `I-11 (rúbrica)` → `I-03` · `I-12 (seeds)` → `I-04/I-13` · `P-10 cupos` → `I-01 (activar)` → `P-13 (override umbral por campaña)` · `I-09` → `I-10` · `I-08` → carga real del freeze · `P-07` → apertura a participantes reales. **`D5` (banco) es árbitro de todo lo que toque prompts (I-03/I-05) y del umbral de I-01.**
+**Dependencias duras (ruta crítica):** `P-01/P-02 (Meta)` **✓** → `I-11 (rúbrica)` **✓ 18-jul** → `I-03` (desbloqueada) · `I-12 (seeds)` **BLOCKED (insumo vencido — escalar a Felipe)** → `I-04/I-13` · `P-10 cupos` **✓** → `I-01 (activar)` ← simplificada por `P-13` (adelantada, ítem 14) · `I-09` **✓ core** → `I-10` · `I-08` **backend ✓** → UI → carga real del freeze · `P-07` → apertura a participantes reales. **`D5` (banco) es árbitro de todo lo que toque prompts (I-03/I-05) y del umbral de I-01; su baseline real sigue pendiente (corrido pagado contra staging).**
 
 > **Parametrización por campaña (índice §4):** todo lo que define el **comportamiento del coach o el contenido** de una campaña es parametrizable **por campaña** (campo aditivo con default seguro, `03 §3.3` en commit aparte); las **salvaguardas de seguridad y costo** quedan **globales** como kill-switch de operación (aunque sus *valores* vivan en la campaña). Consúltalo antes de decidir dónde vive un flag nuevo.
 
@@ -158,7 +159,7 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. Identifica la iniciativa objetivo: **`I-05` (parafraseo)** — agente **Codex**, Sprint 1b. **I-09 core está DONE local (2026-07-17)** con flags apagados (criterio de salida pendiente: costo/latencia bajo flag en staging); **I-06** también listo y apagado hasta D5/UAT/costo en staging; **I-01** continúa BLOCKED para el flip humano. Lee `AVANCES.md` (Próximo paso + Tablero), `00_Indice_y_Plan_de_Ejecucion.md` (§2/§3) y la spec `Iniciativas/I-05_*.md`. I-05 **toca prompts**, así que **D5 (banco de calibración) es árbitro de no-regresión** y aplica la regla transversal (flag off por defecto, observabilidad, suite de regresión verde, rollback). Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato aditivo, dónde vive un flag), **confírmala con el usuario ANTES de codificar**. **Al terminar, actualiza siempre cabecera, fila §4, este §8 y `AVANCES.md` para el siguiente ítem ejecutable.**
+1. Identifica la iniciativa objetivo: **`I-08` carga masiva (UI)** — agente **Claude**, Sprint 1b. El backend CSV ya está DONE; leer `AVANCES.md`, `00_Indice_y_Plan_de_Ejecucion.md` (§2/§3) y `Iniciativas/I-08_*.md`, luego trazar UI → `POST /api/admin/usuarios/carga-masiva`. **I-05 parafraseo queda DONE local 2026-07-20** con flags apagados y baseline D5 real pendiente. Preserva el contrato del endpoint, aplica pruebas frontend y rota el handoff al siguiente ítem ejecutable al cerrar.
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
 4. Implementa en pasos pequeños siguiendo el bucle de §3: build `-warnaserror` + test + format (y frontend si aplica) verdes en cada paso.

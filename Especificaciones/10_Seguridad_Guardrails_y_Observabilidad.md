@@ -77,6 +77,7 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - Métricas de consumo LLM (tokens, costo aprox.) y **alertas** por umbral de error o de gasto.
 - Para I-06, métricas agregadas por campaña: distribución de `ideasPorMensaje`, tasa de fallback de segmentación, truncamientos por `MaxIdeasPorMensaje`, tokens/latencia de segmentación separados de evaluación. No registrar textos completos de ideas en telemetría técnica.
 - Para I-09, métricas por conversación/campaña: número de aportes recuperados, tasa de conversaciones con tejido vs. autocontenidas (degradación), latencia de recuperación y **costo/latencia por conversación** (criterio de salida del core, Sprint 1b). No registrar los resúmenes de aportes en telemetría técnica.
+- Para I-05, medir por campaña la tasa de `Evaluacion.parafraseoDevuelto` no nulo y contrastarla con `usoTokens`/latencia de evaluación antes de encender campañas reales. El contenido del parafraseo queda en el plano de negocio (`responses`), nunca en telemetría técnica.
 - **Sin PII sensible ni secretos** en telemetría; los textos completos viven en el plano de negocio, no en logs técnicos.
 
 ### 6.3 Logging estructurado

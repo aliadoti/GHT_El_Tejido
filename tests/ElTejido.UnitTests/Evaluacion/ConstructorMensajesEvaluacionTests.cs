@@ -43,6 +43,16 @@ public sealed class ConstructorMensajesEvaluacionTests
         system.Should().Contain("recomendacion");
         // Y la escala concreta de la rubrica (1 a 5).
         system.Should().Contain("entre 1 y 5");
+        system.Should().NotContain("parafraseo_devuelto");
+    }
+
+    [Fact]
+    public void Construir_ParafraseoActivo_SolicitaCampoFielOpcional()
+    {
+        var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto() with { SolicitarParafraseo = true });
+
+        mensajes[0].Contenido.Should().Contain("parafraseo_devuelto");
+        mensajes[0].Contenido.Should().Contain("fieles al aporte");
     }
 
     [Fact]

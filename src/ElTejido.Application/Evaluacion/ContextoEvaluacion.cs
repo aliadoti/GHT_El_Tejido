@@ -27,4 +27,16 @@ public sealed record ContextoEvaluacion(
     /// existentes construyen el contexto sin tejido y se comportan igual.
     /// </summary>
     public IReadOnlyList<string> AportesComunidad { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// I-05: solo cuando la campania y el kill-switch global lo habilitan se solicita y utiliza el
+    /// parafraseo. El default conserva la salida y el flujo historicos.
+    /// </summary>
+    public bool SolicitarParafraseo { get; init; }
+
+    /// <summary>
+    /// I-05: limite determinista del parafraseo mostrado. Cero o negativo descarta el campo como
+    /// degradacion segura; el valor operativo por defecto es 400.
+    /// </summary>
+    public int MaxCaracteresParafraseo { get; init; } = 400;
 }

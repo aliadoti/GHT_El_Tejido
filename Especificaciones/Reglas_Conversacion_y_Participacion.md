@@ -66,6 +66,13 @@ para evaluar:
   conversacion se cierra. El motivo queda en `LogSeguridad` y en el detalle tecnico de Resultados
   (`error_proveedor`, `config_llm_no_activa`, `salida_invalida:<razon>`, ...).
 
+**Parafraseo I-05 (apagado por defecto):** si la campaña activa `configConversacional.parafraseo=true`
+y el kill-switch `Conversacion:Parafraseo` está activo, el coach puede iniciar su retro con un resumen
+de 2–3 frases de lo que entendió. Debe ser fiel al aporte, sin agregar información. Si el modelo no lo
+devuelve, viene vacío o no cabe una frase completa en `Conversacion:MaxCaracteresParafraseo` (400 por
+defecto), el participante recibe exactamente la retroalimentación de siempre. Operación puede apagarlo
+por campaña o globalmente sin redeploy.
+
 ### 2.3 Revision determinista (revisiones como oportunidades)
 Tras una **evaluacion valida**, el sistema ofrece al participante una oportunidad de mejorar su respuesta
 con base en la retroalimentacion (envia retro + invitacion) mientras

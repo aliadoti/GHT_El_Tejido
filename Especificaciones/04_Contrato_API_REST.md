@@ -201,13 +201,17 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
   "configConversacional": {
     "maxRepreguntas": 1,
     "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
-    "segmentacionIdeas": false
+    "segmentacionIdeas": false,
+    "parafraseo": false
   }
 }
 ```
 - `segmentacionIdeas` (`I-06`, default `false`): si está en `true` y el kill-switch global
   `Conversacion:SegmentacionIdeas` no lo apaga, el backend puede separar un mensaje con varias ideas en
   N respuestas/evaluaciones/Markdown. El portal lo expone como checkbox en Configuración de campaña.
+- `parafraseo` (`I-05`, default `false`): si está en `true` y `Conversacion:Parafraseo` no lo apaga,
+  el evaluador solicita y el orquestador antepone un resumen fiel del aporte a la retroalimentación.
+  Campo ausente = retro clásica; ambos flags permiten rollback sin redeploy.
 
 #### Sub-recursos embebidos de campaña
 | Método | Ruta | Descripción |
@@ -311,6 +315,10 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 | GET | `/api/admin/markdown/{id}` | Contenido Markdown + metadatos. |
 | POST | `/api/admin/markdown/{id}/regenerar` | Regenera el artefacto desde datos operativos (`REQ §22.4.6`). |
 | GET | `/api/admin/markdown/{id}/raw` | Descarga el `.md` (text/markdown). |
+
+I-05 añade `parafraseoDevuelto` opcional al detalle de evaluación que devuelven
+`/respuestas/{id}` y `/evaluaciones/{id}`. `null`/ausente significa que la campaña no lo tenía
+activo o que la salida del LLM no produjo un resumen utilizable; conserva compatibilidad de lectura.
 
 Campos aditivos de respuesta para I-06:
 ```json

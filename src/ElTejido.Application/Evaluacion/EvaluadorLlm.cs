@@ -188,7 +188,10 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             salida.Entidades,
             salida.AnomaliaSeguridad,
             _tiempo.GetUtcNow(),
-            uso);
+            uso,
+            contexto.SolicitarParafraseo
+                ? AcotarEnFronteraDeFrase(salida.ParafraseoDevuelto, contexto.MaxCaracteresParafraseo)
+                : null);
     }
 
     private async Task<ResultadoEvaluacion> FallbackAsync(
@@ -280,4 +283,21 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
 
     private static string Acotar(string texto, int maximo)
         => texto.Length > maximo ? texto[..maximo] : texto;
+
+    private static string? AcotarEnFronteraDeFrase(string? texto, int maximo)
+    {
+        if (string.IsNullOrWhiteSpace(texto) || maximo <= 0)
+        {
+            return null;
+        }
+
+        var normalizado = texto.Trim();
+        if (normalizado.Length <= maximo)
+        {
+            return normalizado;
+        }
+
+        var finFrase = normalizado.LastIndexOfAny(['.', '!', '?'], maximo - 1);
+        return finFrase < 0 ? null : normalizado[..(finFrase + 1)].Trim();
+    }
 }

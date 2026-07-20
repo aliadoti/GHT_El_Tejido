@@ -21,6 +21,9 @@ public sealed record SalidaLlmEvaluacion
     [JsonPropertyName("retroalimentacion_usuario")]
     public string? RetroalimentacionUsuario { get; init; }
 
+    [JsonPropertyName("parafraseo_devuelto")]
+    public string? ParafraseoDevuelto { get; init; }
+
     [JsonPropertyName("recomendacion")]
     public string? Recomendacion { get; init; }
 

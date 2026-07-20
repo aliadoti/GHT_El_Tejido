@@ -56,6 +56,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly bool _tejidoColectivoHabilitado;
     private readonly int _topKAportes;
     private readonly int _presupuestoTokensTejido;
+    private readonly bool _parafraseoHabilitado;
+    private readonly int _maxCaracteresParafraseo;
     private readonly TimeProvider _tiempo;
 
     public OrquestadorConversacion(
@@ -94,6 +96,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _tejidoColectivoHabilitado = opciones.TejidoColectivo;
         _topKAportes = Math.Max(1, opciones.TopKAportes);
         _presupuestoTokensTejido = opciones.PresupuestoTokensTejido;
+        _parafraseoHabilitado = opciones.Parafraseo;
+        _maxCaracteresParafraseo = Math.Max(0, opciones.MaxCaracteresParafraseo);
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
             ? opciones.FrasesContinuar
             : DetectorIntencionContinuar.FrasesPorDefecto;
@@ -231,7 +235,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // I-09 tejido colectivo (05 §4.8): si la campania lo activa y el kill-switch global no lo apaga,
         // se enriquece el contexto con aportes anonimizados de otros participantes ANTES de evaluar. La
         // recuperacion nunca bloquea el hilo: sin aportes o ante error degrada a autocontenido.
-        var contextoEval = contexto.Contexto;
+        var contextoEval = contexto.Contexto with
+        {
+            // I-05 (05 §4.5): el flag por campaña nace apagado y el kill-switch global evita incluso
+            // solicitar el campo al LLM. Cero caracteres degrada a la retroalimentación previa.
+            SolicitarParafraseo = _parafraseoHabilitado && campania.ConfigConversacional.Parafraseo && _maxCaracteresParafraseo > 0,
+            MaxCaracteresParafraseo = _maxCaracteresParafraseo,
+        };
         if (_tejidoColectivoHabilitado && campania.ConfigConversacional.TejidoColectivo)
         {
             contextoEval = await AplicarTejidoColectivoAsync(
@@ -286,7 +296,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (ofrecerMejora)
         {
             var invitacion = ConstruirInvitacionMejora(conversacion, evaluacion.RepreguntaSugerida);
-            var texto = Combinar(evaluacion.RetroalimentacionEnviada, invitacion);
+            var texto = Combinar(Combinar(evaluacion.ParafraseoDevuelto, evaluacion.RetroalimentacionEnviada), invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
 
             conversacion = conversacion.RegistrarRepregunta();
@@ -308,7 +318,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
                 campania.ConfigConversacional.MensajeCierre)
             : campania.ConfigConversacional.MensajeCierre;
-        var cierre = Combinar(evaluacion.RetroalimentacionEnviada, cierreFinal);
+        var cierre = Combinar(Combinar(evaluacion.ParafraseoDevuelto, evaluacion.RetroalimentacionEnviada), cierreFinal);
         await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
 
         conversacion = conversacion.Cerrar(ahora);

@@ -62,6 +62,36 @@ public sealed class EvaluadorLlmTests
     }
 
     [Fact]
+    public async Task Evaluar_ParafraseoActivo_AcotaEnFronteraDeFrase()
+    {
+        const string salida = "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"Buena idea\",\"parafraseo_devuelto\":\"Primera frase. Segunda frase mas extensa.\",\"recomendacion\":\"cerrar\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(
+            CrearContexto() with { SolicitarParafraseo = true, MaxCaracteresParafraseo = 20 },
+            CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        resultado.Evaluacion.ParafraseoDevuelto.Should().Be("Primera frase.");
+    }
+
+    [Fact]
+    public async Task Evaluar_SinParafraseo_DegradaALaRetroalimentacionExistente()
+    {
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(SalidaValida, null));
+
+        var resultado = await Construir().EvaluarAsync(
+            CrearContexto() with { SolicitarParafraseo = true },
+            CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        resultado.Evaluacion.ParafraseoDevuelto.Should().BeNull();
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be("Buena idea");
+    }
+
+    [Fact]
     public async Task Evaluar_ProveedorFalla_DevuelveFallbackNeutro()
     {
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())

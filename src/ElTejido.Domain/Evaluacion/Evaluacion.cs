@@ -27,6 +27,7 @@ public sealed class Evaluacion
         decimal calificacionTotal,
         string explicacion,
         string retroalimentacionEnviada,
+        string? parafraseoDevuelto,
         RecomendacionEvaluacion recomendacion,
         string? repreguntaSugerida,
         IReadOnlyCollection<string> temas,
@@ -51,6 +52,7 @@ public sealed class Evaluacion
         CalificacionTotal = calificacionTotal;
         Explicacion = explicacion;
         RetroalimentacionEnviada = retroalimentacionEnviada;
+        ParafraseoDevuelto = parafraseoDevuelto;
         Recomendacion = recomendacion;
         RepreguntaSugerida = repreguntaSugerida;
         Temas = temas;
@@ -92,6 +94,12 @@ public sealed class Evaluacion
 
     public string RetroalimentacionEnviada { get; }
 
+    /// <summary>
+    /// I-05: resumen fiel y breve que el modelo devolvio para transparentar lo entendido. Es
+    /// opcional para mantener compatibles las evaluaciones y documentos anteriores.
+    /// </summary>
+    public string? ParafraseoDevuelto { get; }
+
     public RecomendacionEvaluacion Recomendacion { get; }
 
     public string? RepreguntaSugerida { get; }
@@ -130,7 +138,8 @@ public sealed class Evaluacion
         IEnumerable<string>? entidades,
         bool anomaliaSeguridad,
         DateTimeOffset fecha,
-        UsoTokensLlm? usoTokens = null)
+        UsoTokensLlm? usoTokens = null,
+        string? parafraseoDevuelto = null)
     {
         if (versionRubrica <= 0 || versionPrompt <= 0)
         {
@@ -166,6 +175,7 @@ public sealed class Evaluacion
             calificacionTotal,
             DomainGuards.Required(explicacion, nameof(explicacion)),
             DomainGuards.Required(retroalimentacionEnviada, nameof(retroalimentacionEnviada)),
+            string.IsNullOrWhiteSpace(parafraseoDevuelto) ? null : parafraseoDevuelto.Trim(),
             recomendacion,
             repregunta,
             NormalizarLista(temas),

@@ -77,6 +77,38 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task Procesar_ParafraseoActivo_AnteponeElResumenALaRetroalimentacion()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, parafraseo: "Entendi que propones reducir desperdicio.")));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(ParticipanteConParafraseo(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.StartsWith("Entendi que propones reducir desperdicio.\n\nBuena idea", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_KillSwitchParafraseoApagado_NoSolicitaElCampoAlEvaluador()
+    {
+        ContextoEvaluacion? contextoVisto = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(c => contextoVisto = c), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir(new OpcionesConversacion { Parafraseo = false })
+            .ProcesarMensajeEntranteAsync(ParticipanteConParafraseo(), Mensaje("Mi idea"), CancellationToken.None);
+
+        contextoVisto.Should().NotBeNull();
+        contextoVisto!.SolicitarParafraseo.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Procesar_RespuestaDespuesDeRevisionAgotada_RegistraSinEvaluarYCierraConAgradecimiento()
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
@@ -956,6 +988,17 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
+    private static ParticipanteResuelto ParticipanteConParafraseo()
+    {
+        var pregunta = CrearPregunta("p_1", 1, 1);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(1, "Gracias por participar.", parafraseo: true));
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
     private static ParticipanteResuelto ParticipanteFrio()
     {
         var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
@@ -1042,13 +1085,19 @@ public sealed class OrquestadorConversacionTests
             limites ?? LimitesSeguridad.Crear(1500, 10, 2),
             usuariosHabilitados: null, Epoca, Epoca);
 
-    private static DominioEvaluacion CrearEvaluacion(RecomendacionEvaluacion recomendacion, string? repregunta, string retro = "Buena idea", decimal calificacionTotal = 4m)
+    private static DominioEvaluacion CrearEvaluacion(
+        RecomendacionEvaluacion recomendacion,
+        string? repregunta,
+        string retro = "Buena idea",
+        decimal calificacionTotal = 4m,
+        string? parafraseo = null)
         => DominioEvaluacion.Crear(
             "eval_1", "c_1", "resp_1", "u_1", "p_1", "rub_1", 1, "pr_eval", 1, "llm_1",
             new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
             new Dictionary<string, decimal> { ["claridad"] = 1m },
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
-            calificacionTotal, "explica", retro, recomendacion, repregunta, new[] { "tema" }, new[] { "ent" }, false, Epoca);
+            calificacionTotal, "explica", retro, recomendacion, repregunta, new[] { "tema" }, new[] { "ent" }, false, Epoca,
+            parafraseoDevuelto: parafraseo);
 
     private static Rubrica CrearRubrica(EstadoRubrica estado = EstadoRubrica.Activa)
         => Rubrica.Crear("rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),

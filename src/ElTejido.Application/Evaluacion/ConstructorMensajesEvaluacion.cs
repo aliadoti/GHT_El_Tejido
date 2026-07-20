@@ -27,7 +27,7 @@ public static class ConstructorMensajesEvaluacion
             .AppendLine(ReglasComportamiento)
             .AppendLine(AntiInyeccion)
             .AppendLine()
-            .AppendLine(EsquemaSalida(escala.Min, escala.Max))
+            .AppendLine(EsquemaSalida(escala.Min, escala.Max, contexto.SolicitarParafraseo))
             .ToString();
 
         var contexto2 = new StringBuilder()
@@ -81,7 +81,7 @@ public static class ConstructorMensajesEvaluacion
     /// de las claves y la escala de la rubrica para no depender de que el prompt del admin los
     /// describa; sin esto el modelo inventa claves y la salida no pasa la validacion (-> fallback).
     /// </summary>
-    private static string EsquemaSalida(int min, int max)
+    private static string EsquemaSalida(int min, int max, bool solicitarParafraseo)
         => "Devuelve EXCLUSIVAMENTE un objeto JSON valido (sin texto adicional ni bloques de codigo) "
             + "con EXACTAMENTE estas claves:\n"
             + "{\n"
@@ -90,6 +90,9 @@ public static class ConstructorMensajesEvaluacion
             + $"  \"calificacion_total\": <numero entre {min} y {max}>,\n"
             + "  \"explicacion\": \"<por que esa calificacion, breve>\",\n"
             + "  \"retroalimentacion_usuario\": \"<mensaje breve para el participante; NO puede estar vacio>\",\n"
+            + (solicitarParafraseo
+                ? "  \"parafraseo_devuelto\": \"<2-3 frases fieles al aporte, sin inventar ni agregar informacion>\",\n"
+                : string.Empty)
             + "  \"recomendacion\": \"cerrar\",\n"
             + "  \"repregunta_sugerida\": \"<si recomendacion es repreguntar, la pregunta; si no, cadena vacia>\",\n"
             + "  \"temas\": [\"<tema>\"],\n"

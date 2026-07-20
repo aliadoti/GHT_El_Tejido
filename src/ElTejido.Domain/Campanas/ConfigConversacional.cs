@@ -4,12 +4,18 @@ namespace ElTejido.Domain.Campanas;
 
 public sealed class ConfigConversacional
 {
-    private ConfigConversacional(int maxRepreguntas, string mensajeCierre, bool segmentacionIdeas, bool tejidoColectivo)
+    private ConfigConversacional(
+        int maxRepreguntas,
+        string mensajeCierre,
+        bool segmentacionIdeas,
+        bool tejidoColectivo,
+        bool parafraseo)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
         SegmentacionIdeas = segmentacionIdeas;
         TejidoColectivo = tejidoColectivo;
+        Parafraseo = parafraseo;
     }
 
     public int MaxRepreguntas { get; }
@@ -32,11 +38,19 @@ public sealed class ConfigConversacional
     /// </summary>
     public bool TejidoColectivo { get; }
 
+    /// <summary>
+    /// I-05: solicita al evaluador un resumen fiel y breve del aporte para anteponerlo a la
+    /// retroalimentacion. Nace apagado para que una campania o documento historico conserve el
+    /// mensaje actual; el kill-switch global <c>Conversacion:Parafraseo=false</c> lo anula.
+    /// </summary>
+    public bool Parafraseo { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
         bool segmentacionIdeas = false,
-        bool tejidoColectivo = false)
+        bool tejidoColectivo = false,
+        bool parafraseo = false)
     {
         if (maxRepreguntas < 0)
         {
@@ -49,6 +63,7 @@ public sealed class ConfigConversacional
             maxRepreguntas,
             DomainGuards.Required(mensajeCierre, nameof(mensajeCierre)),
             segmentacionIdeas,
-            tejidoColectivo);
+            tejidoColectivo,
+            parafraseo);
     }
 }

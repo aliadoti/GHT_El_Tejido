@@ -119,6 +119,10 @@ Reglas duras:
 
 ### 3.4 Post-proceso (validación de salida) — `REQ §20.3.1, §25.3.4`
 - Parsea el JSON devuelto y **valida contra el esquema** de `§4`.
+- I-05: cuando el contexto de campaña habilita `parafraseo` y el kill-switch `Conversacion:Parafraseo`
+  está activo, normaliza `parafraseo_devuelto` como dato opcional y lo limita a
+  `Conversacion:MaxCaracteresParafraseo` (400 por defecto), conservando únicamente frases completas.
+  Ausente, vacío o sin una frase completa dentro del límite = `null`, sin fallback ni cambio de retro.
 - Si es inválido (no parsea, faltan campos, tipos erróneos) → **fallback seguro** (`§6`).
 - Si `anomaliaSeguridad=true` o se detectan patrones de inyección → registrar `LogSeguridad(anomaliaLlm / promptInjectionSospechoso)` para revisión humana (`REQ §25.3.6`, `ARQ §12.7`).
 
@@ -140,6 +144,7 @@ El LLM DEBE devolver exactamente esta forma. Es el contrato que desacopla el sis
   "calificacion_total": 0,
   "explicacion": "string",
   "retroalimentacion_usuario": "string (breve)",
+  "parafraseo_devuelto": "string opcional (2–3 frases fieles al aporte, sin inventar)",
   "recomendacion": "cerrar | repreguntar",
   "repregunta_sugerida": "string | null",
   "temas": ["string"],
@@ -152,6 +157,8 @@ Validaciones:
 - `recomendacion` ∈ `cerrar` | `repreguntar`.
 - `puntaje` y `calificacion_total` dentro de la escala de la rúbrica.
 - `retroalimentacion_usuario` no vacía y dentro del límite de longitud de retro (breve) (`REQ §21`).
+- `parafraseo_devuelto` es opcional y se solicita solo bajo el flag I-05; se trata como dato no
+  confiable, se recorta en frontera de frase y no altera el fallback si falta.
 - Si `recomendacion=repreguntar`, `repregunta_sugerida` no debe ser `null`.
 - Estos campos se mapean a `Evaluacion` (`03 §3.9`) traduciendo a los nombres en español de la entidad.
 

@@ -35,7 +35,8 @@ public sealed class ResponsesCosmosMappingTests
             new Dictionary<string, decimal> { ["claridad"] = 0.5m },
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
             4.0m, "buena", "Buena idea", RecomendacionEvaluacion.Repreguntar, "Cuanto ahorra?",
-            new[] { "eficiencia" }, new[] { "bodega" }, anomaliaSeguridad: true, Epoca);
+            new[] { "eficiencia" }, new[] { "bodega" }, anomaliaSeguridad: true, Epoca,
+            parafraseoDevuelto: "Entendi que propones optimizar la bodega.");
 
         var resultado = EvaluacionCosmosDocument.FromDomain(evaluacion).ToDomain();
 
@@ -47,6 +48,21 @@ public sealed class ResponsesCosmosMappingTests
         resultado.CalificacionPorCriterio.Should().ContainSingle();
         resultado.AnomaliaSeguridad.Should().BeTrue();
         resultado.ConfigLlmSnapshot.Modelo.Should().Be("gpt-4o-mini");
+        resultado.ParafraseoDevuelto.Should().Be("Entendi que propones optimizar la bodega.");
+    }
+
+    [Fact]
+    public void Evaluacion_DocumentoAnteriorSinParafraseo_DeserializaComoNull()
+    {
+        var evaluacion = DominioEvaluacion.Crear(
+            "eval_1", "c_1", "resp_1", "u_1", "p_1", "r_general", 3, "pr_eval", 5, "llm_default",
+            new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
+            new Dictionary<string, decimal>(), Array.Empty<CalificacionCriterio>(), 4m, "buena", "Buena idea",
+            RecomendacionEvaluacion.Cerrar, null, null, null, anomaliaSeguridad: false, Epoca);
+
+        var resultado = EvaluacionCosmosDocument.FromDomain(evaluacion).ToDomain();
+
+        resultado.ParafraseoDevuelto.Should().BeNull();
     }
 
     [Fact]

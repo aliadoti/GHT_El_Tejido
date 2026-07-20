@@ -59,6 +59,10 @@ internal sealed class EvaluacionCosmosDocument
     [JsonProperty("retroalimentacionEnviada")]
     public string RetroalimentacionEnviada { get; init; } = string.Empty;
 
+    // I-05: opcional; un documento previo sin el campo conserva null y la retro clásica.
+    [JsonProperty("parafraseoDevuelto", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ParafraseoDevuelto { get; init; }
+
     [JsonProperty("recomendacion")]
     public string Recomendacion { get; init; } = "cerrar";
 
@@ -114,6 +118,7 @@ internal sealed class EvaluacionCosmosDocument
             CalificacionTotal = evaluacion.CalificacionTotal,
             Explicacion = evaluacion.Explicacion,
             RetroalimentacionEnviada = evaluacion.RetroalimentacionEnviada,
+            ParafraseoDevuelto = evaluacion.ParafraseoDevuelto,
             Recomendacion = MapearRecomendacion(evaluacion.Recomendacion),
             RepreguntaSugerida = evaluacion.RepreguntaSugerida,
             Temas = evaluacion.Temas.ToList(),
@@ -159,7 +164,8 @@ internal sealed class EvaluacionCosmosDocument
             Entidades,
             AnomaliaSeguridad,
             Fecha,
-            UsoTokens is null ? null : UsoTokensLlm.Crear(UsoTokens.PromptTokens, UsoTokens.CompletionTokens));
+            UsoTokens is null ? null : UsoTokensLlm.Crear(UsoTokens.PromptTokens, UsoTokens.CompletionTokens),
+            ParafraseoDevuelto);
 
     private static string MapearRecomendacion(RecomendacionEvaluacion recomendacion)
         => recomendacion == RecomendacionEvaluacion.Repreguntar ? "repreguntar" : "cerrar";

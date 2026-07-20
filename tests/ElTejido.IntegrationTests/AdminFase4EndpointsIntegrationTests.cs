@@ -96,7 +96,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
     }
 
     [Fact]
-    public async Task Campanias_ConfigConversacionalExponeSegmentacionIdeasAditiva()
+    public async Task Campanias_ConfigConversacionalExponeFlagsAditivos()
     {
         using var fabrica = Construir(
             new RepositorioUsuariosMemoria(),
@@ -120,17 +120,21 @@ public sealed class AdminFase4EndpointsIntegrationTests
                     maxRepreguntas = 1,
                     mensajeCierre = "Gracias.",
                     segmentacionIdeas = true,
+                    parafraseo = true,
                 },
             });
 
         creacion.StatusCode.Should().Be(HttpStatusCode.Created);
         var cuerpo = await creacion.Content.ReadAsStringAsync();
         cuerpo.Should().Contain("\"segmentacionIdeas\":true");
+        cuerpo.Should().Contain("\"parafraseo\":true");
         var campaniaId = await LeerStringAsync(creacion, "id");
 
         using var detalle = await client.GetAsync($"/api/admin/campanias/{campaniaId}");
         detalle.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await detalle.Content.ReadAsStringAsync()).Should().Contain("\"segmentacionIdeas\":true");
+        var detalleJson = await detalle.Content.ReadAsStringAsync();
+        detalleJson.Should().Contain("\"segmentacionIdeas\":true");
+        detalleJson.Should().Contain("\"parafraseo\":true");
     }
 
     [Fact]

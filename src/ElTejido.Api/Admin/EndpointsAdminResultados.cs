@@ -224,6 +224,7 @@ internal static class EndpointsAdminResultados
             e.CalificacionTotal,
             e.Explicacion,
             e.RetroalimentacionEnviada,
+            e.ParafraseoDevuelto,
             recomendacion = e.Recomendacion.ToString().ToLowerInvariant(),
             e.RepreguntaSugerida,
             temas = e.Temas,

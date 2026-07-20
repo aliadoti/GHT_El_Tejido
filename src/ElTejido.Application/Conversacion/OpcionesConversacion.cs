@@ -102,6 +102,18 @@ public sealed class OpcionesConversacion
     /// </summary>
     public bool RecuperacionSemantica { get; set; }
 
+    /// <summary>
+    /// Kill-switch global de I-05. Por defecto respeta <c>Campania.ConfigConversacional.Parafraseo</c>;
+    /// en <c>false</c> no solicita ni muestra el parafraseo para ninguna campaña, sin redeploy.
+    /// </summary>
+    public bool Parafraseo { get; set; } = true;
+
+    /// <summary>
+    /// Máximo de caracteres del parafraseo que se muestra al participante (I-05). Si excede el
+    /// límite, el evaluador conserva solo frases completas; 400 es el default operativo.
+    /// </summary>
+    public int MaxCaracteresParafraseo { get; set; } = 400;
+
     /// <summary>Textos operativos del orquestador que se pueden sobreescribir por configuracion.</summary>
     public OpcionesMensajesConversacion Mensajes { get; set; } = new();
 }
