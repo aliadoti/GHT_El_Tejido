@@ -31,6 +31,20 @@ public sealed class ConstructorMensajesEvaluacionTests
     }
 
     [Fact]
+    public void Construir_SystemIncluyePistaDeFocoEnElEjeDebilSinRevelarLaRubrica()
+    {
+        var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto());
+        var system = mensajes[0].Contenido;
+
+        // I-03: instruccion generica (capa 1) para que el modelo enfoque la repregunta en el criterio
+        // de menor puntaje de SU PROPIA evaluacion, en la misma llamada.
+        system.Should().Contain("puntaje mas bajo");
+        system.Should().Contain("repregunta_sugerida");
+        // La instruccion prohibe expresamente nombrar la rubrica, los criterios o los puntajes.
+        system.Should().Contain("NUNCA nombres la rubrica");
+    }
+
+    [Fact]
     public void Construir_SystemIncluyeEsquemaJsonExplicitoConClavesYEscala()
     {
         var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto());

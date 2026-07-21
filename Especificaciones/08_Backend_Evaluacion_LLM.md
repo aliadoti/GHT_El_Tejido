@@ -109,6 +109,12 @@ Reglas duras:
   `resumen` anonimizado); (b) se aplica un **presupuesto fijo de tokens** al bloque
   (`Conversacion:PresupuestoTokensTejido`), truncando antes de construir el prompt y respetando
   `limitesTokens.maxPrompt`. Si tras las guardas el bloque queda vacío, se **omite** por completo.
+- **Pista de foco en el eje débil (I-03, REQ §21):** el `system` agrega, **siempre** (no es un
+  feature configurable), una instrucción para que el modelo identifique internamente cuál de sus
+  propios puntajes por criterio es el más bajo y profundice `repregunta_sugerida` en ese aspecto en
+  lenguaje natural, **sin nombrar la rúbrica, los criterios ni ningún puntaje**. Ocurre en la MISMA
+  llamada de evaluación (sin llamada LLM extra): el modelo calcula sus puntajes y redacta la
+  repregunta en una sola generación.
 
 ### 3.3 Llamada al proveedor — `REQ §19.1`
 - Lee `ConfigLLM` activa (proveedor, modelo, endpoint, parámetros) y resuelve la API key por `apiKeyRef` desde Key Vault (Managed Identity, caché corta). Si la `ConfigLLM` está inactiva, la rúbrica no está activa o el prompt de evaluación no está activo/aprobado, el orquestador no llama al LLM y aplica fallback seguro (`§6`).
@@ -125,6 +131,15 @@ Reglas duras:
   Ausente, vacío o sin una frase completa dentro del límite = `null`, sin fallback ni cambio de retro.
 - Si es inválido (no parsea, faltan campos, tipos erróneos) → **fallback seguro** (`§6`).
 - Si `anomaliaSeguridad=true` o se detectan patrones de inyección → registrar `LogSeguridad(anomaliaLlm / promptInjectionSospechoso)` para revisión humana (`REQ §25.3.6`, `ARQ §12.7`).
+- **I-03 — filtro de salida determinista (capa 2, siempre activo):** ya con la salida validada, se
+  calcula server-side (nunca el LLM) el criterio de menor puntaje (`CalculadorEjeDebil`; desempate
+  por menor peso y luego alfabético, reproducible) y se pasa `retroalimentacion_usuario` y
+  `repregunta_sugerida` (si `recomendacion=repreguntar`) por `FiltroSalidaRubrica`: si alguno nombra
+  un criterio de la rúbrica, un patrón de puntaje (`N/M`, `N de M`) o palabras que delatan el
+  mecanismo ("rúbrica", "criterio", "calificación"), ese campo se descarta — la retro cae a la neutra
+  (`§6`) y la repregunta a un texto genérico y seguro (el dominio exige una repregunta no vacía
+  cuando `recomendacion=repreguntar`) — y se registra `LogSeguridad(anomaliaLlm, resultado="fuga_rubrica")`
+  sin texto de la fuga, solo qué campo(s) y el criterio esperado.
 
 ### 3.5 Persistencia y decisión
 - Construye y devuelve la `Evaluacion` con **snapshots**: `rubricaRef+versionRubrica`, `promptRef+versionPrompt`, `configLLMRef+configLLMSnapshot`, `pesosUsados` (`REQ §20.3.3–6`, `ARQ §6 paso 5`). La persistencia la realiza el orquestador (`05 §4.3 paso 5`) o este módulo según el cableado; la responsabilidad del **contenido** del documento es de este módulo.
@@ -174,6 +189,7 @@ Validaciones:
 7. Registro de intentos sospechosos.
 8. Límites de longitud reducen superficie de ataque.
 9. **Inyección transitiva (I-09):** los `APORTES_DE_LA_COMUNIDAD` recuperados de otros participantes se tratan como dato no confiable de segundo orden — mismo delimitador, sanitización previa, presupuesto de tokens y validación de la salida por el esquema de `§4`. Un aporte que intente "ignora tus instrucciones…" queda neutralizado/truncado por la sanitización; si se detecta el patrón se registra `LogSeguridad(promptInjectionSospechoso)`. El sistema jamás ejecuta lo que un aporte "pida".
+10. **Fuga de rúbrica (I-03):** doble capa — instrucción explícita de no revelar rúbrica/criterios/puntajes en el `system` (capa 1, `§3.2`) + filtro determinista de salida `FiltroSalidaRubrica` sobre `retroalimentacion_usuario`/`repregunta_sugerida` (capa 2, `§3.4`) — con registro de anomalía si la capa 2 detecta fuga (capa 3). Es una salvaguarda siempre activa, no un flag.
 
 ---
 
@@ -198,5 +214,6 @@ Si el proveedor falla (timeout, 5xx tras reintentos) **o** la salida es inválid
 - El contexto enviado nunca contiene secretos ni API keys.
 - Cambiar de proveedor (Azure OpenAI ↔ OpenAI compatible ↔ Anthropic nativo) es solo configuración; el módulo no cambia.
 - Un intento de prompt-injection no altera la rúbrica/prompt y, si se detecta, se registra.
+- Una `repregunta_sugerida` o retro que nombre un criterio de la rúbrica o muestre un puntaje nunca llega al participante: `FiltroSalidaRubrica` la reemplaza (retro neutra / repregunta genérica) y queda registrada la anomalía `fuga_rubrica` (I-03).
 
 *Fin del documento.*

@@ -19,6 +19,14 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     /// <summary>Retro neutra que se envia cuando la evaluacion cae en fallback (08 §6, REQ §20.3.10).</summary>
     public const string RetroNeutra = "Gracias, registramos tu aporte.";
 
+    /// <summary>
+    /// I-03: repregunta de respaldo cuando la sugerida por el LLM revela la rubrica. El dominio
+    /// (<c>Evaluacion.Crear</c>, "REPREGUNTA_REQUERIDA") exige una repregunta no vacia siempre que
+    /// <see cref="RecomendacionEvaluacion.Repreguntar"/>, asi que no se puede degradar a <c>null</c>:
+    /// se usa este texto generico y seguro (sin nombrar rubrica/criterios/puntajes) en su lugar.
+    /// </summary>
+    public const string RepreguntaNeutra = "Cuentame un poco mas sobre esa idea, ¿que le agregarias?";
+
     private const int MaxCaracteresRetro = 600;
 
     private static readonly JsonSerializerOptions OpcionesJson = new()
@@ -87,13 +95,58 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             return await FallbackAsync(contexto, "salida_invalida:" + razonInvalida, uso, cancellationToken);
         }
 
+        // I-03: el eje mas debil se calcula SIEMPRE server-side (nunca por el LLM), tras validar la
+        // salida (08 §3.4). Solo alimenta el registro de la salvaguarda de fuga; no se persiste ni se
+        // muestra al participante.
+        var calificaciones = MapearCalificaciones(salida);
+        var ejeDebil = CalculadorEjeDebil.Determinar(calificaciones, contexto.RubricaSnapshot.Criterios);
+        salida = await AplicarFiltroRubricaAsync(contexto, salida, recomendacion, ejeDebil, cancellationToken);
+
         if (salida.AnomaliaSeguridad)
         {
             await RegistrarAnomaliaAsync(contexto, cancellationToken);
         }
 
-        return new ResultadoEvaluacion.Exito(ConstruirEvaluacion(contexto, salida, recomendacion, uso));
+        return new ResultadoEvaluacion.Exito(ConstruirEvaluacion(contexto, salida, recomendacion, uso, calificaciones));
     }
+
+    /// <summary>
+    /// I-03 capa 2: si la retro o la repregunta sugerida revelan la rubrica (nombre de criterio,
+    /// patron de puntaje o palabras que delatan el mecanismo), se descartan y se registra la anomalia
+    /// (08 §5 regla 10). La retro cae a <see cref="RetroNeutra"/>; la repregunta cae a
+    /// <see cref="RepreguntaNeutra"/> (el dominio exige una repregunta no vacia si la recomendacion
+    /// es repreguntar; ver su comentario).
+    /// </summary>
+    private async Task<SalidaLlmEvaluacion> AplicarFiltroRubricaAsync(
+        ContextoEvaluacion contexto,
+        SalidaLlmEvaluacion salida,
+        RecomendacionEvaluacion recomendacion,
+        Domain.Configuracion.CriterioRubrica? ejeDebil,
+        CancellationToken cancellationToken)
+    {
+        var rubrica = contexto.RubricaSnapshot;
+        var fugaRetro = FiltroSalidaRubrica.ContieneFuga(salida.RetroalimentacionUsuario, rubrica);
+        var fugaRepregunta = recomendacion == RecomendacionEvaluacion.Repreguntar
+            && FiltroSalidaRubrica.ContieneFuga(salida.RepreguntaSugerida, rubrica);
+
+        if (!fugaRetro && !fugaRepregunta)
+        {
+            return salida;
+        }
+
+        await RegistrarFugaRubricaAsync(contexto, fugaRetro, fugaRepregunta, ejeDebil, cancellationToken);
+
+        return salida with
+        {
+            RetroalimentacionUsuario = fugaRetro ? RetroNeutra : salida.RetroalimentacionUsuario,
+            RepreguntaSugerida = fugaRepregunta ? RepreguntaNeutra : salida.RepreguntaSugerida,
+        };
+    }
+
+    private static IReadOnlyList<CalificacionCriterio> MapearCalificaciones(SalidaLlmEvaluacion salida)
+        => (salida.CalificacionPorCriterio ?? Array.Empty<SalidaCalificacionCriterio>())
+            .Select(c => CalificacionCriterio.Crear(c.Criterio ?? "criterio", c.Puntaje, c.Justificacion ?? string.Empty))
+            .ToArray();
 
     private LlmRequest ConstruirRequest(ContextoEvaluacion contexto)
     {
@@ -159,12 +212,9 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
         ContextoEvaluacion contexto,
         SalidaLlmEvaluacion salida,
         RecomendacionEvaluacion recomendacion,
-        UsoTokensLlm? uso)
+        UsoTokensLlm? uso,
+        IReadOnlyList<CalificacionCriterio> calificaciones)
     {
-        var calificaciones = (salida.CalificacionPorCriterio ?? Array.Empty<SalidaCalificacionCriterio>())
-            .Select(c => CalificacionCriterio.Crear(c.Criterio ?? "criterio", c.Puntaje, c.Justificacion ?? string.Empty))
-            .ToArray();
-
         return DominioEvaluacion.Crear(
             "eval_" + Guid.NewGuid().ToString("N"),
             contexto.Campania.Id,
@@ -242,6 +292,30 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
                 _correlacion.CorrelationIdActual,
                 _tiempo.GetUtcNow()),
             cancellationToken);
+
+    private Task RegistrarFugaRubricaAsync(
+        ContextoEvaluacion contexto,
+        bool fugaRetro,
+        bool fugaRepregunta,
+        Domain.Configuracion.CriterioRubrica? ejeDebil,
+        CancellationToken cancellationToken)
+    {
+        var campos = string.Join(
+            "+",
+            new[] { fugaRetro ? "retro" : null, fugaRepregunta ? "repregunta" : null }.Where(c => c is not null));
+
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.AnomaliaLlm,
+                contexto.Usuario.Id,
+                numero: null,
+                "fuga_rubrica",
+                $"campos={campos};eje_debil={ejeDebil?.Nombre ?? "desconocido"}",
+                _correlacion.CorrelationIdActual,
+                _tiempo.GetUtcNow()),
+            cancellationToken);
+    }
 
     private Task RegistrarFallbackAsync(ContextoEvaluacion contexto, string motivo, CancellationToken cancellationToken)
         => _logSeguridad.RegistrarAsync(

@@ -6,9 +6,11 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-07-20 — acuerdos GHT: alcance de convención confirmado (§1.3); rúbrica
-> I-11 congelada (18-jul) → I-03 desbloqueada; P-01/P-02 COMPLETAS; seeds I-12 vencidos → escalar;
-> **P-13 adelantada a Sprint 1b** (decisión del usuario).
+> Última revisión: 2026-07-21 — **I-03 DONE local** (pista de foco + filtro de fuga de rúbrica
+> siempre-on, sin cambio de contratos; D5 real pendiente). Anterior 2026-07-20 — acuerdos GHT:
+> alcance de convención confirmado (§1.3); rúbrica I-11 congelada (18-jul) → I-03 desbloqueada;
+> P-01/P-02 COMPLETAS; seeds I-12 vencidos → escalar; **P-13 adelantada a Sprint 1b** (decisión del
+> usuario).
 
 ## 1. Clasificación
 
@@ -16,7 +18,7 @@
 
 | ID   | Spec                                                                                                                                                                                                                                                 | Ventana               | Estado                                                                                                                  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **← ACTUAL** (agente Codex; desbloqueada 2026-07-20, rúbrica I-11 congelada 18-jul; D5 árbitro, baseline real pendiente)                                                                                                |
+| I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
 | I-08 | [I-08_Carga_Masiva_Participantes.md](I-08_Carga_Masiva_Participantes.md)                                                                                                                                                                             | S1a backend / S1b UI  | **DONE** (backend 2026-07-15, UI 2026-07-20, ambos por Claude; carga real en el freeze)             |
@@ -33,7 +35,7 @@
 | P-06 | [P-06_Destilacion_Por_Lotes.md](P-06_Destilacion_Por_Lotes.md)                                                                                                                                                                                       | Post-convención       | Diferida                                                                                                                |
 | P-08 | [P-08_Recordatorios_Nudges.md](P-08_Recordatorios_Nudges.md)                                                                                                                                                                                         | Rama deseable         | Diferida                                                                                                                |
 | P-11 | [P-11_Informe_Consolidado.md](P-11_Informe_Consolidado.md)                                                                                                                                                                                           | Rama deseable / post  | Diferida                                                                                                                |
-| P-13 | [P-13_Umbral_Cierre_Por_Campania.md](P-13_Umbral_Cierre_Por_Campania.md)                                                                                                                                                                             | **Sprint 1b (adelantada 2026-07-20)** | **Diseño DONE 2026-07-15; ADELANTADA por decisión del usuario 2026-07-20** (permite calibrar I-01 por campaña de prueba, reversible, sin flip global); impl pendiente (override `configConversacional.umbralCierreAnticipado`; global sigue como default/kill-switch) |
+| P-13 | [P-13_Umbral_Cierre_Por_Campania.md](P-13_Umbral_Cierre_Por_Campania.md)                                                                                                                                                                             | **Sprint 1b (adelantada 2026-07-20)** | **← ACTUAL** (agente Claude; diseño DONE 2026-07-15, ADELANTADA por decisión del usuario 2026-07-20 — permite calibrar I-01 por campaña de prueba, reversible, sin flip global; impl pendiente: override `configConversacional.umbralCierreAnticipado`, global sigue como default/kill-switch) |
 | D5   | [D5_Banco_Calibracion.md](D5_Banco_Calibracion.md)                                                                                                                                                                                                   | Sprint 1a             | **DONE 2026-07-14** (librería + golden set 24 + runner opt-in fuera de CI); **baseline real pendiente** (corrido pagado contra staging; árbitro de I-03/I-05 y del umbral I-01) |
 
 ### 1.2 Omitidas (no se implementan en código) — con el porqué
@@ -90,10 +92,10 @@ P-01 ✓, P-02 ✓, P-03 ✓, P-07, P-09, P-10 y **P-13 (adelantada 2026-07-20)*
   flags apagados. I-01 quedó preparada (runbook + observabilidad + regresión) y **BLOCKED** para el
   flip humano (falta baseline D5 real; la rúbrica ya está ✓).
 - **Sprint 1b (21–25 jul) — EN CURSO:** I-06 ✓ e I-09 core ✓ vienen adelantadas de S1a (flags
-  apagados); I-05 parafraseo ✓ DONE local (2026-07-20, Codex); I-08 UI ✓ DONE (2026-07-20, Claude).
-  Quedan: **I-03 prompts sobre la rúbrica ya congelada (← ACTUAL, agente Codex)**; **P-13 override
-  del umbral por campaña (adelantada 2026-07-20)**. Criterio de salida: I-06/I-09 funcionales en
-  staging bajo flag, costo por conversación medido.
+  apagados); I-05 parafraseo ✓ DONE local (2026-07-20, Codex); I-08 UI ✓ DONE (2026-07-20, Claude);
+  I-03 ✓ DONE local (2026-07-21, Claude — pista de foco + filtro de fuga de rúbrica siempre-on).
+  Queda: **P-13 override del umbral por campaña (← ACTUAL, agente Claude, adelantada 2026-07-20)**.
+  Criterio de salida: I-06/I-09 funcionales en staging bajo flag, costo por conversación medido.
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7, decide
   cola/jobs/RU); I-10 flag por campaña; I-12 seed thoughts embebidos (**BLOCKED hasta recibir el
   insumo de Felipe — escalar**); I-13 decisión (25-jul); I-14 tags; P-07 consentimiento; P-10
@@ -117,7 +119,7 @@ P-01 ✓, P-02 ✓, P-03 ✓, P-07, P-09, P-10 y **P-13 (adelantada 2026-07-20)*
 
 ## 3. Dependencias duras (ruta crítica)
 
-`P-01/P-02 (Meta)` **✓** → `I-11 (rúbrica)` **✓ 18-jul** → `I-03` **(desbloqueada)** ·
+`P-01/P-02 (Meta)` **✓** → `I-11 (rúbrica)` **✓ 18-jul** → `I-03` **✓ DONE local 2026-07-21** ·
 `I-12 (seeds)` **BLOCKED (insumo vencido — escalar)** → `I-04/I-13` · `P-10 cupos` **✓** →
 `I-01 (activar)` ← simplificada por `P-13 (override umbral por campaña, adelantada a S1b)` ·
 `I-09` **✓ core** → `I-10` → (post: `P-05/P-06/P-11`) · `I-08` **✓ backend + UI** → carga real del

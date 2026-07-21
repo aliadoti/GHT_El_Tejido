@@ -152,6 +152,63 @@ public sealed class EvaluadorLlmTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Evaluar_RetroConFugaDeCriterio_CaeARetroNeutraYRegistraAnomalia()
+    {
+        const string salida =
+            "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":4,\"justificacion\":\"clara\"}],"
+            + "\"calificacion_total\":4.0,\"explicacion\":\"buena idea\","
+            + "\"retroalimentacion_usuario\":\"Tu puntaje en claridad fue bueno.\","
+            + "\"recomendacion\":\"cerrar\",\"temas\":[],\"entidades\":[],\"anomalia_seguridad\":false}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.AnomaliaLlm && l.Resultado == "fuga_rubrica"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Evaluar_RepreguntaConFugaDePuntaje_DescartaLaRepreguntaYRegistraAnomalia()
+    {
+        const string salida =
+            "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":2,\"justificacion\":\"confusa\"}],"
+            + "\"calificacion_total\":2.0,\"explicacion\":\"mejorable\",\"retroalimentacion_usuario\":\"Buen inicio\","
+            + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"Sacaste 2 de 5, cuentame mas.\","
+            + "\"temas\":[],\"entidades\":[],\"anomalia_seguridad\":false}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        resultado.Evaluacion.Recomendacion.Should().Be(RecomendacionEvaluacion.Repreguntar);
+        // Se descarta la repregunta sugerida por una generica y segura (el dominio exige una
+        // repregunta no vacia si la recomendacion es repreguntar).
+        resultado.Evaluacion.RepreguntaSugerida.Should().Be(EvaluadorLlm.RepreguntaNeutra);
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be("Buen inicio");
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.AnomaliaLlm && l.Resultado == "fuga_rubrica"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Evaluar_SalidaLimpia_NoRegistraFugaDeRubrica()
+    {
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(SalidaValida, UsoTokensLlm.Crear(100, 50)));
+
+        await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        await _logSeguridad.DidNotReceive().RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.Resultado == "fuga_rubrica"),
+            Arg.Any<CancellationToken>());
+    }
+
     private EvaluadorLlm Construir()
         => new(_client, _logSeguridad, _correlacion, new RelojFijo(DateTimeOffset.UnixEpoch));
 
