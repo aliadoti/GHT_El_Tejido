@@ -16,10 +16,10 @@
 
 | ID   | Spec                                                                                                                                                                                                                                                 | Ventana               | Estado                                                                                                                  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **Desbloqueada 2026-07-20** (rúbrica I-11 congelada 18-jul); en cola tras I-05/I-08 UI; D5 árbitro (baseline real pendiente)                                                                                                |
+| I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **← ACTUAL** (agente Codex; desbloqueada 2026-07-20, rúbrica I-11 congelada 18-jul; D5 árbitro, baseline real pendiente)                                                                                                |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
-| I-08 | [I-08_Carga_Masiva_Participantes.md](I-08_Carga_Masiva_Participantes.md)                                                                                                                                                                             | S1a backend / S1b UI  | **← ACTUAL** (agente Claude; backend DONE 2026-07-15, UI pendiente; carga real en el freeze)             |
+| I-08 | [I-08_Carga_Masiva_Participantes.md](I-08_Carga_Masiva_Participantes.md)                                                                                                                                                                             | S1a backend / S1b UI  | **DONE** (backend 2026-07-15, UI 2026-07-20, ambos por Claude; carga real en el freeze)             |
 | I-09 | [I-09_Tejido_Colectivo.md](I-09_Tejido_Colectivo.md)                                                                                                                                                                                                 | S1a diseño / S1b core | **Diseño DONE 2026-07-15**; **core DONE local 2026-07-17** (Opción A léxica, inyección delimitada/sanitizada, degradación autocontenida; flags apagados hasta medir costo/latencia bajo flag en staging; gran apuesta) |
 | I-10 | [I-10_Flag_Base_Previa_vs_Blanco.md](I-10_Flag_Base_Previa_vs_Blanco.md)                                                                                                                                                                             | Sprint 2              | Pendiente (depende I-09)                                                                                                |
 | I-12 | [I-12_Seed_Thoughts.md](I-12_Seed_Thoughts.md)                                                                                                                                                                                                       | Sprint 2              | **BLOCKED — insumo vencido** (seeds de Felipe no recibidos al 2026-07-20; **escalar**)                                                                                        |
@@ -90,9 +90,10 @@ P-01 ✓, P-02 ✓, P-03 ✓, P-07, P-09, P-10 y **P-13 (adelantada 2026-07-20)*
   flags apagados. I-01 quedó preparada (runbook + observabilidad + regresión) y **BLOCKED** para el
   flip humano (falta baseline D5 real; la rúbrica ya está ✓).
 - **Sprint 1b (21–25 jul) — EN CURSO:** I-06 ✓ e I-09 core ✓ vienen adelantadas de S1a (flags
-  apagados). Quedan: **I-05 parafraseo (← ACTUAL, agente Codex)**; I-08 UI; I-03 prompts sobre la
-  rúbrica ya congelada; **P-13 override del umbral por campaña (adelantada 2026-07-20)**. Criterio
-  de salida: I-06/I-09 funcionales en staging bajo flag, costo por conversación medido.
+  apagados); I-05 parafraseo ✓ DONE local (2026-07-20, Codex); I-08 UI ✓ DONE (2026-07-20, Claude).
+  Quedan: **I-03 prompts sobre la rúbrica ya congelada (← ACTUAL, agente Codex)**; **P-13 override
+  del umbral por campaña (adelantada 2026-07-20)**. Criterio de salida: I-06/I-09 funcionales en
+  staging bajo flag, costo por conversación medido.
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7, decide
   cola/jobs/RU); I-10 flag por campaña; I-12 seed thoughts embebidos (**BLOCKED hasta recibir el
   insumo de Felipe — escalar**); I-13 decisión (25-jul); I-14 tags; P-07 consentimiento; P-10
@@ -119,7 +120,7 @@ P-01 ✓, P-02 ✓, P-03 ✓, P-07, P-09, P-10 y **P-13 (adelantada 2026-07-20)*
 `P-01/P-02 (Meta)` **✓** → `I-11 (rúbrica)` **✓ 18-jul** → `I-03` **(desbloqueada)** ·
 `I-12 (seeds)` **BLOCKED (insumo vencido — escalar)** → `I-04/I-13` · `P-10 cupos` **✓** →
 `I-01 (activar)` ← simplificada por `P-13 (override umbral por campaña, adelantada a S1b)` ·
-`I-09` **✓ core** → `I-10` → (post: `P-05/P-06/P-11`) · `I-08` **backend ✓** → UI → carga real del
+`I-09` **✓ core** → `I-10` → (post: `P-05/P-06/P-11`) · `I-08` **✓ backend + UI** → carga real del
 freeze · `P-07` → apertura a participantes reales. **Único insumo externo en rojo: seeds de Felipe.**
 
 ## 4. Parametrización por campaña (análisis 2026-07-13, decisión del usuario: no perder flexibilidad)

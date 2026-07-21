@@ -84,7 +84,7 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 
 **Login OTP** (`REQ §10`, `§33.1.1–4`): campo de número con **instrucciones de normalización** y ejemplos; botón "Enviar código"; pantalla de ingreso de código; mensajes neutrales (no revelan existencia). Llama `request-code` y `verify-code`.
 
-**Usuarios/Tags** (`REQ §33.1.5–6`): tabla con filtros (rol, estado, área, empresa, tag, búsqueda); alta/edición con validación de número; asignación de área/empresa/tags; activar/inactivar. CRUD de tags.
+**Usuarios/Tags** (`REQ §33.1.5–6`): tabla con filtros (rol, estado, área, empresa, tag, búsqueda); alta/edición con validación de número; asignación de área/empresa/tags; activar/inactivar. CRUD de tags. **Carga masiva CSV (`I-08`, `REQ §12/§26.3`):** panel solo-admin en la misma pantalla — sube un `.csv` (columnas `Nombre,WhatsApp,Area,Empresa,Tags`), asocia opcionalmente a una campaña, y muestra el reporte por fila (`creado|actualizado|rechazado`+motivo) sin PII, reusando `POST /api/admin/usuarios/carga-masiva` (`04 §5.1`) sin alterar su contrato.
 
 **Campañas** (`REQ §33.1.7–9`): lista por estado; detalle con tabs (datos, mensajes iniciales, preguntas, participantes); asociación de participantes manual o por filtro con **preview de destinatarios**; cambio de estado. Para I-06, la pestaña Configuración expone `segmentacionIdeas` como checkbox de campaña, apagado por defecto.
 
