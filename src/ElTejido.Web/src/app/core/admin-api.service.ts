@@ -14,6 +14,7 @@ import {
   ParticipantePreview,
   Pregunta,
   PromptConfig,
+  ReporteCargaMasiva,
   ReporteReinicioDatos,
   Respuesta,
   Rubrica,
@@ -39,6 +40,17 @@ export class AdminApiService {
 
   cambiarEstadoUsuario(id: string, estado: string) {
     return this.api.patch<UsuarioAdmin>(`/api/admin/usuarios/${id}/estado`, { estado });
+  }
+
+  // I-08 (04 §5.1): sube CSV de participantes; upsert por numero normalizado, reporte por fila.
+  cargaMasivaUsuarios(archivo: File, campaniaId?: string) {
+    const formulario = new FormData();
+    formulario.append('archivo', archivo, archivo.name);
+    return this.api.post<ReporteCargaMasiva>(
+      '/api/admin/usuarios/carga-masiva',
+      formulario,
+      campaniaId ? { campaniaId } : undefined,
+    );
   }
 
   tags(query?: Record<string, string | number | undefined>) {

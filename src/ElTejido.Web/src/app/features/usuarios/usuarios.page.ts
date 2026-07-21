@@ -2,8 +2,9 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 
 import { AdminApiService } from '../../core/admin-api.service';
-import { TagAdmin, UsuarioAdmin } from '../../core/api-models';
+import { Campania, ReporteCargaMasiva, TagAdmin, UsuarioAdmin } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
+import { NotificacionesService } from '../../core/notificaciones.service';
 import { formatApiError } from '../../shared-error';
 
 @Component({
@@ -167,6 +168,70 @@ import { formatApiError } from '../../shared-error';
           }
         </div>
       </section>
+
+      @if (auth.isAdmin()) {
+        <section class="panel">
+          <div class="panel-heading">
+            <h3>Carga masiva de participantes (CSV)</h3>
+          </div>
+          <p class="muted">
+            Columnas fijas con cabecera: <code>Nombre, WhatsApp, Area, Empresa, Tags</code> (tags
+            separadas por <code>;</code>). Una fila mala no aborta el lote; re-subir el mismo
+            archivo actualiza en vez de duplicar.
+          </p>
+          <form class="inline-form" (ngSubmit)="cargarArchivo()">
+            <input type="file" accept=".csv" (change)="onArchivoSeleccionado($event)" />
+            <label>
+              Asociar a campania (opcional)
+              <select name="campaniaCarga" [(ngModel)]="campaniaIdCarga">
+                <option value="">Sin asociar</option>
+                @for (campania of campanias(); track campania.id) {
+                  <option [value]="campania.id">{{ campania.nombre }}</option>
+                }
+              </select>
+            </label>
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="!archivoCarga() || cargandoArchivo()"
+            >
+              {{ cargandoArchivo() ? 'Cargando...' : 'Cargar archivo' }}
+            </button>
+          </form>
+
+          @if (reporteCarga(); as reporte) {
+            <p class="muted">
+              Total: {{ reporte.totalFilas }} · Creados: {{ reporte.creados }} · Actualizados:
+              {{ reporte.actualizados }} · Rechazados: {{ reporte.rechazados }} · Asociados:
+              {{ reporte.asociados }}
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fila</th>
+                    <th>Resultado</th>
+                    <th>Usuario</th>
+                    <th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fila of reporte.filas; track fila.fila) {
+                    <tr>
+                      <td>{{ fila.fila }}</td>
+                      <td>
+                        <span class="status-badge">{{ fila.resultado }}</span>
+                      </td>
+                      <td>{{ fila.usuarioId ?? '—' }}</td>
+                      <td>{{ fila.motivo ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      }
     </section>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -174,8 +239,10 @@ import { formatApiError } from '../../shared-error';
 export class UsuariosPage {
   private readonly api = inject(AdminApiService);
   protected readonly auth = inject(AuthService);
+  private readonly notificaciones = inject(NotificacionesService);
   protected readonly usuarios = signal<UsuarioAdmin[]>([]);
   protected readonly tags = signal<TagAdmin[]>([]);
+  protected readonly campanias = signal<Campania[]>([]);
   protected readonly error = signal('');
   protected readonly editandoId = signal<string | null>(null);
 
@@ -195,6 +262,12 @@ export class UsuariosPage {
     tipoTag: '',
     descripcion: '',
   };
+
+  protected readonly archivoCarga = signal<File | null>(null);
+  protected readonly cargandoArchivo = signal(false);
+  protected readonly reporteCarga = signal<ReporteCargaMasiva | null>(null);
+  protected campaniaIdCarga = '';
+  private inputArchivoEl: HTMLInputElement | null = null;
 
   constructor() {
     this.load();
@@ -218,6 +291,43 @@ export class UsuariosPage {
     this.api.tags({ pageSize: 100 }).subscribe({
       next: (page) => this.tags.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+    this.api.campanias({ pageSize: 100 }).subscribe({
+      next: (page) => this.campanias.set(page.items),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+  }
+
+  onArchivoSeleccionado(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    this.inputArchivoEl = input;
+    this.archivoCarga.set(input.files?.item(0) ?? null);
+  }
+
+  cargarArchivo() {
+    const archivo = this.archivoCarga();
+    if (!archivo) {
+      return;
+    }
+
+    this.cargandoArchivo.set(true);
+    this.api.cargaMasivaUsuarios(archivo, this.campaniaIdCarga || undefined).subscribe({
+      next: (reporte) => {
+        this.cargandoArchivo.set(false);
+        this.reporteCarga.set(reporte);
+        this.archivoCarga.set(null);
+        if (this.inputArchivoEl) {
+          this.inputArchivoEl.value = '';
+        }
+        this.notificaciones.exito(
+          `Carga masiva completada: ${reporte.creados} creados, ${reporte.actualizados} actualizados, ${reporte.rechazados} rechazados.`,
+        );
+        this.load();
+      },
+      error: (err: unknown) => {
+        this.cargandoArchivo.set(false);
+        this.notificaciones.error(formatApiError(err));
+      },
     });
   }
 

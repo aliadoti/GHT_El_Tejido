@@ -10,6 +10,7 @@ import {
   Campania,
   ConfigLlm,
   PagedResult,
+  ReporteCargaMasiva,
   Respuesta,
   SesionResponse,
   UsuarioAdmin,
@@ -109,11 +110,12 @@ describe('Portal admin E2E (recorrido SPA)', () => {
 
     const fixture = TestBed.createComponent(UsuariosPage);
 
-    // El constructor dispara load(): GET usuarios + GET tags.
+    // El constructor dispara load(): GET usuarios + GET tags + GET campanias.
     responderListaUsuarios([usuario('u1', 'Ana')]);
     http
       .expectOne((r) => r.url === '/api/admin/tags' && r.method === 'GET')
       .flush({ items: [], page: 1, pageSize: 100, total: 0 });
+    responderListaCampanias([]);
 
     await fixture.whenStable();
     fixture.detectChanges();
@@ -143,10 +145,80 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     http
       .expectOne((r) => r.url === '/api/admin/tags' && r.method === 'GET')
       .flush({ items: [], page: 1, pageSize: 100, total: 0 });
+    responderListaCampanias([]);
 
     await fixture.whenStable();
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Beto');
+  });
+
+  it('I-08 UI: carga masiva de participantes sube CSV con CSRF y muestra el reporte por fila', async () => {
+    const auth = TestBed.inject(AuthService);
+    autenticarComoAdmin(auth);
+
+    const fixture = TestBed.createComponent(UsuariosPage);
+
+    // El constructor dispara load(): GET usuarios + GET tags + GET campanias.
+    responderListaUsuarios([]);
+    http
+      .expectOne((r) => r.url === '/api/admin/tags' && r.method === 'GET')
+      .flush({ items: [], page: 1, pageSize: 100, total: 0 });
+    responderListaCampanias([campania('c_1', 'llm_1')]);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance as unknown as {
+      archivoCarga: { set: (v: File | null) => void };
+      campaniaIdCarga: string;
+      cargarArchivo: () => void;
+      reporteCarga: () => ReporteCargaMasiva | null;
+    };
+    const archivo = new File(['Nombre,WhatsApp,Area,Empresa,Tags\n'], 'participantes.csv', {
+      type: 'text/csv',
+    });
+    comp.archivoCarga.set(archivo);
+    comp.campaniaIdCarga = 'c_1';
+    comp.cargarArchivo();
+
+    const post = http.expectOne(
+      (r) => r.url === '/api/admin/usuarios/carga-masiva' && r.method === 'POST',
+    );
+    expect(post.request.withCredentials).toBe(true);
+    expect(post.request.headers.get('X-CSRF-Token')).toBe(CSRF);
+    expect(post.request.params.get('campaniaId')).toBe('c_1');
+    expect(post.request.body instanceof FormData).toBe(true);
+    const archivoEnviado = (post.request.body as FormData).get('archivo') as File;
+    expect(archivoEnviado.name).toBe(archivo.name);
+    expect(archivoEnviado.type).toBe(archivo.type);
+
+    const reporte: ReporteCargaMasiva = {
+      totalFilas: 2,
+      creados: 1,
+      actualizados: 0,
+      rechazados: 1,
+      asociados: 1,
+      filas: [
+        { fila: 2, resultado: 'creado', usuarioId: 'u_1', motivo: null },
+        { fila: 3, resultado: 'rechazado', usuarioId: null, motivo: 'numero_invalido' },
+      ],
+    };
+    post.flush(reporte);
+
+    // Recarga posterior a la carga.
+    responderListaUsuarios([]);
+    http
+      .expectOne((r) => r.url === '/api/admin/tags' && r.method === 'GET')
+      .flush({ items: [], page: 1, pageSize: 100, total: 0 });
+    responderListaCampanias([campania('c_1', 'llm_1')]);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(comp.reporteCarga()).toEqual(reporte);
+    const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(texto).toContain('numero_invalido');
+    expect(texto).not.toMatch(/57300\d{7}/);
   });
 
   it('paso 8 (13 §2.8): consulta respuestas y Markdown acotadas por campania, sin fuga de secretos', () => {
@@ -310,6 +382,17 @@ describe('Portal admin E2E (recorrido SPA)', () => {
         pageSize: 50,
         total: items.length,
       } satisfies PagedResult<UsuarioAdmin>);
+  }
+
+  function responderListaCampanias(items: Campania[]): void {
+    http
+      .expectOne((r) => r.url === '/api/admin/campanias' && r.method === 'GET')
+      .flush({
+        items,
+        page: 1,
+        pageSize: 100,
+        total: items.length,
+      } satisfies PagedResult<Campania>);
   }
 
   function usuario(id: string, nombre: string): UsuarioAdmin {

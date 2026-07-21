@@ -266,6 +266,23 @@ export interface ArtefactoMarkdown {
   actualizadoEn: string;
 }
 
+// I-08: reporte por fila de la carga masiva de participantes (04 §5.1). Sin PII: solo usuarioId.
+export interface ResultadoFilaCarga {
+  fila: number;
+  resultado: 'creado' | 'actualizado' | 'rechazado' | string;
+  usuarioId: string | null;
+  motivo?: string | null;
+}
+
+export interface ReporteCargaMasiva {
+  totalFilas: number;
+  creados: number;
+  actualizados: number;
+  rechazados: number;
+  asociados: number;
+  filas: ResultadoFilaCarga[];
+}
+
 // P-03: reporte de conteos que devuelven los endpoints de reinicio de datos.
 export interface ReporteReinicioDatos {
   conversaciones: number;
