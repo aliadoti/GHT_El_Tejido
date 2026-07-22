@@ -1,9 +1,17 @@
 # I-09 — Tejido colectivo: LLM con acceso a la base común
 
+> **⚠️ DIFERIDA del MVP — reunión GHT 20-jul-2026 ("Capa 3", post-convención).** GHT decidió aplazar
+> el "coach enriquecido por conocimiento colectivo": está ligado al HITL (también aplazado) y requiere
+> una base de conocimiento curada, foco de una fase posterior. **El código core ya está implementado
+> (DONE local 2026-07-17) detrás del flag `tejidoColectivo` apagado por defecto**, así que diferir =
+> **dejar el flag OFF, salir de la ruta crítica y NO validarlo para el Hito**. No se borra código; el
+> flag permanece off. Su UI (I-10) también se difiere. Retomar en la Capa 3 (junto a P-05/P-06).
+>
 > **Origen:** hoja `Iniciativas` (corazón del "tejido").
-> **Tipo:** Desarrollo · **Prioridad:** Alta (gran apuesta, ruta crítica) · **Ventana:** Sprint 1a
-> diseño / Sprint 1b core · **Dependencia:** I-11 (rúbrica) · **Riesgo:** Alto (RL-3 costo/latencia,
-> RL-4 injection transitiva). Cubre REQ §9/§27, ARQ §4.2/§12; specs base `05 §4`, `08 §3/§5`, `03 §3.8`.
+> **Tipo:** Desarrollo · **Prioridad:** ~~Alta (gran apuesta, ruta crítica)~~ → **Diferida (Capa 3)** ·
+> **Ventana:** ~~Sprint 1a diseño / Sprint 1b core~~ → **post-convención** · **Dependencia:** I-11
+> (rúbrica) + base curada + HITL. · **Riesgo:** Alto (RL-3 costo/latencia, RL-4 injection transitiva).
+> Cubre REQ §9/§27, ARQ §4.2/§12; specs base `05 §4`, `08 §3/§5`, `03 §3.8`.
 
 ## 1. Qué pide GHT / por qué
 Cada conversación se enriquece con la **base de conocimiento común de la campaña**: el coach

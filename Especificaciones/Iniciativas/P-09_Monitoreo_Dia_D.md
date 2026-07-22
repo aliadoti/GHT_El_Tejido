@@ -1,8 +1,17 @@
 # P-09 — Panel de monitoreo en vivo (día-D)
 
+> **⚠️ PANEL DIFERIDO del MVP — reunión GHT 20-jul-2026.** GHT decidió que **una verificación simple
+> del estado del sistema es suficiente** para el MVP; el panel/dashboard en vivo se aplaza. Las
+> **métricas de consumo de tokens tampoco son prioridad** (las plataformas actuales dan seguimiento
+> básico). **SE CONSERVA para el Hito** lo que ya existe y no es "panel": `/health` + `/health/ready`,
+> los logs de entrega estructurados que ya emite el `TrabajadorWebhook`, el **acta de flags del día-D
+> (§3.4)** y el **runbook de rollback** — esos siguen siendo entregables del go-live (ver
+> `QAS/03_Smoke_y_Checklist_Dia_D.md` y `QAS/07_Runbook_Rollback_Contingencia.md`). Lo diferido es
+> únicamente el **workbook/pantalla de monitoreo en vivo** (§3.1–§3.2).
+>
 > **Origen:** hoja `Iniciativas` (propuesta Aliado TI). **Tipo:** Desarrollo (parcial: las señales
-> ya existen) · **Prioridad:** Media · **Ventana:** semana de Pruebas (4–8 ago) · **Riesgo:** Bajo.
-> Cubre REQ §30, ARQ §13; specs base `10 §6`.
+> ya existen) · **Prioridad:** ~~Media~~ → **Panel diferido; health-check + acta de flags CONSERVADOS**
+> · **Ventana:** semana de Pruebas (4–8 ago) · **Riesgo:** Bajo. Cubre REQ §30, ARQ §13; specs base `10 §6`.
 
 ## 1. Qué pide / por qué
 Ver en tiempo casi real la salud de **envíos/entregas/errores** para operar el 10-ago sin entrar

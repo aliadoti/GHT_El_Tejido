@@ -1,8 +1,14 @@
 # I-10 — Parametrizar campaña: base previa vs papel en blanco
 
-> **Origen:** hoja `Iniciativas`. **Tipo:** Desarrollo/Config · **Prioridad:** Alta ·
-> **Ventana:** Sprint 2 (28 jul–1 ago) · **Dependencia:** I-09 · **Riesgo:** Bajo (es un flag).
-> Cubre REQ §11/§26.2, ARQ §6; specs base `03 §3.3`, `04 §5.3`, `07 §2`.
+> **⚠️ DIFERIDA del MVP — reunión GHT 20-jul-2026 (arrastra a I-09).** I-10 es la UI de activación del
+> tejido colectivo (I-09); al diferirse I-09 a la Capa 3, su parametrización pierde objeto para el
+> Hito. El flag `configConversacional.tejidoColectivo` ya existe en el modelo (lo declaró I-09) y
+> queda **OFF**; **no se construye el checkbox de activación** en el portal para el MVP. Retomar con
+> I-09 en la Capa 3.
+>
+> **Origen:** hoja `Iniciativas`. **Tipo:** Desarrollo/Config · **Prioridad:** ~~Alta~~ → **Diferida
+> (Capa 3)** · **Ventana:** ~~Sprint 2~~ → **post-convención** · **Dependencia:** I-09 (diferida) ·
+> **Riesgo:** Bajo (es un flag). Cubre REQ §11/§26.2, ARQ §6; specs base `03 §3.3`, `04 §5.3`, `07 §2`.
 
 ## 1. Qué pide GHT / por qué
 Elegir **por campaña** si el coach parte del conocimiento ya construido (tejido, I-09) o de

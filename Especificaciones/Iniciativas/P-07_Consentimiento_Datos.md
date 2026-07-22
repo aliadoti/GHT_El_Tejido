@@ -1,9 +1,15 @@
 # P-07 — Bienvenida/consentimiento y manejo de datos
 
+> **⚠️ DIFERIDA del MVP — reunión GHT 20-jul-2026.** GHT considera el consentimiento de privacidad
+> **innecesario para una herramienta interna**: la propiedad intelectual es de GHT y los participantes
+> son empleados. No se construye para el Hito. El aviso/copy podrá añadirse al `MensajeInicial` de la
+> campaña sin código si GHT lo pide más adelante; el registro de consentimiento y su vínculo con el
+> tejido (I-09) quedan diferidos con la Capa 3. Retomar si el alcance sale del ámbito interno.
+>
 > **Origen:** hoja `Iniciativas` (propuesta Aliado TI). **Tipo:** Config/Prompt + Desarrollo
-> aditivo · **Prioridad:** Media (requisito de cumplimiento antes de participantes reales) ·
-> **Ventana:** Sprint 2 · **Dependencia:** copy legal de GHT · **Riesgo:** bajo técnico, medio de
-> cumplimiento. Cubre REQ §10/§19, ARQ §10; specs base `03 §3.4/§3.6`.
+> aditivo · **Prioridad:** ~~Media~~ → **Diferida** · **Ventana:** ~~Sprint 2~~ → **post/condicional**
+> · **Dependencia:** copy legal de GHT · **Riesgo:** bajo técnico, medio de cumplimiento.
+> Cubre REQ §10/§19, ARQ §10; specs base `03 §3.4/§3.6`.
 
 ## 1. Qué pide / por qué
 El arranque debe explicar **qué es la herramienta y cómo se usan los datos** antes de abrir a
