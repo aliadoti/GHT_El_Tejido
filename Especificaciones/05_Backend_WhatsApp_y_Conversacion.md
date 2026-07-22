@@ -155,6 +155,12 @@ ProcesarMensajeEntranteAsync:
 
 **Cupos y techos deterministas (`10 §2`):** el orquestador ademas aplica, gateados por `Conversacion:CuposHabilitados` (default off), los cupos `maxMensajesPorUsuario` (descarte silencioso + `LogSeguridad(RateLimit)`) y `maxLlamadasLlmPorUsuario` (cierre elegante sin llamar al LLM) de `Campania.configSeguridad`, y un techo duro global de turnos por hilo `Conversacion:MaxTurnosPorHilo` (0=off) que garantiza terminacion. Con I-06 activo, un turno puede consumir `1` llamada LLM de segmentacion + `N` llamadas de evaluacion; por eso los cupos deben dimensionarse antes de activar `segmentacionIdeas`. Ver `Reglas_Conversacion_y_Participacion.md §2.8` y `SUPUESTOS.md#guardrails-cupos-conversacion`.
 
+**Cierre anticipado por campaña (P-13):** el umbral efectivo se resuelve como
+`!Conversacion:CierreAnticipadoHabilitado ? off : Campania.ConfigConversacional.UmbralCierreAnticipado ?? Conversacion:UmbralCierreAnticipado`.
+El número global es solo el default heredable; el booleano global (default `true`) es el kill-switch
+operativo que apaga todos los overrides sin redeploy. Al disparar, `LogSeguridad(CierreUmbralAnticipado)`
+registra la fracción efectiva y su origen (`campania` o `global`), sin PII de texto.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true` y el kill-switch `Conversacion:Parafraseo` está activo; es un campo opcional, acotado en frase completa a `Conversacion:MaxCaracteresParafraseo` (400), por lo que su ausencia conserva exactamente la retro clásica. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 

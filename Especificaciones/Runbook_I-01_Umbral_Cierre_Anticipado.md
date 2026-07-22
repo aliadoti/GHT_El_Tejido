@@ -2,7 +2,8 @@
 
 > **Tipo:** operación (activación + calibración), **no** desarrollo de código nuevo.
 > **Agente:** Claude · **Ventana:** Sprint 1a · **Depende de:** `P-10 cupos` ✓, baseline D5, rúbrica congelada (I-11).
-> Cubre `REQ §21`, `ARQ §6`, decisión del plan §12.2 (umbral **global** para el Hito 1).
+> Cubre `REQ §21`, `ARQ §6`; P-13 permite calibrar el umbral en una campaña de prueba y conserva un
+> kill-switch global independiente para el día-D.
 > Mecanismo ya implementado (2026-06-23): ver `SUPUESTOS.md#orquestador-conversacional`.
 
 ## 1. Qué es I-01 y qué NO es
@@ -13,16 +14,22 @@ en staging**, observarlo, y decidir su promoción al día-D. **No** retira el to
 revisiones (`MaxRepreguntas`) — ver regla D2 en §7.
 
 ## 2. Mecanismo (recordatorio)
-- **Parámetro:** `Conversacion:UmbralCierreAnticipado` (env `Conversacion__UmbralCierreAnticipado`),
-  **fracción de la escala de la rúbrica en `[0,1]`**; `0` (default) = desactivado.
+- **Default numérico:** `Conversacion:UmbralCierreAnticipado` (env
+  `Conversacion__UmbralCierreAnticipado`), fracción de la escala en `[0,1]`; `0` (default) = off
+  para campañas sin override.
+- **Override por campaña (P-13):** `configConversacional.umbralCierreAnticipado`; ausente/null hereda
+  el default global y `<= 0` desactiva solo esa campaña.
+- **Botón de pánico global:** `Conversacion:CierreAnticipadoHabilitado` (env
+  `Conversacion__CierreAnticipadoHabilitado`), default `true`. En `false` apaga el cierre anticipado
+  en todas las campañas e ignora los overrides.
 - **Regla de corte:** cierra anticipadamente si
   `calificacionTotal >= escala.Min + umbral·(escala.Max − escala.Min)`.
   Ej.: escala 1..5, `umbral=0.85` → corte en `1 + 0.85·4 = 4.4`; una calificación de 5 cierra, una de 3 no.
 - **Comportamiento:** en vez de la invitación a mejorar, antepone `Conversacion:Mensajes:MensajeCalificacionAlta`
   al cierre y compila el Markdown. Es **determinista y server-side** (no usa la `recomendacion` del LLM
   para el corte — R-01, "el sistema dispone").
-- **Alcance:** **global** para el Hito 1 (decisión del plan §12.2). Granularidad por campaña/pregunta es
-  trabajo post-go-live (índice §4.3).
+- **Alcance:** para la calibración en staging, fijar el override solo en la campaña de prueba; el valor
+  global sigue siendo el default de las demás campañas.
 - **Observabilidad (I-01):** cada disparo emite `LogSeguridad(cierreUmbralAnticipado, resultado=cierre_anticipado)`
   con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>` (sin PII de texto). Ver §5.
 
@@ -48,13 +55,15 @@ revisiones (`MaxRepreguntas`) — ver regla D2 en §7.
 4. Registra el valor elegido y su justificación (percentil, corte absoluto, nº de casos afectados en el
    golden set) en `SUPUESTOS.md#activacion-umbral-i01`.
 
-## 5. Activar en staging (App Settings — operación humana)
+## 5. Activar en staging (campaña de prueba + App Settings — operación humana)
 En el App Service de **staging** (no en el del agente):
 ```
-Conversacion__UmbralCierreAnticipado = <fraccion elegida, p. ej. 0.85>
+Conversacion__CierreAnticipadoHabilitado = true
 Conversacion__Mensajes__MensajeCalificacionAlta = <opcional; default compilado si se omite>
 ```
-Reinicia el App Service para tomar el setting. **No** requiere redeploy de código.
+En el portal, fija `configConversacional.umbralCierreAnticipado = <fraccion elegida, p. ej. 0.85>`
+solo en la campaña de prueba. Reinicia el App Service únicamente si cambias el kill-switch o textos;
+la campaña se actualiza por su API. **No** requiere redeploy de código.
 
 **Observar (App Insights / consulta de `security`):** filtra `LogSeguridad` por
 `tipoEvento = cierreUmbralAnticipado`. Métricas útiles durante el pilotaje:
@@ -74,10 +83,11 @@ activos en producción.** I-01 solo permite cerrar *antes* por calificación alt
 sigue vigente como red de seguridad de terminación/costo (`SUPUESTOS.md#guardrails-cupos-conversacion`).
 
 ## 8. Rollback (sin redeploy)
-`Conversacion__UmbralCierreAnticipado = 0` → desactiva el cierre anticipado; comportamiento idéntico al
-MVP probado (siempre se ofrece la revisión determinista). Reversible en caliente vía App Setting.
+`Conversacion__CierreAnticipadoHabilitado = false` → apaga el cierre anticipado en todas las campañas,
+incluidos sus overrides; comportamiento idéntico al MVP probado (siempre se ofrece la revisión
+determinista). Reversible en caliente vía App Setting.
 
 ## 9. Día-D (acta de flags, 6-ago)
 El umbral **solo** se promueve a producción si pasó calibración D5 + UAT y con los cupos P-10 activos en
-producción. Ante síntoma en el Hito, se apaga con `Conversacion__UmbralCierreAnticipado = 0` (nunca hotfix
-en caliente), coherente con el runbook de rollback del día-D (P-09).
+producción. Ante síntoma en el Hito, se apaga con `Conversacion__CierreAnticipadoHabilitado = false`
+(nunca hotfix en caliente), coherente con el runbook de rollback del día-D (P-09).

@@ -101,10 +101,12 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
 (ambas conviven con `MaxRepreguntas`):
 
 1. **Cierre por calificacion alta (decision del sistema).** Si una evaluacion valida alcanza el umbral
-   `Conversacion:UmbralCierreAnticipado` (fraccion de la escala de la rubrica en `[0,1]`; **0 = desactivado**,
-   default), el sistema **no insiste con una revision** aunque queden repreguntas: antepone una felicitacion
+   efectivo (fraccion de la escala de la rubrica en `[0,1]`; **`<= 0` = desactivado**), el sistema **no
+   insiste con una revision** aunque queden repreguntas: antepone una felicitacion
    (`Conversacion:Mensajes:MensajeCalificacionAlta`) al cierre, compila el Markdown y avanza a la siguiente
-   pregunta. El umbral se compara como `CalificacionTotal >= Min + Umbral * (Max - Min)`.
+   pregunta. El valor es `configConversacional.umbralCierreAnticipado ?? Conversacion:UmbralCierreAnticipado`;
+   pero `Conversacion:CierreAnticipadoHabilitado=false` lo apaga para todas las campañas. El umbral se
+   compara como `CalificacionTotal >= Min + Umbral * (Max - Min)`.
 2. **Continuar por intencion del participante (salida conversacional).** Estando en `esperandoRepregunta`
    (ya se ofrecio una mejora), si el participante responde con una frase de conformidad
    (`Conversacion:FrasesContinuar`, p. ej. *"asi esta bien"*, *"sigamos"*, *"listo"*), el mensaje **se
@@ -198,7 +200,9 @@ lo que otros han dicho. Reglas duras de esta función:
 | Parámetro | Dónde se configura | Default | Efecto |
 |---|---|---|---|
 | `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Cuántas revisiones/mejoras se ofrecen antes de cerrar (0 = ninguna). |
-| `Conversacion:UmbralCierreAnticipado` | App config / env `Conversacion__UmbralCierreAnticipado` | 0 (**desactivado**) | Fracción de la escala de la rúbrica `[0,1]`; si la calificación la alcanza, cierra/avanza sin ofrecer más revisiones. |
+| `Conversacion:UmbralCierreAnticipado` | App config / env `Conversacion__UmbralCierreAnticipado` | 0 (**desactivado**) | Default numérico heredable para campañas sin override; fracción de la escala `[0,1]`. |
+| `configConversacional.umbralCierreAnticipado` | Portal admin (campaña) | `null` (**hereda global**) | Override opcional por campaña; `<= 0` apaga solo esa campaña. |
+| `Conversacion:CierreAnticipadoHabilitado` | App config / env `Conversacion__CierreAnticipadoHabilitado` | `true` | Kill-switch global: `false` apaga el cierre anticipado para todas las campañas, incluidos sus overrides. |
 | `Conversacion:FrasesContinuar` | App config / env `Conversacion__FrasesContinuar__0`, `...__1` | (lista compilada) | Frases con las que el participante pide continuar a la siguiente pregunta. Vacío = usa la lista por defecto. |
 | `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
 | `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
