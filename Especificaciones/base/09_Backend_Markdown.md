@@ -57,6 +57,7 @@ public interface ICompiladorMarkdown
 - Rúbrica / Versión: {{rubricaRef}} / v{{versionRubrica}}
 - Prompt / Versión: {{promptRef}} / v{{versionPrompt}}
 - Calificación total: {{evaluacion.calificacionTotal}}
+- Nivel de madurez: {{respuesta.nivelMadurez}}  <!-- I-17: maduro|incubacion; ausente en datos históricos = incubacion. Determinista, sin secretos, regenerable. -->
 
 ## Respuesta original
 {{respuesta.texto}}

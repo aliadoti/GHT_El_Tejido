@@ -82,18 +82,29 @@ GHT dimensionar la base de incubación y calibrar el `UmbralMadurez` en pruebas)
   recursos ni llama al LLM; es una etiqueta derivada).
 - **`09`:** metadato `nivelMadurez` en la plantilla de Markdown.
 
-## 5. Puntos de diseño a confirmar con el usuario (antes de implementar)
-1. **¿Umbral único o dos umbrales?** ¿`UmbralMadurez` (guardado) es el **mismo** valor que
-   `UmbralCierreAnticipado` (cierre I-01), o son parámetros independientes? La reunión habla de "el
-   umbral de la rúbrica" en singular → *sugerencia:* **un solo umbral** por campaña que gobierne ambas
-   (madurez de guardado + paráfrasis + posibilidad de cierre), para no multiplicar perillas antes del
-   freeze; separables después. **Requiere tu confirmación.**
-2. **Default de `UmbralMadurez`** (60 % vs 80 %): la reunión da el rango 60–80 %. *Sugerencia:*
-   arrancar en `0.6` y calibrar con el banco D5 en Pruebas.
-3. **Semántica de "guardar salvo que diga no":** ¿la idea madura se marca guardada automáticamente y
-   el "no" del usuario la degrada a incubación/descartada, o se pide confirmación blanda? *Sugerencia:*
-   auto-guardar como `maduro` + permitir que una intención de rechazo explícita la reclasifique
-   (reutiliza `DetectorIntencionContinuar`/frases de salida), sin fricción.
+## 5. Puntos de diseño — RESUELTOS con el usuario (2026-07-22, antes de implementar)
+Confirmados por el usuario el **2026-07-22** (ver `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). Ya **no
+bloquean**; son el alcance congelado de la implementación:
+
+1. **Umbral único compartido.** No se crea `UmbralMadurez`: se **reutiliza el mismo umbral**
+   (`UmbralCierreAnticipado`) por campaña, que ahora gobierna **ambas** decisiones — madurez de
+   guardado (+ paráfrasis I-05) **y** cierre anticipado (I-01/P-13). Se conserva el nombre del campo por
+   compatibilidad aditiva (renombrarlo rompería P-13).
+2. **Parametrizable por pregunta además de por campaña.** El umbral admite override **por pregunta**.
+   Resolución con precedencia **pregunta → campaña → default global**. El override por pregunta afecta
+   **ambas** decisiones (umbral único real). Todo aditivo: `null` en pregunta hereda campaña; `null` en
+   campaña hereda global (= comportamiento P-13 actual intacto).
+3. **Default global del umbral = `0.6` (60 %).** Se calibra con el banco D5 en Pruebas. Para **no
+   encender** el cierre anticipado por defecto (D1 + modelo de cierre no-determinista del 20-jul) al
+   subir el default de `0`→`0.6`, se cambia el kill-switch global `Conversacion:CierreAnticipadoHabilitado`
+   de `true`→`false`: la clasificación de madurez (etiqueta inocua) usa `0.6` siempre, pero la **acción**
+   de cierre anticipado queda apagada hasta que un operador la active tras calibrar. Comportamiento
+   efectivo para deploys existentes = idéntico al de hoy (cierre off).
+4. **"Guardar salvo que diga no":** auto-guardar como `maduro`; solo una **intención de rechazo
+   explícita** del participante lo reclasifica a `incubacion` (reutiliza `DetectorIntencionContinuar`/
+   frases de salida), sin fricción ni confirmación blanda.
+5. **Cierre por inactividad ~5 min: DENTRO de I-17** (§7). Default global **5 min**, override **por
+   campaña** (no por pregunta). Requiere granularidad sub-hora en el barrido de expiración.
 
 ## 6. Criterios de aceptación / pruebas
 - Unit: calificación ≥ umbral → `nivelMadurez=maduro`; por debajo → `incubacion`; fallback/pendiente →
@@ -106,13 +117,18 @@ GHT dimensionar la base de incubación y calibrar el `UmbralMadurez` en pruebas)
 - Contrato: documento `03` viejo sin `nivelMadurez` se deserializa al default seguro (compatibilidad).
 - Build `-warnaserror`/test/format verdes.
 
-## 7. Nota — cierre por inactividad de sesión (~5 min, reunión 20-jul)
-La reunión fijó cierre de sesión por **inactividad ~5 min**. Hoy la expiración es por **horas**
-(`Conversacion:HorasExpiracionSinRespuesta`, `Reglas §2.6`). Cerrar en minutos requiere **granularidad
-sub-hora** en el barrido (`Conversacion:MinutosExpiracionSinRespuesta` o reinterpretar el parámetro).
-Es un ajuste pequeño y **aditivo**; se especifica aquí como dependencia de la "lógica central de
-interacción" del 20-jul, pero puede ir en su propio paso. **Decisión de alcance a confirmar:** ¿entra
-en I-17 o como ítem aparte del cierre no determinista?
+## 7. Cierre por inactividad de sesión (~5 min) — DENTRO de I-17 (RESUELTO/IMPLEMENTADO)
+La reunión fijó cierre de sesión por **inactividad ~5 min**. **Decisión del usuario (2026-07-22): entra
+DENTRO de I-17**, parametrizable **por campaña**. Implementado en la Slice 6:
+- Campo aditivo `ConfigConversacional.MinutosInactividadSesion` (`int?`, `03 §3.3`): `null` hereda el
+  default global `Conversacion:MinutosInactividadSesion`; `<= 0` apaga la expiración solo para esa
+  campaña. Precedencia: **campaña → global (minutos) → `HorasExpiracionSinRespuesta` legacy**.
+- El barrido `ServicioExpiracionConversaciones` pasa a **per-campaña**: resuelve la ventana efectiva de
+  cada campaña (en minutos, granularidad sub-hora) y cierra sus hilos abiertos inactivos consultando por
+  campaña (`ListarAbiertasInactivasAsync(campaniaId, limite)`). El worker corre si el **global** (minutos
+  u horas) está activo — interruptor maestro de operación; con ambos en 0 no corre (D1, default off) y los
+  overrides por campaña quedan inactivos. Se conserva el cierre silencioso (no se envía mensaje; la
+  ventana de 24h puede estar cerrada). Ver `Reglas §2.6` y `SUPUESTOS.md#bd-dos-niveles-madurez-i17`.
 
 ## 8. Degradación
 Sin el umbral configurado o con el campo ausente, el sistema se comporta como hoy (todas las

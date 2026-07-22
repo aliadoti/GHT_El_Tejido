@@ -116,6 +116,16 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
    (`Conversacion:MaxCaracteresIntencionContinuar`, default 40), comparando sin mayusculas/acentos/puntuacion.
    Esta deteccion **solo** aplica a la respuesta de revision; el primer mensaje (la respuesta real) siempre
    se evalua. La invitacion a mejorar (§3) ya ensena la frase de salida para que el camino feliz coincida.
+3. **Rechazo explicito del guardado (I-17 §5.4, "guardar salvo que diga no").** Una idea que supera el
+   umbral se clasifica **madura** y se guarda automaticamente (y solo entonces se le antepone la parafrasis
+   "esto es lo que entendi", §2.2). Si, estando en `esperandoRepregunta` con al menos una respuesta madura
+   en el hilo, el participante responde con una **frase de rechazo** (`Conversacion:FrasesRechazoGuardado`,
+   p. ej. *"no"*, *"no es eso"*, *"borralo"*; misma deteccion hibrida que la salida por conformidad), el
+   sistema **degrada esa(s) respuesta(s) de madura a incubacion** (regenera su Markdown y registra
+   telemetria), **no evalua** el mensaje, antepone el acuse `Conversacion:Mensajes:AcuseRechazoGuardado` al
+   `MensajeCierre` y cierra. Si no hay ninguna idea madura que rechazar, el mensaje cae al flujo normal (se
+   evalua), para no cortar al participante por una negacion sin contexto de guardado. La degradacion nunca
+   promueve (idempotente) y no toca contratos compartidos.
 
 ### 2.4 Cierre y Markdown
 Hay dos cierres normales: si la evaluacion valida decide cerrar sin ofrecer revision, se envia
@@ -140,11 +150,18 @@ respuesta**.
 - **No hay** mensajes proactivos fuera de ventana (recordatorios): requerirían una plantilla (HSM)
   aprobada por Meta, no implementada.
 
-### 2.6 Expiración por inactividad (parametrizable)
-Para blindar el sistema, un hilo **abierto** sin actividad pasado un plazo configurable se **cierra
+### 2.6 Expiración por inactividad (parametrizable, con granularidad sub-hora — I-17 §7)
+Para blindar el sistema, un hilo **abierto** sin actividad pasada su ventana se **cierra
 automáticamente** (cierre silencioso, sin mensaje). Lo ejecuta un barrido periódico
 (`TrabajadorExpiracionConversaciones`). Si el participante no contesta, su hilo no queda abierto para
-siempre. Ver parámetros abajo. La última evaluación registrada (si la hubo) queda como definitiva.
+siempre. La última evaluación registrada (si la hubo) queda como definitiva.
+**La ventana es parametrizable por campaña con granularidad en minutos (I-17, cierre por inactividad
+~5 min del 20-jul):** la ventana efectiva de cada campaña se resuelve como
+`ConfigConversacional.MinutosInactividadSesion` (override por campaña; `<= 0` la apaga para esa campaña)
+→ default global `Conversacion:MinutosInactividadSesion` → `Conversacion:HorasExpiracionSinRespuesta`
+(legacy, en horas). El barrido cierra **por campaña** con su propia ventana. El interruptor **maestro**
+es global: si tanto `MinutosInactividadSesion` como `HorasExpiracionSinRespuesta` globales son 0, el
+barrido no corre (default off, D1) y los overrides por campaña quedan inactivos. Ver parámetros abajo.
 
 ### 2.7 Rechazo de no autorizados
 Un número que no resuelve a un participante válido (no matriculado, inactivo, rol no participante, sin
@@ -234,7 +251,10 @@ lo que otros han dicho. Reglas duras de esta función:
 | `Conversacion:UmbralSolapamientoTejido` | App config / env `Conversacion__UmbralSolapamientoTejido` | 0.1 | Fracción mínima `[0,1]` de keywords de la consulta que un aporte debe cubrir para tejerse; por debajo → no se teje. |
 | `Conversacion:RecuperacionSemantica` | App config / env `Conversacion__RecuperacionSemantica` | `false` (**global, diferido**) | Opción B de I-09 (embeddings). Off en el Hito; su activación añadiría el campo `embedding` en `responses` (`03 §3.8`, commit aparte). |
 | `maxMensajesPorUsuario` / `maxLlamadasLlmPorUsuario` (campaña) | Portal admin (campaña, `configSeguridad`) | 10 / 2 | Cupos por usuario dentro de la campaña (§2.8); solo se aplican con `CuposHabilitados=true`. |
-| `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo. Recomendado p. ej. `72`. |
+| `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo (legacy; se usa si no hay minutos configurados). Recomendado p. ej. `72`. |
+| `Conversacion:MinutosInactividadSesion` | App config / env `Conversacion__MinutosInactividadSesion` | 0 (**desactivado**) | **I-17 §7** — default global de la ventana de inactividad **en minutos** (granularidad sub-hora; interruptor maestro). Recomendado `5` en el acta del día-D. |
+| `configConversacional.minutosInactividadSesion` | Portal admin (campaña) | ausente (**hereda global**) | **I-17 §7** — override por campaña de la ventana de inactividad en minutos; `<= 0` la apaga solo para esa campaña. |
+| `pregunta.umbralCierreAnticipado` | Portal admin (pregunta) | ausente (**hereda campaña**) | **I-17** — override del umbral compartido (madurez + cierre) por pregunta; precedencia pregunta → campaña → global. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |
 

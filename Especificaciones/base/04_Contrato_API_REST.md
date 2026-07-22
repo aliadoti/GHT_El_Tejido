@@ -313,7 +313,7 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 |---|---|---|
 | GET | `/api/admin/conversaciones` | Lista/filtra conversaciones. |
 | GET | `/api/admin/conversaciones/{id}` | Detalle con mensajes in/out. |
-| GET | `/api/admin/respuestas` | Lista/filtra (todos los filtros de `§2`). |
+| GET | `/api/admin/respuestas` | Lista/filtra (`usuarioId, preguntaId, estado` y, **I-17**, `nivelMadurez`). |
 | GET | `/api/admin/respuestas/{id}` | Respuesta + evaluación asociada. |
 | GET | `/api/admin/evaluaciones/{id}` | Evaluación completa (calificación, explicación, versiones). |
 | GET | `/api/admin/markdown` | Lista artefactos Markdown (`campaniaId, tipoArtefacto, usuarioId, preguntaId`). |
@@ -324,6 +324,11 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 I-05 añade `parafraseoDevuelto` opcional al detalle de evaluación que devuelven
 `/respuestas/{id}` y `/evaluaciones/{id}`. `null`/ausente significa que la campaña no lo tenía
 activo o que la salida del LLM no produjo un resumen utilizable; conserva compatibilidad de lectura.
+
+**I-17 (aditivo):** el DTO de respuesta expone `nivelMadurez` (`maduro`/`incubacion`); ausente en
+documentos históricos se interpreta como `incubacion`. `GET /api/admin/respuestas` acepta el filtro
+opcional `nivelMadurez=maduro|incubacion` (vacío = todas), aplicado en memoria como el resto de los
+filtros de `§2`. Permite a la pantalla de Resultados separar "Maduras" e "Incubación".
 
 Campos aditivos de respuesta para I-06:
 ```json
