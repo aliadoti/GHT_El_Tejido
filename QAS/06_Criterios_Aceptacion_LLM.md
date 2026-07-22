@@ -58,6 +58,10 @@ El LLM redacta distinto cada vez. Se acepta una salida si cumple **todas** las p
 
 ## 5. Tejido colectivo (I-09, bajo flag) — qué lo hace válido
 
+> **⚠️ I-09 DIFERIDO (reunión 20-jul, Capa 3): flag `tejidoColectivo` OFF para el Hito.** Esta sección
+> **no aplica al Hito**; se conserva como criterio para la Capa 3 o para el caso de que el tejido se
+> encienda en pruebas. Si está OFF (lo esperado), la salida del coach nunca contiene bloque de tejido.
+
 **Calidad (tolerante):**
 - Conecta el aporte con temas/ideas de "otros" de forma pertinente.
 - Si no hay aportes relevantes → conversación **autocontenida**, sin inventar conexiones.

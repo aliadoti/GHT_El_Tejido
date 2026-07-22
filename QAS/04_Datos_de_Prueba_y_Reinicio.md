@@ -138,7 +138,7 @@ En el **freeze/día-D** `Seguridad:PermitirReinicioDatos=false`: el reinicio **m
 | GRD-06/FLG-05 (umbral) | override `configConversacional.umbralCierreAnticipado` (o global) | quitar override |
 | FLG-01/02 (parafraseo) | `parafraseo=true` + `Conversacion:Parafraseo=true` | ambos off |
 | FLG-03/04 (multi-idea) | `segmentacionIdeas=true` (kill-switch ya `true`) | campo `false` |
-| SEC-06..08, SEC-12, FLG-06 (tejido) | `tejidoColectivo=true` + consentimiento P-07 + kill-switch on | campo `false` |
+| SEC-06..08, SEC-12, FLG-06 (tejido) — **I-09 DIFERIDO 20-jul; solo si se enciende para Capa 3/pruebas** | `tejidoColectivo=true` + kill-switch on (consentimiento P-07 también diferido) | campo `false` (**estado del Hito**) |
 | ROB-08 (expiración) | `Conversacion:HorasExpiracionSinRespuesta=1` | `0` |
 
 > Cambiar App Settings en Azure reinicia la app; esperar a que `/health`=200 antes de seguir. En local, reiniciar `dotnet run`.

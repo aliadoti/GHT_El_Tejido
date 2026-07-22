@@ -87,8 +87,10 @@ flag en staging. Diseño cerrado el 2026-07-15 (§8) — ver `SUPUESTOS.md#tejid
 - Calibración/pruebas conjuntas: el coach teje aportes relevantes sin exponer PII.
 
 ## 7. Degradación
-`tejidoColectivo=false` por campaña (sin redeploy) → modo autocontenido probado. El Hito puede
-entregarse sin I-09; es lo que da valor diferencial, por eso va en ruta crítica con prioridad.
+`tejidoColectivo=false` por campaña (sin redeploy) → modo autocontenido probado. El Hito se entrega
+**sin** I-09: la reunión del 20-jul lo **difirió a la Capa 3** (ver cabecera). El código core queda con
+el flag OFF; su valor diferencial se retoma post-convención junto a P-05/P-06. *(Antes de la reunión
+del 20-jul esta iniciativa estaba en la ruta crítica del Hito; ya no.)*
 
 ## 8. Decisiones de diseño cerradas (Sprint 1a, 2026-07-15, agente Codex)
 Confirmadas con el usuario antes de cerrar (las tres tocaban contrato/PII/alcance). Registro completo en

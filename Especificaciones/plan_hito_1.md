@@ -1,5 +1,14 @@
 # Plan de Hito 1 — El Tejido de la Red (Bright Insights)
 
+> **⚠️ DOCUMENTO HISTÓRICO (corte 11-jul-2026) — PARCIALMENTE SUPERADO por la reunión GHT del 20-jul.**
+> La fuente viva del plan y la priorización es `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`. Cambios
+> del 20-jul que este documento **NO** refleja (léelos allí): **I-06 sigue en el MVP, pero I-09 (tejido
+> colectivo) e I-10 se DIFIRIERON a "Capa 3" post-convención** (aquí aún aparecen como "grandes apuestas
+> de la ruta crítica", §2.2/§5/§7 — ya no lo son); **P-07 (consentimiento) y el panel de P-09 se
+> difirieron**; **HITL fuera del MVP**; **nueva iniciativa I-17 (BD de dos niveles: maduras vs.
+> incubación)**; nombre confirmado **"Tejido de Red"** (no "Bright Insights/Idea"). Se conserva como
+> referencia de diseño de fondo (mitigación R-01, frentes A–D), no como estado vigente.
+>
 > **Ruta crítica hacia el go-live del 10-ago-2026.** Documento técnico de ingeniería,
 > escrito desde el rol de **Arquitecto de la solución + equipo de desarrollo** que construyó el MVP.
 > Deriva de: `Plan_Trabajo_El_Tejido.xlsx` (hojas `Timeline`, `Iniciativas`, `Priorizacion`,

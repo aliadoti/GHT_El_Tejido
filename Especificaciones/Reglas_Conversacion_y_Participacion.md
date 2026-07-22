@@ -180,6 +180,11 @@ Regla del equipo (D2): **no se retira el tope determinístico de revisiones (I-0
 estén activos en producción.**
 
 ### 2.9 Tejido colectivo (I-09, diseño Sprint 1a — core Sprint 1b)
+> **⚠️ DIFERIDO del MVP (reunión GHT 20-jul → Capa 3 post-convención).** El comportamiento está
+> implementado pero el flag `tejidoColectivo` queda **OFF para el Hito**: en el go-live el coach es
+> **siempre autocontenido**. Esta sección describe el comportamiento para cuando se reactive en la
+> Capa 3. Ver `Iniciativas/00_Indice §1.3`.
+
 Cuando la campaña tiene `configConversacional.tejidoColectivo=true` y el kill-switch global
 `Conversacion:TejidoColectivo` no está apagado, el coach **deja de ser autocontenido**: antes de
 evaluar/retroalimentar, recupera resúmenes **anonimizados** de aportes de otros participantes de la

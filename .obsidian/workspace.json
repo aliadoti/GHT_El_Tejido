@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "QAS/00_Plan_de_Pruebas.md",
+                "file": "Arquitectura/El_Tejido_Arquitectura_Tecnica_MVP.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "00_Plan_de_Pruebas"
+              "title": "El_Tejido_Arquitectura_Tecnica_MVP"
             }
           }
         ],
@@ -198,21 +198,24 @@
       "bases:Create new base": false
     }
   },
-  "active": "158ebd100da609ea",
+  "active": "d7b3a10ae41f7f3b",
   "lastOpenFiles": [
-    "src/ElTejido.Web/node_modules/@babel/core/src/transformation/read-input-source-map-file-browser.ts",
-    "src/ElTejido.Web/node_modules/@babel/core/src/transformation/read-input-source-map-file.ts",
-    "src/ElTejido.Web/node_modules/@babel/core/src/transformation",
-    "src/ElTejido.Web/node_modules/piscina/test/jest/ready-message.spec.ts",
-    "src/ElTejido.Web/node_modules/piscina/test/jest/jest.config.js",
-    "src/ElTejido.Web/node_modules/piscina/test/jest",
-    "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-msvc/rollup.win32-x64-msvc.node",
-    "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-msvc/package.json",
+    "Especificaciones/PROMPT_Reorganizar_Documentacion.md",
+    "Especificaciones/PROMPT_Reorganizar_Documentacion.md.tmp.3704.8c617f1cfe49",
+    "Especificaciones/Iniciativas/00_Indice_y_Plan_de_Ejecucion.md",
+    "Especificaciones/plan_hito_1.md.tmp.62292.f95b2c4be967",
+    "QAS/04_Datos_de_Prueba_y_Reinicio.md.tmp.62292.123161e4b70e",
+    "QAS/06_Criterios_Aceptacion_LLM.md.tmp.62292.4e41375ba530",
+    "QAS/02_Casos_de_Prueba_E2E.md.tmp.62292.48dbd9eb4be0",
+    "QAS/02_Casos_de_Prueba_E2E.md.tmp.62292.73519c0aee0d",
+    "QAS/02_Casos_de_Prueba_E2E.md.tmp.62292.11fda1b7bc2c",
+    "QAS/02_Casos_de_Prueba_E2E.md.tmp.62292.7b3b4a7acc4a",
+    "QAS/02_Casos_de_Prueba_E2E.md.tmp.62292.429a4239fdea",
+    "Especificaciones/Iniciativas/TODO.md",
+    "Especificaciones/Iniciativas/TODO.md.tmp.61624.12f03615050b",
+    "QAS/00_Plan_de_Pruebas.md",
     "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-msvc/README.md",
-    "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-msvc",
-    "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-gnu/rollup.win32-x64-gnu.node",
     "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-gnu/README.md",
-    "src/ElTejido.Web/node_modules/@rollup/rollup-win32-x64-gnu/package.json",
     "src/ElTejido.Web/node_modules/@msgpackr-extract/msgpackr-extract-win32-x64/README.md",
     "src/ElTejido.Web/node_modules/@esbuild/win32-x64/README.md",
     "src/ElTejido.Web/node_modules/vite/node_modules/@esbuild/win32-x64/README.md",
@@ -220,7 +223,6 @@
     "Especificaciones/00_Indice_y_Guia_de_Uso.md",
     "src/ElTejido.Web/node_modules/@napi-rs/nice-win32-x64-msvc/README.md",
     "src/ElTejido.Web/node_modules/@lmdb/lmdb-win32-x64/README.md",
-    "Especificaciones/Iniciativas/TODO.md",
     "QAS/README.md",
     "QAS/07_Runbook_Rollback_Contingencia.md",
     "QAS/06_Criterios_Aceptacion_LLM.md",
@@ -229,8 +231,6 @@
     "QAS/03_Smoke_y_Checklist_Dia_D.md",
     "QAS/02_Casos_de_Prueba_E2E.md",
     "QAS/01_Matriz_Trazabilidad.md",
-    "QAS/00_Plan_de_Pruebas.md",
-    "Especificaciones/Iniciativas/00_Indice_y_Plan_de_Ejecucion.md",
     "Especificaciones/Iniciativas/I-08_Carga_Masiva_Participantes.md",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",
     "Especificaciones/Iniciativas/I-06_Multi_Idea_N_Registros.md",
