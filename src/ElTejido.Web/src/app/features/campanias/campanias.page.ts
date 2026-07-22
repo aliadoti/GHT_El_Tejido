@@ -271,6 +271,17 @@ interface PreguntaForm {
                     Separar varias ideas de un mismo mensaje
                   </label>
                   <label>
+                    Umbral de cierre anticipado (vacío = heredar global; 0 = apagar)
+                    <input
+                      type="number"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      name="editarUmbralCierreAnticipado"
+                      [(ngModel)]="edicion.umbralCierreAnticipado"
+                    />
+                  </label>
+                  <label>
                     Prompt de evaluacion
                     <select name="editarPromptEvaluarRef" [(ngModel)]="edicion.promptEvaluarRef">
                       <option value="">Sin prompt por defecto</option>
@@ -762,6 +773,7 @@ export class CampaniasPage {
           maxRepreguntas: 1,
           mensajeCierre: 'Gracias. Tu aporte quedo registrado.',
           segmentacionIdeas: false,
+          umbralCierreAnticipado: null,
         },
         configSeguridad: {
           maxCaracteresMensaje: 1500,
@@ -803,6 +815,12 @@ export class CampaniasPage {
           // I-09: preserva el valor actual (la UI de activación llega con I-10) para no
           // reiniciarlo a false en cada edición de la campaña.
           tejidoColectivo: Boolean(this.selected()?.configConversacional?.tejidoColectivo),
+          // I-05: preserva el flag por campaña al editar otra configuración.
+          parafraseo: Boolean(this.selected()?.configConversacional?.parafraseo),
+          umbralCierreAnticipado:
+            this.edicion.umbralCierreAnticipado === null
+              ? null
+              : Math.min(1, Math.max(0, Number(this.edicion.umbralCierreAnticipado) || 0)),
         },
         // P-10: conserva los cupos actuales y actualiza el presupuesto de tokens de la campaña.
         configSeguridad: {
@@ -1008,6 +1026,7 @@ export class CampaniasPage {
       promptEvaluarRef: '',
       presupuestoTokensCampania: 0,
       segmentacionIdeas: false,
+      umbralCierreAnticipado: null as number | null,
     };
   }
 
@@ -1036,6 +1055,7 @@ export class CampaniasPage {
       promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
       presupuestoTokensCampania: campania.configSeguridad?.presupuestoTokensCampania ?? 0,
       segmentacionIdeas: campania.configConversacional?.segmentacionIdeas ?? false,
+      umbralCierreAnticipado: campania.configConversacional?.umbralCierreAnticipado ?? null,
     };
   }
 

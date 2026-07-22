@@ -28,6 +28,12 @@ public sealed class OpcionesConversacion
     public double UmbralCierreAnticipado { get; set; }
 
     /// <summary>
+    /// Kill-switch global de P-13. Por defecto respeta el default numérico y los overrides por
+    /// campaña; en <c>false</c> apaga todo cierre anticipado sin redeploy.
+    /// </summary>
+    public bool CierreAnticipadoHabilitado { get; set; } = true;
+
+    /// <summary>
     /// Largo maximo (en caracteres ya normalizados) para que una coincidencia por contencion de una
     /// frase de continuar cuente como intencion del participante. Acota falsos positivos sobre
     /// respuestas mejoradas largas. Una igualdad exacta con una frase siempre cuenta. Default 40.

@@ -81,6 +81,8 @@ export interface ConfigConversacional {
   tejidoColectivo?: boolean;
   // I-05 (aditivo): el portal preserva el flag aunque la activación UI se defina después.
   parafraseo?: boolean;
+  // P-13 (aditivo): null hereda el default numérico global; 0 apaga solo la campaña.
+  umbralCierreAnticipado?: number | null;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).

@@ -9,6 +9,9 @@
 > `configConversacional` con I-06/I-09/I-10 (sin conflicto). · **Riesgo:** Bajo (aditivo con default
 > de herencia; cero cambio de comportamiento por defecto). Cubre REQ §9/§25, ARQ §4.2; specs base
 > `05 §4.4`, `03 §3.3`.
+> **Estado:** **IMPLEMENTACIÓN DONE local (2026-07-21).** Override nullable por campaña, default
+> numérico global y kill-switch booleano independiente, con portal/API/Cosmos, observabilidad de origen
+> y regresiones. Pendiente operativo: baseline D5 real y calibración humana de I-01 en staging.
 
 ## 1. Qué pide / por qué
 Hoy el **umbral de cierre anticipado por calificación alta** (`Conversacion:UmbralCierreAnticipado`,

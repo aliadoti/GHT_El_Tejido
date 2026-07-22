@@ -48,6 +48,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly OpcionesMensajesConversacion _mensajes;
     private readonly DetectorIntencionContinuar _intencionContinuar;
     private readonly double _umbralCierreAnticipado;
+    private readonly bool _cierreAnticipadoHabilitado;
     private readonly bool _cuposHabilitados;
     private readonly int _maxTurnosPorHilo;
     private readonly bool _segmentacionIdeasHabilitada;
@@ -88,6 +89,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _correlacion = correlacion;
         _mensajes = opciones.Mensajes;
         _umbralCierreAnticipado = opciones.UmbralCierreAnticipado;
+        _cierreAnticipadoHabilitado = opciones.CierreAnticipadoHabilitado;
         _cuposHabilitados = opciones.CuposHabilitados;
         _maxTurnosPorHilo = opciones.MaxTurnosPorHilo;
         _segmentacionIdeasHabilitada = opciones.SegmentacionIdeas;
@@ -287,7 +289,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         // Cierre anticipado por calificacion alta (05 §4.4): si la calificacion supera el umbral
         // configurado, no se insiste con una revision aunque queden repreguntas; se felicita y cierra.
-        var calificacionAlta = !esFallback && UmbralAlcanzado(evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala);
+        var umbralEfectivo = ResolverUmbralCierreAnticipado(campania);
+        var calificacionAlta = !esFallback
+            && UmbralAlcanzado(evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala, umbralEfectivo);
 
         // Mejora deterministica (05 §4.4): tras una evaluacion valida se ofrece una revision
         // (hasta MaxRepreguntas, default 1) con la retro como base. Si el siguiente mensaje llega
@@ -310,7 +314,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             var escala = contexto.Contexto.RubricaSnapshot.Escala;
             await RegistrarCierreUmbralAsync(
-                usuario, evaluacion.CalificacionTotal, ValorUmbral(escala), escala, ahora, cancellationToken);
+                usuario,
+                evaluacion.CalificacionTotal,
+                ValorUmbral(escala, umbralEfectivo),
+                escala,
+                umbralEfectivo,
+                OrigenUmbralCierreAnticipado(campania),
+                ahora,
+                cancellationToken);
         }
 
         var cierreFinal = calificacionAlta
@@ -382,15 +393,22 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        var umbralEfectivo = ResolverUmbralCierreAnticipado(campania);
+        var origenUmbral = OrigenUmbralCierreAnticipado(campania);
         foreach (var resultado in resultados)
         {
-            if (UmbralAlcanzado(resultado.Resultado.Evaluacion.CalificacionTotal, resultado.Contexto.RubricaSnapshot.Escala))
+            if (UmbralAlcanzado(
+                    resultado.Resultado.Evaluacion.CalificacionTotal,
+                    resultado.Contexto.RubricaSnapshot.Escala,
+                    umbralEfectivo))
             {
                 await RegistrarCierreUmbralAsync(
                     usuario,
                     resultado.Resultado.Evaluacion.CalificacionTotal,
-                    ValorUmbral(resultado.Contexto.RubricaSnapshot.Escala),
+                    ValorUmbral(resultado.Contexto.RubricaSnapshot.Escala, umbralEfectivo),
                     resultado.Contexto.RubricaSnapshot.Escala,
+                    umbralEfectivo,
+                    origenUmbral,
                     ahora,
                     cancellationToken);
             }
@@ -399,7 +417,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // Una respuesta al participante por turno: las evaluaciones y Markdown quedan individualizados
         // para resultados, pero el hilo conserva su limite de repreguntas por pregunta.
         var calificacionAlta = resultados.All(resultado =>
-            UmbralAlcanzado(resultado.Resultado.Evaluacion.CalificacionTotal, resultado.Contexto.RubricaSnapshot.Escala));
+            UmbralAlcanzado(
+                resultado.Resultado.Evaluacion.CalificacionTotal,
+                resultado.Contexto.RubricaSnapshot.Escala,
+                umbralEfectivo));
         var confirmacion = ConfirmacionIdeas(resolucion.Ideas.Count);
         var ofrecerMejora = !calificacionAlta && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
         if (ofrecerMejora)
@@ -661,23 +682,32 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     }
 
     /// <summary>
-    /// ¿La calificacion total alcanza el umbral de cierre anticipado? El umbral es una fraccion de la
-    /// escala de la rubrica en [0,1]; <c>&lt;= 0</c> lo desactiva (default).
+    /// Resuelve P-13: el kill-switch global prevalece; de lo contrario la campaña sobrescribe el
+    /// default numérico global. Un valor menor o igual a cero desactiva el cierre para esa campaña.
     /// </summary>
-    private bool UmbralAlcanzado(decimal calificacionTotal, EscalaRubrica escala)
+    private double ResolverUmbralCierreAnticipado(Campania campania)
+        => !_cierreAnticipadoHabilitado
+            ? 0
+            : campania.ConfigConversacional.UmbralCierreAnticipado ?? _umbralCierreAnticipado;
+
+    private string OrigenUmbralCierreAnticipado(Campania campania)
+        => campania.ConfigConversacional.UmbralCierreAnticipado.HasValue ? "campania" : "global";
+
+    /// <summary>¿La calificación total alcanza la fracción efectiva de la escala de la rúbrica?</summary>
+    private static bool UmbralAlcanzado(decimal calificacionTotal, EscalaRubrica escala, double umbralEfectivo)
     {
-        if (_umbralCierreAnticipado <= 0)
+        if (umbralEfectivo <= 0)
         {
             return false;
         }
 
-        return calificacionTotal >= ValorUmbral(escala);
+        return calificacionTotal >= ValorUmbral(escala, umbralEfectivo);
     }
 
     /// <summary>Valor absoluto del umbral en la escala de la rubrica (fraccion acotada a [0,1]).</summary>
-    private decimal ValorUmbral(EscalaRubrica escala)
+    private static decimal ValorUmbral(EscalaRubrica escala, double umbralEfectivo)
     {
-        var fraccion = (decimal)Math.Min(_umbralCierreAnticipado, 1.0);
+        var fraccion = (decimal)Math.Min(umbralEfectivo, 1.0);
         return escala.Min + (fraccion * (escala.Max - escala.Min));
     }
 
@@ -689,6 +719,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         decimal calificacionTotal,
         decimal valorUmbral,
         EscalaRubrica escala,
+        double umbralEfectivo,
+        string origen,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
         => _logSeguridad.RegistrarAsync(
@@ -699,7 +731,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 usuario.WhatsappNormalizado.Valor,
                 "cierre_anticipado",
                 FormattableString.Invariant(
-                    $"umbral:{_umbralCierreAnticipado:0.###};score:{calificacionTotal};valor:{valorUmbral};escala:{escala.Min}-{escala.Max}"),
+                    $"origen:{origen};umbral:{umbralEfectivo:0.###};score:{calificacionTotal};valor:{valorUmbral};escala:{escala.Min}-{escala.Max}"),
                 _correlacion.CorrelationIdActual,
                 ahora),
             cancellationToken);

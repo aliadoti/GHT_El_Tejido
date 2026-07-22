@@ -85,6 +85,27 @@ public sealed class RepositorioCampaniasCosmosTests
         ConfigConversacional.Crear(1, "Gracias.").Parafraseo.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0.0)]
+    [InlineData(0.85)]
+    public void ConfigConversacional_UmbralCierreAnticipado_SobreviveRoundTripYDocumentoAnteriorHereda(double? umbral)
+    {
+        var campania = CrearCampania(umbralCierreAnticipado: umbral);
+
+        var documento = CampaniaCosmosDocument.FromDomain(campania);
+        var reconstruida = documento.ToDomain();
+        var documentoAnterior = new CampaniaCosmosDocument.ConfigConversacionalDocument
+        {
+            MaxRepreguntas = 1,
+            MensajeCierre = "Gracias.",
+        };
+
+        documento.ConfigConversacional.UmbralCierreAnticipado.Should().Be(umbral);
+        reconstruida.ConfigConversacional.UmbralCierreAnticipado.Should().Be(umbral);
+        documentoAnterior.ToDomain().UmbralCierreAnticipado.Should().BeNull();
+    }
+
     [Fact]
     public async Task BuscarCampaniasAsync_UsesCosmosFilterAndMapsResults()
     {
@@ -102,7 +123,10 @@ public sealed class RepositorioCampaniasCosmosTests
         result.Should().ContainSingle().Which.Nombre.Should().Be("Convencion 2026 - Ideas");
     }
 
-    private static Campania CrearCampania(bool tejidoColectivo = false, bool parafraseo = false)
+    private static Campania CrearCampania(
+        bool tejidoColectivo = false,
+        bool parafraseo = false,
+        double? umbralCierreAnticipado = null)
     {
         return Campania.Crear(
             "c_2026conv",
@@ -116,7 +140,12 @@ public sealed class RepositorioCampaniasCosmosTests
             new Dictionary<string, string> { ["evaluar"] = "pr_eval", ["retro"] = "pr_retro" },
             "llm_default",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
-            ConfigConversacional.Crear(1, "Gracias. Tu aporte quedo registrado correctamente.", tejidoColectivo: tejidoColectivo, parafraseo: parafraseo),
+            ConfigConversacional.Crear(
+                1,
+                "Gracias. Tu aporte quedo registrado correctamente.",
+                tejidoColectivo: tejidoColectivo,
+                parafraseo: parafraseo,
+                umbralCierreAnticipado: umbralCierreAnticipado),
             LimitesSeguridad.Crear(1500, 10, 2),
             ["u_1", "u_2"],
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),

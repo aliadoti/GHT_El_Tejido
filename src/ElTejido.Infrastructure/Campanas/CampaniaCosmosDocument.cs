@@ -370,6 +370,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("parafraseo")]
         public bool Parafraseo { get; init; }
 
+        // P-13 (aditivo, 03 §3.3): null en documentos anteriores hereda el default global.
+        [JsonProperty("umbralCierreAnticipado")]
+        public double? UmbralCierreAnticipado { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -379,13 +383,14 @@ internal sealed class CampaniaCosmosDocument
                 SegmentacionIdeas = config.SegmentacionIdeas,
                 TejidoColectivo = config.TejidoColectivo,
                 Parafraseo = config.Parafraseo,
+                UmbralCierreAnticipado = config.UmbralCierreAnticipado,
             };
         }
 
         public ConfigConversacional ToDomain()
         {
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
-                MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo);
+                MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado);
         }
     }
 

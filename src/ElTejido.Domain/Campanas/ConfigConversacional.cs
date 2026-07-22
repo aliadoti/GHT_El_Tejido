@@ -9,13 +9,15 @@ public sealed class ConfigConversacional
         string mensajeCierre,
         bool segmentacionIdeas,
         bool tejidoColectivo,
-        bool parafraseo)
+        bool parafraseo,
+        double? umbralCierreAnticipado)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
         SegmentacionIdeas = segmentacionIdeas;
         TejidoColectivo = tejidoColectivo;
         Parafraseo = parafraseo;
+        UmbralCierreAnticipado = umbralCierreAnticipado;
     }
 
     public int MaxRepreguntas { get; }
@@ -45,12 +47,20 @@ public sealed class ConfigConversacional
     /// </summary>
     public bool Parafraseo { get; }
 
+    /// <summary>
+    /// P-13: override opcional del umbral de cierre por calificación alta. <c>null</c> hereda el
+    /// default numérico global; un valor menor o igual a cero lo apaga solo para esta campaña. El
+    /// kill-switch global <c>Conversacion:CierreAnticipadoHabilitado=false</c> siempre prevalece.
+    /// </summary>
+    public double? UmbralCierreAnticipado { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
         bool segmentacionIdeas = false,
         bool tejidoColectivo = false,
-        bool parafraseo = false)
+        bool parafraseo = false,
+        double? umbralCierreAnticipado = null)
     {
         if (maxRepreguntas < 0)
         {
@@ -59,11 +69,19 @@ public sealed class ConfigConversacional
                 "El maximo de repreguntas no puede ser negativo.");
         }
 
+        if (umbralCierreAnticipado is > 1)
+        {
+            throw new DomainValidationException(
+                "UMBRAL_CIERRE_ANTICIPADO_INVALIDO",
+                "El umbral de cierre anticipado no puede ser mayor que 1.");
+        }
+
         return new ConfigConversacional(
             maxRepreguntas,
             DomainGuards.Required(mensajeCierre, nameof(mensajeCierre)),
             segmentacionIdeas,
             tejidoColectivo,
-            parafraseo);
+            parafraseo,
+            umbralCierreAnticipado);
     }
 }

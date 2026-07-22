@@ -121,6 +121,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
                     mensajeCierre = "Gracias.",
                     segmentacionIdeas = true,
                     parafraseo = true,
+                    umbralCierreAnticipado = 0.85,
                 },
             });
 
@@ -128,6 +129,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
         var cuerpo = await creacion.Content.ReadAsStringAsync();
         cuerpo.Should().Contain("\"segmentacionIdeas\":true");
         cuerpo.Should().Contain("\"parafraseo\":true");
+        cuerpo.Should().Contain("\"umbralCierreAnticipado\":0.85");
         var campaniaId = await LeerStringAsync(creacion, "id");
 
         using var detalle = await client.GetAsync($"/api/admin/campanias/{campaniaId}");
@@ -135,6 +137,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
         var detalleJson = await detalle.Content.ReadAsStringAsync();
         detalleJson.Should().Contain("\"segmentacionIdeas\":true");
         detalleJson.Should().Contain("\"parafraseo\":true");
+        detalleJson.Should().Contain("\"umbralCierreAnticipado\":0.85");
     }
 
     [Fact]

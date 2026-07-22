@@ -420,6 +420,7 @@ public sealed class OrquestadorConversacionTests
             Arg.Is<LogSeguridad>(l =>
                 l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado
                 && l.Resultado == "cierre_anticipado"
+                && l.Detalle!.Contains("origen:global", StringComparison.Ordinal)
                 && l.Detalle!.Contains("score:5", StringComparison.Ordinal)
                 && l.Detalle!.Contains("valor:4.4", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
@@ -441,6 +442,62 @@ public sealed class OrquestadorConversacionTests
         await _gateway.DidNotReceive().EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
         _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
         // I-01: por debajo del umbral no se emite la telemetria de cierre anticipado.
+        await _logSeguridad.DidNotReceive().RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_UmbralDeCampania_ActivaCierreConDefaultGlobalApagado()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 4m)));
+        var participante = ParticipanteConUmbralCierre(0.5);
+
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado
+                && l.Detalle!.Contains("origen:campania", StringComparison.Ordinal)
+                && l.Detalle.Contains("umbral:0.5", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_UmbralDeCampaniaEnCero_ApagaElDefaultGlobalActivo()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 5m)));
+        var participante = ParticipanteConUmbralCierre(0);
+        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.5 });
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
+        await _logSeguridad.DidNotReceive().RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_KillSwitchGlobalApagado_AnulaOverrideDeCampania()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 5m)));
+        var participante = ParticipanteConUmbralCierre(0.5);
+        var orquestador = Construir(new OpcionesConversacion
+        {
+            UmbralCierreAnticipado = 0.5,
+            CierreAnticipadoHabilitado = false,
+        });
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>());
         await _logSeguridad.DidNotReceive().RegistrarAsync(
             Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.CierreUmbralAnticipado),
             Arg.Any<CancellationToken>());
@@ -994,6 +1051,20 @@ public sealed class OrquestadorConversacionTests
         var campania = CrearCampania(
             new[] { pregunta },
             configConversacional: ConfigConversacional.Crear(1, "Gracias por participar.", parafraseo: true));
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    private static ParticipanteResuelto ParticipanteConUmbralCierre(double? umbralCierreAnticipado)
+    {
+        var pregunta = CrearPregunta("p_1", 1, 1);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(
+                1,
+                "Gracias por participar.",
+                umbralCierreAnticipado: umbralCierreAnticipado));
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
