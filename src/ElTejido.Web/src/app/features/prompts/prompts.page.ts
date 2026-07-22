@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { AdminApiService } from '../../core/admin-api.service';
 import { PromptConfig } from '../../core/api-models';
+import { AuthService } from '../../core/auth.service';
 import { formatApiError } from '../../shared-error';
 
 type ModoPrompt = 'crear' | 'editar' | 'version';
@@ -54,13 +55,16 @@ type ModoPrompt = 'crear' | 'editar' | 'version';
                       }}</span>
                     </td>
                     <td>
-                      <button type="button" class="table-button" (click)="editar(prompt)">
-                        {{ prompt.estado === 'borrador' ? 'Editar' : 'Nueva version' }}
-                      </button>
-                      @if (!prompt.aprobadoPor) {
-                        <button type="button" class="table-button" (click)="aprobar(prompt.id)">
-                          Aprobar
+                      <button type="button" class="table-button" (click)="ver(prompt)">Ver</button>
+                      @if (auth.isAdmin()) {
+                        <button type="button" class="table-button" (click)="editar(prompt)">
+                          {{ prompt.estado === 'borrador' ? 'Editar' : 'Nueva version' }}
                         </button>
+                        @if (!prompt.aprobadoPor) {
+                          <button type="button" class="table-button" (click)="aprobar(prompt.id)">
+                            Aprobar
+                          </button>
+                        }
                       }
                     </td>
                   </tr>
@@ -74,36 +78,73 @@ type ModoPrompt = 'crear' | 'editar' | 'version';
           </div>
         </section>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h3>{{ tituloFormulario() }}</h3>
-          </div>
-          <form class="form-grid" (ngSubmit)="guardar()">
-            <label
-              >ID familia
-              <input name="id" [(ngModel)]="form.id" [disabled]="modo() !== 'crear'" />
-            </label>
-            <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
-            <label>
-              Tipo
-              <select name="tipo" [(ngModel)]="form.tipoPrompt">
-                <option value="evaluar">Evaluar</option>
-                <option value="retro">Retro</option>
-                <option value="markdown">Markdown</option>
-              </select>
-            </label>
-            <label
-              >Contenido
-              <textarea name="contenido" rows="9" [(ngModel)]="form.contenido"></textarea>
-            </label>
-            <div class="form-actions">
-              <button class="primary-button" type="submit">{{ textoBoton() }}</button>
-              @if (modo() !== 'crear') {
-                <button type="button" class="ghost-button" (click)="cancelar()">Cancelar</button>
-              }
+        @if (vista(); as prompt) {
+          <section class="panel" aria-label="Vista de solo lectura de prompt">
+            <div class="panel-heading">
+              <h3>Vista de prompt</h3>
+              <button type="button" class="ghost-button" (click)="cerrarVista()">Cerrar</button>
             </div>
-          </form>
-        </section>
+            <dl class="detail-grid">
+              <div>
+                <dt>Nombre</dt>
+                <dd>{{ prompt.nombre }}</dd>
+              </div>
+              <div>
+                <dt>Tipo</dt>
+                <dd>{{ prompt.tipoPrompt }}</dd>
+              </div>
+              <div>
+                <dt>Version</dt>
+                <dd>v{{ prompt.version }}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>{{ prompt.estado }}</dd>
+              </div>
+              <div>
+                <dt>Aprobado por</dt>
+                <dd>{{ prompt.aprobadoPor || 'Pendiente' }}</dd>
+              </div>
+              <div>
+                <dt>Fecha de aprobacion</dt>
+                <dd>{{ prompt.fechaAprobacion || 'Pendiente' }}</dd>
+              </div>
+            </dl>
+            <h4>Contenido</h4>
+            <pre class="markdown-preview">{{ prompt.contenido }}</pre>
+          </section>
+        } @else if (auth.isAdmin()) {
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>{{ tituloFormulario() }}</h3>
+            </div>
+            <form class="form-grid" (ngSubmit)="guardar()">
+              <label
+                >ID familia
+                <input name="id" [(ngModel)]="form.id" [disabled]="modo() !== 'crear'" />
+              </label>
+              <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
+              <label>
+                Tipo
+                <select name="tipo" [(ngModel)]="form.tipoPrompt">
+                  <option value="evaluar">Evaluar</option>
+                  <option value="retro">Retro</option>
+                  <option value="markdown">Markdown</option>
+                </select>
+              </label>
+              <label
+                >Contenido
+                <textarea name="contenido" rows="9" [(ngModel)]="form.contenido"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">{{ textoBoton() }}</button>
+                @if (modo() !== 'crear') {
+                  <button type="button" class="ghost-button" (click)="cancelar()">Cancelar</button>
+                }
+              </div>
+            </form>
+          </section>
+        }
       </div>
     </section>
   `,
@@ -111,7 +152,9 @@ type ModoPrompt = 'crear' | 'editar' | 'version';
 })
 export class PromptsPage {
   private readonly api = inject(AdminApiService);
+  protected readonly auth = inject(AuthService);
   protected readonly prompts = signal<PromptConfig[]>([]);
+  protected readonly vista = signal<PromptConfig | null>(null);
   protected readonly error = signal('');
   protected readonly modo = signal<ModoPrompt>('crear');
   protected form = this.emptyForm();
@@ -159,6 +202,14 @@ export class PromptsPage {
     };
     // Borrador: edicion en sitio. Activo/inactivo (ya aprobado o liberado): nueva version.
     this.modo.set(prompt.estado === 'borrador' ? 'editar' : 'version');
+  }
+
+  ver(prompt: PromptConfig) {
+    this.vista.set(prompt);
+  }
+
+  cerrarVista() {
+    this.vista.set(null);
   }
 
   guardar() {

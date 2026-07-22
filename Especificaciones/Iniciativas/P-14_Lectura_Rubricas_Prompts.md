@@ -1,6 +1,6 @@
 # P-14 — Vista de solo lectura de rúbricas y prompts en el portal
 
-> **Origen:** solicitud del usuario (Aliado TI, 2026-07-21). **Tipo:** Desarrollo frontend (Angular) ·
+> **Origen:** solicitud del usuario (Aliado TI, 2026-07-21). **Estado:** **DONE local 2026-07-22** · **Tipo:** Desarrollo frontend (Angular) ·
 > **Prioridad:** Alta — **EJECUTAR DE PRIMERA** (pequeña, sin riesgo, desbloquea que GHT/Felipe
 > revisen la rúbrica y los prompts sin poder alterarlos) · **Ventana:** Sprint 1b · **Dependencia:** —
 > · **Riesgo:** Muy bajo (frontend-only, sin cambio de contratos). Cubre REQ §17/§18/§33.1, ARQ §6;

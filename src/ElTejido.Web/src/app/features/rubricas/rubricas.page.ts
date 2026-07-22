@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { AdminApiService } from '../../core/admin-api.service';
 import { Rubrica } from '../../core/api-models';
+import { AuthService } from '../../core/auth.service';
 import { formatApiError } from '../../shared-error';
 
 type ModoRubrica = 'crear' | 'editar' | 'version';
@@ -48,26 +49,29 @@ type ModoRubrica = 'crear' | 'editar' | 'version';
                       <span class="status-badge">{{ rubrica.estado }}</span>
                     </td>
                     <td>
-                      <button type="button" class="table-button" (click)="editar(rubrica)">
-                        {{ rubrica.estado === 'borrador' ? 'Editar' : 'Nueva version' }}
-                      </button>
-                      @if (rubrica.estado !== 'activa') {
-                        <button
-                          type="button"
-                          class="table-button"
-                          (click)="cambiarEstado(rubrica, 'activa')"
-                        >
-                          Activar
+                      <button type="button" class="table-button" (click)="ver(rubrica)">Ver</button>
+                      @if (auth.isAdmin()) {
+                        <button type="button" class="table-button" (click)="editar(rubrica)">
+                          {{ rubrica.estado === 'borrador' ? 'Editar' : 'Nueva version' }}
                         </button>
-                      }
-                      @if (rubrica.estado === 'activa') {
-                        <button
-                          type="button"
-                          class="table-button"
-                          (click)="cambiarEstado(rubrica, 'archivada')"
-                        >
-                          Archivar
-                        </button>
+                        @if (rubrica.estado !== 'activa') {
+                          <button
+                            type="button"
+                            class="table-button"
+                            (click)="cambiarEstado(rubrica, 'activa')"
+                          >
+                            Activar
+                          </button>
+                        }
+                        @if (rubrica.estado === 'activa') {
+                          <button
+                            type="button"
+                            class="table-button"
+                            (click)="cambiarEstado(rubrica, 'archivada')"
+                          >
+                            Archivar
+                          </button>
+                        }
                       }
                     </td>
                   </tr>
@@ -81,29 +85,77 @@ type ModoRubrica = 'crear' | 'editar' | 'version';
           </div>
         </section>
 
-        <section class="panel">
-          <div class="panel-heading">
-            <h3>{{ tituloFormulario() }}</h3>
-          </div>
-          <form class="form-grid" (ngSubmit)="guardar()">
-            <label
-              >ID familia
-              <input name="id" [(ngModel)]="form.id" [disabled]="modo() !== 'crear'" />
-            </label>
-            <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
-            <label>Descripcion <input name="descripcion" [(ngModel)]="form.descripcion" /></label>
-            <label>
-              Contenido Markdown
-              <textarea name="contenido" rows="9" [(ngModel)]="form.contenidoMarkdown"></textarea>
-            </label>
-            <div class="form-actions">
-              <button class="primary-button" type="submit">{{ textoBoton() }}</button>
-              @if (modo() !== 'crear') {
-                <button type="button" class="ghost-button" (click)="cancelar()">Cancelar</button>
-              }
+        @if (vista(); as rubrica) {
+          <section class="panel" aria-label="Vista de solo lectura de rubrica">
+            <div class="panel-heading">
+              <h3>Vista de rubrica</h3>
+              <button type="button" class="ghost-button" (click)="cerrarVista()">Cerrar</button>
             </div>
-          </form>
-        </section>
+            <dl class="detail-grid">
+              <div>
+                <dt>Nombre</dt>
+                <dd>{{ rubrica.nombre }}</dd>
+              </div>
+              <div>
+                <dt>Version</dt>
+                <dd>v{{ rubrica.version }}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>{{ rubrica.estado }}</dd>
+              </div>
+              <div>
+                <dt>Escala</dt>
+                <dd>{{ rubrica.escala.min }}–{{ rubrica.escala.max }}</dd>
+              </div>
+            </dl>
+            <h4>Criterios</h4>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Peso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (criterio of rubrica.criterios; track criterio.nombre) {
+                    <tr>
+                      <td>{{ criterio.nombre }}</td>
+                      <td>{{ criterio.peso }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <h4>Contenido Markdown</h4>
+            <pre class="markdown-preview">{{ rubrica.contenidoMarkdown }}</pre>
+          </section>
+        } @else if (auth.isAdmin()) {
+          <section class="panel">
+            <div class="panel-heading">
+              <h3>{{ tituloFormulario() }}</h3>
+            </div>
+            <form class="form-grid" (ngSubmit)="guardar()">
+              <label
+                >ID familia
+                <input name="id" [(ngModel)]="form.id" [disabled]="modo() !== 'crear'" />
+              </label>
+              <label>Nombre <input name="nombre" [(ngModel)]="form.nombre" /></label>
+              <label>Descripcion <input name="descripcion" [(ngModel)]="form.descripcion" /></label>
+              <label>
+                Contenido Markdown
+                <textarea name="contenido" rows="9" [(ngModel)]="form.contenidoMarkdown"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">{{ textoBoton() }}</button>
+                @if (modo() !== 'crear') {
+                  <button type="button" class="ghost-button" (click)="cancelar()">Cancelar</button>
+                }
+              </div>
+            </form>
+          </section>
+        }
       </div>
     </section>
   `,
@@ -111,7 +163,9 @@ type ModoRubrica = 'crear' | 'editar' | 'version';
 })
 export class RubricasPage {
   private readonly api = inject(AdminApiService);
+  protected readonly auth = inject(AuthService);
   protected readonly rubricas = signal<Rubrica[]>([]);
+  protected readonly vista = signal<Rubrica | null>(null);
   protected readonly error = signal('');
   protected readonly modo = signal<ModoRubrica>('crear');
   protected form = this.emptyForm();
@@ -159,6 +213,14 @@ export class RubricasPage {
     };
     // Borrador: edicion en sitio (misma version). Activa/archivada: nueva version (conserva snapshots).
     this.modo.set(rubrica.estado === 'borrador' ? 'editar' : 'version');
+  }
+
+  ver(rubrica: Rubrica) {
+    this.vista.set(rubrica);
+  }
+
+  cerrarVista() {
+    this.vista.set(null);
   }
 
   guardar() {

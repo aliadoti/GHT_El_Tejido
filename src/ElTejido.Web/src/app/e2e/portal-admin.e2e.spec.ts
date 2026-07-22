@@ -10,14 +10,18 @@ import {
   Campania,
   ConfigLlm,
   PagedResult,
+  PromptConfig,
   ReporteCargaMasiva,
   Respuesta,
+  Rubrica,
   SesionResponse,
   UsuarioAdmin,
 } from '../core/api-models';
 import { authInterceptor } from '../core/auth.interceptor';
 import { AuthService } from '../core/auth.service';
 import { ConfigLlmPage } from '../features/config-llm/config-llm.page';
+import { PromptsPage } from '../features/prompts/prompts.page';
+import { RubricasPage } from '../features/rubricas/rubricas.page';
 import { UsuariosPage } from '../features/usuarios/usuarios.page';
 
 /**
@@ -221,6 +225,39 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     expect(texto).not.toMatch(/57300\d{7}/);
   });
 
+  it('P-14: un visor consulta rubricas y prompts sin exponer ni disparar mutaciones', async () => {
+    const auth = TestBed.inject(AuthService);
+    autenticarComoAdmin(auth, 'visor');
+
+    const rubricasFixture = TestBed.createComponent(RubricasPage);
+    responderListaRubricas([rubrica('rub_1')]);
+    await rubricasFixture.whenStable();
+    rubricasFixture.detectChanges();
+    pulsar(rubricasFixture.nativeElement as HTMLElement, 'Ver');
+    rubricasFixture.detectChanges();
+
+    const rubricasTexto = (rubricasFixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(rubricasTexto).toContain('Vista de rubrica');
+    expect(rubricasTexto).toContain('Contenido completo de la rubrica');
+    expect(rubricasTexto).toContain('Impacto');
+    expect(rubricasTexto).not.toContain('Nueva version');
+    expect(rubricasFixture.nativeElement.querySelector('textarea')).toBeNull();
+
+    const promptsFixture = TestBed.createComponent(PromptsPage);
+    responderListaPrompts([prompt('pr_1')]);
+    await promptsFixture.whenStable();
+    promptsFixture.detectChanges();
+    pulsar(promptsFixture.nativeElement as HTMLElement, 'Ver');
+    promptsFixture.detectChanges();
+
+    const promptsTexto = (promptsFixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(promptsTexto).toContain('Vista de prompt');
+    expect(promptsTexto).toContain('Contenido completo del prompt');
+    expect(promptsTexto).toContain('Admin GHT');
+    expect(promptsTexto).not.toContain('Aprobar');
+    expect(promptsFixture.nativeElement.querySelector('textarea')).toBeNull();
+  });
+
   it('paso 8 (13 §2.8): consulta respuestas y Markdown acotadas por campania, sin fuga de secretos', () => {
     const auth = TestBed.inject(AuthService);
     const admin = TestBed.inject(AdminApiService);
@@ -395,6 +432,31 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       } satisfies PagedResult<Campania>);
   }
 
+  function responderListaRubricas(items: Rubrica[]): void {
+    http
+      .expectOne((r) => r.url === '/api/admin/rubricas' && r.method === 'GET')
+      .flush({ items, page: 1, pageSize: 50, total: items.length } satisfies PagedResult<Rubrica>);
+  }
+
+  function responderListaPrompts(items: PromptConfig[]): void {
+    http
+      .expectOne((r) => r.url === '/api/admin/prompts' && r.method === 'GET')
+      .flush({
+        items,
+        page: 1,
+        pageSize: 50,
+        total: items.length,
+      } satisfies PagedResult<PromptConfig>);
+  }
+
+  function pulsar(elemento: HTMLElement, etiqueta: string): void {
+    const boton = Array.from(elemento.querySelectorAll('button')).find(
+      (candidato) => candidato.textContent?.trim() === etiqueta,
+    );
+    expect(boton).toBeDefined();
+    boton?.click();
+  }
+
   function usuario(id: string, nombre: string): UsuarioAdmin {
     return {
       id,
@@ -461,6 +523,36 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       estado: 'activo',
       creadoEn: '2026-06-14T00:00:00Z',
       actualizadoEn: '2026-06-14T00:00:00Z',
+    };
+  }
+
+  function rubrica(id: string): Rubrica {
+    return {
+      id,
+      nombre: 'Rubrica de impacto',
+      descripcion: 'Valora la propuesta.',
+      contenidoMarkdown: '# Impacto\n\nContenido completo de la rubrica.',
+      escala: { min: 1, max: 5 },
+      criterios: [{ nombre: 'Impacto', peso: 1 }],
+      version: 3,
+      estado: 'activa',
+      creadoEn: '2026-07-21T00:00:00Z',
+      actualizadoEn: '2026-07-21T00:00:00Z',
+    };
+  }
+
+  function prompt(id: string): PromptConfig {
+    return {
+      id,
+      nombre: 'Prompt de evaluacion',
+      tipoPrompt: 'evaluar',
+      contenido: 'Contenido completo del prompt.',
+      version: 2,
+      estado: 'activo',
+      aprobadoPor: 'Admin GHT',
+      fechaAprobacion: '2026-07-21T00:00:00Z',
+      creadoEn: '2026-07-21T00:00:00Z',
+      actualizadoEn: '2026-07-21T00:00:00Z',
     };
   }
 

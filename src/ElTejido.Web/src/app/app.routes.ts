@@ -51,14 +51,12 @@ export const routes: Routes = [
       },
       {
         path: 'rubricas',
-        canActivate: [adminGuard],
         title: 'Rubricas - Tejido de Red',
         loadComponent: () =>
           import('./features/rubricas/rubricas.page').then((m) => m.RubricasPage),
       },
       {
         path: 'prompts',
-        canActivate: [adminGuard],
         title: 'Prompts - Tejido de Red',
         loadComponent: () => import('./features/prompts/prompts.page').then((m) => m.PromptsPage),
       },
