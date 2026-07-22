@@ -84,8 +84,8 @@ Esta es exactamente la línea base validada en QA; ninguna función nueva queda 
 
 ## 6. Contactos y referencias
 - Monitoreo día-D: `Especificaciones/Iniciativas/P-09_Monitoreo_Dia_D.md`.
-- Umbral I-01: `Especificaciones/Runbook_I-01_Umbral_Cierre_Anticipado.md`.
-- Guardrails y eventos de seguridad: `Especificaciones/10_Seguridad_Guardrails_y_Observabilidad.md §6.4`.
+- Umbral I-01: `Especificaciones/planes/Runbook_I-01_Umbral_Cierre_Anticipado.md`.
+- Guardrails y eventos de seguridad: `Especificaciones/base/10_Seguridad_Guardrails_y_Observabilidad.md §6.4`.
 - Reglas de flujo y parámetros: `Especificaciones/Reglas_Conversacion_y_Participacion.md §3`.
 
 *Fin del documento.*

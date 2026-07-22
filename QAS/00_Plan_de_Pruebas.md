@@ -1,7 +1,7 @@
 # 00 — Plan de Pruebas E2E · El Tejido
 
 > **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 10-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
-> **Base:** `Especificaciones/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
+> **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
 > **Última revisión del estado real:** 2026-07-21.
 
 ---

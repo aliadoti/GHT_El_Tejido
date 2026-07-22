@@ -19,12 +19,12 @@ de trabajo**. Además hay documentación relacionada **fuera** de `Especificacio
 `Guias_Implementacion/`). Quiero una estructura clara y navegable **sin romper nada**.
 
 ## 1. LEE PRIMERO, EN ESTE ORDEN (no muevas nada hasta terminar de leer)
-1. `Especificaciones/00_Indice_y_Guia_de_Uso.md` — el índice/guía actual y el orden de lectura oficial.
-2. `Especificaciones/01_Convenciones_para_Agentes.md` — la forma de trabajar (Definition of Done, disciplina).
+1. `Especificaciones/base/00_Indice_y_Guia_de_Uso.md` — el índice/guía actual y el orden de lectura oficial.
+2. `Especificaciones/base/01_Convenciones_para_Agentes.md` — la forma de trabajar (Definition of Done, disciplina).
 3. `Especificaciones/AVANCES.md` — **log append-only** de traspaso entre agentes (historia real; §"Proximo paso" y "Log cronologico").
 4. `Especificaciones/SUPUESTOS.md` — decisiones de ambigüedad con **anclas `#slug`** referenciadas desde muchos docs.
 5. `Especificaciones/Iniciativas/00_Indice_y_Plan_de_Ejecucion.md` — clasificación de iniciativas, plan de sprints, ruta crítica, parametrización.
-6. `Especificaciones/Iniciativas/TODO.md` y `Especificaciones/Iniciativas/PROMPT_Inicio_Iniciativas.md` y `Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md` — el **mecanismo de handoff** entre agentes.
+6. `Especificaciones/Iniciativas/TODO.md` y `Especificaciones/Iniciativas/PROMPT_Inicio_Iniciativas.md` y `Especificaciones/planes/PROMPT_Inicio_Desarrollo_Codex.md` — el **mecanismo de handoff** entre agentes.
 7. Un vistazo a `QAS/README.md` y `Guias_Implementacion/` para saber qué referencia a `Especificaciones/` desde fuera.
 
 ## 2. Inventario actual (verifícalo con `ls`/`git ls-files`, no asumas)

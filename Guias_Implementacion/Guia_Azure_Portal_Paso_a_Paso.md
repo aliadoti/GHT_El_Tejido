@@ -216,7 +216,7 @@ az cosmosdb sql role assignment create \
 
 ## §9. Conexión GitHub Actions → Azure (OIDC, sin contraseñas)
 
-Esto permite que el pipeline de despliegue (ver `Especificaciones/12_CICD_GitHub_Actions.md`) publique al App Service sin guardar contraseñas.
+Esto permite que el pipeline de despliegue (ver `Especificaciones/base/12_CICD_GitHub_Actions.md`) publique al App Service sin guardar contraseñas.
 
 ### 9.1 Registrar la aplicación en Entra ID
 1. Búsqueda superior → **Microsoft Entra ID** → **App registrations** → **+ New registration**.
@@ -271,7 +271,7 @@ La app lee su configuración de aquí. En el App Service → **Settings → Envi
 | `Diagnostico__ClaveSecretName`          | `diag-key` (si guardas la clave de verificación en Key Vault, recomendado)  |
 | `Diagnostico__Clave`                    | (alternativa: la clave directa, si **no** usas Key Vault para ella)         |
 
-> El doble guion bajo `__` es la forma de anidar secciones de configuración en variables de entorno de .NET (equivale a `Cosmos:AccountEndpoint`). El equipo de desarrollo confirmará los nombres exactos de cada clave según `Especificaciones/02_Arquitectura_y_Stack.md §6`; si alguna difiere, ajústala aquí.
+> El doble guion bajo `__` es la forma de anidar secciones de configuración en variables de entorno de .NET (equivale a `Cosmos:AccountEndpoint`). El equipo de desarrollo confirmará los nombres exactos de cada clave según `Especificaciones/base/02_Arquitectura_y_Stack.md §6`; si alguna difiere, ajústala aquí.
 
 > **Sobre el proveedor LLM (`Llm__*`):** en el MVP el **proveedor, el endpoint y la referencia de la API key del LLM se configuran desde el portal** (sección Config LLM, que se guarda en Cosmos), **no** por app settings. Basta con cargar el secreto `llm-key` en Key Vault (§5). Las filas `Llm__Provider`/`Llm__Endpoint`/`Llm__ApiKeySecretName` son opcionales y hoy **el código no las lee**; déjalas vacías salvo indicación del equipo.
 

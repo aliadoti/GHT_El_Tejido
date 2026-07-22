@@ -2,7 +2,7 @@
 
 > **Fuente:** hoja `Iniciativas` de `Presentacion/Plan_Trabajo_El_Tejido.xlsx` (28 iniciativas;
 > la versión `_ACT` añade P-01 con billing Meta RESUELTO y P-12) + hojas `Cronograma` y
-> `Priorizacion`. Complementa a `Especificaciones/plan_hito_1.md` (diseño extendido) y a
+> `Priorizacion`. Complementa a `Especificaciones/planes/plan_hito_1.md` (diseño extendido) y a
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
@@ -22,6 +22,7 @@
 
 | ID   | Spec                                                                                                                                                                                                                                                 | Ventana               | Estado                                                                                                                  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| P-14 | [P-14_Lectura_Rubricas_Prompts.md](P-14_Lectura_Rubricas_Prompts.md)                                                                                                                                                                                 | Sprint 1b — **EJECUTAR DE PRIMERA** | **← ACTUAL (solicitud usuario 2026-07-21).** Vista de **solo lectura** de rúbricas y prompts en el portal (hoy solo hay crear-versión/archivar/aprobar; falta leer). Frontend-only, sin cambio de contratos; el GET ya trae el contenido. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
@@ -142,7 +143,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
   App Setting global `Conversacion__UmbralCierreAnticipado` —, verificar vía
   `LogSeguridad(CierreUmbralAnticipado)` en App Insights, y llevar la decisión on/off al **acta de
   flags del día-D (6-ago)**. Responsable: humano/ops.
-  Ver `Especificaciones/Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
+  Ver `Especificaciones/planes/Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **Freeze (8–9 ago):** code freeze; carga real (I-08); dry-run E2E; congelar rúbrica/prompts/seeds.
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según
   runbook, nunca hotfix en caliente.

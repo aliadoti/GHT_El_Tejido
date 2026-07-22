@@ -1,6 +1,6 @@
 # PROMPT DE ARRANQUE — Desarrollo de INICIATIVAS del MVP "El Tejido"
 
-> **Cómo usar este archivo:** pega todo el contenido de la sección **"PROMPT"** (desde la línea marcada hasta el final) como instrucción inicial para el agente de codificación (Claude Code / Codex / opencode) en la raíz del repositorio. A diferencia del arranque del MVP (`Especificaciones/PROMPT_Inicio_Desarrollo_Codex.md`), este prompt **NO construye el MVP desde cero**: el MVP ya está **DONE y desplegado en Azure**. Este prompt sirve para **implementar una iniciativa del backlog** (`Especificaciones/Iniciativas/`) sin perder contexto, sin reescribir lo hecho y sin introducir errores, apoyándose en `Especificaciones/AVANCES.md`.
+> **Cómo usar este archivo:** pega todo el contenido de la sección **"PROMPT"** (desde la línea marcada hasta el final) como instrucción inicial para el agente de codificación (Claude Code / Codex / opencode) en la raíz del repositorio. A diferencia del arranque del MVP (`Especificaciones/planes/PROMPT_Inicio_Desarrollo_Codex.md`), este prompt **NO construye el MVP desde cero**: el MVP ya está **DONE y desplegado en Azure**. Este prompt sirve para **implementar una iniciativa del backlog** (`Especificaciones/Iniciativas/`) sin perder contexto, sin reescribir lo hecho y sin introducir errores, apoyándose en `Especificaciones/AVANCES.md`.
 >
 > **Antes de pegar:** reemplaza `<ID-INICIATIVA>` por la iniciativa objetivo (p. ej. `P-03`, `I-03`, `I-08`). Si no se indica ninguna, el agente toma la **siguiente del plan** (§4).
 
@@ -35,7 +35,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 4. `Especificaciones/Reglas_Conversacion_y_Participacion.md` → reglas de flujo vigentes (cold-start §2.1, evaluación + historial §2.2, revisión/invitación/salidas §2.3, cierre §2.4, ventana/expiración §2.5-§2.6, parámetros §3).
 5. `Especificaciones/SUPUESTOS.md` → decisiones previas de ambigüedad relacionadas (busca las anclas que cite la iniciativa, p. ej. `#orquestador-conversacional`, `#primer-contacto-pregunta`).
 6. Los documentos base **SOLO en las secciones que la iniciativa toque**: contratos `03_Modelo_de_Datos_Cosmos.md` y `04_Contrato_API_REST.md` (**mandan**), y el módulo afectado (`05` conversación, `07` configuración, `08` evaluación LLM, `09` Markdown, `11` portal, `10` seguridad).
-7. Como referencia de fondo: `Especificaciones/plan_hito_1.md` (diseño extendido) y `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
+7. Como referencia de fondo: `Especificaciones/planes/plan_hito_1.md` (diseño extendido) y `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 
 No rediseñes la arquitectura: está **aprobada**. Respeta lo excluido (`REQ §6.2`) y las iniciativas marcadas **Diferida/Omitida** en el índice.
 
@@ -162,4 +162,4 @@ Al cerrar cada iniciativa habrá una **revisión de código**. Para facilitarla,
 - CI en verde; para iniciativas con LLM, el banco de calibración/golden set en verde (D5) antes de encender el flag.
 - Cobertura de pruebas de los caminos felices y de error/fuga de la iniciativa.
 
-La revisión final usará el checklist de `Especificaciones/13_Plan_de_Pruebas_y_Aceptacion.md §7`, la matriz de trazabilidad `§6` y el runbook de rollback del día-D (`P-09`).
+La revisión final usará el checklist de `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md §7`, la matriz de trazabilidad `§6` y el runbook de rollback del día-D (`P-09`).

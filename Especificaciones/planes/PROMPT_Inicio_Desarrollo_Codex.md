@@ -25,10 +25,10 @@ Vas a construir el **MVP** de **El Tejido**: un sistema que captura ideas por Wh
 
 **La especificación ya existe y es tu fuente de verdad.** Antes de escribir una sola línea de código, **lee y analiza en este orden**:
 
-1. `Especificaciones/00_Indice_y_Guia_de_Uso.md` (mapa y reglas globales).
-2. `Especificaciones/01_Convenciones_para_Agentes.md` (estándares, estructura de repo, Definition of Done, manejo de ambigüedad).
-3. `Especificaciones/02_Arquitectura_y_Stack.md`.
-4. `Especificaciones/03_Modelo_de_Datos_Cosmos.md` y `04_Contrato_API_REST.md` (contratos: **mandan**).
+1. `Especificaciones/base/00_Indice_y_Guia_de_Uso.md` (mapa y reglas globales).
+2. `Especificaciones/base/01_Convenciones_para_Agentes.md` (estándares, estructura de repo, Definition of Done, manejo de ambigüedad).
+3. `Especificaciones/base/02_Arquitectura_y_Stack.md`.
+4. `Especificaciones/base/03_Modelo_de_Datos_Cosmos.md` y `04_Contrato_API_REST.md` (contratos: **mandan**).
 5. Los documentos de módulo `05`–`11`, más `10` (seguridad/observabilidad, transversal).
 6. `12_CICD_GitHub_Actions.md` y `13_Plan_de_Pruebas_y_Aceptacion.md`.
 7. Como referencia de fondo: `Arquitectura/El_Tejido_Arquitectura_Tecnica_MVP.md` y `Requeriments/GHT_banco_de_ideas_req_inicial.md`.
@@ -222,4 +222,4 @@ Al terminar este desarrollo inicial habrá una **revisión general del código**
 - CI en verde y un despliegue probado contra `/health` (cuando existan los recursos Azure).
 - Cobertura de pruebas de los flujos críticos de `13`.
 
-La revisión final usará el checklist de `Especificaciones/13_Plan_de_Pruebas_y_Aceptacion.md §7` y la matriz de trazabilidad `§6`.
+La revisión final usará el checklist de `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md §7` y la matriz de trazabilidad `§6`.
