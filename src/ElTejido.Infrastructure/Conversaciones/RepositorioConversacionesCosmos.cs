@@ -54,18 +54,22 @@ public sealed class RepositorioConversacionesCosmos : IRepositorioConversaciones
     }
 
     public async Task<IReadOnlyCollection<Conversacion>> ListarAbiertasInactivasAsync(
+        string campaniaId,
         DateTimeOffset limite,
         CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+
         // _ts es la marca de tiempo (epoch segundos) de la ultima escritura del documento en Cosmos;
-        // la conversacion se reescribe en cada turno, por lo que refleja su ultima actividad.
+        // la conversacion se reescribe en cada turno, por lo que refleja su ultima actividad. Se acota a
+        // la particion de la campania (I-17 §7: cada campaña puede tener su propia ventana de inactividad).
         var query = new QueryDefinition(
                 "SELECT * FROM c WHERE c.type = @type AND c.estado = @estado AND c._ts < @limite")
             .WithParameter("@type", ConversacionCosmosDocument.DocumentType)
             .WithParameter("@estado", "abierta")
             .WithParameter("@limite", limite.ToUnixTimeSeconds());
 
-        var documentos = await _container.QueryCrossPartitionAsync<ConversacionCosmosDocument>(query, cancellationToken);
+        var documentos = await _container.QueryAsync<ConversacionCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
         return documentos.Select(d => d.ToDomain()).ToArray();
     }
 

@@ -116,7 +116,8 @@ public sealed record SolicitudGuardarPregunta(
     IReadOnlyDictionary<string, string>? PromptRefs,
     int MaxRepreguntas,
     LimitesSeguridad LimitesSeguridad,
-    ConfigMarkdown ConfigMarkdown);
+    ConfigMarkdown ConfigMarkdown,
+    double? UmbralCierreAnticipado = null);
 
 public sealed record SolicitudActualizarPregunta(
     string? Texto,
@@ -129,7 +130,8 @@ public sealed record SolicitudActualizarPregunta(
     IReadOnlyDictionary<string, string>? PromptRefs,
     int? MaxRepreguntas,
     LimitesSeguridad? LimitesSeguridad,
-    ConfigMarkdown? ConfigMarkdown);
+    ConfigMarkdown? ConfigMarkdown,
+    double? UmbralCierreAnticipado = null);
 
 public sealed record SolicitudAsociarParticipantes(
     IReadOnlyCollection<string>? UsuarioIds,

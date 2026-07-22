@@ -49,6 +49,13 @@ internal sealed class RespuestaCosmosDocument
     [JsonProperty("respuestaPadreId")]
     public string? RespuestaPadreId { get; init; }
 
+    /// <summary>
+    /// I-17 (03 §3.8) — nivel de madurez. Ausente en documentos historicos: se deserializa a
+    /// <see cref="NivelMadurez.Incubacion"/> por defecto seguro (mantiene el comportamiento plano).
+    /// </summary>
+    [JsonProperty("nivelMadurez")]
+    public string? NivelMadurez { get; init; }
+
     public static RespuestaCosmosDocument FromDomain(Respuesta respuesta)
         => new()
         {
@@ -66,6 +73,7 @@ internal sealed class RespuestaCosmosDocument
             TagsSnapshot = respuesta.TagsSnapshot,
             IdeaIndice = respuesta.IdeaIndice,
             RespuestaPadreId = respuesta.RespuestaPadreId,
+            NivelMadurez = MapearNivelMadurez(respuesta.NivelMadurez),
         };
 
     public Respuesta ToDomain()
@@ -82,7 +90,25 @@ internal sealed class RespuestaCosmosDocument
             Fecha,
             TagsSnapshot,
             IdeaIndice,
-            RespuestaPadreId);
+            RespuestaPadreId,
+            MapearNivelMadurez(NivelMadurez));
+
+    private static string MapearNivelMadurez(NivelMadurez nivel)
+        => nivel switch
+        {
+            Domain.Respuestas.NivelMadurez.Maduro => "maduro",
+            Domain.Respuestas.NivelMadurez.Incubacion => "incubacion",
+            _ => throw new InvalidOperationException($"Nivel de madurez no soportado: {nivel}."),
+        };
+
+    private static NivelMadurez MapearNivelMadurez(string? nivel)
+        => nivel switch
+        {
+            "maduro" => Domain.Respuestas.NivelMadurez.Maduro,
+            "incubacion" => Domain.Respuestas.NivelMadurez.Incubacion,
+            null or "" => Domain.Respuestas.NivelMadurez.Incubacion,
+            _ => throw new InvalidOperationException($"Nivel de madurez no soportado en Cosmos: {nivel}."),
+        };
 
     private static string MapearEstado(EstadoRespuesta estado)
         => estado switch

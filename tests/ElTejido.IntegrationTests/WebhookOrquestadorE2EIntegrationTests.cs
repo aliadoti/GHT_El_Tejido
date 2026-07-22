@@ -244,7 +244,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
                 _conversaciones.Values.Where(conversacion => conversacion.CampaniaId == campaniaId).ToArray());
 
-        public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
+        public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(string campaniaId, DateTimeOffset limite, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(Array.Empty<DominioConversacion>());
 
         public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)

@@ -49,6 +49,30 @@ public sealed class DetectorIntencionContinuar
         "no quiero mejorar",
     };
 
+    /// <summary>
+    /// I-17 §5.4 — frases con las que el participante <b>rechaza explícitamente</b> que su idea madura
+    /// se guarde ("guardar salvo que diga no"). Se usan con este mismo matcher (lista distinta): al
+    /// coincidir en <c>esperandoRepregunta</c> el orquestador degrada la respuesta madura a incubación y
+    /// cierra con un acuse. Se normalizan al construir el detector.
+    /// </summary>
+    public static readonly IReadOnlyList<string> FrasesRechazoGuardadoPorDefecto = new[]
+    {
+        "no",
+        "no es eso",
+        "no es asi",
+        "eso no es lo que quise decir",
+        "no era eso",
+        "no lo guardes",
+        "borralo",
+        "eliminalo",
+    };
+
+    /// <summary>
+    /// Coincidencia deterministica de una intención por frases (match barato con guarda de longitud).
+    /// Es el mecanismo generico que usan tanto la intención de continuar como (I-17) la de rechazo.
+    /// </summary>
+    public bool Coincide(string? texto) => DeseaContinuar(texto);
+
     public bool DeseaContinuar(string? texto)
     {
         if (_frasesNormalizadas.Length == 0 || string.IsNullOrWhiteSpace(texto))

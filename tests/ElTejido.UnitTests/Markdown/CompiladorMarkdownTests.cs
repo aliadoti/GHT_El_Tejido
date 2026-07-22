@@ -52,6 +52,8 @@ public sealed class CompiladorMarkdownTests
         contenido.Should().Contain("eficiencia");
         contenido.Should().Contain("ID de respuesta: resp_1");
         contenido.Should().Contain("ID de evaluación: eval_1");
+        // I-17: metadato de madurez (default seguro incubacion para una respuesta sin sellar maduro).
+        contenido.Should().Contain("- Nivel de madurez: incubacion");
 
         // Se persiste en Blob y en Cosmos (responses).
         _blob.Leer(artefacto.BlobPath).Should().Be(contenido);
@@ -71,6 +73,17 @@ public sealed class CompiladorMarkdownTests
         artefacto.ContenidoMarkdown.Should().Contain("- Calificación total: 5");
         artefacto.ContenidoMarkdown.Should().Contain("ID de evaluación: eval_nueva");
         artefacto.ContenidoMarkdown.Should().NotContain("- Calificación total: 2");
+    }
+
+    [Fact]
+    public async Task Compilar_RegistraNivelMadurezMaduroEnElMetadato()
+    {
+        SembrarRespuesta(NivelMadurez.Maduro);
+        await _respuestas.GuardarEvaluacionAsync(CrearEvaluacion(), CancellationToken.None);
+
+        var artefacto = await Construir().CompilarAsync(Solicitud(), CancellationToken.None);
+
+        artefacto.ContenidoMarkdown.Should().Contain("- Nivel de madurez: maduro");
     }
 
     [Fact]
@@ -121,10 +134,10 @@ public sealed class CompiladorMarkdownTests
         _respuestas.GuardarEvaluacionAsync(CrearEvaluacion(), CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    private void SembrarRespuesta()
+    private void SembrarRespuesta(NivelMadurez nivelMadurez = NivelMadurez.Incubacion)
     {
         _respuestas.GuardarRespuestaAsync(
-            Respuesta.Crear("resp_1", "c_1", "u_1", "p_1", "conv_1", "Mi idea de mejora", "whatsapp", false, EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }),
+            Respuesta.Crear("resp_1", "c_1", "u_1", "p_1", "conv_1", "Mi idea de mejora", "whatsapp", false, EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }, nivelMadurez: nivelMadurez),
             CancellationToken.None).GetAwaiter().GetResult();
     }
 

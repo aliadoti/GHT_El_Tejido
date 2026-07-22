@@ -21,7 +21,8 @@ public sealed class Respuesta
         DateTimeOffset fecha,
         IReadOnlyCollection<string> tagsSnapshot,
         int? ideaIndice,
-        string? respuestaPadreId)
+        string? respuestaPadreId,
+        NivelMadurez nivelMadurez)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -36,6 +37,7 @@ public sealed class Respuesta
         TagsSnapshot = tagsSnapshot;
         IdeaIndice = ideaIndice;
         RespuestaPadreId = respuestaPadreId;
+        NivelMadurez = nivelMadurez;
     }
 
     public string Id { get; }
@@ -66,6 +68,19 @@ public sealed class Respuesta
     /// <summary>Identificador del mensaje origen para agrupar respuestas segmentadas; null = historica.</summary>
     public string? RespuestaPadreId { get; }
 
+    /// <summary>
+    /// I-17 — nivel de madurez sellado al evaluar (03 §3.8). Default seguro <see cref="NivelMadurez.Incubacion"/>
+    /// para documentos historicos sin el campo. Se reclasifica a <c>Incubacion</c> si el participante
+    /// rechaza explicitamente el guardado (§5 punto 4) via <see cref="ReclasificarComoIncubacion"/>.
+    /// </summary>
+    public NivelMadurez NivelMadurez { get; private set; }
+
+    /// <summary>
+    /// I-17 — degrada la respuesta a <see cref="NivelMadurez.Incubacion"/> tras un rechazo explicito del
+    /// participante ("guardar salvo que diga no"). Idempotente; nunca promueve a maduro.
+    /// </summary>
+    public void ReclasificarComoIncubacion() => NivelMadurez = NivelMadurez.Incubacion;
+
     public static Respuesta Crear(
         string id,
         string campaniaId,
@@ -79,7 +94,8 @@ public sealed class Respuesta
         DateTimeOffset fecha,
         IEnumerable<string>? tagsSnapshot,
         int? ideaIndice = null,
-        string? respuestaPadreId = null)
+        string? respuestaPadreId = null,
+        NivelMadurez nivelMadurez = NivelMadurez.Incubacion)
     {
         if (ideaIndice is <= 0)
         {
@@ -108,7 +124,8 @@ public sealed class Respuesta
             fecha.ToUniversalTime(),
             NormalizarTags(tagsSnapshot),
             ideaIndice,
-            string.IsNullOrWhiteSpace(respuestaPadreId) ? null : respuestaPadreId.Trim());
+            string.IsNullOrWhiteSpace(respuestaPadreId) ? null : respuestaPadreId.Trim(),
+            nivelMadurez);
     }
 
     public static IReadOnlyCollection<string> NormalizarTags(IEnumerable<string>? tags)

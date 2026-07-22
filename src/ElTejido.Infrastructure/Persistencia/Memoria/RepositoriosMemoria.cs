@@ -418,10 +418,11 @@ internal sealed class RepositorioConversacionesMemoria : IRepositorioConversacio
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
+    public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(string campaniaId, DateTimeOffset limite, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
             _conversaciones.Values
-                .Where(c => c.Estado == EstadoConversacion.Abierta
+                .Where(c => c.CampaniaId == campaniaId
+                    && c.Estado == EstadoConversacion.Abierta
                     && _ultimaActividad.TryGetValue(c.Id, out var actividad)
                     && actividad < limite)
                 .ToArray());

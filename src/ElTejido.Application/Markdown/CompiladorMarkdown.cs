@@ -111,6 +111,8 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
         sb.Append("- Rúbrica / Versión: ").Append(evaluacion.RubricaRef).Append(" / v").Append(evaluacion.VersionRubrica.ToString(CultureInfo.InvariantCulture)).AppendLine();
         sb.Append("- Prompt / Versión: ").Append(evaluacion.PromptRef).Append(" / v").Append(evaluacion.VersionPrompt.ToString(CultureInfo.InvariantCulture)).AppendLine();
         sb.Append("- Calificación total: ").AppendLine(evaluacion.CalificacionTotal.ToString(CultureInfo.InvariantCulture));
+        // I-17 (09): nivel de madurez sellado al evaluar; metadato determinista, sin secretos. Regenerable.
+        sb.Append("- Nivel de madurez: ").AppendLine(TextoNivelMadurez(respuesta.NivelMadurez));
         sb.AppendLine();
         sb.AppendLine("## Respuesta original");
         sb.AppendLine(respuesta.Texto);
@@ -152,6 +154,9 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
 
         return sb.ToString();
     }
+
+    private static string TextoNivelMadurez(NivelMadurez nivel)
+        => nivel == NivelMadurez.Maduro ? "maduro" : "incubacion";
 
     private static string Requerir(string? valor, string campo)
     {

@@ -24,6 +24,40 @@ public sealed class ResponsesCosmosMappingTests
         resultado.EsRepregunta.Should().BeTrue();
         resultado.Estado.Should().Be(EstadoRespuesta.EvaluacionPendiente);
         resultado.TagsSnapshot.Should().ContainSingle().Which.Should().Be("t_oper");
+        resultado.NivelMadurez.Should().Be(NivelMadurez.Incubacion);
+    }
+
+    [Fact]
+    public void Respuesta_RoundTrip_ConservaNivelMadurezMaduro()
+    {
+        var respuesta = Respuesta.Crear(
+            "resp_1", "c_1", "u_1", "p_1", "conv_1", "Mi idea", "whatsapp", false, EstadoRespuesta.Evaluada, Epoca, null,
+            nivelMadurez: NivelMadurez.Maduro);
+
+        var resultado = RespuestaCosmosDocument.FromDomain(respuesta).ToDomain();
+
+        resultado.NivelMadurez.Should().Be(NivelMadurez.Maduro);
+    }
+
+    [Fact]
+    public void Respuesta_DocumentoAnteriorSinNivelMadurez_DeserializaComoIncubacion()
+    {
+        // I-17: documento historico (03 §3.8) sin el campo -> default seguro incubacion.
+        var documento = new RespuestaCosmosDocument
+        {
+            Id = "resp_legacy",
+            CampaniaId = "c_1",
+            UsuarioId = "u_1",
+            PreguntaId = "p_1",
+            ConversacionId = "conv_1",
+            Texto = "Idea historica",
+            Canal = "whatsapp",
+            Estado = "evaluada",
+            Fecha = Epoca,
+            NivelMadurez = null,
+        };
+
+        documento.ToDomain().NivelMadurez.Should().Be(NivelMadurez.Incubacion);
     }
 
     [Fact]

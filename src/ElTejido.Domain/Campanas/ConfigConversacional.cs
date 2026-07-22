@@ -10,7 +10,8 @@ public sealed class ConfigConversacional
         bool segmentacionIdeas,
         bool tejidoColectivo,
         bool parafraseo,
-        double? umbralCierreAnticipado)
+        double? umbralCierreAnticipado,
+        int? minutosInactividadSesion)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -18,6 +19,7 @@ public sealed class ConfigConversacional
         TejidoColectivo = tejidoColectivo;
         Parafraseo = parafraseo;
         UmbralCierreAnticipado = umbralCierreAnticipado;
+        MinutosInactividadSesion = minutosInactividadSesion;
     }
 
     public int MaxRepreguntas { get; }
@@ -54,13 +56,22 @@ public sealed class ConfigConversacional
     /// </summary>
     public double? UmbralCierreAnticipado { get; }
 
+    /// <summary>
+    /// I-17 §7 — override por campaña de la ventana de <b>cierre por inactividad de sesion</b>, en
+    /// minutos. <c>null</c> hereda el default global <c>Conversacion:MinutosInactividadSesion</c>;
+    /// <c>&lt;= 0</c> desactiva el cierre por inactividad solo para esta campaña. No se parametriza por
+    /// pregunta (decision del usuario 2026-07-22).
+    /// </summary>
+    public int? MinutosInactividadSesion { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
         bool segmentacionIdeas = false,
         bool tejidoColectivo = false,
         bool parafraseo = false,
-        double? umbralCierreAnticipado = null)
+        double? umbralCierreAnticipado = null,
+        int? minutosInactividadSesion = null)
     {
         if (maxRepreguntas < 0)
         {
@@ -82,6 +93,7 @@ public sealed class ConfigConversacional
             segmentacionIdeas,
             tejidoColectivo,
             parafraseo,
-            umbralCierreAnticipado);
+            umbralCierreAnticipado,
+            minutosInactividadSesion);
     }
 }

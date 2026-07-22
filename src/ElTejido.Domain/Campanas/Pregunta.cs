@@ -16,7 +16,8 @@ public sealed class Pregunta
         IReadOnlyDictionary<string, string> promptRefs,
         int maxRepreguntas,
         LimitesSeguridad limitesSeguridad,
-        ConfigMarkdown configMarkdown)
+        ConfigMarkdown configMarkdown,
+        double? umbralCierreAnticipado)
     {
         Id = id;
         Texto = texto;
@@ -30,6 +31,7 @@ public sealed class Pregunta
         MaxRepreguntas = maxRepreguntas;
         LimitesSeguridad = limitesSeguridad;
         ConfigMarkdown = configMarkdown;
+        UmbralCierreAnticipado = umbralCierreAnticipado;
     }
 
     public string Id { get; }
@@ -56,6 +58,13 @@ public sealed class Pregunta
 
     public ConfigMarkdown ConfigMarkdown { get; }
 
+    /// <summary>
+    /// I-17 — override del umbral (compartido madurez + cierre anticipado) para esta pregunta,
+    /// fraccion <c>[0,1]</c> de la escala de la rubrica. <c>null</c> hereda el umbral de la campania
+    /// (y este, a su vez, el default global). Precedencia: pregunta → campania → global.
+    /// </summary>
+    public double? UmbralCierreAnticipado { get; }
+
     public static Pregunta Crear(
         string id,
         string texto,
@@ -68,7 +77,8 @@ public sealed class Pregunta
         IReadOnlyDictionary<string, string>? promptRefs,
         int maxRepreguntas,
         LimitesSeguridad limitesSeguridad,
-        ConfigMarkdown configMarkdown)
+        ConfigMarkdown configMarkdown,
+        double? umbralCierreAnticipado = null)
     {
         if (orden <= 0)
         {
@@ -91,6 +101,13 @@ public sealed class Pregunta
                 "El maximo de repreguntas no puede ser negativo.");
         }
 
+        if (umbralCierreAnticipado is > 1)
+        {
+            throw new DomainValidationException(
+                "UMBRAL_CIERRE_ANTICIPADO_INVALIDO",
+                "El umbral de cierre anticipado no puede ser mayor que 1.");
+        }
+
         return new Pregunta(
             DomainGuards.Required(id, nameof(id)),
             DomainGuards.Required(texto, nameof(texto)),
@@ -103,7 +120,8 @@ public sealed class Pregunta
             NormalizeMap(promptRefs),
             maxRepreguntas,
             limitesSeguridad,
-            configMarkdown);
+            configMarkdown,
+            umbralCierreAnticipado);
     }
 
     private static string? NormalizeOptional(string? value)

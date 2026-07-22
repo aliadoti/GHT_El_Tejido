@@ -47,6 +47,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IProveedorCorrelacion _correlacion;
     private readonly OpcionesMensajesConversacion _mensajes;
     private readonly DetectorIntencionContinuar _intencionContinuar;
+    private readonly DetectorIntencionContinuar _intencionRechazoGuardado;
     private readonly double _umbralCierreAnticipado;
     private readonly bool _cierreAnticipadoHabilitado;
     private readonly bool _cuposHabilitados;
@@ -104,6 +105,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             ? opciones.FrasesContinuar
             : DetectorIntencionContinuar.FrasesPorDefecto;
         _intencionContinuar = new DetectorIntencionContinuar(frases, opciones.MaxCaracteresIntencionContinuar);
+        IEnumerable<string> frasesRechazo = opciones.FrasesRechazoGuardado is { Count: > 0 }
+            ? opciones.FrasesRechazoGuardado
+            : DetectorIntencionContinuar.FrasesRechazoGuardadoPorDefecto;
+        _intencionRechazoGuardado = new DetectorIntencionContinuar(frasesRechazo, opciones.MaxCaracteresIntencionContinuar);
         _tiempo = tiempo;
     }
 
@@ -153,15 +158,30 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // participante senala que esta conforme; el primer mensaje (su respuesta real) nunca se interpreta asi.
         var deseaContinuar = esRepregunta && _intencionContinuar.DeseaContinuar(mensaje.Texto);
 
+        // I-17 §5.4: rechazo explicito del guardado ("guardar salvo que diga no"). Solo cuenta cuando
+        // ya mostramos la parafrasis de una idea madura (esperandoRepregunta con al menos una respuesta
+        // madura en el hilo). Al coincidir se degradan esas respuestas a incubacion y se cierra con un
+        // acuse. Sin ninguna idea madura que rechazar, el mensaje cae al flujo normal (se evalua).
+        var deseaRechazarGuardado = esRepregunta && !deseaContinuar
+            && _intencionRechazoGuardado.Coincide(mensaje.Texto);
+        IReadOnlyList<RespuestaUsuario> madurasAReclasificar = Array.Empty<RespuestaUsuario>();
+        if (deseaRechazarGuardado)
+        {
+            madurasAReclasificar = (await _respuestas.ListarRespuestasAsync(campania.Id, cancellationToken))
+                .Where(r => r.ConversacionId == conversacionId && r.NivelMadurez == NivelMadurez.Maduro)
+                .ToArray();
+            deseaRechazarGuardado = madurasAReclasificar.Count > 0;
+        }
+
         // Techos deterministas (10 §2 / D2): el tope duro de turnos por hilo garantiza terminacion
         // aunque otras reglas pidan seguir; el cupo de llamadas LLM por usuario/campania evita costo
         // sin limite. Ambos cierran elegante con lo aportado (mismo camino que revisiones agotadas).
-        var turnosExcedidos = !revisionesAgotadas && !deseaContinuar
+        var turnosExcedidos = !revisionesAgotadas && !deseaContinuar && !deseaRechazarGuardado
             && await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
         // Cupo LLM de la campania: por usuario (llamadas) o por presupuesto de tokens (P-10). Ambos
         // cierran la campania para el hilo (no se abre la siguiente pregunta); el motivo se distingue
         // en LogSeguridad. Gateados por Conversacion:CuposHabilitados.
-        var evaluarCupoLlm = !revisionesAgotadas && !deseaContinuar && !turnosExcedidos && _cuposHabilitados;
+        var evaluarCupoLlm = !revisionesAgotadas && !deseaContinuar && !deseaRechazarGuardado && !turnosExcedidos && _cuposHabilitados;
         var cupoLlamadasUsuarioExcedido = evaluarCupoLlm
             && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
         var presupuestoTokensExcedido = evaluarCupoLlm && !cupoLlamadasUsuarioExcedido
@@ -180,11 +200,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
 
-        if (revisionesAgotadas || deseaContinuar || turnosExcedidos || cupoLlmExcedido)
+        if (revisionesAgotadas || deseaContinuar || deseaRechazarGuardado || turnosExcedidos || cupoLlmExcedido)
         {
-            // Se agoto el cupo de revisiones/turnos/LLM, o el participante pidio continuar: se registra
-            // sin evaluar y se cierra. Si pidio continuar, se antepone un acuse calido para que no se
-            // sienta cortante. Los techos deterministas dejan ademas rastro RateLimit en LogSeguridad.
+            // Se agoto el cupo de revisiones/turnos/LLM, o el participante pidio continuar o rechazo el
+            // guardado: se registra sin evaluar y se cierra. Si pidio continuar o rechazo, se antepone un
+            // acuse calido. Los techos deterministas dejan ademas rastro RateLimit en LogSeguridad.
             conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp);
             await GuardarRespuestaAsync(
                 respuestaId,
@@ -205,9 +225,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 await RegistrarRateLimitAsync(usuario, motivo, ahora, cancellationToken);
             }
 
-            var acuse = deseaContinuar
-                ? SeleccionarAcuseContinuar(conversacion)
-                : null;
+            // I-17 §5.4: el rechazo explicito degrada a incubacion las respuestas maduras del hilo
+            // (regenera su Markdown y registra telemetria) antes de cerrar con el acuse de rechazo.
+            if (deseaRechazarGuardado)
+            {
+                await ReclasificarComoIncubacionAsync(campania, usuario, pregunta, madurasAReclasificar, ahora, cancellationToken);
+            }
+
+            var acuse = deseaRechazarGuardado
+                ? TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault)
+                : deseaContinuar
+                    ? SeleccionarAcuseContinuar(conversacion)
+                    : null;
             await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, ahora, cancellationToken);
             if (!cupoLlmExcedido)
             {
@@ -274,11 +303,19 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
         var esFallback = resultado is ResultadoEvaluacion.Fallback;
+        var evaluacion = resultado.Evaluacion;
+        var escala = contexto.Contexto.RubricaSnapshot.Escala;
+
+        // I-17: umbral base (pregunta → campaña → global) y clasificación de madurez sellada al evaluar.
+        // La madurez es independiente del kill-switch de cierre; el cierre anticipado sí lo respeta.
+        var umbralBase = ResolverUmbralBase(campania, pregunta);
+        var nivelMadurez = ClasificarMadurez(esFallback, evaluacion.CalificacionTotal, escala, umbralBase);
+        await RegistrarClasificacionMadurezAsync(usuario, nivelMadurez, evaluacion.CalificacionTotal, escala, umbralBase, OrigenUmbral(campania, pregunta), ahora, cancellationToken);
+
         await GuardarRespuestaAsync(
             respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta,
-            esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada, ahora, cancellationToken);
-
-        var evaluacion = resultado.Evaluacion;
+            esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada, ahora, cancellationToken,
+            nivelMadurez: nivelMadurez);
 
         // El Markdown se compila por cada evaluacion valida (cada intento queda con su artefacto;
         // el ultimo es el definitivo). En fallback no se compila (08 §6).
@@ -287,11 +324,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
         }
 
+        // I-17: la paráfrasis "esto es lo que entendí" (I-05) solo se antepone cuando la idea es madura;
+        // en incubación se mantiene la retro/invitación habitual (la idea aún no está lista para guardar).
+        var parafraseoMostrable = nivelMadurez == NivelMadurez.Maduro ? evaluacion.ParafraseoDevuelto : null;
+
         // Cierre anticipado por calificacion alta (05 §4.4): si la calificacion supera el umbral
-        // configurado, no se insiste con una revision aunque queden repreguntas; se felicita y cierra.
-        var umbralEfectivo = ResolverUmbralCierreAnticipado(campania);
+        // configurado y el cierre está habilitado, no se insiste con una revision; se felicita y cierra.
+        var umbralCierre = ResolverUmbralCierreAnticipado(campania, pregunta);
         var calificacionAlta = !esFallback
-            && UmbralAlcanzado(evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala, umbralEfectivo);
+            && UmbralAlcanzado(evaluacion.CalificacionTotal, escala, umbralCierre);
 
         // Mejora deterministica (05 §4.4): tras una evaluacion valida se ofrece una revision
         // (hasta MaxRepreguntas, default 1) con la retro como base. Si el siguiente mensaje llega
@@ -300,7 +341,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (ofrecerMejora)
         {
             var invitacion = ConstruirInvitacionMejora(conversacion, evaluacion.RepreguntaSugerida);
-            var texto = Combinar(Combinar(evaluacion.ParafraseoDevuelto, evaluacion.RetroalimentacionEnviada), invitacion);
+            var texto = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
 
             conversacion = conversacion.RegistrarRepregunta();
@@ -312,14 +353,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // alta se intercala una felicitacion para que el corte temprano se sienta natural.
         if (calificacionAlta)
         {
-            var escala = contexto.Contexto.RubricaSnapshot.Escala;
             await RegistrarCierreUmbralAsync(
                 usuario,
                 evaluacion.CalificacionTotal,
-                ValorUmbral(escala, umbralEfectivo),
+                ValorUmbral(escala, umbralCierre),
                 escala,
-                umbralEfectivo,
-                OrigenUmbralCierreAnticipado(campania),
+                umbralCierre,
+                OrigenUmbral(campania, pregunta),
                 ahora,
                 cancellationToken);
         }
@@ -329,7 +369,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
                 campania.ConfigConversacional.MensajeCierre)
             : campania.ConfigConversacional.MensajeCierre;
-        var cierre = Combinar(Combinar(evaluacion.ParafraseoDevuelto, evaluacion.RetroalimentacionEnviada), cierreFinal);
+        var cierre = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), cierreFinal);
         await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
 
         conversacion = conversacion.Cerrar(ahora);
@@ -354,6 +394,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var resolucion = await ResolverIdeasAsync(contextoBase, textoOriginal, cancellationToken);
         await RegistrarSegmentacionAsync(usuario, resolucion, ahora, cancellationToken);
 
+        // I-17: el umbral base (pregunta → campaña → global) es constante por pregunta para todas las ideas.
+        var umbralBase = ResolverUmbralBase(campania, pregunta);
+        var origenUmbral = OrigenUmbral(campania, pregunta);
+
         var resultados = new List<(ResultadoEvaluacion Resultado, ContextoEvaluacion Contexto)>();
         foreach (var idea in resolucion.Ideas)
         {
@@ -365,6 +409,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
             var esFallback = resultado is ResultadoEvaluacion.Fallback;
+            // I-17: sella la madurez por idea (03 §3.8) y registra su clasificacion para calibracion.
+            var nivelMadurez = ClasificarMadurez(
+                esFallback, resultado.Evaluacion.CalificacionTotal, contexto.RubricaSnapshot.Escala, umbralBase);
+            await RegistrarClasificacionMadurezAsync(
+                usuario, nivelMadurez, resultado.Evaluacion.CalificacionTotal, contexto.RubricaSnapshot.Escala,
+                umbralBase, origenUmbral, ahora, cancellationToken);
+
             await GuardarRespuestaAsync(
                 respuestaId,
                 campania.Id,
@@ -377,7 +428,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora,
                 cancellationToken,
                 resolucion.FueSegmentada ? idea.Indice : null,
-                resolucion.FueSegmentada ? respuestaPadreId : null);
+                resolucion.FueSegmentada ? respuestaPadreId : null,
+                nivelMadurez);
 
             if (!esFallback)
             {
@@ -393,21 +445,20 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var umbralEfectivo = ResolverUmbralCierreAnticipado(campania);
-        var origenUmbral = OrigenUmbralCierreAnticipado(campania);
+        var umbralCierre = ResolverUmbralCierreAnticipado(campania, pregunta);
         foreach (var resultado in resultados)
         {
             if (UmbralAlcanzado(
                     resultado.Resultado.Evaluacion.CalificacionTotal,
                     resultado.Contexto.RubricaSnapshot.Escala,
-                    umbralEfectivo))
+                    umbralCierre))
             {
                 await RegistrarCierreUmbralAsync(
                     usuario,
                     resultado.Resultado.Evaluacion.CalificacionTotal,
-                    ValorUmbral(resultado.Contexto.RubricaSnapshot.Escala, umbralEfectivo),
+                    ValorUmbral(resultado.Contexto.RubricaSnapshot.Escala, umbralCierre),
                     resultado.Contexto.RubricaSnapshot.Escala,
-                    umbralEfectivo,
+                    umbralCierre,
                     origenUmbral,
                     ahora,
                     cancellationToken);
@@ -420,7 +471,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             UmbralAlcanzado(
                 resultado.Resultado.Evaluacion.CalificacionTotal,
                 resultado.Contexto.RubricaSnapshot.Escala,
-                umbralEfectivo));
+                umbralCierre));
         var confirmacion = ConfirmacionIdeas(resolucion.Ideas.Count);
         var ofrecerMejora = !calificacionAlta && conversacion.RepreguntasUsadas < pregunta.MaxRepreguntas;
         if (ofrecerMejora)
@@ -682,16 +733,45 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     }
 
     /// <summary>
-    /// Resuelve P-13: el kill-switch global prevalece; de lo contrario la campaña sobrescribe el
-    /// default numérico global. Un valor menor o igual a cero desactiva el cierre para esa campaña.
+    /// I-17: umbral base compartido con precedencia <b>pregunta → campaña → default global</b>. Gobierna
+    /// tanto la clasificación de madurez (siempre, sin depender del kill-switch de cierre) como, cuando
+    /// el cierre anticipado está habilitado, el corte temprano. Un valor menor o igual a cero desactiva
+    /// el efecto (nada supera el umbral).
     /// </summary>
-    private double ResolverUmbralCierreAnticipado(Campania campania)
+    private double ResolverUmbralBase(Campania campania, Pregunta pregunta)
+        => pregunta.UmbralCierreAnticipado
+            ?? campania.ConfigConversacional.UmbralCierreAnticipado
+            ?? _umbralCierreAnticipado;
+
+    /// <summary>
+    /// Resuelve P-13 + I-17: el kill-switch global de cierre prevalece (apaga el cierre sin afectar la
+    /// clasificación de madurez); de lo contrario usa el umbral base (pregunta → campaña → global).
+    /// </summary>
+    private double ResolverUmbralCierreAnticipado(Campania campania, Pregunta pregunta)
         => !_cierreAnticipadoHabilitado
             ? 0
-            : campania.ConfigConversacional.UmbralCierreAnticipado ?? _umbralCierreAnticipado;
+            : ResolverUmbralBase(campania, pregunta);
 
-    private string OrigenUmbralCierreAnticipado(Campania campania)
-        => campania.ConfigConversacional.UmbralCierreAnticipado.HasValue ? "campania" : "global";
+    private static string OrigenUmbral(Campania campania, Pregunta pregunta)
+        => pregunta.UmbralCierreAnticipado.HasValue
+            ? "pregunta"
+            : campania.ConfigConversacional.UmbralCierreAnticipado.HasValue
+                ? "campania"
+                : "global";
+
+    /// <summary>
+    /// I-17 (03 §3.8): clasificación determinista de madurez sellada al evaluar, server-side. Usa el
+    /// umbral base (independiente del kill-switch de cierre): <c>Maduro</c> si la calificación válida
+    /// supera el umbral; <c>Incubacion</c> en caso contrario o en fallback/pendiente.
+    /// </summary>
+    private static NivelMadurez ClasificarMadurez(
+        bool esFallback,
+        decimal calificacionTotal,
+        EscalaRubrica escala,
+        double umbralBase)
+        => !esFallback && UmbralAlcanzado(calificacionTotal, escala, umbralBase)
+            ? NivelMadurez.Maduro
+            : NivelMadurez.Incubacion;
 
     /// <summary>¿La calificación total alcanza la fracción efectiva de la escala de la rúbrica?</summary>
     private static bool UmbralAlcanzado(decimal calificacionTotal, EscalaRubrica escala, double umbralEfectivo)
@@ -732,6 +812,68 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 "cierre_anticipado",
                 FormattableString.Invariant(
                     $"origen:{origen};umbral:{umbralEfectivo:0.###};score:{calificacionTotal};valor:{valorUmbral};escala:{escala.Min}-{escala.Max}"),
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+
+    // I-17 (03 §3.4/§3.8): telemetria de calibracion del sellado de madurez. Se registra por cada
+    // evaluacion (valida o fallback) para dimensionar la distribucion maduro/incubacion por campania y
+    // calibrar el umbral. Sin PII de texto: solo nivel, score, valor de corte, escala y origen del umbral.
+    private Task RegistrarClasificacionMadurezAsync(
+        Usuario usuario,
+        NivelMadurez nivelMadurez,
+        decimal calificacionTotal,
+        EscalaRubrica escala,
+        double umbralBase,
+        string origen,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.ClasificacionMadurez,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                nivelMadurez == NivelMadurez.Maduro ? "maduro" : "incubacion",
+                FormattableString.Invariant(
+                    $"origen:{origen};umbral:{umbralBase:0.###};score:{calificacionTotal};valor:{ValorUmbral(escala, umbralBase)};escala:{escala.Min}-{escala.Max}"),
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+
+    // I-17 §5.4: degrada a incubacion las respuestas maduras del hilo tras un rechazo explicito del
+    // participante ("guardar salvo que diga no"), regenera su Markdown para que el metadato de madurez
+    // (09) refleje la degradacion y deja telemetria. Nunca promueve; es idempotente.
+    private async Task ReclasificarComoIncubacionAsync(
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        IReadOnlyList<RespuestaUsuario> maduras,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        foreach (var respuesta in maduras)
+        {
+            respuesta.ReclasificarComoIncubacion();
+            await _respuestas.GuardarRespuestaAsync(respuesta, cancellationToken);
+            await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuesta.Id, cancellationToken);
+            await RegistrarReclasificacionMadurezAsync(usuario, respuesta.Id, ahora, cancellationToken);
+        }
+    }
+
+    private Task RegistrarReclasificacionMadurezAsync(
+        Usuario usuario,
+        string respuestaId,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.ClasificacionMadurez,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                "incubacion",
+                FormattableString.Invariant($"motivo:rechazo_guardado;respuesta:{respuestaId}"),
                 _correlacion.CorrelationIdActual,
                 ahora),
             cancellationToken);
@@ -1164,7 +1306,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken,
         int? ideaIndice = null,
-        string? respuestaPadreId = null)
+        string? respuestaPadreId = null,
+        NivelMadurez nivelMadurez = NivelMadurez.Incubacion)
         => _respuestas.GuardarRespuestaAsync(
             RespuestaUsuario.Crear(
                 respuestaId,
@@ -1179,7 +1322,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora,
                 usuario.Tags,
                 ideaIndice,
-                respuestaPadreId),
+                respuestaPadreId,
+                nivelMadurez),
             cancellationToken);
 
     private Task MarcarParticipanteRespondioAsync(

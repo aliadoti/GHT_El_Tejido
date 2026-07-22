@@ -42,6 +42,9 @@ public sealed class ResultadosIntegrationTests
         listaJson.Should().Contain("resp_1");
         listaJson.Should().Contain("\"ideaIndice\":1");
         listaJson.Should().Contain("\"respuestaPadreId\":\"wamid.1\"");
+        // I-17: el DTO expone el nivel de madurez sellado (incubacion por defecto / maduro).
+        listaJson.Should().Contain("\"nivelMadurez\":\"incubacion\"");
+        listaJson.Should().Contain("\"nivelMadurez\":\"maduro\"");
 
         using var detalle = await client.GetAsync($"/api/admin/respuestas/resp_1?campaniaId={CampaniaId}");
         detalle.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -49,6 +52,24 @@ public sealed class ResultadosIntegrationTests
         json.Should().Contain("\"recomendacion\":\"cerrar\"");
         json.Should().Contain("eval_1");
         json.Should().Contain("\"ideaIndice\":1");
+    }
+
+    [Fact]
+    public async Task Respuestas_FiltroPorNivelMadurez_SeparaMadurasEIncubacion()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var maduras = await client.GetAsync($"/api/admin/respuestas?campaniaId={CampaniaId}&nivelMadurez=maduro");
+        maduras.StatusCode.Should().Be(HttpStatusCode.OK);
+        var madurasJson = await maduras.Content.ReadAsStringAsync();
+        madurasJson.Should().Contain("resp_2");
+        madurasJson.Should().NotContain("resp_1");
+
+        using var incubacion = await client.GetAsync($"/api/admin/respuestas?campaniaId={CampaniaId}&nivelMadurez=incubacion");
+        var incubacionJson = await incubacion.Content.ReadAsStringAsync();
+        incubacionJson.Should().Contain("resp_1");
+        incubacionJson.Should().NotContain("resp_2");
     }
 
     [Fact]
@@ -109,7 +130,11 @@ public sealed class ResultadosIntegrationTests
         var respuesta = Respuesta.Crear(
             "resp_1", CampaniaId, "u_1", "p_1", "conv_1", "Mi idea", "whatsapp", false,
             EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }, ideaIndice: 1, respuestaPadreId: "wamid.1");
-        respuestas.ListarRespuestasAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { respuesta });
+        // I-17: una madura para verificar exposicion y filtro por nivelMadurez (04 §5.8).
+        var respuestaMadura = Respuesta.Crear(
+            "resp_2", CampaniaId, "u_2", "p_1", "conv_2", "Idea madura", "whatsapp", false,
+            EstadoRespuesta.Evaluada, Epoca, null, nivelMadurez: NivelMadurez.Maduro);
+        respuestas.ListarRespuestasAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { respuesta, respuestaMadura });
         respuestas.ObtenerRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(respuesta);
         respuestas.ObtenerEvaluacionPorRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(CrearEvaluacion());
         var artefacto = CrearArtefacto(1);

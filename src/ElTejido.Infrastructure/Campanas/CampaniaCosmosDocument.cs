@@ -295,6 +295,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("configMarkdown")]
         public ConfigMarkdownDocument ConfigMarkdown { get; init; } = new();
 
+        // I-17 (aditivo, 03 §3.8): null en documentos anteriores hereda el umbral de la campania.
+        [JsonProperty("umbralCierreAnticipado")]
+        public double? UmbralCierreAnticipado { get; init; }
+
         public static PreguntaDocument FromDomain(Pregunta pregunta)
         {
             return new PreguntaDocument
@@ -311,6 +315,7 @@ internal sealed class CampaniaCosmosDocument
                 MaxRepreguntas = pregunta.MaxRepreguntas,
                 LimitesSeguridad = LimitesSeguridadPreguntaDocument.FromDomain(pregunta.LimitesSeguridad),
                 ConfigMarkdown = ConfigMarkdownDocument.FromDomain(pregunta.ConfigMarkdown),
+                UmbralCierreAnticipado = pregunta.UmbralCierreAnticipado,
             };
         }
 
@@ -328,7 +333,8 @@ internal sealed class CampaniaCosmosDocument
                 PromptRefs,
                 MaxRepreguntas,
                 LimitesSeguridad.ToDomain(),
-                ConfigMarkdown.ToDomain());
+                ConfigMarkdown.ToDomain(),
+                UmbralCierreAnticipado);
         }
     }
 
@@ -374,6 +380,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("umbralCierreAnticipado")]
         public double? UmbralCierreAnticipado { get; init; }
 
+        // I-17 §7 (aditivo, 03 §3.3): null en documentos anteriores hereda el default global de inactividad.
+        [JsonProperty("minutosInactividadSesion")]
+        public int? MinutosInactividadSesion { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -384,13 +394,15 @@ internal sealed class CampaniaCosmosDocument
                 TejidoColectivo = config.TejidoColectivo,
                 Parafraseo = config.Parafraseo,
                 UmbralCierreAnticipado = config.UmbralCierreAnticipado,
+                MinutosInactividadSesion = config.MinutosInactividadSesion,
             };
         }
 
         public ConfigConversacional ToDomain()
         {
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
-                MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado);
+                MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
+                MinutosInactividadSesion);
         }
     }
 

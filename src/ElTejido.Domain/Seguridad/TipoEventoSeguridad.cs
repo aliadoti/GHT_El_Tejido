@@ -32,4 +32,10 @@ public enum TipoEventoSeguridad
     // resumenes ni texto: solo conteos (aportes recuperados/tejidos), degradacion, error y latencia
     // de recuperacion. Aditivo al final para preservar los valores existentes (03 §3.15, 10 §6.2).
     TejidoColectivo,
+
+    // I-17: telemetria/calibracion del sellado de madurez (03 §3.8). Registra la distribucion
+    // maduro/incubacion por campania para dimensionar la base de incubacion y calibrar el umbral. Sin
+    // PII de texto: solo el nivel sellado, el score, el valor de corte, la escala y el origen del
+    // umbral. Aditivo al final para preservar los valores existentes (03 §3.15, 10 §6.2).
+    ClasificacionMadurez,
 }

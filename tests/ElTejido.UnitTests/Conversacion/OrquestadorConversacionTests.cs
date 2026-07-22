@@ -94,6 +94,146 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task Procesar_RechazoExplicitoDeIdeaMadura_LaDegradaAIncubacionYCierra()
+    {
+        // I-17 §5.4: escala 1..5, umbral base 0.6 (corte 3.4); score 4 -> maduro. Tras la parafrasis
+        // el participante dice "no es eso": la idea madura se degrada a incubacion y el hilo cierra.
+        var guardadas = new List<Respuesta>();
+        _respuestas.GuardarRespuestaAsync(
+            Arg.Do<Respuesta>(r =>
+            {
+                guardadas.RemoveAll(x => x.Id == r.Id);
+                guardadas.Add(r);
+            }),
+            Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _respuestas.ListarRespuestasAsync("c_1", Arg.Any<CancellationToken>()).Returns(_ => guardadas.ToArray());
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var participante = Participante();
+
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea madura"), CancellationToken.None);
+        guardadas.Should().ContainSingle(r => r.NivelMadurez == NivelMadurez.Maduro);
+
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("no es eso"), CancellationToken.None);
+
+        // La idea madura fue degradada; el "no es eso" no se evalua (una sola llamada al evaluador).
+        guardadas.Should().NotContain(r => r.NivelMadurez == NivelMadurez.Maduro);
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(t => t.Contains("no la guardo como definitiva", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.ClasificacionMadurez
+                && l.Detalle!.Contains("motivo:rechazo_guardado", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_RechazoSinIdeaMaduraPrevia_NoCierraYSeEvaluaComoSiempre()
+    {
+        // I-17 §5.4: si no hay ninguna idea madura que rechazar, un "no" cae al flujo normal (se evalua),
+        // para no cortar al participante por una negacion sin contexto de guardado.
+        _respuestas.ListarRespuestasAsync("c_1", Arg.Any<CancellationToken>()).Returns(Array.Empty<Respuesta>());
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 2m)));
+        await PrepararConversacionAsync();
+        var conversacionEnRepregunta = DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .RegistrarEntrante(Epoca).AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta);
+        await _conversaciones.GuardarConversacionAsync(conversacionEnRepregunta, CancellationToken.None);
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("no"), CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_CalificacionSuperaUmbralBase_SellaRespuestaComoMadura()
+    {
+        // I-17: escala 1..5, umbral base global 0.6 -> corte 3.4; calificacion 4 lo supera -> maduro.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.NivelMadurez == NivelMadurez.Maduro), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_CalificacionBajoUmbralBase_SellaRespuestaComoIncubacion()
+    {
+        // I-17: calificacion 2 < corte 3.4 -> incubacion.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 2m)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.NivelMadurez == NivelMadurez.Incubacion), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_Fallback_SellaRespuestaComoIncubacion()
+    {
+        // I-17: un fallback (evaluacion no confiable) nunca es maduro, aunque el score fuera alto.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Fallback(
+                CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, EvaluadorLlm.RetroNeutra, calificacionTotal: 5m), "error_proveedor"));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.NivelMadurez == NivelMadurez.Incubacion), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_OverridePorPregunta_TienePrecedenciaSobreCampania()
+    {
+        // I-17: pregunta 0.9 (corte 4.6) gana sobre campania 0.5 (corte 3.0); score 4 -> incubacion
+        // (con la campania sola habria sido maduro). El log de clasificacion marca origen:pregunta.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(
+            ParticipanteConUmbralPregunta(umbralPregunta: 0.9, umbralCampania: 0.5), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.NivelMadurez == NivelMadurez.Incubacion), Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.ClasificacionMadurez
+                && l.Resultado == "incubacion"
+                && l.Detalle!.Contains("origen:pregunta", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_ParafraseoEnIncubacion_NoSeAntepone()
+    {
+        // I-17: la parafrasis solo se antepone cuando la idea es madura. Score 2 -> incubacion -> el
+        // mensaje empieza por la retro, sin la parafrasis.
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 2m, parafraseo: "Entendi que propones reducir desperdicio.")));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(ParticipanteConParafraseo(), Mensaje("Mi idea"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.StartsWith("Buena idea", StringComparison.Ordinal)
+                && !texto.Contains("Entendi que propones", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Procesar_KillSwitchParafraseoApagado_NoSolicitaElCampoAlEvaluador()
     {
         ContextoEvaluacion? contextoVisto = null;
@@ -396,10 +536,11 @@ public sealed class OrquestadorConversacionTests
     public async Task Procesar_CalificacionAlta_NoOfreceMejoraYCierraConFelicitacion()
     {
         // Escala 1..5, umbral 0.85 -> 4.4; calificacion 5 lo supera. Aunque queda 1 repregunta (default),
-        // no se ofrece mejora: se felicita y cierra.
+        // no se ofrece mejora: se felicita y cierra. I-17: el cierre anticipado exige el kill-switch en
+        // true (default global ahora false para no encenderlo con el umbral base 0.6).
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", "Buena idea", calificacionTotal: 5m)));
-        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.85 });
+        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.85, CierreAnticipadoHabilitado = true });
         var participante = Participante();
 
         await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
@@ -448,14 +589,17 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
-    public async Task Procesar_UmbralDeCampania_ActivaCierreConDefaultGlobalApagado()
+    public async Task Procesar_UmbralDeCampania_ActivaCierreConKillSwitchOn()
     {
+        // I-17: con el kill-switch de cierre encendido, el override por campaña (0.5) manda sobre el
+        // default global (0.6): score 4 supera el corte de campaña (3.0) y dispara el cierre anticipado.
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 4m)));
         var participante = ParticipanteConUmbralCierre(0.5);
+        var opciones = new OpcionesConversacion { CierreAnticipadoHabilitado = true };
 
-        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
-        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
+        await Construir(opciones).ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
+        await Construir(opciones).ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
 
         await _gateway.Received(1).EnviarTextoAsync(Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
         await _logSeguridad.Received(1).RegistrarAsync(
@@ -471,7 +615,9 @@ public sealed class OrquestadorConversacionTests
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 5m)));
         var participante = ParticipanteConUmbralCierre(0);
-        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.5 });
+        // I-17: kill-switch on para probar de verdad que el override 0 de la campaña apaga el cierre
+        // pese al default global activo.
+        var orquestador = Construir(new OpcionesConversacion { UmbralCierreAnticipado = 0.5, CierreAnticipadoHabilitado = true });
 
         await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Hola"), CancellationToken.None);
         await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea"), CancellationToken.None);
@@ -1070,6 +1216,21 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
+    private static ParticipanteResuelto ParticipanteConUmbralPregunta(double umbralPregunta, double? umbralCampania)
+    {
+        var pregunta = Pregunta.Crear(
+            "p_1", "Pregunta 1", "Instruccion", "categoria", 1, EstadoRegistro.Activo,
+            rubricaRef: null, versionRubrica: null, promptRefs: null, maxRepreguntas: 1,
+            LimitesSeguridad.ParaPregunta(1500, 2), ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            umbralCierreAnticipado: umbralPregunta);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(1, "Gracias por participar.", umbralCierreAnticipado: umbralCampania));
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
     private static ParticipanteResuelto ParticipanteFrio()
     {
         var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
@@ -1206,9 +1367,9 @@ public sealed class OrquestadorConversacionTests
         public Task<IReadOnlyCollection<DominioConversacion>> ListarConversacionesAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(_conversaciones.Values.Where(c => c.CampaniaId == campaniaId).ToArray());
 
-        public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(DateTimeOffset limite, CancellationToken cancellationToken)
+        public Task<IReadOnlyCollection<DominioConversacion>> ListarAbiertasInactivasAsync(string campaniaId, DateTimeOffset limite, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(
-                _conversaciones.Values.Where(c => c.Estado == EstadoConversacion.Abierta).ToArray());
+                _conversaciones.Values.Where(c => c.CampaniaId == campaniaId && c.Estado == EstadoConversacion.Abierta).ToArray());
 
         public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Mensaje>>(

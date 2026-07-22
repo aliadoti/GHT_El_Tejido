@@ -67,6 +67,15 @@ internal sealed class LogSeguridadCosmosDocument
             TipoEventoSeguridad.AnomaliaLlm => "anomaliaLlm",
             TipoEventoSeguridad.PromptInjectionSospechoso => "promptInjectionSospechoso",
             TipoEventoSeguridad.ErrorEnvio => "errorEnvio",
+            // Bug confirmado (descubierto al implementar I-17): estos eventos ya en uso (P-03/I-01/I-06/
+            // I-09) no estaban mapeados y lanzaban al persistir en Cosmos. No habian estallado porque sus
+            // features estan con flag OFF; la clasificacion de madurez (I-17) es siempre-on y expone el
+            // hueco. Se completan todos los valores del enum. Ver AVANCES.md 2026-07-22.
+            TipoEventoSeguridad.AccionAdministrativa => "accionAdministrativa",
+            TipoEventoSeguridad.CierreUmbralAnticipado => "cierreUmbralAnticipado",
+            TipoEventoSeguridad.SegmentacionIdeas => "segmentacionIdeas",
+            TipoEventoSeguridad.TejidoColectivo => "tejidoColectivo",
+            TipoEventoSeguridad.ClasificacionMadurez => "clasificacionMadurez",
             _ => throw new InvalidOperationException($"Tipo de evento de seguridad no soportado: {tipo}."),
         };
     }

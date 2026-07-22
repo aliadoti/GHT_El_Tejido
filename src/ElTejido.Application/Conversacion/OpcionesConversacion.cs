@@ -19,19 +19,30 @@ public sealed class OpcionesConversacion
     public int IntervaloRevisionMinutos { get; set; } = 15;
 
     /// <summary>
-    /// Umbral de <b>cierre anticipado por calificacion alta</b> (05 §4.4), expresado como fraccion de
-    /// la escala de la rubrica en [0,1]. Si la calificacion total de una evaluacion valida alcanza
-    /// <c>Min + Umbral * (Max - Min)</c>, NO se ofrece una revision aunque queden repreguntas: se
-    /// felicita y se cierra/avanza. <b>0 o negativo desactiva</b> (default desactivado): se mantiene la
-    /// revision deterministica de siempre.
+    /// I-17 §7 — <b>default global</b> de la ventana de cierre por <b>inactividad de sesion</b>, en
+    /// minutos (granularidad sub-hora del flujo del 20-jul). Lo sobreescribe el override por campaña
+    /// <c>ConfigConversacional.MinutosInactividadSesion</c>. <b>0 o negativo desactiva</b> (default off
+    /// por D1; valor recomendado 5 que el operador fija en el acta de flags del dia-D).
     /// </summary>
-    public double UmbralCierreAnticipado { get; set; }
+    public int MinutosInactividadSesion { get; set; }
 
     /// <summary>
-    /// Kill-switch global de P-13. Por defecto respeta el default numérico y los overrides por
-    /// campaña; en <c>false</c> apaga todo cierre anticipado sin redeploy.
+    /// Umbral <b>único compartido</b> (P-13 + I-17), fracción de la escala de la rúbrica en [0,1].
+    /// Gobierna a la vez el <b>cierre anticipado por calificación alta</b> (05 §4.4) y la
+    /// <b>clasificación de madurez</b> de guardado (I-17: <c>maduro</c>/<c>incubacion</c>) + el disparo de
+    /// paráfrasis (I-05). Es el <b>default global</b>; lo sobreescriben el override por campaña y el
+    /// override por pregunta (precedencia pregunta → campaña → global). <b>I-17: default <c>0.6</c></b>.
+    /// <b>0 o negativo desactiva</b> el efecto (nada supera el umbral).
     /// </summary>
-    public bool CierreAnticipadoHabilitado { get; set; } = true;
+    public double UmbralCierreAnticipado { get; set; } = 0.6;
+
+    /// <summary>
+    /// Kill-switch global del <b>cierre anticipado</b> (P-13). En <c>false</c> apaga todo cierre
+    /// anticipado sin redeploy, <b>sin afectar</b> la clasificación de madurez (I-17). <b>I-17: default
+    /// <c>false</c></b> para no encender el cierre al subir el default del umbral a 0.6 (D1 + modelo de
+    /// cierre no-determinista del 20-jul); se activa tras calibrar (runbook I-01).
+    /// </summary>
+    public bool CierreAnticipadoHabilitado { get; set; }
 
     /// <summary>
     /// Largo maximo (en caracteres ya normalizados) para que una coincidencia por contencion de una
@@ -45,6 +56,14 @@ public sealed class OpcionesConversacion
     /// pregunta (05 §4.4). Si se deja vacio, el orquestador usa <see cref="DetectorIntencionContinuar.FrasesPorDefecto"/>.
     /// </summary>
     public IList<string> FrasesContinuar { get; set; } = new List<string>();
+
+    /// <summary>
+    /// I-17 §5.4 — frases con las que el participante <b>rechaza explícitamente</b> que su idea madura se
+    /// guarde. Al coincidir en <c>esperandoRepregunta</c>, se degrada la respuesta madura a incubación y
+    /// se cierra con un acuse ("guardar salvo que diga no"). Vacio = usa
+    /// <see cref="DetectorIntencionContinuar.FrasesRechazoGuardadoPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesRechazoGuardado { get; set; } = new List<string>();
 
     /// <summary>
     /// Interruptor global de los <b>cupos por usuario/campania</b> (10 §2): cuando esta en <c>true</c>,
@@ -145,6 +164,9 @@ public sealed class OpcionesMensajesConversacion
     public const string AcuseContinuarDefault =
         "¡Perfecto, sigamos!";
 
+    public const string AcuseRechazoGuardadoDefault =
+        "Entendido, no la guardo como definitiva. ¡Gracias por decírmelo!";
+
     /// <summary>
     /// Coletillas (variantes) que invitan al participante a quedarse o seguir, ensenando ademas la frase
     /// de salida del "no quiero mejorar". Se rotan por turno/hilo para que el flujo no repita siempre la
@@ -184,6 +206,12 @@ public sealed class OpcionesMensajesConversacion
 
     /// <summary>Acuse calido que antecede al cierre cuando el participante pide continuar a la siguiente pregunta.</summary>
     public string AcuseContinuar { get; set; } = AcuseContinuarDefault;
+
+    /// <summary>
+    /// I-17 — acuse calido que antecede al cierre cuando el participante rechaza que su idea madura se
+    /// guarde (se degrada a incubación antes de cerrar).
+    /// </summary>
+    public string AcuseRechazoGuardado { get; set; } = AcuseRechazoGuardadoDefault;
 
     /// <summary>
     /// Variantes del acuse de continuar; se rotan por hilo para no repetir siempre la misma frase.

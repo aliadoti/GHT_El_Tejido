@@ -74,7 +74,8 @@ internal static class EndpointsAdminResultados
         var filtradas = respuestas
             .Where(r => CoincideOpcional(query["usuarioId"], r.UsuarioId)
                 && CoincideOpcional(query["preguntaId"], r.PreguntaId)
-                && CoincideEstadoRespuesta(query["estado"], r.Estado))
+                && CoincideEstadoRespuesta(query["estado"], r.Estado)
+                && CoincideNivelMadurez(query["nivelMadurez"], r.NivelMadurez))
             .Select(MapearRespuesta)
             .ToArray();
 
@@ -197,6 +198,7 @@ internal static class EndpointsAdminResultados
             tagsSnapshot = r.TagsSnapshot,
             r.IdeaIndice,
             r.RespuestaPadreId,
+            nivelMadurez = MinusculaInicial(r.NivelMadurez.ToString()),
         };
 
     private static object MapearEvaluacion(DominioEvaluacion e)
@@ -291,6 +293,13 @@ internal static class EndpointsAdminResultados
     {
         var texto = filtro.ToString();
         return string.IsNullOrWhiteSpace(texto) || string.Equals(texto.Trim(), MinusculaInicial(estado.ToString()), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // I-17 (04 §5.8): filtro aditivo por nivel de madurez (maduro|incubacion); vacio = todas.
+    private static bool CoincideNivelMadurez(StringValues filtro, NivelMadurez nivel)
+    {
+        var texto = filtro.ToString();
+        return string.IsNullOrWhiteSpace(texto) || string.Equals(texto.Trim(), MinusculaInicial(nivel.ToString()), StringComparison.OrdinalIgnoreCase);
     }
 
     private static object Paginar(IReadOnlyCollection<object> items, IQueryCollection query)

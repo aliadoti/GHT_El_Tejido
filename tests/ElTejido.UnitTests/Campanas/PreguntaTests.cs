@@ -59,6 +59,70 @@ public sealed class PreguntaTests
     }
 
     [Fact]
+    public void Crear_AceptaOverrideDeUmbralPorPregunta()
+    {
+        var pregunta = Pregunta.Crear(
+            "p_1",
+            "Pregunta",
+            "Instruccion",
+            "categoria",
+            1,
+            EstadoRegistro.Activo,
+            "r_general",
+            1,
+            null,
+            1,
+            LimitesSeguridad.ParaPregunta(1500, 2),
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            umbralCierreAnticipado: 0.8);
+
+        pregunta.UmbralCierreAnticipado.Should().Be(0.8);
+    }
+
+    [Fact]
+    public void Crear_UmbralPorPreguntaNuloHeredaCampania()
+    {
+        var pregunta = Pregunta.Crear(
+            "p_1",
+            "Pregunta",
+            "Instruccion",
+            "categoria",
+            1,
+            EstadoRegistro.Activo,
+            "r_general",
+            1,
+            null,
+            1,
+            LimitesSeguridad.ParaPregunta(1500, 2),
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta));
+
+        pregunta.UmbralCierreAnticipado.Should().BeNull();
+    }
+
+    [Fact]
+    public void Crear_RechazaUmbralPorPreguntaMayorQueUno()
+    {
+        var act = () => Pregunta.Crear(
+            "p_1",
+            "Pregunta",
+            "Instruccion",
+            "categoria",
+            1,
+            EstadoRegistro.Activo,
+            "r_general",
+            1,
+            null,
+            1,
+            LimitesSeguridad.ParaPregunta(1500, 2),
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            umbralCierreAnticipado: 1.5);
+
+        act.Should()
+            .Throw<DomainValidationException>()
+            .Where(exception => exception.Code == "UMBRAL_CIERRE_ANTICIPADO_INVALIDO");
+    }
+
+    [Fact]
     public void Crear_RejectsNegativeFollowUpLimit()
     {
         var act = () => Pregunta.Crear(
