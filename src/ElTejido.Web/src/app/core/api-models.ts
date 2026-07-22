@@ -81,8 +81,13 @@ export interface ConfigConversacional {
   tejidoColectivo?: boolean;
   // I-05 (aditivo): el portal preserva el flag aunque la activación UI se defina después.
   parafraseo?: boolean;
-  // P-13 (aditivo): null hereda el default numérico global; 0 apaga solo la campaña.
+  // P-13 + I-17 (aditivo): umbral único compartido (cierre + madurez de guardado + paráfrasis).
+  // null hereda el default numérico global; 0 apaga el cierre solo para esta campaña. Lo puede
+  // sobreescribir además el umbral por pregunta (precedencia pregunta → campaña → global).
   umbralCierreAnticipado?: number | null;
+  // I-17 §7 (aditivo): ventana de cierre por inactividad de sesión, en minutos. null hereda el
+  // default global; 0 o negativo desactiva el cierre por inactividad solo para esta campaña.
+  minutosInactividadSesion?: number | null;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).
@@ -120,6 +125,8 @@ export interface Pregunta {
   configMarkdown?: {
     tipoArtefacto: string;
   };
+  // I-17 (aditivo): override del umbral compartido por pregunta. null hereda el de la campaña.
+  umbralCierreAnticipado?: number | null;
 }
 
 export interface ParticipantePreview {
@@ -233,6 +240,8 @@ export interface Respuesta {
   tagsSnapshot: string[];
   ideaIndice?: number | null;
   respuestaPadreId?: string | null;
+  // I-17 (aditivo): nivel de madurez sellado al evaluar. Ausente en datos históricos = incubación.
+  nivelMadurez?: 'maduro' | 'incubacion' | string;
 }
 
 export interface Evaluacion {

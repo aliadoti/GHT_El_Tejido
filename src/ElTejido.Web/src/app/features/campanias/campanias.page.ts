@@ -28,6 +28,8 @@ interface PreguntaForm {
   maxRepreguntas: number;
   maxCaracteresMensaje: number;
   maxLlamadasLlm: number;
+  // I-17: override del umbral compartido por pregunta; null = hereda la campaña.
+  umbralCierreAnticipado: number | null;
 }
 
 @Component({
@@ -270,8 +272,16 @@ interface PreguntaForm {
                     />
                     Separar varias ideas de un mismo mensaje
                   </label>
+                  <label class="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="editarParafraseo"
+                      [(ngModel)]="edicion.parafraseo"
+                    />
+                    Devolver paráfrasis ("esto es lo que entendí") en respuestas maduras
+                  </label>
                   <label>
-                    Umbral de cierre anticipado (vacío = heredar global; 0 = apagar)
+                    Umbral de madurez / cierre (0 a 1; vacío = heredar global; 0 = apagar cierre)
                     <input
                       type="number"
                       min="0"
@@ -279,6 +289,21 @@ interface PreguntaForm {
                       step="0.01"
                       name="editarUmbralCierreAnticipado"
                       [(ngModel)]="edicion.umbralCierreAnticipado"
+                    />
+                    <small class="muted"
+                      >Umbral único: decide qué respuestas quedan "maduras" y (si el cierre está
+                      habilitado) cuáles cierran la conversación. Cada pregunta puede tener el
+                      suyo.</small
+                    >
+                  </label>
+                  <label>
+                    Cierre por inactividad (minutos; vacío = heredar global; 0 = apagar)
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      name="editarMinutosInactividadSesion"
+                      [(ngModel)]="edicion.minutosInactividadSesion"
                     />
                   </label>
                   <label>
@@ -398,6 +423,18 @@ interface PreguntaForm {
                         [(ngModel)]="pregunta.maxRepreguntas"
                       />
                     </label>
+                    <label>
+                      Umbral (opcional)
+                      <input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        name="preguntaUmbral"
+                        placeholder="hereda campaña"
+                        [(ngModel)]="pregunta.umbralCierreAnticipado"
+                      />
+                    </label>
                   </div>
                   <input type="hidden" name="preguntaEstado" [(ngModel)]="pregunta.estado" />
                   <label>
@@ -431,8 +468,11 @@ interface PreguntaForm {
                       ><span>{{ item.texto }}</span>
                       <span
                         >Orden {{ item.orden }} · {{ item.estado }} · Revisiones:
-                        {{ item.maxRepreguntas }}</span
-                      >
+                        {{ item.maxRepreguntas }}
+                        @if (item.umbralCierreAnticipado != null) {
+                          · Umbral: {{ item.umbralCierreAnticipado }}
+                        }
+                      </span>
                       @if (auth.isAdmin()) {
                         <button type="button" class="table-button" (click)="editarPregunta(item)">
                           Editar
@@ -496,6 +536,18 @@ interface PreguntaForm {
                             min="0"
                             name="editarPreguntaMaxRepreguntas"
                             [(ngModel)]="preguntaEdicion.maxRepreguntas"
+                          />
+                        </label>
+                        <label>
+                          Umbral (opcional)
+                          <input
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            name="editarPreguntaUmbral"
+                            placeholder="hereda campaña"
+                            [(ngModel)]="preguntaEdicion.umbralCierreAnticipado"
                           />
                         </label>
                         <label>
@@ -815,12 +867,18 @@ export class CampaniasPage {
           // I-09: preserva el valor actual (la UI de activación llega con I-10) para no
           // reiniciarlo a false en cada edición de la campaña.
           tejidoColectivo: Boolean(this.selected()?.configConversacional?.tejidoColectivo),
-          // I-05: preserva el flag por campaña al editar otra configuración.
-          parafraseo: Boolean(this.selected()?.configConversacional?.parafraseo),
+          // I-05 (I-17): paráfrasis "esto es lo que entendí". Se muestra solo cuando la respuesta
+          // queda clasificada como madura; el kill-switch global Conversacion:Parafraseo puede anularla.
+          parafraseo: Boolean(this.edicion.parafraseo),
           umbralCierreAnticipado:
             this.edicion.umbralCierreAnticipado === null
               ? null
               : Math.min(1, Math.max(0, Number(this.edicion.umbralCierreAnticipado) || 0)),
+          // I-17 §7: ventana de inactividad por campaña; vacío = heredar global.
+          minutosInactividadSesion:
+            this.edicion.minutosInactividadSesion === null
+              ? null
+              : Math.max(0, Math.trunc(Number(this.edicion.minutosInactividadSesion) || 0)),
         },
         // P-10: conserva los cupos actuales y actualiza el presupuesto de tokens de la campaña.
         configSeguridad: {
@@ -1026,7 +1084,9 @@ export class CampaniasPage {
       promptEvaluarRef: '',
       presupuestoTokensCampania: 0,
       segmentacionIdeas: false,
+      parafraseo: false,
       umbralCierreAnticipado: null as number | null,
+      minutosInactividadSesion: null as number | null,
     };
   }
 
@@ -1042,6 +1102,7 @@ export class CampaniasPage {
       maxRepreguntas: 1,
       maxCaracteresMensaje: 1500,
       maxLlamadasLlm: 2,
+      umbralCierreAnticipado: null,
     };
   }
 
@@ -1055,7 +1116,9 @@ export class CampaniasPage {
       promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
       presupuestoTokensCampania: campania.configSeguridad?.presupuestoTokensCampania ?? 0,
       segmentacionIdeas: campania.configConversacional?.segmentacionIdeas ?? false,
+      parafraseo: campania.configConversacional?.parafraseo ?? false,
       umbralCierreAnticipado: campania.configConversacional?.umbralCierreAnticipado ?? null,
+      minutosInactividadSesion: campania.configConversacional?.minutosInactividadSesion ?? null,
     };
   }
 
@@ -1071,6 +1134,7 @@ export class CampaniasPage {
       maxRepreguntas: pregunta.maxRepreguntas ?? 1,
       maxCaracteresMensaje: pregunta.limitesSeguridad?.maxCaracteresMensaje ?? 1500,
       maxLlamadasLlm: pregunta.limitesSeguridad?.maxLlamadasLlm ?? 2,
+      umbralCierreAnticipado: pregunta.umbralCierreAnticipado ?? null,
     };
   }
 
@@ -1089,6 +1153,11 @@ export class CampaniasPage {
         maxLlamadasLlm: Math.max(1, Number(form.maxLlamadasLlm) || 2),
       },
       configMarkdown: { tipoArtefacto: 'respuesta' },
+      // I-17: override del umbral por pregunta; vacío/nulo = hereda la campaña.
+      umbralCierreAnticipado:
+        form.umbralCierreAnticipado === null || form.umbralCierreAnticipado === undefined
+          ? null
+          : Math.min(1, Math.max(0, Number(form.umbralCierreAnticipado) || 0)),
     };
   }
 

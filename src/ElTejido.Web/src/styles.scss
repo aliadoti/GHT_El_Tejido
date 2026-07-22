@@ -431,6 +431,12 @@ th {
   color: var(--ght-rojo);
 }
 
+/* I-17: resalta las respuestas maduras (superaron el umbral) frente a las de incubacion. */
+.status-badge.badge-ok {
+  background: rgb(31 122 51 / 10%);
+  color: var(--ght-verde);
+}
+
 tbody tr.row-selected {
   background: var(--ght-panel-suave);
 }

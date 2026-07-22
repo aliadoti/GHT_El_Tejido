@@ -219,8 +219,11 @@ export class AdminApiService {
     return this.api.get<PagedResult<Conversacion>>('/api/admin/conversaciones', { campaniaId });
   }
 
-  respuestas(campaniaId: string) {
-    return this.api.get<PagedResult<Respuesta>>('/api/admin/respuestas', { campaniaId });
+  respuestas(campaniaId: string, nivelMadurez?: string) {
+    return this.api.get<PagedResult<Respuesta>>('/api/admin/respuestas', {
+      campaniaId,
+      nivelMadurez: nivelMadurez || undefined,
+    });
   }
 
   respuesta(campaniaId: string, id: string) {

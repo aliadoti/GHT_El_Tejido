@@ -41,6 +41,18 @@ import { formatApiError } from '../../shared-error';
               }
             </select>
           </label>
+          <label>
+            Nivel de madurez
+            <select
+              name="nivelMadurez"
+              [(ngModel)]="nivelMadurezFiltro"
+              (ngModelChange)="loadAll()"
+            >
+              <option value="">Todas</option>
+              <option value="maduro">Maduras</option>
+              <option value="incubacion">Incubacion</option>
+            </select>
+          </label>
           <button class="primary-button" type="submit">Consultar resultados</button>
         </form>
       </section>
@@ -66,7 +78,10 @@ import { formatApiError } from '../../shared-error';
         <section class="panel">
           <div class="panel-heading">
             <h3>Respuestas</h3>
-            <span class="muted">{{ respuestas().length }}</span>
+            <span class="muted">
+              {{ respuestas().length }} · {{ conteoMaduras() }} maduras /
+              {{ conteoIncubacion() }} incubacion
+            </span>
           </div>
           <ul class="compact-list">
             @for (respuesta of respuestas(); track respuesta.id) {
@@ -79,6 +94,17 @@ import { formatApiError } from '../../shared-error';
                   [class.badge-warn]="respuesta.estado === 'evaluacionPendiente'"
                 >
                   {{ respuesta.estado === 'evaluacionPendiente' ? 'sin evaluar' : 'evaluada' }}
+                </span>
+                <span
+                  class="status-badge"
+                  [class.badge-ok]="esMadura(respuesta)"
+                  [title]="
+                    esMadura(respuesta)
+                      ? 'Idea madura: supero el umbral de la rubrica'
+                      : 'En incubacion: no alcanzo el umbral (material para coaching)'
+                  "
+                >
+                  {{ esMadura(respuesta) ? 'madura' : 'incubacion' }}
                 </span>
                 <span>{{ respuesta.texto }}</span>
               </li>
@@ -203,6 +229,8 @@ export class ResultadosPage {
   protected readonly usuarios = signal<Map<string, UsuarioAdmin>>(new Map());
   protected readonly error = signal('');
   protected campaniaId = '';
+  // I-17: filtro por nivel de madurez ('' = todas, 'maduro', 'incubacion').
+  protected nivelMadurezFiltro = '';
 
   constructor() {
     this.api.campanias({ pageSize: 100 }).subscribe({
@@ -227,6 +255,19 @@ export class ResultadosPage {
     return usuario.area ? `${usuario.nombre} (${usuario.area})` : usuario.nombre;
   }
 
+  /** I-17: una respuesta es madura si quedo sellada como 'maduro' (ausente/otro = incubacion). */
+  esMadura(respuesta: Respuesta): boolean {
+    return respuesta.nivelMadurez === 'maduro';
+  }
+
+  conteoMaduras(): number {
+    return this.respuestas().filter((r) => this.esMadura(r)).length;
+  }
+
+  conteoIncubacion(): number {
+    return this.respuestas().filter((r) => !this.esMadura(r)).length;
+  }
+
   /** Una evaluacion en fallback (08 §6) no tiene calificacion ni Markdown utilizables. */
   esFallback(): boolean {
     const respuesta = this.respuestaSeleccionada();
@@ -247,7 +288,7 @@ export class ResultadosPage {
       next: (page) => this.conversaciones.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
-    this.api.respuestas(this.campaniaId).subscribe({
+    this.api.respuestas(this.campaniaId, this.nivelMadurezFiltro).subscribe({
       next: (page) => this.respuestas.set(page.items),
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
