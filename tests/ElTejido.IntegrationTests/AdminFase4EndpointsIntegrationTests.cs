@@ -354,6 +354,17 @@ public sealed class AdminFase4EndpointsIntegrationTests
 
         public Task<IReadOnlyCollection<Tag>> BuscarTagsAsync(FiltroTags filtro, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Tag>>(Array.Empty<Tag>());
+
+        public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+        {
+            var aBorrar = _usuarios.Values.Where(u => !u.EsAdministrativo).ToArray();
+            foreach (var usuario in aBorrar)
+            {
+                _usuarios.Remove(usuario.Id);
+            }
+
+            return Task.FromResult(aBorrar.Length);
+        }
     }
 
     private sealed class RepositorioCampaniasMemoria : IRepositorioCampanias
@@ -363,6 +374,12 @@ public sealed class AdminFase4EndpointsIntegrationTests
         public Task GuardarCampaniaAsync(Campania campania, CancellationToken cancellationToken)
         {
             _campanias[campania.Id] = campania;
+            return Task.CompletedTask;
+        }
+
+        public Task EliminarCampaniaAsync(string id, CancellationToken cancellationToken)
+        {
+            _campanias.Remove(id);
             return Task.CompletedTask;
         }
 
@@ -420,6 +437,18 @@ public sealed class AdminFase4EndpointsIntegrationTests
 
         public Task<IReadOnlyCollection<EnvioMensaje>> ListarEnviosAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<EnvioMensaje>>(_envios.Where(e => e.CampaniaId == campaniaId).ToArray());
+
+        public Task<int> EliminarPorCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+        {
+            var participantes = _participantes.Values.Where(p => p.CampaniaId == campaniaId).ToArray();
+            foreach (var participante in participantes)
+            {
+                _participantes.Remove(participante.Id);
+            }
+
+            var enviosBorrados = _envios.RemoveAll(e => e.CampaniaId == campaniaId);
+            return Task.FromResult(participantes.Length + enviosBorrados);
+        }
     }
 
     private sealed class RepositorioConfiguracionMemoria : IRepositorioConfiguracion

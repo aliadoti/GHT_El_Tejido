@@ -106,6 +106,21 @@ internal sealed class UsersCosmosContainer : IUsersCosmosContainer
         return documents;
     }
 
+    public async Task DeleteUsuarioAsync(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _container.DeleteItemAsync<UsuarioCosmosDocument>(
+                id,
+                new PartitionKey(UsuarioCosmosDocument.PartitionKeyValue),
+                cancellationToken: cancellationToken);
+        }
+        catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Idempotente: ya estaba borrado.
+        }
+    }
+
     private static QueryDefinition CreateUsuariosQueryDefinition(FiltroUsuariosCosmos filtro)
     {
         var filters = new List<string>

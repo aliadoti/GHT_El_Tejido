@@ -73,6 +73,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/resultados/resultados.page').then((m) => m.ResultadosPage),
       },
+      {
+        path: 'mantenimiento',
+        canActivate: [adminGuard],
+        title: 'Mantenimiento - Tejido de Red',
+        loadComponent: () =>
+          import('./features/mantenimiento/mantenimiento.page').then((m) => m.MantenimientoPage),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

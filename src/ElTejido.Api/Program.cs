@@ -7,6 +7,7 @@ using ElTejido.Api.Seguridad;
 using ElTejido.Api.WhatsApp;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
+using ElTejido.Application.Mantenimiento;
 using ElTejido.Application.Reinicio;
 using ElTejido.Application.Usuarios.CargaMasiva;
 using ElTejido.Infrastructure.Configuracion;
@@ -34,6 +35,7 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
     builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
+    builder.Services.AddScoped<IServicioPurgaCampanias, ServicioPurgaCampanias>();
     // I-08: carga masiva de participantes. Lector CSV sin dependencia (Sprint 1a); el puerto admite
     // sumar un lector .xlsx en Infraestructura mas adelante sin tocar el servicio.
     builder.Services.AddSingleton<ILectorArchivoParticipantes, LectorCsvParticipantes>();
@@ -75,6 +77,7 @@ app.MapearEndpointsPreparacion();
 app.MapearEndpointsAuth();
 app.MapearEndpointsAdminConfiguracion();
 app.MapearEndpointsAdminFase4();
+app.MapearEndpointsAdminMantenimiento();
 
 // WhatsApp Gateway: webhook entrante y envio masivo (04 §5.4/§6, 05).
 app.MapearEndpointsWebhook();

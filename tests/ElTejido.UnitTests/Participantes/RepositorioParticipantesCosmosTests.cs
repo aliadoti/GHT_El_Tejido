@@ -178,5 +178,13 @@ public sealed class RepositorioParticipantesCosmosTests
             LastEnvioQuery = (campaniaId, usuarioId, tipo, mensajeInicialId);
             return Task.FromResult(EnvioQueryResult);
         }
+
+        public List<(string Id, string PartitionKey)> Deletes { get; } = [];
+
+        public Task DeleteAsync(string id, string partitionKey, CancellationToken cancellationToken)
+        {
+            Deletes.Add((id, partitionKey));
+            return Task.CompletedTask;
+        }
     }
 }

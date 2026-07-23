@@ -15,4 +15,11 @@ public interface IRepositorioCampanias
     Task<IReadOnlyCollection<Campania>> BuscarCampaniasAsync(
         FiltroCampanias filtro,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Borra fisicamente el documento de una campania (P-15, purga total de datos de prueba). Acotado a
+    /// su propia particion <c>id</c>; idempotente (tolera que ya no exista). No borra las entidades
+    /// asociadas en otros contenedores: el servicio de purga las elimina antes en orden seguro.
+    /// </summary>
+    Task EliminarCampaniaAsync(string id, CancellationToken cancellationToken);
 }

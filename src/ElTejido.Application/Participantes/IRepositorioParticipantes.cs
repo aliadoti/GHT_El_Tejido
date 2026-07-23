@@ -53,4 +53,11 @@ public interface IRepositorioParticipantes
     Task<IReadOnlyCollection<EnvioMensaje>> ListarEnviosAsync(
         string campaniaId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Borra fisicamente todos los participantes y sus envios dentro de una campania (P-15, purga total
+    /// de datos de prueba). Acotado a la particion <c>campaniaId</c>; idempotente (re-invocar sobre
+    /// datos ya limpios devuelve cero). Devuelve el total de documentos borrados (participantes + envios).
+    /// </summary>
+    Task<int> EliminarPorCampaniaAsync(string campaniaId, CancellationToken cancellationToken);
 }

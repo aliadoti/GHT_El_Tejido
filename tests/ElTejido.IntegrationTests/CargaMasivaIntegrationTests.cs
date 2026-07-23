@@ -201,5 +201,16 @@ public sealed class CargaMasivaIntegrationTests
 
         public Task<IReadOnlyCollection<Tag>> BuscarTagsAsync(FiltroTags filtro, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Tag>>(_tags.Values.ToArray());
+
+        public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+        {
+            var aBorrar = _usuarios.Values.Where(u => !u.EsAdministrativo).ToArray();
+            foreach (var usuario in aBorrar)
+            {
+                _usuarios.Remove(usuario.Id);
+            }
+
+            return Task.FromResult(aBorrar.Length);
+        }
     }
 }

@@ -15,6 +15,7 @@ import {
   Pregunta,
   PromptConfig,
   ReporteCargaMasiva,
+  ReportePurgaCampanias,
   ReporteReinicioDatos,
   Respuesta,
   Rubrica,
@@ -130,6 +131,14 @@ export class AdminApiService {
       `/api/admin/campanias/${campaniaId}/reiniciar-datos`,
       opciones,
     );
+  }
+
+  // P-15: purga total de campañas y usuarios no administrativos (arranque en frío de pruebas).
+  // Exige la palabra de confirmacion exacta y el flag Seguridad:PermitirReinicioDatos en el backend.
+  purgarCampanias(confirmacion: string) {
+    return this.api.post<ReportePurgaCampanias>('/api/admin/mantenimiento/purgar-campanias', {
+      confirmacion,
+    });
   }
 
   envios(campaniaId: string) {

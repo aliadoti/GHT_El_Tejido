@@ -133,4 +133,25 @@ public sealed class RepositorioParticipantesCosmos : IRepositorioParticipantes
 
         return documents.Select(document => document.ToDomain()).ToArray();
     }
+
+    public async Task<int> EliminarPorCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        var pk = campaniaId.Trim();
+
+        var participantes = await _container.QueryParticipantesAsync(pk, null, null, cancellationToken);
+        var envios = await _container.QueryEnviosAsync(pk, null, null, null, cancellationToken);
+
+        foreach (var envio in envios)
+        {
+            await _container.DeleteAsync(envio.Id, pk, cancellationToken);
+        }
+
+        foreach (var participante in participantes)
+        {
+            await _container.DeleteAsync(participante.Id, pk, cancellationToken);
+        }
+
+        return participantes.Count + envios.Count;
+    }
 }

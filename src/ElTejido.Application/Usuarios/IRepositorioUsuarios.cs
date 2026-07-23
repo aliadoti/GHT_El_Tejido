@@ -24,4 +24,12 @@ public interface IRepositorioUsuarios
     Task<Tag?> ObtenerTagPorIdAsync(string id, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<Tag>> BuscarTagsAsync(FiltroTags filtro, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Borra fisicamente los usuarios <b>no administrativos</b> (rol Participante) del contenedor
+    /// <c>users</c> (P-15, purga total de datos de prueba). Conserva siempre los administrativos
+    /// (<see cref="Usuario.EsAdministrativo"/>: Admin y Visor) para no dejar el portal sin acceso.
+    /// No toca los Tags. Idempotente; devuelve el numero de usuarios borrados.
+    /// </summary>
+    Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken);
 }

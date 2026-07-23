@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.Azure.Cosmos;
 
 namespace ElTejido.Infrastructure.Participantes;
@@ -125,6 +126,21 @@ internal sealed class ParticipantsCosmosContainer : IParticipantsCosmosContainer
         }
 
         return await ReadAllAsync<EnvioMensajeCosmosDocument>(query, campaniaId, cancellationToken);
+    }
+
+    public async Task DeleteAsync(string id, string partitionKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _container.DeleteItemAsync<object>(
+                id,
+                new PartitionKey(partitionKey),
+                cancellationToken: cancellationToken);
+        }
+        catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Idempotente: ya estaba borrado.
+        }
     }
 
     private async Task<IReadOnlyCollection<T>> ReadAllAsync<T>(

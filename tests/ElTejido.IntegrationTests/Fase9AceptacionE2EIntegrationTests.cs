@@ -544,6 +544,16 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             }
         }
 
+        public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                var aBorrar = _usuarios.Values.Where(u => !u.EsAdministrativo).ToArray();
+                foreach (var usuario in aBorrar) _usuarios.Remove(usuario.Id);
+                return Task.FromResult(aBorrar.Length);
+            }
+        }
+
         public Task GuardarCampaniaAsync(Campania campania, CancellationToken cancellationToken)
         {
             lock (_sync) _campanias[campania.Id] = campania;
@@ -564,6 +574,12 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                 if (!string.IsNullOrWhiteSpace(filtro.Busqueda)) query = query.Where(c => c.Nombre.Contains(filtro.Busqueda, StringComparison.OrdinalIgnoreCase));
                 return Task.FromResult<IReadOnlyCollection<Campania>>(query.ToArray());
             }
+        }
+
+        public Task EliminarCampaniaAsync(string id, CancellationToken cancellationToken)
+        {
+            lock (_sync) _campanias.Remove(id);
+            return Task.CompletedTask;
         }
 
         public Task GuardarParticipanteAsync(ParticipanteCampania participante, CancellationToken cancellationToken)
@@ -606,6 +622,17 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         public Task<IReadOnlyCollection<EnvioMensaje>> ListarEnviosAsync(string campaniaId, CancellationToken cancellationToken)
         {
             lock (_sync) return Task.FromResult<IReadOnlyCollection<EnvioMensaje>>(_envios.Where(e => e.CampaniaId == campaniaId).ToArray());
+        }
+
+        public Task<int> EliminarPorCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                var participantes = _participantes.Values.Where(p => p.CampaniaId == campaniaId).ToArray();
+                foreach (var participante in participantes) _participantes.Remove(participante.Id);
+                var enviosBorrados = _envios.RemoveAll(e => e.CampaniaId == campaniaId);
+                return Task.FromResult(participantes.Length + enviosBorrados);
+            }
         }
 
         public Task GuardarRubricaAsync(Rubrica rubrica, CancellationToken cancellationToken)

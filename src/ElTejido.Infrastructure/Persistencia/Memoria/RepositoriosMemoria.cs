@@ -102,6 +102,17 @@ internal sealed class RepositorioUsuariosMemoria : IRepositorioUsuarios
 
         return Task.FromResult<IReadOnlyCollection<Tag>>(query.ToArray());
     }
+
+    public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+    {
+        var aBorrar = _usuarios.Values.Where(u => !u.EsAdministrativo).ToArray();
+        foreach (var usuario in aBorrar)
+        {
+            _usuarios.TryRemove(usuario.Id, out _);
+        }
+
+        return Task.FromResult(aBorrar.Length);
+    }
 }
 
 internal sealed class RepositorioCampaniasMemoria : IRepositorioCampanias
@@ -131,6 +142,12 @@ internal sealed class RepositorioCampaniasMemoria : IRepositorioCampanias
         }
 
         return Task.FromResult<IReadOnlyCollection<Campania>>(query.ToArray());
+    }
+
+    public Task EliminarCampaniaAsync(string id, CancellationToken cancellationToken)
+    {
+        _campanias.TryRemove(id, out _);
+        return Task.CompletedTask;
     }
 }
 
@@ -187,6 +204,23 @@ internal sealed class RepositorioParticipantesMemoria : IRepositorioParticipante
             IReadOnlyCollection<EnvioMensaje> envios = _envios.Where(e => e.CampaniaId == campaniaId).ToArray();
             return Task.FromResult(envios);
         }
+    }
+
+    public Task<int> EliminarPorCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+    {
+        var participantes = _participantes.Values.Where(p => p.CampaniaId == campaniaId).ToArray();
+        foreach (var participante in participantes)
+        {
+            _participantes.TryRemove(participante.Id, out _);
+        }
+
+        int enviosBorrados;
+        lock (_envioLock)
+        {
+            enviosBorrados = _envios.RemoveAll(e => e.CampaniaId == campaniaId);
+        }
+
+        return Task.FromResult(participantes.Length + enviosBorrados);
     }
 }
 

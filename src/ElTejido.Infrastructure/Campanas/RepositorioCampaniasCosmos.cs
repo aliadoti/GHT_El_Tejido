@@ -50,4 +50,10 @@ public sealed class RepositorioCampaniasCosmos : IRepositorioCampanias
             .Select(document => document.ToDomain())
             .ToArray();
     }
+
+    public async Task EliminarCampaniaAsync(string id, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        await _container.DeleteAsync(id.Trim(), cancellationToken);
+    }
 }

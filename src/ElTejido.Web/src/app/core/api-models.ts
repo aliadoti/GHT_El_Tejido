@@ -305,3 +305,17 @@ export interface ReporteReinicioDatos {
   blobsFallidos: number;
   participantesReseteados: number;
 }
+
+// P-15: purga total de datos de campañas (borra campañas y usuarios no administrativos).
+export interface ReportePurgaCampanias {
+  campanias: number;
+  conversaciones: number;
+  mensajes: number;
+  respuestas: number;
+  evaluaciones: number;
+  artefactos: number;
+  blobsBorrados: number;
+  blobsFallidos: number;
+  participantes: number;
+  usuariosBorrados: number;
+}

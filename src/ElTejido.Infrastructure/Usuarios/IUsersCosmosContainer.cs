@@ -23,4 +23,7 @@ internal interface IUsersCosmosContainer
     Task<IReadOnlyCollection<TagCosmosDocument>> QueryTagsAsync(
         FiltroTagsCosmos filtro,
         CancellationToken cancellationToken);
+
+    /// <summary>Borra un usuario por id dentro de su particion fija <c>usuario</c> (P-15). Tolera 404.</summary>
+    Task DeleteUsuarioAsync(string id, CancellationToken cancellationToken);
 }

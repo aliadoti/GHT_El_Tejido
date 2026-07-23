@@ -215,5 +215,13 @@ public sealed class RepositorioCampaniasCosmosTests
             LastFilter = filtro;
             return Task.FromResult(QueryResult);
         }
+
+        public List<string> Deletes { get; } = [];
+
+        public Task DeleteAsync(string id, CancellationToken cancellationToken)
+        {
+            Deletes.Add(id);
+            return Task.CompletedTask;
+        }
     }
 }

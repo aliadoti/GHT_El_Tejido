@@ -12,4 +12,7 @@ internal interface ICampaniasCosmosContainer
     Task<IReadOnlyCollection<CampaniaCosmosDocument>> QueryAsync(
         FiltroCampaniasCosmos filtro,
         CancellationToken cancellationToken);
+
+    /// <summary>Borra un documento de campania por id (pk = id). Tolera 404 (ya borrado).</summary>
+    Task DeleteAsync(string id, CancellationToken cancellationToken);
 }

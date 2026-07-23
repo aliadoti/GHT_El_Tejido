@@ -255,6 +255,14 @@ public sealed class RepositorioUsuariosCosmosTests
             return Task.FromResult(UsuarioQueryResult);
         }
 
+        public List<string> UsuarioDeletes { get; } = [];
+
+        public Task DeleteUsuarioAsync(string id, CancellationToken cancellationToken)
+        {
+            UsuarioDeletes.Add(id);
+            return Task.CompletedTask;
+        }
+
         public Task UpsertTagAsync(
             TagCosmosDocument document,
             string partitionKey,

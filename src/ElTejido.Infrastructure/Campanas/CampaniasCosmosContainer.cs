@@ -40,6 +40,21 @@ internal sealed class CampaniasCosmosContainer : ICampaniasCosmosContainer
         }
     }
 
+    public async Task DeleteAsync(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _container.DeleteItemAsync<CampaniaCosmosDocument>(
+                id,
+                new PartitionKey(id),
+                cancellationToken: cancellationToken);
+        }
+        catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Idempotente: ya estaba borrada.
+        }
+    }
+
     public async Task<IReadOnlyCollection<CampaniaCosmosDocument>> QueryAsync(
         FiltroCampaniasCosmos filtro,
         CancellationToken cancellationToken)

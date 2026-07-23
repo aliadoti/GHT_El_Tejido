@@ -343,5 +343,16 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
 
             return Task.FromResult<IReadOnlyCollection<Tag>>(consulta.ToArray());
         }
+
+        public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+        {
+            var aBorrar = _usuarios.Values.Where(u => !u.EsAdministrativo).ToArray();
+            foreach (var usuario in aBorrar)
+            {
+                _usuarios.Remove(usuario.Id);
+            }
+
+            return Task.FromResult(aBorrar.Length);
+        }
     }
 }

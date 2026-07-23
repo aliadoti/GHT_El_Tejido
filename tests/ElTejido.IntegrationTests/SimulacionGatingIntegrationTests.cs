@@ -123,5 +123,8 @@ public sealed class SimulacionGatingIntegrationTests
 
         public Task<IReadOnlyCollection<Tag>> BuscarTagsAsync(FiltroTags filtro, CancellationToken cancellationToken)
             => throw new NotSupportedException();
+
+        public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+            => throw new NotSupportedException();
     }
 }

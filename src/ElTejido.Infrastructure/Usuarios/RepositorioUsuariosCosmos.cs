@@ -115,4 +115,21 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
             .Select(document => document.ToDomain())
             .ToArray();
     }
+
+    public async Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+    {
+        // Trae todos los usuarios (filtro vacio) y borra solo los no administrativos, mapeando a dominio
+        // para respetar EsAdministrativo (conserva Admin y Visor aunque aparezcan roles nuevos a futuro).
+        var documents = await _container.QueryUsuariosAsync(
+            new FiltroUsuariosCosmos(null, null, null, null, null, [], null),
+            cancellationToken);
+
+        var aBorrar = documents.Where(d => !d.ToDomain().EsAdministrativo).ToArray();
+        foreach (var documento in aBorrar)
+        {
+            await _container.DeleteUsuarioAsync(documento.Id, cancellationToken);
+        }
+
+        return aBorrar.Length;
+    }
 }
