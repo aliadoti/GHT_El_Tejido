@@ -2,14 +2,14 @@
 
 > **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 10-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
 > **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
-> **Última revisión del estado real:** 2026-07-21.
+> **Última revisión del estado real:** 2026-07-23.
 
 ---
 
 ## 1. Alcance
 
 ### 1.1 Qué se valida (in-scope para el Hito) — re-priorizado reunión GHT 20-jul
-Flujo conversacional completo del coach (cold-start → evaluación → revisión determinista → **clasificación de madurez I-17** → cierre → Markdown), portal admin (login OTP, CRUD de campañas/usuarios/rúbricas/prompts/config LLM, envíos, resultados) y las salvaguardas transversales. Iniciativas comprometidas para la convención (índice §1.3): **I-01, I-02, I-03 ✓, I-04, I-05 ✓, I-06 ✓, I-07, I-08 ✓, I-11 ✓, I-12, I-13, I-14, I-16 ✓, I-17 (NUEVA), P-01 ✓, P-02 ✓, P-03 ✓, P-10 ✓, P-13 ✓**. Se valida también el **cierre no determinista** (intención "no más" I-02 + inactividad ~5 min) y el **health-check + acta de flags + runbook** (lo conservado de P-09).
+Flujo conversacional completo del coach (cold-start → evaluación → revisión determinista → **clasificación de madurez I-17** → cierre → Markdown), portal admin (login OTP, CRUD de campañas/usuarios/rúbricas/prompts/config LLM, envíos, resultados) y las salvaguardas transversales. Iniciativas comprometidas para la convención (índice §1.3): **I-01, I-02, I-03 ✓, I-04, I-05 ✓, I-06 ✓, I-07, I-08 ✓, I-11 ✓, I-12, I-13, I-14, I-16 ✓, I-17 ✓, P-01 ✓, P-02 ✓, P-03 ✓, P-10 ✓, P-13 ✓**. Se valida también el **cierre no determinista** (intención "no más" I-02 + inactividad ~5 min) y el **health-check + acta de flags + runbook** (lo conservado de P-09).
 
 ### 1.2 Fuera de alcance (diferidas / deseables, post-convención)
 - **Diferidas por la reunión del 20-jul (Capa 3):** **I-09 + I-10 (tejido colectivo)** — su código existe pero el flag `tejidoColectivo` queda **OFF** y **no se valida** para el Hito (si acaso, smoke de que off = comportamiento autocontenido); **P-07 (consentimiento)**; **panel en vivo de P-09** (basta health-check; métricas de tokens no prioritarias); **HITL**.
@@ -17,7 +17,7 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 
 > **Nota de seguridad sobre el tejido diferido:** aunque I-09 sale del alcance funcional, si por error quedara con flag ON, sus casos de seguridad (SEC-06..08 anonimización, SEC-12 injection transitiva) siguen siendo **CORE**. Verificar en el smoke que `tejidoColectivo` está OFF en todas las campañas del Hito.
 
-### 1.3 Estado real relevante (de `AVANCES.md` / índice, al 2026-07-21)
+### 1.3 Estado real relevante (de `AVANCES.md` / índice, al 2026-07-23)
 | Función | Estado | Implicación para QA |
 |---|---|---|
 | I-03 follow-up eje débil + `FiltroSalidaRubrica` | **DONE local**; filtro **siempre-on** | Probar sí o sí (seguridad). D5 real vs staging pendiente. |
@@ -25,11 +25,12 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 | I-06 multi-idea | **Código DONE**; `segmentacionIdeas` **default off** (kill-switch global `true`) | Probar bajo flag encendido en sim. |
 | I-08 carga masiva | **DONE** (backend + UI) | Probar CSV/XLSX + reporte por fila. |
 | I-09 tejido colectivo | **DIFERIDA (reunión 20-jul, Capa 3)**; `tejidoColectivo` **default off** | **Fuera del alcance funcional del Hito.** Solo smoke: verificar que el flag está OFF; si por error queda ON, SEC-06..08/SEC-12 siguen CORE. |
-| I-17 BD dos niveles (maduro/incubación) | **NUEVA (reunión 20-jul); pendiente de implementar** — puntos de diseño abiertos (I-17 §5) | Cuando esté en el build: clasificación determinista por umbral, paráfrasis solo tras umbral, filtro en Resultados. Hasta entonces marcar **BLOCKED**. |
+| I-17 BD dos niveles (maduro/incubación) | **DONE local**; clasificación por umbral 0.6, filtro/contador en Resultados, rechazo explícito y cierre por inactividad por campaña | Validar clasificación, filtros, rechazo y expiración; el cierre anticipado sigue apagado hasta el acta. |
 | P-03 reinicio de datos | **DONE** (participante y campaña); `Seguridad:PermitirReinicioDatos` **se apaga en el freeze** | Herramienta base para re-correr casos. |
 | P-10 cupos/rate/costo | **Backend HECHO**; `Conversacion:CuposHabilitados` **default off**; techo turnos y rate por número independientes | Probar encendiendo cupos en sim. |
-| P-13 override umbral por campaña | **← ACTUAL** (impl en curso); `configConversacional.umbralCierreAnticipado` (`double?`) | Confirmar herencia global vs override. Si aún no está en el build de prueba, marcar **BLOCKED** y usar el global. |
-| I-01 cierre por umbral | Mecanismo existe, **`UmbralCierreAnticipado` default 0 = off**; activación humana en Pruebas | Probar activando por override P-13 (o global). |
+| I-14 tags | **BLOCKED — falta catálogo consolidado de GHT** | No cargar ni probar segmentación real hasta recibir nombre, tipo, descripción opcional y estado de las etiquetas. |
+| P-13 override umbral por campaña | **DONE local**; override nullable + kill-switch global | Confirmar herencia pregunta→campaña→global y que el kill-switch global apaga todos los cierres. |
+| I-01 cierre por umbral | Umbral global 0.6; **`CierreAnticipadoHabilitado=false`** por defecto; activación humana en Pruebas | Probar solo si el acta enciende el kill-switch y el valor elegido. |
 | I-12 seed thoughts | **BLOCKED** (insumo vencido) | No bloquea el Hito conversacional; validar solo "campaña sin seeds = comportamiento base". |
 
 > **Regla de ambigüedad:** ante duda sobre el estado real, asumir el **comportamiento documentado** en `Reglas_Conversacion_y_Participacion.md` y `AVANCES.md`, y **marcar el caso como "Verificar build"**.

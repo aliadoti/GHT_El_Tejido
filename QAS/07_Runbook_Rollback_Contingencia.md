@@ -14,8 +14,10 @@
 | `Conversacion:SegmentacionIdeas=false` | App Setting | Apaga multi-idea (I-06) global → 1 mensaje = 1 respuesta. |
 | `configConversacional.segmentacionIdeas=false` | Portal, por campaña | Apaga multi-idea en esa campaña. |
 | `Conversacion:Parafraseo=false` | App Setting | Apaga parafraseo (I-05) global → retro clásica. |
-| `Conversacion:UmbralCierreAnticipado=0` | App Setting | Desactiva cierre por calificación alta (I-01) global. |
+| `Conversacion:CierreAnticipadoHabilitado=false` | App Setting | Botón de pánico: apaga todos los cierres por calificación alta (I-01), sin cambiar la clasificación de madurez. |
+| `Conversacion:UmbralCierreAnticipado=0` | App Setting | Cambia el umbral global heredable; usar para recalibrar, no como botón de pánico. |
 | `configConversacional.umbralCierreAnticipado=0`/null | Portal, por campaña (P-13) | Desactiva/hereda el umbral por campaña. |
+| `Conversacion:MinutosInactividadSesion=0` | App Setting | Apaga el cierre por inactividad global; los overrides por campaña deben quedar en `0`/vacíos si se requiere apagarlo para todas. |
 | `Conversacion:CuposHabilitados` | App Setting | ON aplica cupos de campaña; OFF los desactiva (ver regla D2). |
 | `Conversacion:MaxTurnosPorHilo` | App Setting | Techo duro de turnos; subir para aflojar, bajar para blindar. |
 | `Seguridad:RateNumeroWhatsAppPorMinuto` | App Setting | Rate por número; subir/bajar la ventana. |
@@ -38,7 +40,7 @@
 | C5 | **Un número inunda el webhook** | Rate por número apagado/alto | Subir `Seguridad:RateNumeroWhatsAppPorMinuto` (activar) | Excedentes se descartan (`rate_numero`) | Ops |
 | C6 | **Multi-idea genera respuestas raras / costo N×** | I-06 mal calibrado | `Conversacion:SegmentacionIdeas=false` | Vuelve a 1 mensaje = 1 respuesta | Ing. |
 | C7 | **Parafraseo infiel / agrega datos** | I-05 | `Conversacion:Parafraseo=false` | Retro clásica | Ing. |
-| C8 | **Cierra demasiado pronto por calificación alta** | Umbral I-01 muy agresivo | Bajar/`0` el umbral (global o override P-13 de la campaña) | Vuelven las revisiones normales | Árbitro calibración |
+| C8 | **Cierra demasiado pronto por calificación alta** | Umbral I-01 muy agresivo | `Conversacion:CierreAnticipadoHabilitado=false` de inmediato; luego recalibrar el umbral | Vuelven las revisiones normales | Árbitro calibración |
 | C9 | **No cierra nunca / participantes atrapados** | Umbral off + revisiones + sin techo | Verificar `MaxRepreguntas`; activar `MaxTurnosPorHilo`; opcional subir umbral | Hilos terminan | Ing. |
 | C10 | **Error técnico visible al participante** | Fallback no cubrió un caso | Revisar `LogSeguridad`/App Insights por `correlationId`; si es una función bajo flag, apagarla | Nuevos casos caen a fallback neutro | Ing. |
 | C11 | **Webhook procesa duplicados** | Dedupe/idempotencia | No hay flag: **pausar envíos**, revisar `leases`/`WebhookDedupe` | Sin duplicados nuevos | Ing. inmediato |

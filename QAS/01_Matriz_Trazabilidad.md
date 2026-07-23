@@ -2,7 +2,7 @@
 
 > Traza cada iniciativa/requisito comprometido a los casos de `02_Casos_de_Prueba_E2E.md`.
 > **Prioridad:** CORE = must-pass (bloquea go-live) · Ext = extendido.
-> **Estado build:** de `AVANCES.md`/índice al 2026-07-21. **Estado prueba:** lo llena el tester (Pendiente/OK/Falla/Bloqueado).
+> **Estado build:** de `AVANCES.md`/índice al 2026-07-23. **Estado prueba:** lo llena el tester (Pendiente/OK/Falla/Bloqueado).
 
 ## 1. Por iniciativa
 
@@ -23,16 +23,17 @@
 | **I-06 multi-idea** (I-06; Reglas §2.4.1) | Segmenta N ideas → N respuestas/evaluaciones/Markdown; fallback 1-idea | FLG-03, FLG-04 | Ext | DONE, off | |
 | **I-08 carga masiva** (I-08) | CSV/XLSX → reporte por fila; idempotente; sin PII en logs | ADM-08, ADM-09 | CORE | DONE | |
 | **I-09 tejido colectivo** (I-09; Reglas §2.9; spec 10 §5) | **DIFERIDA (reunión 20-jul).** Función fuera de alcance; si el flag quedara ON, la **seguridad sigue CORE**: anonimización + anti-injection transitiva | SEC-06..08, SEC-12 | CORE (seguridad, solo si ON) / — (función diferida) | Core DONE pero **OFF/diferido** | |
-| **I-17 BD dos niveles** (I-17; reunión 20-jul) | Clasificación `maduro`/`incubacion` por umbral (fórmula determinista, escala de la campaña); paráfrasis solo tras umbral; filtro en Resultados | (por definir — CNV-08/ADM-13 al implementar) | CORE | **Pendiente (diseño abierto §5)** | |
+| **I-17 BD dos niveles** (I-17; reunión 20-jul) | Clasificación `maduro`/`incubacion` por umbral; paráfrasis solo si madura; filtro en Resultados; rechazo explícito y expiración por campaña | CNV-08, CNV-09, ADM-12, ROB-08, GRD-06 | CORE | **DONE local** | |
 | **P-03 reinicio de datos** (P-03) | Reinicio participante/campaña; conserva config; cold-start real; 409 con flag off | ADM-10, ADM-11 | CORE | DONE | |
 | **P-10 cupo mensajes/usuario** (P-10; Reglas §2.8.1) | Al exceder → descarte neutral silencioso | GRD-01 | CORE | Backend, gated off | |
 | **P-10 cupo llamadas LLM/usuario** (P-10; Reglas §2.8.2) | Al exceder → no llama LLM, cierra elegante | GRD-02 | CORE | Backend, gated off | |
 | **P-10 techo turnos/hilo** (Reglas §2.8.3) | `MaxTurnosPorHilo` → cierra elegante; independiente del flag cupos | GRD-03 | CORE | Backend | |
 | **P-10 rate por número** (spec 10 §2) | `RateNumeroWhatsAppPorMinuto` → descarte silencioso | GRD-04 | CORE | Backend | |
 | **P-10 presupuesto tokens campaña** (spec 10 §2) | Al alcanzar → cierre elegante + `LogSeguridad(presupuesto_tokens_campania)` | GRD-05 | Ext | Backend, gated | |
-| **P-13 umbral por campaña** (P-13) | `campaña ?? global`; override activa/desactiva; herencia | FLG-05, GRD-06 | Ext | ← ACTUAL (verificar build) | |
+| **P-13 umbral por campaña** (P-13) | Precedencia pregunta→campaña→global; override activa/desactiva; kill-switch global prevalece | FLG-05, GRD-06 | Ext | DONE local | |
 | **Ventana 24h** (Reglas §2.5) | Respuesta tardía reabre ventana; sistema responde en texto libre | ROB-07 | CORE | Listo | REAL |
 | **Expiración por inactividad** (Reglas §2.6) | Hilo abierto sin actividad → cierre silencioso por barrido | ROB-08 | Ext | Listo (config) | |
+| **I-14 tags** (I-14) | Catálogo GHT aplicado a carga masiva y filtros | Pendiente de catálogo | Ext | **BLOCKED — insumo GHT** | |
 | **Multi-pregunta** (Reglas §2.1) | Avance por `orden`; abre siguiente al cerrar la actual | ROB-09, CNV-05 | CORE | Listo | |
 | **Idempotencia/dedupe webhook** (spec 10 §3.2) | `whatsappMessageId` repetido → no reprocesa | ROB-04, ROB-05 | CORE | Listo | |
 | **Firma webhook** (spec 10 §3) | `X-Hub-Signature-256` inválida → 401 descarta | ROB-06, SEC-15 | CORE | Listo | |

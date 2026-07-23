@@ -14,6 +14,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 05 | [Plantillas Defecto y Bitácora](05_Plantillas_Defecto_y_Bitacora.md) | Reporte de defecto (severidad/prioridad), bitácora de ejecución, resumen de cierre. |
 | 06 | [Criterios de Aceptación LLM](06_Criterios_Aceptacion_LLM.md) | Cómo juzgar salidas no deterministas; detección de fuga de rúbrica/PII; qué NO es defecto. |
 | 07 | [Runbook Rollback / Contingencia](07_Runbook_Rollback_Contingencia.md) | Síntoma → qué flag/kill-switch apagar en producción, sin hotfix en caliente. |
+| 08 | [Cómo probar cada iniciativa (lenguaje simple)](08_Como_Probar_Cada_Iniciativa_Lenguaje_Simple.md) | Guía **sin tecnicismos** para que cualquiera compruebe cada mejora: qué abrir, qué hacer y qué debería verse. |
 
 ## Cómo empezar (tester)
 
@@ -32,6 +33,6 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 
 El **no determinismo del LLM** se gestiona en todo el paquete con **criterios cualitativos tolerantes**; lo determinista (cupos, dedupe, firma, umbral, estados) se valida al pie de la letra. Regla: *"el LLM propone, el sistema dispone"*.
 
-## Nota de estado (2026-07-21)
+## Nota de estado (2026-07-23)
 
-Verificar antes de ejecutar: **P-13** (override de umbral por campaña) estaba en implementación; si no está en el build, calibrar el umbral I-01 por el **global** y marcar el caso GRD-06/FLG-05. Baseline **D5 real** pendiente → la calidad conversacional se arbitra en UAT; la **seguridad** no espera al banco (filtro determinista).
+**P-13** e **I-17** están completos localmente. El cierre anticipado sigue apagado hasta el acta: el interruptor global es `Conversacion:CierreAnticipadoHabilitado=false`; la clasificación de madurez usa umbral 0.6 aun con ese cierre apagado. Baseline **D5 real** pendiente → la calidad conversacional se arbitra en UAT; la **seguridad** no espera al banco (filtro determinista). **I-14 tags** está bloqueada hasta que GHT entregue el catálogo.

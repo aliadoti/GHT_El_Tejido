@@ -69,12 +69,13 @@ Registrar la decisión y quién la firma. **Un flag solo va ON si pasó carga + 
 |---|---|---|---|
 | `Conversacion:SegmentacionIdeas` (I-06) + `configConversacional.segmentacionIdeas` por campaña | kill-switch `true` / campo `false` | ON / **OFF** | |
 | `Conversacion:TejidoColectivo` (I-09) + `tejidoColectivo` por campaña | kill-switch `true` / campo `false` | **OFF obligatorio — DIFERIDO reunión 20-jul (no es decisión)** | |
-| `Conversacion:UmbralCierreAnticipado` (I-01) / `Conversacion:UmbralMadurez` (I-17) o override P-13 por campaña | `0` (off) | valor / **OFF** | |
+| `Conversacion:UmbralCierreAnticipado` (I-01/I-17) + override por campaña/pregunta | `0.6` | valor calibrado / conservar | |
+| `Conversacion:CierreAnticipadoHabilitado` (I-01) | `false` | **ON** solo tras D5 + UAT + costo / **OFF** | |
 | `Conversacion:Parafraseo` (I-05) + `parafraseo` por campaña | kill-switch `true` / campo `false` | ON / **OFF** (recordar: reunión 20-jul pide paráfrasis **solo tras umbral**, I-17) | |
 | `Conversacion:CuposHabilitados` (P-10) | `false` | **ON** recomendado antes de aflojar I-01 (D2) / OFF | |
 | `Conversacion:MaxTurnosPorHilo` | `0` (off) | valor ≈ `2+MaxRepreguntas` | |
 | `Seguridad:RateNumeroWhatsAppPorMinuto` | `0` (off) | valor | |
-| `Conversacion:HorasExpiracionSinRespuesta` | `0` (off) | p. ej. `72` | |
+| `Conversacion:MinutosInactividadSesion` + override por campaña | `0` (off) | p. ej. `5` / **OFF** | |
 | `Seguridad:PermitirReinicioDatos` (P-03) | `true` | **`false`** en el freeze | |
 | `Simulacion:Habilitada` | — | **`false`** al cerrar pruebas | |
 

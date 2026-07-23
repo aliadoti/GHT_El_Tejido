@@ -69,6 +69,22 @@
 - **Criterio de aprobación:** existe conversación `cerrada`, respuesta `evaluada`, y Markdown no vacío que **no** contiene secretos/API keys ni PII de terceros (ver SEC-14). Determinista.
 - **Ambiente:** sim.
 
+### CNV-08 | I-17 clasifica la idea como madura o incubación
+- **Prioridad:** CORE · **I-17 / REQ §9, §22**
+- **Precondición:** campaña de prueba con umbral conocido; el cierre anticipado puede permanecer apagado.
+- **Pasos:** enviar una respuesta fuerte y otra claramente incompleta; abrir **Resultados** después de cada una.
+- **Resultado esperado:** cada respuesta muestra `madura` o `incubación` según su calificación total frente al umbral efectivo. Apagar el cierre anticipado no cambia esta clasificación.
+- **Criterio de aprobación:** el nivel coincide con la fórmula `Total >= Min + Umbral·(Max−Min)`; no depende de que el coach cierre antes.
+- **Ambiente:** sim.
+
+### CNV-09 | Rechazo explícito degrada una idea madura y cierra
+- **Prioridad:** CORE · **I-17 / Reglas §2.3**
+- **Precondición:** hilo en espera de mejora con al menos una respuesta marcada madura.
+- **Pasos:** responder con una frase de rechazo corta, por ejemplo `no lo guardes`; revisar Resultados.
+- **Resultado esperado:** las respuestas maduras del hilo pasan a incubación y el participante recibe un acuse de cierre, sin una nueva evaluación.
+- **Criterio de aprobación:** no se conserva ninguna respuesta madura en ese hilo; hay cierre y no se llama de nuevo al evaluador.
+- **Ambiente:** sim.
+
 ---
 
 ## B. Seguridad y privacidad (SEC) — **cobertura obligatoria**
@@ -282,10 +298,10 @@
 - **Ambiente:** sim.
 
 ### ADM-12 | Consulta de resultados y filtros
-- **Prioridad:** Ext · **REQ §33.1.8 / spec 11**
-- **Pasos:** filtrar resultados por campaña, usuario, área, empresa, tag, pregunta y calificación.
-- **Resultado esperado:** los filtros devuelven el subconjunto correcto; muestran respuesta, calificación, explicación y Markdown.
-- **Criterio de aprobación:** cada filtro acota correctamente; sin secretos. Determinista.
+- **Prioridad:** Ext · **REQ §33.1.8 / spec 11 / I-17**
+- **Pasos:** filtrar resultados por campaña, usuario, área, empresa, tag, pregunta, calificación y nivel de madurez.
+- **Resultado esperado:** los filtros devuelven el subconjunto correcto; muestran respuesta, calificación, explicación, Markdown y el distintivo madura/incubación con sus conteos.
+- **Criterio de aprobación:** cada filtro acota correctamente; el filtro de nivel no mezcla maduras e incubación; sin secretos. Determinista.
 - **Ambiente:** sim.
 
 ---
@@ -334,12 +350,12 @@
 - **Criterio de aprobación:** el presupuesto detiene nuevas llamadas; evento registrado. Exacto (el conteo de tokens viene del proveedor).
 - **Ambiente:** sim (requiere Config LLM real para tokens).
 
-### GRD-06 | Umbral de cierre — override por campaña (P-13) vs global
+### GRD-06 | Umbral de cierre — precedencia y kill-switch global (P-13 / I-17)
 - **Prioridad:** Ext · **P-13 / I-01**
-- **Precondición:** **verificar que P-13 está en el build**. `RUB-QA` escala 0–5. Caso A: `configConversacional.umbralCierreAnticipado=0.8` en `CAMP-QA`, global off. Caso B: override `0` (off) con global activo.
-- **Pasos:** en A, provocar una calificación alta (≥ `0 + 0.8·5 = 4.0`); en B, verificar que el override apaga aunque el global esté activo.
-- **Resultado esperado:** A → cierra sin insistir con felicitación previa; B → **no** cierra por umbral (override manda). Fórmula: `Total >= Min + Umbral·(Max−Min)`.
-- **Criterio de aprobación:** el valor **efectivo** es `campaña ?? global`; A cierra en ≥4.0, B ignora el global. Si P-13 no está: usar el global y marcar el caso. Determinista (fórmula).
+- **Precondición:** `RUB-QA` escala 0–5. Caso A: campaña `0.8` y kill-switch ON. Caso B: override de campaña `0` con kill-switch ON. Caso C: una configuración que cerraría, con kill-switch global OFF.
+- **Pasos:** en A provocar calificación ≥4.0; en B y C repetir con la misma calificación alta.
+- **Resultado esperado:** A cierra sin insistir; B no cierra porque la campaña lo apaga; C no cierra porque el kill-switch global prevalece. Fórmula: `Total >= Min + Umbral·(Max−Min)`.
+- **Criterio de aprobación:** la precedencia es pregunta→campaña→global, pero `CierreAnticipadoHabilitado=false` apaga todos los cierres. Determinista.
 - **Ambiente:** sim.
 
 ### GRD-07 | Longitud máxima de mensaje entrante
@@ -404,12 +420,12 @@
 - **Criterio de aprobación:** la respuesta del sistema se entrega tras el mensaje tardío; no se intenta proactivo fuera de ventana. Confirmar en **real**.
 - **Ambiente:** real (+ sim para el camino lógico).
 
-### ROB-08 | Expiración por inactividad
+### ROB-08 | Expiración por inactividad por campaña
 - **Prioridad:** Ext · **Reglas §2.6**
-- **Precondición:** `Conversacion:HorasExpiracionSinRespuesta` = valor bajo de prueba (p. ej. 1); barrido activo.
-- **Pasos:** abrir un hilo y no responder pasado el plazo.
+- **Precondición:** dos campañas de prueba con ventanas distintas; una con minutos por campaña y otra que hereda el valor global. Barrido activo.
+- **Pasos:** abrir un hilo en cada campaña y no responder pasado su plazo.
 - **Resultado esperado:** el hilo abierto se **cierra silenciosamente** (sin mensaje); la última evaluación (si la hubo) queda definitiva.
-- **Criterio de aprobación:** el hilo pasa a `cerrada` por barrido; sin mensaje saliente. Exacto (config).
+- **Criterio de aprobación:** cada hilo pasa a `cerrada` según su propia ventana efectiva, sin mensaje saliente. Exacto (config).
 - **Ambiente:** sim.
 
 ### ROB-09 | Multi-pregunta bajo cierre por agotar revisiones
@@ -462,7 +478,7 @@
 
 ### FLG-05 | I-01 cierre por umbral (activado)
 - **Prioridad:** CORE* (si el acta lo activa) · **I-01 / P-13**
-- **Precondición:** umbral activo (por override P-13 en `CAMP-QA`, p. ej. `0.85`; o global si P-13 no está).
+- **Precondición:** umbral activo (por override P-13 en `CAMP-QA`, p. ej. `0.85`) y `CierreAnticipadoHabilitado=true`.
 - **Pasos:** provocar una calificación que alcance el corte (≥ `0.85·5 = 4.25`).
 - **Resultado esperado:** el sistema **no insiste** con revisión aunque queden repreguntas; antepone felicitación (`MensajeCalificacionAlta`), compila Markdown y avanza; `LogSeguridad(cierreUmbralAnticipado)` con `detalle=umbral:…;score:…;valor:…;escala:…`.
 - **Criterio de aprobación:** cierre anticipado cuando `Total >= 4.25`; evento de calibración con valor efectivo y origen (campaña/global). Determinista (fórmula); la calificación en sí es no determinista → usar una respuesta muy fuerte y repetir si no alcanza.
@@ -480,7 +496,7 @@
 
 ## Resumen de prioridad
 
-**CORE (must-pass, bloquea go-live):** CNV-01..07, SEC-01..05, SEC-09..11, SEC-13..15, AUT-01..02, AUT-04..05, ADM-01..11 (crear/editar/envíos/snapshots/carga/reinicio), GRD-01..04, GRD-06 (si P-13/umbral se activa), ROB-01..07, ROB-09, FLG-05 (si el acta activa I-01).
+**CORE (must-pass, bloquea go-live):** CNV-01..09, SEC-01..05, SEC-09..11, SEC-13..15, AUT-01..02, AUT-04..05, ADM-01..11 (crear/editar/envíos/snapshots/carga/reinicio), GRD-01..04, GRD-06 (si P-13/umbral se activa), ROB-01..07, ROB-09, FLG-05 (si el acta activa I-01).
 
 **Condicional — solo si se enciende el tejido (I-09 DIFERIDO 20-jul; por defecto N/A, el smoke verifica flag OFF):** SEC-06, SEC-07, SEC-08, SEC-12, FLG-06. Si el tejido va ON, SEC-06/07/08/12 vuelven a **CORE de seguridad**.
 
