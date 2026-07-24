@@ -1,6 +1,6 @@
 # P-15 — Refactorizar el orquestador conversacional
 
-**Estado:** WIP — Cortes 1-2 de 3 DONE local (2026-07-24, Claude Opus 4.8)  
+**Estado:** DONE local — 3 de 3 cortes (2026-07-24, Claude Opus 4.8)  
 **Origen:** `CAL-001` de la auditoría técnica del 2026-07-24.  
 **Dependencias:** ninguna externa. Conserva el contrato actual de `IOrquestadorConversacion`.
 
@@ -21,7 +21,20 @@
 > maduras, contar turnos/cupos) con el mismo orden y cortocircuito. Sin cambio de comportamiento. **Verificado
 > local:** build `-warnaserror` 0/0; test **462 verde (410 unit + 52 integration; +19
 > `ResolvedorTransicionConversacionTests`)** — las 371 pruebas de regresión del orquestador siguen verdes;
-> format limpio. **Pendiente:** Corte 3 (`ProcesadorResultadoEvaluacion`: efectos posteriores a la evaluación).
+> format limpio. Commit `3e5cc9a`.
+>
+> **Avance 2026-07-24 (Claude Opus 4.8) — Corte 3/3 DONE local → P-15 COMPLETA.** Se extrajeron los
+> **efectos posteriores a la evaluación** a `ProcesadorResultadoEvaluacion` (`src/ElTejido.Application/Conversacion/`):
+> persistencia de evaluación/respuesta, compilación de Markdown, telemetría de calibración (madurez I-17,
+> cierre por umbral I-01, reclasificación por rechazo I-17 §5.4) y el compuesto `PersistirRespuestaEvaluadaAsync`
+> que fija el **orden observable** persistir→registrar→compilar, reutilizado por el flujo normal y el
+> segmentado (I-06) — elimina la duplicación que existía entre ambos. El **envío** al participante
+> (`EnviarAsync`) permanece como primitiva única de la fachada (05 §4: no fragmentar persistir/enviar).
+> Nuevas pruebas `ProcesadorResultadoEvaluacionTests` (6). **Verificado local:** build `-warnaserror` 0/0;
+> test **468 verde (416 unit + 52 integration; +6)** — las 371 pruebas de regresión del orquestador siguen
+> verdes; format limpio. Con esto la fachada `OrquestadorConversacion` quedó como coordinadora de tres
+> colaboradores (`PoliticaLimitesConversacion`, `ResolvedorTransicionConversacion`,
+> `ProcesadorResultadoEvaluacion`). Siguiente iniciativa: P-16.
 
 ## 1. Propósito
 

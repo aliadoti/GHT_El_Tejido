@@ -41,13 +41,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IEvaluadorLlm _evaluador;
     private readonly ISegmentadorIdeas _segmentadorIdeas;
     private readonly IBaseConocimientoCampania _baseConocimiento;
-    private readonly ICompiladorMarkdown _compilador;
     private readonly IWhatsAppGateway _gateway;
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
     private readonly OpcionesMensajesConversacion _mensajes;
     private readonly ResolvedorTransicionConversacion _transicion;
     private readonly PoliticaLimitesConversacion _limites;
+    private readonly ProcesadorResultadoEvaluacion _procesador;
     private readonly bool _cuposHabilitados;
     private readonly int _maxTurnosPorHilo;
     private readonly bool _segmentacionIdeasHabilitada;
@@ -82,12 +82,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _evaluador = evaluador;
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
-        _compilador = compilador;
         _gateway = gateway;
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
         _mensajes = opciones.Mensajes;
         _limites = new PoliticaLimitesConversacion(opciones.UmbralCierreAnticipado, opciones.CierreAnticipadoHabilitado);
+        _procesador = new ProcesadorResultadoEvaluacion(respuestas, compilador, logSeguridad, correlacion, _limites);
         _cuposHabilitados = opciones.CuposHabilitados;
         _maxTurnosPorHilo = opciones.MaxTurnosPorHilo;
         _segmentacionIdeasHabilitada = opciones.SegmentacionIdeas;
@@ -203,7 +203,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             // guardado: se registra sin evaluar y se cierra. Si pidio continuar o rechazo, se antepone un
             // acuse calido. Los techos deterministas dejan ademas rastro RateLimit en LogSeguridad.
             conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp);
-            await GuardarRespuestaAsync(
+            await _procesador.GuardarRespuestaAsync(
                 respuestaId,
                 campania.Id,
                 usuario,
@@ -224,7 +224,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             // (regenera su Markdown y registra telemetria) antes de cerrar con el acuse de rechazo.
             if (deseaRechazarGuardado)
             {
-                await ReclasificarComoIncubacionAsync(campania, usuario, pregunta, madurasAReclasificar, ahora, cancellationToken);
+                await _procesador.ReclasificarComoIncubacionAsync(campania, usuario, pregunta, madurasAReclasificar, ahora, cancellationToken);
             }
 
             var acuse = deseaRechazarGuardado
@@ -253,7 +253,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             // Sin configuracion completa (rubrica/prompt/configLLM) no se puede evaluar: se informa
             // un problema operativo al participante y se cierra sin llamar al LLM.
             await RegistrarConfiguracionNoDisponibleAsync(usuario, contexto.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
-            await GuardarRespuestaAsync(respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta, EstadoRespuesta.EvaluacionPendiente, ahora, cancellationToken);
+            await _procesador.GuardarRespuestaAsync(respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta, EstadoRespuesta.EvaluacionPendiente, ahora, cancellationToken);
             await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, ahora, cancellationToken);
             return;
         }
@@ -295,29 +295,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var resultado = await _evaluador.EvaluarAsync(contextoEval, cancellationToken);
-        await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
+        var escala = contexto.Contexto.RubricaSnapshot.Escala;
+
+        // Efectos posteriores a la evaluacion (P-15 Corte 3): persistir evaluacion+respuesta, sellar la
+        // madurez (I-17) y compilar Markdown, en el mismo orden observable; devuelve el nivel sellado.
+        var nivelMadurez = await _procesador.PersistirRespuestaEvaluadaAsync(
+            resultado, campania, pregunta, usuario, conversacionId, respuestaId, mensaje.Texto, esRepregunta, escala, ahora, cancellationToken);
 
         var esFallback = resultado is ResultadoEvaluacion.Fallback;
         var evaluacion = resultado.Evaluacion;
-        var escala = contexto.Contexto.RubricaSnapshot.Escala;
-
-        // I-17: umbral base (pregunta → campaña → global) y clasificación de madurez sellada al evaluar.
-        // La madurez es independiente del kill-switch de cierre; el cierre anticipado sí lo respeta.
-        var umbralBase = _limites.ResolverUmbralBase(campania, pregunta);
-        var nivelMadurez = _limites.ClasificarMadurez(esFallback, evaluacion.CalificacionTotal, escala, umbralBase);
-        await RegistrarClasificacionMadurezAsync(usuario, nivelMadurez, evaluacion.CalificacionTotal, escala, umbralBase, _limites.OrigenUmbral(campania, pregunta), ahora, cancellationToken);
-
-        await GuardarRespuestaAsync(
-            respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta,
-            esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada, ahora, cancellationToken,
-            nivelMadurez: nivelMadurez);
-
-        // El Markdown se compila por cada evaluacion valida (cada intento queda con su artefacto;
-        // el ultimo es el definitivo). En fallback no se compila (08 §6).
-        if (!esFallback)
-        {
-            await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
-        }
 
         // I-17: la paráfrasis "esto es lo que entendí" (I-05) solo se antepone cuando la idea es madura;
         // en incubación se mantiene la retro/invitación habitual (la idea aún no está lista para guardar).
@@ -348,7 +334,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // alta se intercala una felicitacion para que el corte temprano se sienta natural.
         if (calificacionAlta)
         {
-            await RegistrarCierreUmbralAsync(
+            await _procesador.RegistrarCierreUmbralAsync(
                 usuario,
                 evaluacion.CalificacionTotal,
                 _limites.ValorUmbral(escala, umbralCierre),
@@ -389,8 +375,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var resolucion = await ResolverIdeasAsync(contextoBase, textoOriginal, cancellationToken);
         await RegistrarSegmentacionAsync(usuario, resolucion, ahora, cancellationToken);
 
-        // I-17: el umbral base (pregunta → campaña → global) es constante por pregunta para todas las ideas.
-        var umbralBase = _limites.ResolverUmbralBase(campania, pregunta);
+        // I-17: el origen del umbral (pregunta → campaña → global) es constante por pregunta para todas
+        // las ideas; se reusa en la telemetria del cierre por umbral mas abajo.
         var origenUmbral = _limites.OrigenUmbral(campania, pregunta);
 
         var resultados = new List<(ResultadoEvaluacion Resultado, ContextoEvaluacion Contexto)>();
@@ -401,35 +387,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 : "resp_" + Guid.NewGuid().ToString("N");
             var contexto = contextoBase with { RespuestaId = respuestaId, RespuestaTexto = idea.Texto };
             var resultado = await _evaluador.EvaluarAsync(contexto, cancellationToken);
-            await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
-            var esFallback = resultado is ResultadoEvaluacion.Fallback;
-            // I-17: sella la madurez por idea (03 §3.8) y registra su clasificacion para calibracion.
-            var nivelMadurez = _limites.ClasificarMadurez(
-                esFallback, resultado.Evaluacion.CalificacionTotal, contexto.RubricaSnapshot.Escala, umbralBase);
-            await RegistrarClasificacionMadurezAsync(
-                usuario, nivelMadurez, resultado.Evaluacion.CalificacionTotal, contexto.RubricaSnapshot.Escala,
-                umbralBase, origenUmbral, ahora, cancellationToken);
-
-            await GuardarRespuestaAsync(
-                respuestaId,
-                campania.Id,
-                usuario,
-                pregunta,
-                conversacion.Id,
-                idea.Texto,
-                esRepregunta,
-                esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada,
-                ahora,
-                cancellationToken,
+            // Mismos efectos posteriores que el flujo de una sola respuesta (P-15 Corte 3), por idea.
+            await _procesador.PersistirRespuestaEvaluadaAsync(
+                resultado, campania, pregunta, usuario, conversacion.Id, respuestaId, idea.Texto, esRepregunta,
+                contexto.RubricaSnapshot.Escala, ahora, cancellationToken,
                 resolucion.FueSegmentada ? idea.Indice : null,
-                resolucion.FueSegmentada ? respuestaPadreId : null,
-                nivelMadurez);
-
-            if (!esFallback)
-            {
-                await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuestaId, cancellationToken);
-            }
+                resolucion.FueSegmentada ? respuestaPadreId : null);
 
             resultados.Add((resultado, contexto));
         }
@@ -448,7 +412,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                     resultado.Contexto.RubricaSnapshot.Escala,
                     umbralCierre))
             {
-                await RegistrarCierreUmbralAsync(
+                await _procesador.RegistrarCierreUmbralAsync(
                     usuario,
                     resultado.Resultado.Evaluacion.CalificacionTotal,
                     _limites.ValorUmbral(resultado.Contexto.RubricaSnapshot.Escala, umbralCierre),
@@ -731,92 +695,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     // valor de corte y la elegibilidad de mejora viven ahora en PoliticaLimitesConversacion (colaborador
     // determinista sin E/S); el orquestador solo la coordina vía _limites.
 
-    // I-01: telemetria de calibracion del cierre anticipado. Se registra en LogSeguridad (consultable,
-    // 10 §6.2/§6.4) cada vez que el umbral dispara, con el score y el valor de corte (sin PII de texto).
-    // Permite dimensionar el umbral en staging: cuantos cierres tempranos y a que calificacion.
-    private Task RegistrarCierreUmbralAsync(
-        Usuario usuario,
-        decimal calificacionTotal,
-        decimal valorUmbral,
-        EscalaRubrica escala,
-        double umbralEfectivo,
-        string origen,
-        DateTimeOffset ahora,
-        CancellationToken cancellationToken)
-        => _logSeguridad.RegistrarAsync(
-            LogSeguridad.Crear(
-                "log_" + Guid.NewGuid().ToString("N"),
-                TipoEventoSeguridad.CierreUmbralAnticipado,
-                usuario.Id,
-                usuario.WhatsappNormalizado.Valor,
-                "cierre_anticipado",
-                FormattableString.Invariant(
-                    $"origen:{origen};umbral:{umbralEfectivo:0.###};score:{calificacionTotal};valor:{valorUmbral};escala:{escala.Min}-{escala.Max}"),
-                _correlacion.CorrelationIdActual,
-                ahora),
-            cancellationToken);
-
-    // I-17 (03 §3.4/§3.8): telemetria de calibracion del sellado de madurez. Se registra por cada
-    // evaluacion (valida o fallback) para dimensionar la distribucion maduro/incubacion por campania y
-    // calibrar el umbral. Sin PII de texto: solo nivel, score, valor de corte, escala y origen del umbral.
-    private Task RegistrarClasificacionMadurezAsync(
-        Usuario usuario,
-        NivelMadurez nivelMadurez,
-        decimal calificacionTotal,
-        EscalaRubrica escala,
-        double umbralBase,
-        string origen,
-        DateTimeOffset ahora,
-        CancellationToken cancellationToken)
-        => _logSeguridad.RegistrarAsync(
-            LogSeguridad.Crear(
-                "log_" + Guid.NewGuid().ToString("N"),
-                TipoEventoSeguridad.ClasificacionMadurez,
-                usuario.Id,
-                usuario.WhatsappNormalizado.Valor,
-                nivelMadurez == NivelMadurez.Maduro ? "maduro" : "incubacion",
-                FormattableString.Invariant(
-                    $"origen:{origen};umbral:{umbralBase:0.###};score:{calificacionTotal};valor:{_limites.ValorUmbral(escala, umbralBase)};escala:{escala.Min}-{escala.Max}"),
-                _correlacion.CorrelationIdActual,
-                ahora),
-            cancellationToken);
-
-    // I-17 §5.4: degrada a incubacion las respuestas maduras del hilo tras un rechazo explicito del
-    // participante ("guardar salvo que diga no"), regenera su Markdown para que el metadato de madurez
-    // (09) refleje la degradacion y deja telemetria. Nunca promueve; es idempotente.
-    private async Task ReclasificarComoIncubacionAsync(
-        Campania campania,
-        Usuario usuario,
-        Pregunta pregunta,
-        IReadOnlyList<RespuestaUsuario> maduras,
-        DateTimeOffset ahora,
-        CancellationToken cancellationToken)
-    {
-        foreach (var respuesta in maduras)
-        {
-            respuesta.ReclasificarComoIncubacion();
-            await _respuestas.GuardarRespuestaAsync(respuesta, cancellationToken);
-            await CompilarMarkdownAsync(campania.Id, pregunta, usuario.Id, respuesta.Id, cancellationToken);
-            await RegistrarReclasificacionMadurezAsync(usuario, respuesta.Id, ahora, cancellationToken);
-        }
-    }
-
-    private Task RegistrarReclasificacionMadurezAsync(
-        Usuario usuario,
-        string respuestaId,
-        DateTimeOffset ahora,
-        CancellationToken cancellationToken)
-        => _logSeguridad.RegistrarAsync(
-            LogSeguridad.Crear(
-                "log_" + Guid.NewGuid().ToString("N"),
-                TipoEventoSeguridad.ClasificacionMadurez,
-                usuario.Id,
-                usuario.WhatsappNormalizado.Valor,
-                "incubacion",
-                FormattableString.Invariant($"motivo:rechazo_guardado;respuesta:{respuestaId}"),
-                _correlacion.CorrelationIdActual,
-                ahora),
-            cancellationToken);
+    // P-15 (CAL-001) Corte 3: la persistencia de evaluacion/respuesta, la compilacion de Markdown y los
+    // registros de calibracion (madurez I-17, cierre por umbral I-01, reclasificacion por rechazo I-17
+    // §5.4) viven ahora en ProcesadorResultadoEvaluacion; el orquestador los coordina via _procesador.
 
     /// <summary>
     /// I-09 tejido colectivo (05 §4.8, 08 §3.2): recupera aportes anonimizados de otros participantes,
@@ -1167,25 +1048,6 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora),
             cancellationToken);
 
-    private async Task CompilarMarkdownAsync(
-        string campaniaId,
-        Pregunta pregunta,
-        string usuarioId,
-        string respuestaId,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await _compilador.CompilarAsync(
-                new SolicitudCompilacion(campaniaId, pregunta.ConfigMarkdown.TipoArtefacto, respuestaId, usuarioId, pregunta.Id),
-                cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // El artefacto es regenerable desde datos (REQ §22.4.6); un fallo de compilacion no rompe el hilo.
-        }
-    }
-
     private async Task<EnvioResultado> EnviarAsync(
         DominioConversacion conversacion,
         NumeroWhatsApp numero,
@@ -1233,38 +1095,6 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _conversaciones.GuardarMensajeAsync(mensajePersistido, cancellationToken);
         return mensajePersistido.Id;
     }
-
-    private Task GuardarRespuestaAsync(
-        string respuestaId,
-        string campaniaId,
-        Usuario usuario,
-        Pregunta pregunta,
-        string conversacionId,
-        string texto,
-        bool esRepregunta,
-        EstadoRespuesta estado,
-        DateTimeOffset ahora,
-        CancellationToken cancellationToken,
-        int? ideaIndice = null,
-        string? respuestaPadreId = null,
-        NivelMadurez nivelMadurez = NivelMadurez.Incubacion)
-        => _respuestas.GuardarRespuestaAsync(
-            RespuestaUsuario.Crear(
-                respuestaId,
-                campaniaId,
-                usuario.Id,
-                pregunta.Id,
-                conversacionId,
-                texto,
-                Canal,
-                esRepregunta,
-                estado,
-                ahora,
-                usuario.Tags,
-                ideaIndice,
-                respuestaPadreId,
-                nivelMadurez),
-            cancellationToken);
 
     private Task MarcarParticipanteRespondioAsync(
         ParticipanteCampania participante,
