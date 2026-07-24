@@ -1,6 +1,6 @@
 # P-15 — Refactorizar el orquestador conversacional
 
-**Estado:** WIP — Corte 1 de 3 DONE local (2026-07-24, Claude Opus 4.8)  
+**Estado:** WIP — Cortes 1-2 de 3 DONE local (2026-07-24, Claude Opus 4.8)  
 **Origen:** `CAL-001` de la auditoría técnica del 2026-07-24.  
 **Dependencias:** ninguna externa. Conserva el contrato actual de `IOrquestadorConversacion`.
 
@@ -9,11 +9,19 @@
 > resolución de umbral base/cierre/origen (precedencia pregunta → campaña → global), clasificación de
 > madurez (I-17), valor de corte y elegibilidad de mejora. El orquestador delega en `_limites` sin cambiar
 > flujo, mensajes, orden, persistencia, flags ni contratos. Sin lógica de límite duplicada entre la fachada
-> y el colaborador. **Verificado local (SDK 8.0.412):** `dotnet build -c Release -warnaserror` 0/0;
-> `dotnet test --filter "Category!=Calibracion"` **443 verde (391 unit + 52 integration; +20
-> `PoliticaLimitesConversacionTests`)** — las 371 pruebas previas siguen verdes (regresión preservada);
-> `dotnet format --verify-no-changes` limpio. **Pendiente:** Corte 2 (`ResolvedorTransicionConversacion`:
-> resolución de la transición) y Corte 3 (`ProcesadorResultadoEvaluacion`: efectos posteriores).
+> y el colaborador. **Verificado local (SDK 8.0.412):** build `-warnaserror` 0/0; test **443 verde (391 unit
+> + 52 integration; +20 `PoliticaLimitesConversacionTests`)**; format limpio. Commit `56bbef2`.
+>
+> **Avance 2026-07-24 (Claude Opus 4.8) — Corte 2/3 DONE local.** Se extrajo la **resolución determinista
+> de la transición** a `ResolvedorTransicionConversacion` (`src/ElTejido.Application/Conversacion/`):
+> interpretación de la situación del entrante (`SituacionEntrante`: esRepregunta / revisiones agotadas /
+> desea continuar / desea rechazar guardado) más las decisiones puras de la siguiente acción
+> (`PermiteEvaluarTechos`, `DebeCerrarSinEvaluar`, `MotivoTecho`). Los detectores de intención
+> (continuar / rechazo de guardado) se movieron dentro del resolutor; la fachada conserva la E/S (buscar
+> maduras, contar turnos/cupos) con el mismo orden y cortocircuito. Sin cambio de comportamiento. **Verificado
+> local:** build `-warnaserror` 0/0; test **462 verde (410 unit + 52 integration; +19
+> `ResolvedorTransicionConversacionTests`)** — las 371 pruebas de regresión del orquestador siguen verdes;
+> format limpio. **Pendiente:** Corte 3 (`ProcesadorResultadoEvaluacion`: efectos posteriores a la evaluación).
 
 ## 1. Propósito
 

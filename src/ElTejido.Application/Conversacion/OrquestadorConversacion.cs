@@ -46,8 +46,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
     private readonly OpcionesMensajesConversacion _mensajes;
-    private readonly DetectorIntencionContinuar _intencionContinuar;
-    private readonly DetectorIntencionContinuar _intencionRechazoGuardado;
+    private readonly ResolvedorTransicionConversacion _transicion;
     private readonly PoliticaLimitesConversacion _limites;
     private readonly bool _cuposHabilitados;
     private readonly int _maxTurnosPorHilo;
@@ -102,11 +101,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
             ? opciones.FrasesContinuar
             : DetectorIntencionContinuar.FrasesPorDefecto;
-        _intencionContinuar = new DetectorIntencionContinuar(frases, opciones.MaxCaracteresIntencionContinuar);
+        var intencionContinuar = new DetectorIntencionContinuar(frases, opciones.MaxCaracteresIntencionContinuar);
         IEnumerable<string> frasesRechazo = opciones.FrasesRechazoGuardado is { Count: > 0 }
             ? opciones.FrasesRechazoGuardado
             : DetectorIntencionContinuar.FrasesRechazoGuardadoPorDefecto;
-        _intencionRechazoGuardado = new DetectorIntencionContinuar(frasesRechazo, opciones.MaxCaracteresIntencionContinuar);
+        var intencionRechazoGuardado = new DetectorIntencionContinuar(frasesRechazo, opciones.MaxCaracteresIntencionContinuar);
+        _transicion = new ResolvedorTransicionConversacion(intencionContinuar, intencionRechazoGuardado);
         _tiempo = tiempo;
     }
 
@@ -150,18 +150,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         conversacion ??= DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora);
-        var esRepregunta = conversacion.EstadoMaquina == EstadoMaquinaConversacion.EsperandoRepregunta;
-        var revisionesAgotadas = esRepregunta && conversacion.RepreguntasUsadas >= pregunta.MaxRepreguntas;
-        // Salida conversacional (05 §4.4): solo cuando ya ofrecimos una mejora (esperandoRepregunta) y el
-        // participante senala que esta conforme; el primer mensaje (su respuesta real) nunca se interpreta asi.
-        var deseaContinuar = esRepregunta && _intencionContinuar.DeseaContinuar(mensaje.Texto);
-
-        // I-17 §5.4: rechazo explicito del guardado ("guardar salvo que diga no"). Solo cuenta cuando
-        // ya mostramos la parafrasis de una idea madura (esperandoRepregunta con al menos una respuesta
-        // madura en el hilo). Al coincidir se degradan esas respuestas a incubacion y se cierra con un
-        // acuse. Sin ninguna idea madura que rechazar, el mensaje cae al flujo normal (se evalua).
-        var deseaRechazarGuardado = esRepregunta && !deseaContinuar
-            && _intencionRechazoGuardado.Coincide(mensaje.Texto);
+        // Interpretacion determinista de la situacion (05 §4.4 salida conversacional; I-17 §5.4 rechazo del
+        // guardado): solo cuentan cuando ya ofrecimos una mejora (esperandoRepregunta); el primer mensaje
+        // (su respuesta real) nunca se interpreta asi. El rechazo devuelto es la intencion previa a la E/S:
+        // debajo se confirma que exista al menos una respuesta madura que degradar antes de cerrar por ello.
+        var situacion = _transicion.Interpretar(
+            conversacion.EstadoMaquina, conversacion.RepreguntasUsadas, pregunta.MaxRepreguntas, mensaje.Texto);
+        var esRepregunta = situacion.EsRepregunta;
+        var revisionesAgotadas = situacion.RevisionesAgotadas;
+        var deseaContinuar = situacion.DeseaContinuar;
+        var deseaRechazarGuardado = situacion.DeseaRechazarGuardado;
         IReadOnlyList<RespuestaUsuario> madurasAReclasificar = Array.Empty<RespuestaUsuario>();
         if (deseaRechazarGuardado)
         {
@@ -174,12 +172,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // Techos deterministas (10 §2 / D2): el tope duro de turnos por hilo garantiza terminacion
         // aunque otras reglas pidan seguir; el cupo de llamadas LLM por usuario/campania evita costo
         // sin limite. Ambos cierran elegante con lo aportado (mismo camino que revisiones agotadas).
-        var turnosExcedidos = !revisionesAgotadas && !deseaContinuar && !deseaRechazarGuardado
+        var turnosExcedidos = ResolvedorTransicionConversacion.PermiteEvaluarTechos(revisionesAgotadas, deseaContinuar, deseaRechazarGuardado)
             && await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
         // Cupo LLM de la campania: por usuario (llamadas) o por presupuesto de tokens (P-10). Ambos
         // cierran la campania para el hilo (no se abre la siguiente pregunta); el motivo se distingue
         // en LogSeguridad. Gateados por Conversacion:CuposHabilitados.
-        var evaluarCupoLlm = !revisionesAgotadas && !deseaContinuar && !deseaRechazarGuardado && !turnosExcedidos && _cuposHabilitados;
+        var evaluarCupoLlm = ResolvedorTransicionConversacion.PermiteEvaluarTechos(revisionesAgotadas, deseaContinuar, deseaRechazarGuardado)
+            && !turnosExcedidos && _cuposHabilitados;
         var cupoLlamadasUsuarioExcedido = evaluarCupoLlm
             && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
         var presupuestoTokensExcedido = evaluarCupoLlm && !cupoLlamadasUsuarioExcedido
@@ -198,7 +197,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
 
-        if (revisionesAgotadas || deseaContinuar || deseaRechazarGuardado || turnosExcedidos || cupoLlmExcedido)
+        if (ResolvedorTransicionConversacion.DebeCerrarSinEvaluar(revisionesAgotadas, deseaContinuar, deseaRechazarGuardado, turnosExcedidos, cupoLlmExcedido))
         {
             // Se agoto el cupo de revisiones/turnos/LLM, o el participante pidio continuar o rechazo el
             // guardado: se registra sin evaluar y se cierra. Si pidio continuar o rechazo, se antepone un
@@ -217,9 +216,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 cancellationToken);
             if (turnosExcedidos || cupoLlmExcedido)
             {
-                var motivo = turnosExcedidos
-                    ? "tope_turnos_hilo"
-                    : cupoLlamadasUsuarioExcedido ? "cupo_llamadas_llm_usuario" : "presupuesto_tokens_campania";
+                var motivo = ResolvedorTransicionConversacion.MotivoTecho(turnosExcedidos, cupoLlamadasUsuarioExcedido);
                 await RegistrarRateLimitAsync(usuario, motivo, ahora, cancellationToken);
             }
 
