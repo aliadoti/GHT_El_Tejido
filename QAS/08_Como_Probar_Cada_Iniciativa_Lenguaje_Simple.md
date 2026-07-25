@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25 (P-21).
+> Última actualización: 2026-07-25 (P-22).
 
 ## Antes de empezar (léelo una vez)
 
@@ -89,6 +89,17 @@ o el campo con error no permite leer el motivo.
    con el mouse y confirma que muestra el contenido correspondiente.
 **Algo va mal si:** el cursor queda en un nombre mientras se muestra otra sección, las flechas desplazan la
 página en vez de cambiar de sección, o el contenido activo no tiene un nombre reconocible.
+
+### ✅ P-22 — Preparar una campaña paso a paso
+**Qué es:** la pantalla de **Campañas** ahora guía el orden recomendado para prepararla y explica lo que falta, sin cambiar las acciones que ya existían.
+
+1. Entra al portal como administrador y abre **Campañas**. **Deberías ver:** la lista de campañas y el botón **“+ Nueva campaña”**; el formulario no debe ocupar la pantalla antes de pulsarlo.
+2. Pulsa **“+ Nueva campaña”**, completa una campaña de prueba y guárdala. **Deberías ver:** que el formulario se cierra y queda abierta la campaña nueva.
+3. En una campaña abierta, revisa los cuatro pasos: **1 Configuración**, **2 Mensajes iniciales**, **3 Preguntas** y **4 Participantes**. Agrega un mensaje activo, una pregunta activa y una persona de prueba. **Deberías ver:** una marca de completado al lado de cada paso cuando ya tiene lo necesario, o una advertencia discreta cuando falta algo.
+4. Abre **Configuración**. **Deberías ver:** los campos separados en **Evaluación**, **Conversación** y **Seguridad y costo**, con explicaciones junto a los valores de umbral, tiempo sin respuesta y presupuesto. Si no hay preguntas o participantes, al intentar activar la campaña debe aparecer un mensaje claro que diga qué falta.
+5. Pulsa **“Ver envíos”**. **Deberías ver:** los envíos de esa misma campaña. Vuelve a una campaña sin preguntas o sin participantes: debe indicarte cómo agregar el primer elemento, no dejar una pantalla vacía sin explicación.
+
+**Algo va mal si:** el formulario de creación aparece siempre, se abre otra campaña después de guardar, un paso marca completo sin tener el elemento indicado, “Ver envíos” muestra otra campaña, o activar falla sin explicar qué hace falta.
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.

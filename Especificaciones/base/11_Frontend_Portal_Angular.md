@@ -86,7 +86,7 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 
 **Usuarios/Tags** (`REQ §33.1.5–6`): tabla con filtros (rol, estado, área, empresa, tag, búsqueda); alta/edición con validación de número; asignación de área/empresa/tags; activar/inactivar. CRUD de tags. **Carga masiva CSV (`I-08`, `REQ §12/§26.3`):** panel solo-admin en la misma pantalla — sube un `.csv` (columnas `Nombre,WhatsApp,Area,Empresa,Tags`), asocia opcionalmente a una campaña, y muestra el reporte por fila (`creado|actualizado|rechazado`+motivo) sin PII, reusando `POST /api/admin/usuarios/carga-masiva` (`04 §5.1`) sin alterar su contrato.
 
-**Campañas** (`REQ §33.1.7–9`): lista por estado; detalle con tabs (datos, mensajes iniciales, preguntas, participantes); asociación de participantes manual o por filtro con **preview de destinatarios**; cambio de estado. Para I-06, la pestaña Configuración expone `segmentacionIdeas` como checkbox de campaña, apagado por defecto.
+**Campañas** (`REQ §33.1.7–9`): lista por estado y acción **"+ Nueva campaña"**; el formulario se muestra solo al solicitarlo. El detalle guía el ciclo como pasos (Configuración, Mensajes iniciales, Preguntas, Participantes), indica qué falta, ofrece acceso contextual a **"Ver envíos"** de la campaña elegida y conserva asociación manual o por filtro con **preview de destinatarios** y cambio de estado. Configuración agrupa Evaluación, Conversación y Seguridad/costo; `segmentacionIdeas` sigue siendo un checkbox por campaña, apagado por defecto.
 
 **Envíos** (`REQ §33.1.10–11`, `§27.2`): seleccionar campaña/participantes; ver cantidad de destinatarios; botón de envío; tabla de estado por participante (enviado/error/pendiente); reintentar fallidos; reenviar a sin respuesta. Monitorea el `jobId`.
 
@@ -104,6 +104,7 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 - Formularios con validación inline y mensajes claros. Cada control tiene un nombre accesible: `label` asociado cuando sea posible, o un nombre ARIA contextual cuando la tabla no permita texto visible; el placeholder nunca es la única etiqueta. Las listas generan identificadores únicos y los selectores de archivo explican el archivo esperado.
 - Estados de carga/skeletons; manejo visible y anunciado de errores/confirmaciones. Los errores usan una región asertiva y los éxitos/información una región educada; los mensajes de campo se asocian con `aria-invalid` y `aria-describedby` sin anunciar el mismo contenido dos veces. Este patrón también cubre el login, que puede estar fuera del shell de toasts.
 - Los selectores de secciones de campaña siguen el patrón ARIA de pestañas: `tablist` con nombre, activadores `tab`, paneles `tabpanel`, relación `aria-controls`/`aria-labelledby`, foco móvil y teclado Flecha, Inicio y Fin.
+- Las pestañas de Campañas se presentan como pasos numerados. Mensajes, Preguntas y Participantes anuncian si están completos o pendientes a partir de los datos ya cargados; esto orienta sin bloquear la navegación. Cuando no hay selección o una lista está vacía, la pantalla explica el siguiente paso.
 - Tablas con paginación servidor (`04 §2`).
 - Responsive razonable (uso principal en desktop).
 

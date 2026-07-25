@@ -48,17 +48,24 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<section class="page-grid">
     <div class="section-header">
-      <div><h2>Campanias</h2></div>
+      <div>
+        <h2>Campanias</h2>
+        <p class="muted">Selecciona una campania para configurarla, o crea una nueva.</p>
+      </div>
       <button type="button" class="ghost-button" (click)="load()">Actualizar</button>
     </div>
     <app-estado-accesible tipo="error" [mensaje]="error()" />
-    <div class="two-column">
-      <app-campanias-lista-panel
-        [campanias]="campanias()"
-        [seleccionadaId]="selected()?.id ?? null"
-        (buscar)="aplicarFiltro($event)"
-        (abrir)="select($event)"
-      /><app-campania-creacion-panel
+    <app-estado-accesible tipo="informacion" [mensaje]="orientacion()" />
+    <app-campanias-lista-panel
+      [campanias]="campanias()"
+      [seleccionadaId]="selected()?.id ?? null"
+      [esAdmin]="auth.isAdmin()"
+      (buscar)="aplicarFiltro($event)"
+      (abrir)="select($event)"
+      (nueva)="abrirCreacion()"
+    />
+    @if (creacionVisible()) {
+      <app-campania-creacion-panel
         [rubricas]="rubricas()"
         [configsLlm]="configsLlm()"
         [prompts]="prompts()"
@@ -66,10 +73,11 @@ import {
         [reiniciar]="creacionVersion()"
         (guardar)="crearCampania($event)"
       />
-    </div>
+    }
     @if (selected(); as campania) {
       <app-campania-detalle-panel
         [campania]="campania"
+        [participantes]="participantes()"
         [esAdmin]="auth.isAdmin()"
         [activa]="detalleTab()"
         (cambiarEstado)="cambiarEstado(campania, $event)"
@@ -119,6 +127,14 @@ import {
           }
         }
       </app-campania-detalle-panel>
+    } @else {
+      <section class="panel empty-state">
+        <h3>Elige una campania para empezar</h3>
+        <p>
+          Abre una campania de la lista para revisar su configuracion, mensajes, preguntas y
+          participantes.
+        </p>
+      </section>
     }
   </section>`,
 })
@@ -137,7 +153,9 @@ export class CampaniasPage {
   protected readonly empresasDisponibles = signal<string[]>([]);
   protected readonly nombresUsuarios = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly error = signal('');
+  protected readonly orientacion = signal('');
   protected readonly creacionVersion = signal(0);
+  protected readonly creacionVisible = signal(false);
   protected readonly detalleTab = signal<'config' | 'mensajes' | 'preguntas' | 'participantes'>(
     'config',
   );
@@ -150,6 +168,9 @@ export class CampaniasPage {
   protected aplicarFiltro(filtro: CampaniasFiltro): void {
     this.filtro = filtro;
     this.load();
+  }
+  protected abrirCreacion(): void {
+    this.creacionVisible.set(true);
   }
   protected load(): void {
     this.api
@@ -167,6 +188,7 @@ export class CampaniasPage {
       next: (campania) => {
         this.selected.set(campania);
         this.detalleTab.set('config');
+        this.orientacion.set('');
         this.loadParticipantes(campania.id);
       },
       error: (err: unknown) => this.error.set(formatApiError(err)),
@@ -194,6 +216,7 @@ export class CampaniasPage {
       .subscribe({
         next: (campania) => {
           this.creacionVersion.update((version) => version + 1);
+          this.creacionVisible.set(false);
           this.load();
           this.select(campania.id);
           this.notificaciones.exito('Campania creada.');
@@ -247,6 +270,20 @@ export class CampaniasPage {
       });
   }
   protected cambiarEstado(campania: Campania, estado: string): void {
+    if (estado === 'activa') {
+      const faltantes = [
+        ...(campania.preguntas?.some((pregunta) => pregunta.estado === 'activo')
+          ? []
+          : ['una pregunta activa']),
+        ...(this.participantes().length > 0 ? [] : ['al menos un participante']),
+      ];
+      if (faltantes.length > 0) {
+        const mensaje = `Antes de activar esta campania agrega ${faltantes.join(' y ')}.`;
+        this.orientacion.set(mensaje);
+        this.notificaciones.info(mensaje);
+        return;
+      }
+    }
     this.api.cambiarEstadoCampania(campania.id, estado).subscribe({
       next: (actualizada) => {
         this.selected.set(actualizada);

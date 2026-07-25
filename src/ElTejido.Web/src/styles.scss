@@ -375,6 +375,25 @@ th {
   grid-template-columns: 1fr;
 }
 
+.form-fieldset {
+  border: 1px solid var(--ght-borde);
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 16px;
+}
+
+.form-fieldset legend {
+  color: var(--ght-texto);
+  font-weight: 800;
+  padding: 0 4px;
+}
+
+.empty-state p {
+  color: var(--ght-texto-secundario);
+}
+
 .inline-form,
 .actions-row,
 .chip-row {

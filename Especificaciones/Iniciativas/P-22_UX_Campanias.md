@@ -11,7 +11,7 @@
 > permisos, ni el comportamiento de las llamadas existentes; solo reorganiza layout, copia
 > (microcopy) y flujo de navegación reutilizando los tokens de marca y las primitivas de layout ya
 > definidas. Cubre `REQ §27/§32/§33.1.7-9`, `ARQ §3`; spec base `11 §6/§7`.
-> **Estado:** **TODO — especificación lista, implementación pendiente.** Sin código.
+> **Estado:** **DONE local 2026-07-25.** Implementación frontend sin cambios de contrato, rutas ni permisos.
 
 ## 1. Qué pide / por qué
 La pantalla de Campañas concentra el ciclo de vida completo (crear → configurar → mensajes iniciales →
@@ -178,6 +178,16 @@ layout anterior sin afectar datos ni API.
    consecuencias.
 7. **Docs y verificación:** actualizar `11 §6/§7`, registrar en `AVANCES.md`/`TODO.md`; frontend en
    verde por paso (entorno local con Node 24.15.0).
+
+## 9. Cierre de implementación (2026-07-25)
+- La creación se abre desde **"+ Nueva campaña"** y se cierra al guardar; la lista queda como vista
+  principal y, sin selección, muestra una instrucción clara.
+- El detalle conserva las pestañas ARIA de P-20, ahora presentadas como pasos numerados con estado
+  completo/pendiente, ayuda contextual y enlace **"Ver envíos"** con el id real.
+- Configuración usa grupos **Evaluación**, **Conversación** y **Seguridad y costo**, con ayuda asociada
+  para umbral, inactividad y presupuesto; los pasos vacíos indican la siguiente acción.
+- Verificado con Node 24.15.0: Prettier limpio, `ng test --watch=false` **21/21** y build de producción
+  verde. El diálogo propio para reinicios permanece como mejora opcional no incluida en este corte.
 
 > **Nota de entorno (para quien implemente):** `ng build`/`ng test` requieren Node temporal 24.15.0; la
 > carpeta sincronizada por OneDrive puede bloquear esbuild — verificar en entorno local; el CD

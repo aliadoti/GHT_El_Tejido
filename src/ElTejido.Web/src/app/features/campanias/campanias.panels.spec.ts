@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 
 import { Campania, ParticipantePreview } from '../../core/api-models';
 import {
+  CampaniaConfiguracionPanel,
   CampaniaDetallePanel,
   CampaniasListaPanel,
   ParticipantesCampaniaPanel,
@@ -15,6 +16,7 @@ describe('paneles de campanias', () => {
       { id: 'campania-1', nombre: 'Prueba', estado: 'borrador', objetivo: 'Validar' } as Campania,
     ]);
     fixture.componentRef.setInput('seleccionadaId', null);
+    fixture.componentRef.setInput('esAdmin', true);
     let abierta = '';
     fixture.componentInstance.abrir.subscribe((id) => (abierta = id));
 
@@ -22,6 +24,20 @@ describe('paneles de campanias', () => {
     (fixture.nativeElement.querySelector('.table-button') as HTMLButtonElement).click();
 
     expect(abierta).toBe('campania-1');
+  });
+
+  it('abre la creacion solo cuando el administrador la solicita', () => {
+    const fixture = TestBed.createComponent(CampaniasListaPanel);
+    fixture.componentRef.setInput('campanias', []);
+    fixture.componentRef.setInput('seleccionadaId', null);
+    fixture.componentRef.setInput('esAdmin', true);
+    let solicitada = false;
+    fixture.componentInstance.nueva.subscribe(() => (solicitada = true));
+
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.primary-button') as HTMLButtonElement).click();
+
+    expect(solicitada).toBe(true);
   });
 
   it('mantiene el conjunto de la vista previa y lo vuelve a seleccionar al refrescarlo', () => {
@@ -42,6 +58,7 @@ describe('paneles de campanias', () => {
     fixture.componentRef.setInput('empresas', ['GHT']);
     fixture.componentRef.setInput('nombres', new Map([['usuario-1', 'Ana (Producto)']]));
     fixture.componentRef.setInput('esAdmin', true);
+    fixture.componentRef.setInput('participantes', []);
     let asociados: readonly string[] = [];
     fixture.componentInstance.asociar.subscribe((ids) => (asociados = ids));
 
@@ -62,8 +79,11 @@ describe('paneles de campanias', () => {
       nombre: 'Prueba',
       estado: 'borrador',
       objetivo: 'Validar',
-    } as Campania);
+      mensajesIniciales: [{ estado: 'activo' }],
+      preguntas: [],
+    } as unknown as Campania);
     fixture.componentRef.setInput('esAdmin', true);
+    fixture.componentRef.setInput('participantes', [{}]);
     fixture.componentRef.setInput('activa', 'config');
     fixture.componentInstance.tabCambiada.subscribe((tab) =>
       fixture.componentRef.setInput('activa', tab),
@@ -85,6 +105,12 @@ describe('paneles de campanias', () => {
       'false',
     ]);
     expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1]);
+    expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([
+      'Paso 1, Configuracion',
+      'Paso 2, Mensajes iniciales, completo',
+      'Paso 3, Preguntas, pendiente',
+      'Paso 4, Participantes, completo',
+    ]);
     expect(panel?.id).toBe(tabs[0].getAttribute('aria-controls'));
     expect(panel?.getAttribute('aria-labelledby')).toBe(tabs[0].id);
 
@@ -114,5 +140,38 @@ describe('paneles de campanias', () => {
     fixture.detectChanges();
     expect(tabs[2].getAttribute('aria-selected')).toBe('true');
     expect(panel?.id).toBe(tabs[2].getAttribute('aria-controls'));
+  });
+
+  it('agrupa la configuracion y explica los valores que requieren contexto', () => {
+    const fixture = TestBed.createComponent(CampaniaConfiguracionPanel);
+    fixture.componentRef.setInput('campania', {
+      id: 'campania-1',
+      nombre: 'Prueba',
+      estado: 'borrador',
+      objetivo: 'Validar',
+    } as Campania);
+    fixture.componentRef.setInput('rubricas', []);
+    fixture.componentRef.setInput('configsLlm', []);
+    fixture.componentRef.setInput('prompts', []);
+    fixture.componentRef.setInput('esAdmin', true);
+
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const leyendas = Array.from(host.querySelectorAll('legend')).map((legend) =>
+      legend.textContent?.trim(),
+    );
+
+    expect(leyendas).toEqual(['Evaluacion', 'Seguridad y costo', 'Conversacion']);
+    expect(
+      host.querySelector('[name="editarUmbralCierreAnticipado"]')?.getAttribute('aria-describedby'),
+    ).toBe('ayuda-umbral');
+    expect(
+      host
+        .querySelector('[name="editarMinutosInactividadSesion"]')
+        ?.getAttribute('aria-describedby'),
+    ).toBe('ayuda-inactividad');
+    expect(
+      host.querySelector('[name="editarPresupuestoTokens"]')?.getAttribute('aria-describedby'),
+    ).toBe('ayuda-presupuesto');
   });
 });

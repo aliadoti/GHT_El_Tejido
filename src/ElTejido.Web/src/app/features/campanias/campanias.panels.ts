@@ -136,7 +136,14 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
   imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<section class="panel">
-    <div class="panel-heading"><h3>Lista</h3></div>
+    <div class="panel-heading">
+      <h3>Lista de campanias</h3>
+      @if (esAdmin()) {
+        <button type="button" class="primary-button" (click)="nueva.emit()">
+          + Nueva campania
+        </button>
+      }
+    </div>
     <form class="filters-grid" (ngSubmit)="buscar.emit(filtro)">
       <label
         >Estado<select name="estadoFiltro" [(ngModel)]="filtro.estado">
@@ -179,7 +186,9 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
             </tr>
           } @empty {
             <tr>
-              <td colspan="4" class="empty-cell">No hay campanias registradas.</td>
+              <td colspan="4" class="empty-cell">
+                No hay campanias registradas. Crea la primera para empezar.
+              </td>
             </tr>
           }
         </tbody>
@@ -190,8 +199,10 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
 export class CampaniasListaPanel {
   readonly campanias = input.required<readonly Campania[]>();
   readonly seleccionadaId = input<string | null>(null);
+  readonly esAdmin = input.required<boolean>();
   readonly buscar = output<CampaniasFiltro>();
   readonly abrir = output<string>();
+  readonly nueva = output<void>();
   protected filtro: CampaniasFiltro = { estado: '', busqueda: '' };
 }
 
@@ -203,46 +214,62 @@ export class CampaniasListaPanel {
   template: `<section class="panel">
     <div class="panel-heading"><h3>Crear campania</h3></div>
     <form class="form-grid" (ngSubmit)="guardar.emit(formulario)">
-      <label>Nombre <input name="nombre" [(ngModel)]="formulario.nombre" /></label
-      ><label>Descripcion <input name="descripcion" [(ngModel)]="formulario.descripcion" /></label
-      ><label
-        >Objetivo
-        <textarea name="objetivo" rows="3" [(ngModel)]="formulario.objetivo"></textarea></label
-      ><label
-        >Rubrica<select name="rubricaRef" [(ngModel)]="formulario.rubricaRef" required>
-          <option value="" disabled>Selecciona una rubrica</option>
-          @for (rubrica of rubricas(); track rubrica.id) {
-            <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
-          }
-        </select></label
-      >
-      @if (rubricas().length === 0) {
-        <p class="muted">No hay rubricas activas. Crea una en la seccion Rubricas.</p>
-      }
-      <label
-        >Config LLM<select name="configLlmRef" [(ngModel)]="formulario.configLlmRef" required>
-          <option value="" disabled>Selecciona una configuracion LLM</option>
-          @for (config of configsLlm(); track config.id) {
-            <option [value]="config.id">{{ config.nombre }}</option>
-          }
-        </select></label
-      >
-      @if (configsLlm().length === 0) {
-        <p class="muted">No hay configuraciones LLM. Crea una en la seccion Config LLM.</p>
-      }
-      <label
-        >Prompt de evaluacion<select
-          name="promptEvaluarRef"
-          [(ngModel)]="formulario.promptEvaluarRef"
+      <fieldset class="form-fieldset">
+        <legend>Evaluacion</legend>
+        <label>Nombre <input name="nombre" [(ngModel)]="formulario.nombre" /></label
+        ><label>Descripcion <input name="descripcion" [(ngModel)]="formulario.descripcion" /></label
+        ><label
+          >Objetivo
+          <textarea name="objetivo" rows="3" [(ngModel)]="formulario.objetivo"></textarea></label
+        ><label
+          >Rubrica<select name="rubricaRef" [(ngModel)]="formulario.rubricaRef" required>
+            <option value="" disabled>Selecciona una rubrica</option>
+            @for (rubrica of rubricas(); track rubrica.id) {
+              <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+            }
+          </select></label
         >
-          <option value="">Sin prompt (configurar por pregunta o luego)</option>
-          @for (prompt of prompts(); track prompt.id) {
-            <option [value]="prompt.id">{{ prompt.nombre }} ({{ prompt.tipoPrompt }})</option>
-          }
-        </select></label
-      ><button class="primary-button" type="submit" [disabled]="!esAdmin()">
-        Guardar campania
-      </button>
+        @if (rubricas().length === 0) {
+          <p class="muted">No hay rubricas activas. Crea una en la seccion Rubricas.</p>
+        }
+        <label
+          >Config LLM<select name="configLlmRef" [(ngModel)]="formulario.configLlmRef" required>
+            <option value="" disabled>Selecciona una configuracion LLM</option>
+            @for (config of configsLlm(); track config.id) {
+              <option [value]="config.id">{{ config.nombre }}</option>
+            }
+          </select></label
+        ><label
+          >Prompt de evaluacion<select
+            name="editarPromptEvaluarRef"
+            [(ngModel)]="formulario.promptEvaluarRef"
+          >
+            <option value="">Sin prompt por defecto</option>
+            @for (prompt of prompts(); track prompt.id) {
+              <option [value]="prompt.id">{{ prompt.nombre }} ({{ prompt.tipoPrompt }})</option>
+            }
+          </select></label
+        >
+        @if (configsLlm().length === 0) {
+          <p class="muted">No hay configuraciones LLM. Crea una en la seccion Config LLM.</p>
+        }
+        <label
+          >Prompt de evaluacion<select
+            name="promptEvaluarRef"
+            [(ngModel)]="formulario.promptEvaluarRef"
+          >
+            <option value="">Sin prompt (configurar por pregunta o luego)</option>
+            @for (prompt of prompts(); track prompt.id) {
+              <option [value]="prompt.id">{{ prompt.nombre }} ({{ prompt.tipoPrompt }})</option>
+            }
+          </select></label
+        >
+      </fieldset>
+      <div class="actions-row">
+        <button class="primary-button" type="submit" [disabled]="!esAdmin()">
+          Guardar campania
+        </button>
+      </div>
     </form>
   </section>`,
 })
@@ -267,83 +294,100 @@ export class CampaniaCreacionPanel implements OnChanges {
   template: `<article>
     <h4>Configuracion</h4>
     <form class="form-grid" (ngSubmit)="guardar.emit(formulario)">
-      <label>Nombre <input name="editarNombre" [(ngModel)]="formulario.nombre" /></label
-      ><label
-        >Descripcion<input name="editarDescripcion" [(ngModel)]="formulario.descripcion" /></label
-      ><label
-        >Objetivo<textarea
-          name="editarObjetivo"
-          rows="3"
-          [(ngModel)]="formulario.objetivo"
-        ></textarea></label
-      ><label
-        >Rubrica<select name="editarRubricaRef" [(ngModel)]="formulario.rubricaRef" required>
-          @for (rubrica of rubricas(); track rubrica.id) {
-            <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
-          }
-        </select></label
-      ><label
-        >Config LLM<select name="editarConfigLlmRef" [(ngModel)]="formulario.configLlmRef" required>
-          @for (config of configsLlm(); track config.id) {
-            <option [value]="config.id">{{ config.nombre }}</option>
-          }
-        </select></label
-      ><label
-        >Presupuesto de tokens LLM (0 = sin limite)<input
-          type="number"
-          min="0"
-          name="editarPresupuestoTokens"
-          [(ngModel)]="formulario.presupuestoTokensCampania" /></label
-      ><label class="checkbox-label"
-        ><input
-          type="checkbox"
-          name="editarSegmentacionIdeas"
-          [(ngModel)]="formulario.segmentacionIdeas"
-        />Separar varias ideas de un mismo mensaje</label
-      ><label class="checkbox-label"
-        ><input
-          type="checkbox"
-          name="editarParafraseo"
-          [(ngModel)]="formulario.parafraseo"
-        />Devolver parafrasis ("esto es lo que entendi") en respuestas maduras</label
-      ><label
-        >Umbral de madurez / cierre (0 a 1; vacio = heredar global; 0 = apagar cierre)<input
-          type="number"
-          min="0"
-          max="1"
-          step="0.01"
-          name="editarUmbralCierreAnticipado"
-          [(ngModel)]="formulario.umbralCierreAnticipado"
-        /><small class="muted"
-          >Umbral unico: decide que respuestas quedan maduras y, si el cierre esta habilitado,
-          cuales cierran la conversacion.</small
-        ></label
-      ><label
-        >Cierre por inactividad (minutos; vacio = heredar global; 0 = apagar)<input
-          type="number"
-          min="0"
-          step="1"
-          name="editarMinutosInactividadSesion"
-          [(ngModel)]="formulario.minutosInactividadSesion" /></label
-      ><label
-        >Alias del numero de envio (opcional)<input
-          name="editarNumeroWhatsAppSaliente"
-          placeholder="usar predeterminado"
-          [(ngModel)]="formulario.numeroWhatsAppSaliente"
-        /><small class="muted"
-          >Dejalo vacio para usar el numero predeterminado o escribe un alias configurado.</small
-        ></label
-      ><label
-        >Prompt de evaluacion<select
-          name="editarPromptEvaluarRef"
-          [(ngModel)]="formulario.promptEvaluarRef"
+      <fieldset class="form-fieldset">
+        <legend>Evaluacion</legend>
+        <label>Nombre <input name="editarNombre" [(ngModel)]="formulario.nombre" /></label
+        ><label
+          >Descripcion<input name="editarDescripcion" [(ngModel)]="formulario.descripcion" /></label
+        ><label
+          >Objetivo<textarea
+            name="editarObjetivo"
+            rows="3"
+            [(ngModel)]="formulario.objetivo"
+          ></textarea></label
+        ><label
+          >Rubrica<select name="editarRubricaRef" [(ngModel)]="formulario.rubricaRef" required>
+            @for (rubrica of rubricas(); track rubrica.id) {
+              <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
+            }
+          </select></label
+        ><label
+          >Config LLM<select
+            name="editarConfigLlmRef"
+            [(ngModel)]="formulario.configLlmRef"
+            required
+          >
+            @for (config of configsLlm(); track config.id) {
+              <option [value]="config.id">{{ config.nombre }}</option>
+            }
+          </select></label
         >
-          <option value="">Sin prompt por defecto</option>
-          @for (prompt of prompts(); track prompt.id) {
-            <option [value]="prompt.id">{{ prompt.nombre }} ({{ prompt.tipoPrompt }})</option>
-          }
-        </select></label
-      ><button class="primary-button" type="submit" [disabled]="!esAdmin()">Guardar cambios</button>
+      </fieldset>
+      <fieldset class="form-fieldset">
+        <legend>Seguridad y costo</legend>
+        <label
+          >Presupuesto de tokens LLM<input
+            aria-describedby="ayuda-presupuesto"
+            type="number"
+            min="0"
+            name="editarPresupuestoTokens"
+            [(ngModel)]="formulario.presupuestoTokensCampania"
+          /><small id="ayuda-presupuesto" class="muted">0 = sin limite.</small></label
+        >
+      </fieldset>
+      <fieldset class="form-fieldset">
+        <legend>Conversacion</legend>
+        <label class="checkbox-label"
+          ><input
+            type="checkbox"
+            name="editarSegmentacionIdeas"
+            [(ngModel)]="formulario.segmentacionIdeas"
+          />Separar varias ideas de un mismo mensaje</label
+        ><label class="checkbox-label"
+          ><input
+            type="checkbox"
+            name="editarParafraseo"
+            [(ngModel)]="formulario.parafraseo"
+          />Devolver parafrasis ("esto es lo que entendi") en respuestas maduras</label
+        ><label
+          >Umbral de madurez / cierre<input
+            aria-describedby="ayuda-umbral"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            name="editarUmbralCierreAnticipado"
+            [(ngModel)]="formulario.umbralCierreAnticipado"
+          /><small id="ayuda-umbral" class="muted"
+            >0 desactiva el cierre. Entre 0 y 1 indica la fraccion de la rubrica para cerrar antes,
+            por ejemplo 0.6.</small
+          ></label
+        ><label
+          >Cierre por inactividad<input
+            aria-describedby="ayuda-inactividad"
+            type="number"
+            min="0"
+            step="1"
+            name="editarMinutosInactividadSesion"
+            [(ngModel)]="formulario.minutosInactividadSesion"
+          /><small id="ayuda-inactividad" class="muted"
+            >Minutos sin respuesta antes de cerrar el hilo. Vacio usa el valor global.</small
+          ></label
+        ><label
+          >Alias del numero de envio (opcional)<input
+            name="editarNumeroWhatsAppSaliente"
+            placeholder="usar predeterminado"
+            [(ngModel)]="formulario.numeroWhatsAppSaliente"
+          /><small class="muted"
+            >Dejalo vacio para usar el numero predeterminado o escribe un alias configurado.</small
+          ></label
+        >
+      </fieldset>
+      <div class="actions-row">
+        <button class="primary-button" type="submit" [disabled]="!esAdmin()">
+          Guardar cambios
+        </button>
+      </div>
     </form>
   </article>`,
 })
@@ -368,32 +412,38 @@ export class CampaniaConfiguracionPanel implements OnChanges {
   template: `<article>
     <h4>Mensajes iniciales</h4>
     <form class="form-grid" (ngSubmit)="guardar.emit(formulario)">
-      <input
-        name="miNombre"
-        [(ngModel)]="formulario.nombreInterno"
-        placeholder="Nombre interno"
-      /><textarea
-        name="miTexto"
-        rows="3"
-        [(ngModel)]="formulario.texto"
-        placeholder="Texto"
-      ></textarea>
+      <label>Nombre interno<input name="miNombre" [(ngModel)]="formulario.nombreInterno" /></label>
+      <label
+        >Texto del mensaje<textarea
+          name="miTexto"
+          rows="3"
+          [(ngModel)]="formulario.texto"
+        ></textarea>
+      </label>
       <p class="subhead">Plantilla WhatsApp (requerida para el envio inicial proactivo)</p>
-      <input
-        name="miPlantillaNombre"
-        [(ngModel)]="formulario.plantillaNombre"
-        placeholder="Plantilla aprobada (ej: el_tejido_saludo)"
-      /><input
-        name="miPlantillaIdioma"
-        [(ngModel)]="formulario.plantillaIdioma"
-        placeholder="Idioma (ej: es)"
-      /><input
-        name="miPlantillaComponentes"
-        [(ngModel)]="formulario.plantillaComponentes"
-        placeholder="Variables en orden, coma-separadas (ej: nombre, campania)"
-      /><button class="primary-button" type="submit" [disabled]="!esAdmin()">
-        Agregar mensaje
-      </button>
+      <label
+        >Plantilla aprobada<input
+          name="miPlantillaNombre"
+          [(ngModel)]="formulario.plantillaNombre"
+          placeholder="ej: el_tejido_saludo"
+      /></label>
+      <label
+        >Idioma<input
+          name="miPlantillaIdioma"
+          [(ngModel)]="formulario.plantillaIdioma"
+          placeholder="ej: es"
+      /></label>
+      <label
+        >Variables en orden<input
+          name="miPlantillaComponentes"
+          [(ngModel)]="formulario.plantillaComponentes"
+          placeholder="ej: nombre, campania"
+      /></label>
+      <div class="actions-row">
+        <button class="primary-button" type="submit" [disabled]="!esAdmin()">
+          Agregar mensaje
+        </button>
+      </div>
     </form>
     <ul class="compact-list">
       @for (item of mensajes(); track item.id) {
@@ -402,7 +452,10 @@ export class CampaniaConfiguracionPanel implements OnChanges {
           ><span>{{ item.texto }}</span>
         </li>
       } @empty {
-        <li class="muted">Sin mensajes.</li>
+        <li class="muted">
+          Esta campania aun no tiene mensajes iniciales. Agrega el primero para saludar a las
+          personas.
+        </li>
       }
     </ul>
   </article>`,
@@ -522,7 +575,9 @@ export class MensajesInicialesPanel implements OnChanges {
           }
         </li>
       } @empty {
-        <li class="muted">Sin preguntas.</li>
+        <li class="muted">
+          Esta campania aun no tiene preguntas. Agrega la primera para poder evaluar respuestas.
+        </li>
       }
     </ul>
     @if (editandoId) {
@@ -706,7 +761,10 @@ export class PreguntasPanel implements OnChanges {
             </tr>
           } @empty {
             <tr>
-              <td class="empty-cell">Sin participantes asociados.</td>
+              <td class="empty-cell">
+                Esta campania aun no tiene participantes asociados. Usa la vista previa para agregar
+                los primeros.
+              </td>
             </tr>
           }
         </tbody>
@@ -770,7 +828,7 @@ export class ParticipantesCampaniaPanel implements OnChanges {
           class="ghost-button"
           [routerLink]="['/campanias', campania().id, 'envios']"
         >
-          Envios
+          Ver envios
         </button>
         @if (esAdmin()) {
           <button type="button" class="ghost-button" (click)="cambiarEstado.emit('activa')">
@@ -791,12 +849,16 @@ export class ParticipantesCampaniaPanel implements OnChanges {
           [class.active]="activa() === item.id"
           [attr.aria-selected]="activa() === item.id"
           [attr.aria-controls]="idPanel(item.id)"
+          [attr.aria-label]="nombreAccesible(item.id)"
           [tabindex]="activa() === item.id ? 0 : -1"
           [attr.data-tab]="item.id"
           (click)="seleccionar(item.id)"
           (keydown)="navegarPestanas($event, item.id)"
         >
-          {{ item.nombre }}
+          {{ item.numero }} · {{ item.nombre }}
+          @if (estadoPaso(item.id); as estado) {
+            <span aria-hidden="true">{{ estado.simbolo }}</span>
+          }
         </button>
       }
     </nav>
@@ -808,22 +870,49 @@ export class ParticipantesCampaniaPanel implements OnChanges {
       tabindex="0"
     >
       <ng-content />
+      <p class="muted">{{ siguientePaso() }}</p>
     </div>
   </section>`,
 })
 export class CampaniaDetallePanel {
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly campania = input.required<Campania>();
+  readonly participantes = input.required<readonly ParticipanteCampania[]>();
   readonly esAdmin = input.required<boolean>();
   readonly cambiarEstado = output<string>();
   readonly activa = input<TabCampania>('config');
   readonly tabCambiada = output<TabCampania>();
   protected readonly tabs = [
-    { id: 'config' as const, nombre: 'Configuracion' },
-    { id: 'mensajes' as const, nombre: 'Mensajes iniciales' },
-    { id: 'preguntas' as const, nombre: 'Preguntas' },
-    { id: 'participantes' as const, nombre: 'Participantes' },
+    { id: 'config' as const, numero: 1, nombre: 'Configuracion' },
+    { id: 'mensajes' as const, numero: 2, nombre: 'Mensajes iniciales' },
+    { id: 'preguntas' as const, numero: 3, nombre: 'Preguntas' },
+    { id: 'participantes' as const, numero: 4, nombre: 'Participantes' },
   ];
+  protected estadoPaso(tab: TabCampania): { simbolo: string; texto: string } | null {
+    if (tab === 'config') return null;
+    const completo =
+      tab === 'mensajes'
+        ? (this.campania().mensajesIniciales?.some((mensaje) => mensaje.estado === 'activo') ??
+          false)
+        : tab === 'preguntas'
+          ? (this.campania().preguntas?.some((pregunta) => pregunta.estado === 'activo') ?? false)
+          : this.participantes().length > 0;
+    return completo ? { simbolo: '✓', texto: 'completo' } : { simbolo: '⚠', texto: 'pendiente' };
+  }
+  protected nombreAccesible(tab: TabCampania): string {
+    const item = this.tabs.find((opcion) => opcion.id === tab)!;
+    const estado = this.estadoPaso(tab);
+    return `Paso ${item.numero}, ${item.nombre}${estado ? `, ${estado.texto}` : ''}`;
+  }
+  protected siguientePaso(): string {
+    if (this.activa() === 'config')
+      return 'Cuando termines la configuracion, sigue con el mensaje inicial en el paso 2.';
+    if (this.activa() === 'mensajes')
+      return 'Cuando tengas el mensaje inicial, sigue con las preguntas en el paso 3.';
+    if (this.activa() === 'preguntas')
+      return 'Cuando tengas una pregunta activa, agrega participantes en el paso 4.';
+    return 'Cuando tengas participantes, ya puedes activar la campania y ver sus envios.';
+  }
   protected idPestana(tab: TabCampania): string {
     return `campania-${this.campania().id}-tab-${tab}`;
   }
