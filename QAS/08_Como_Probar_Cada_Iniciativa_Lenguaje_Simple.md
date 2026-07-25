@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-23.
+> Última actualización: 2026-07-24.
 
 ## Antes de empezar (léelo una vez)
 
@@ -35,6 +35,22 @@
 4. Cierra y confirma que los botones de siempre (**Editar / Nueva versión / Archivar / Aprobar**)
    siguen ahí y funcionan.
 **Algo va mal si:** no aparece "Ver", o desde esa ventana se puede modificar algo.
+
+### ✅ P-16 — Usar la pantalla de Campañas sin perder acciones
+**Qué es:** una reorganización interna de la pantalla de **Campañas**. Debe verse y funcionar igual,
+pero ahora cada parte de la pantalla se puede mantener sin afectar a las demás.
+1. Entra al portal como administrador y abre **Campañas**. Elige una campaña de la lista.
+2. Recorre las secciones **Configuración**, **Mensajes iniciales**, **Preguntas** y **Participantes**.
+3. Haz un cambio de prueba sencillo en cada parte (por ejemplo, editar la descripción, agregar un mensaje,
+   agregar o editar una pregunta y usar la vista previa de participantes). Guarda cada cambio.
+4. **Deberías ver:** que la campaña elegida sigue abierta, cada cambio queda guardado y las demás secciones
+   conservan su información. Al pedir la vista previa, las personas encontradas quedan marcadas para asociar,
+   pero puedes desmarcar alguna antes de continuar.
+5. Si tienes datos de prueba, prueba **Reiniciar conversación** de una persona y el reinicio de toda la
+   campaña: deben pedir confirmación antes de borrar datos de prueba.
+**Algo va mal si:** desaparece una sección, se cambia o se pierde la campaña que estabas viendo, un botón
+de administrador aparece para alguien sin permiso, se guarda dos veces la misma acción o alguna función
+que existía antes deja de responder.
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.
