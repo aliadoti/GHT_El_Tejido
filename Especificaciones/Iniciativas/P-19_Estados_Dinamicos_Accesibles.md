@@ -1,6 +1,6 @@
 # P-19 — Anunciar errores y confirmaciones dinámicos
 
-**Estado:** TODO — después de P-18  
+**Estado:** DONE local — 2026-07-25
 **Origen:** `UXA11Y-002` de la auditoría técnica del 2026-07-24.  
 **Dependencias:** P-18 para que los errores de formulario puedan asociarse a controles con nombre.
 
@@ -37,6 +37,8 @@ La iniciativa reutilizará `NotificacionesComponent` donde ya esté disponible y
 3. En un formulario administrativo, provocar una validación y después guardar correctamente un cambio permitido.
 4. Confirmar que el error identifica el campo y que el éxito se anuncia una vez.
 5. Es un fallo si solo se ve el texto, si se anuncia repetidamente o si el foco desaparece sin explicación.
+
+**Verificación realizada:** pruebas de componente para prioridad y actualización de regiones vivas, avisos globales sin región anidada y asociación del error de login con el campo activo; `prettier --check`, `ng test --watch=false` (18 pruebas) y `ng build --configuration production` verdes con Node temporal 24.15.0.
 
 ## 6. Riesgo y reversión
 

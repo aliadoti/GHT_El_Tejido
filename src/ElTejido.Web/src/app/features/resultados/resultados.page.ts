@@ -11,12 +11,13 @@ import {
   UsuarioAdmin,
 } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 @Component({
   selector: 'app-resultados-page',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, EstadoAccesibleComponent],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -26,9 +27,7 @@ import { formatApiError } from '../../shared-error';
         <button type="button" class="ghost-button" (click)="loadAll()">Actualizar</button>
       </div>
 
-      @if (error()) {
-        <p class="form-error">{{ error() }}</p>
-      }
+      <app-estado-accesible tipo="error" [mensaje]="error()" />
 
       <section class="panel">
         <form class="filters-grid" (ngSubmit)="loadAll()">

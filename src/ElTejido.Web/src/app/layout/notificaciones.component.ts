@@ -7,12 +7,15 @@ import { NotificacionesService } from '../core/notificaciones.service';
   selector: 'app-notificaciones',
   standalone: true,
   template: `
-    <div class="toast-stack" aria-live="polite" aria-atomic="false">
+    <div class="toast-stack">
       @for (n of servicio.notificaciones(); track n.id) {
         <div
           class="toast"
           [class.toast-exito]="n.tipo === 'exito'"
           [class.toast-error]="n.tipo === 'error'"
+          [attr.role]="n.tipo === 'error' ? 'alert' : 'status'"
+          [attr.aria-live]="n.tipo === 'error' ? 'assertive' : 'polite'"
+          aria-atomic="true"
         >
           <span>{{ n.texto }}</span>
           <button

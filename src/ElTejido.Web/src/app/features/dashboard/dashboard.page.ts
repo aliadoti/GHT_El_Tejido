@@ -3,12 +3,13 @@ import { RouterLink } from '@angular/router';
 
 import { AdminApiService } from '../../core/admin-api.service';
 import { Campania } from '../../core/api-models';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, EstadoAccesibleComponent],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -19,9 +20,7 @@ import { formatApiError } from '../../shared-error';
         <a class="primary-button" routerLink="/campanias">Nueva campania</a>
       </div>
 
-      @if (error()) {
-        <p class="form-error">{{ error() }}</p>
-      }
+      <app-estado-accesible tipo="error" [mensaje]="error()" />
 
       <div class="metrics-grid">
         <article class="metric-card">

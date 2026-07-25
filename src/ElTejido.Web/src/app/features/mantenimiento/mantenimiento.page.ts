@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { AdminApiService } from '../../core/admin-api.service';
 import { ReportePurgaCampanias } from '../../core/api-models';
 import { NotificacionesService } from '../../core/notificaciones.service';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 const PALABRA_CONFIRMACION = 'ELIMINAR';
@@ -10,6 +11,7 @@ const PALABRA_CONFIRMACION = 'ELIMINAR';
 @Component({
   selector: 'app-mantenimiento-page',
   standalone: true,
+  imports: [EstadoAccesibleComponent],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -52,9 +54,7 @@ const PALABRA_CONFIRMACION = 'ELIMINAR';
           </div>
         </div>
 
-        @if (error()) {
-          <p class="form-error">{{ error() }}</p>
-        }
+        <app-estado-accesible estadoId="error-confirmacion" tipo="error" [mensaje]="error()" />
 
         <div class="field">
           <label for="confirmacion">
@@ -68,6 +68,8 @@ const PALABRA_CONFIRMACION = 'ELIMINAR';
             (input)="confirmacion.set($any($event.target).value)"
             [disabled]="cargando()"
             placeholder="{{ palabra }}"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="error() ? 'error-confirmacion' : null"
           />
         </div>
 

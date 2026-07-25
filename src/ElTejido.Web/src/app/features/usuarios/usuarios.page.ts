@@ -5,12 +5,13 @@ import { AdminApiService } from '../../core/admin-api.service';
 import { Campania, ReporteCargaMasiva, TagAdmin, UsuarioAdmin } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { NotificacionesService } from '../../core/notificaciones.service';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 @Component({
   selector: 'app-usuarios-page',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, EstadoAccesibleComponent],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -20,9 +21,7 @@ import { formatApiError } from '../../shared-error';
         <button type="button" class="ghost-button" (click)="load()">Actualizar</button>
       </div>
 
-      @if (error()) {
-        <p class="form-error">{{ error() }}</p>
-      }
+      <app-estado-accesible tipo="error" [mensaje]="error()" />
 
       <section class="panel">
         <div class="panel-heading">

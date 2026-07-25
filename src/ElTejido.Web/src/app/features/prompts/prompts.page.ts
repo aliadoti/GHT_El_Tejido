@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AdminApiService } from '../../core/admin-api.service';
 import { PromptConfig } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 type ModoPrompt = 'crear' | 'editar' | 'version';
@@ -11,7 +12,7 @@ type ModoPrompt = 'crear' | 'editar' | 'version';
 @Component({
   selector: 'app-prompts-page',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, EstadoAccesibleComponent],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -21,9 +22,7 @@ type ModoPrompt = 'crear' | 'editar' | 'version';
         <button type="button" class="ghost-button" (click)="load()">Actualizar</button>
       </div>
 
-      @if (error()) {
-        <p class="form-error">{{ error() }}</p>
-      }
+      <app-estado-accesible tipo="error" [mensaje]="error()" />
 
       <div class="two-column">
         <section class="panel">

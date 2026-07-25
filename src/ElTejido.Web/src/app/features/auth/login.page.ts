@@ -5,12 +5,13 @@ import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/auth.service';
 import { BrandSignatureComponent } from '../../layout/brand-signature.component';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [FormsModule, BrandSignatureComponent],
+  imports: [FormsModule, BrandSignatureComponent, EstadoAccesibleComponent],
   template: `
     <main class="login-shell">
       <section class="login-panel" aria-labelledby="login-title">
@@ -41,6 +42,8 @@ import { formatApiError } from '../../shared-error';
               autocomplete="tel"
               [(ngModel)]="numero"
               placeholder="573001119999"
+              [attr.aria-invalid]="step() === 'numero' && error() ? 'true' : null"
+              [attr.aria-describedby]="step() === 'numero' && error() ? 'login-error' : null"
               required
             />
           </label>
@@ -54,17 +57,15 @@ import { formatApiError } from '../../shared-error';
                 autocomplete="one-time-code"
                 [(ngModel)]="codigo"
                 placeholder="482913"
+                [attr.aria-invalid]="error() ? 'true' : null"
+                [attr.aria-describedby]="error() ? 'login-error' : null"
                 required
               />
             </label>
           }
 
-          @if (message()) {
-            <p class="notice">{{ message() }}</p>
-          }
-          @if (error()) {
-            <p class="form-error">{{ error() }}</p>
-          }
+          <app-estado-accesible tipo="informacion" [mensaje]="message()" />
+          <app-estado-accesible estadoId="login-error" tipo="error" [mensaje]="error()" />
 
           <button class="primary-button" type="submit" [disabled]="loading()">
             {{ step() === 'numero' ? 'Enviar codigo' : 'Verificar codigo' }}

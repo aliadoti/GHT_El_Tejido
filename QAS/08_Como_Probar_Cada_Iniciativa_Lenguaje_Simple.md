@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25.
+> Última actualización: 2026-07-25 (P-19).
 
 ## Antes de empezar (léelo una vez)
 
@@ -65,6 +65,17 @@ antes de hacerlo. No cambia los envíos ni la carga de participantes.
    explica las columnas necesarias.
 **Algo va mal si:** una casilla se anuncia solo como “casilla”, un campo solo dice “editar”, o el selector
 de archivo no deja claro que debe ser un CSV de participantes.
+
+### ✅ P-19 — Escuchar errores y confirmaciones sin perder el foco
+**Qué es:** los avisos que aparecen después de una acción ahora se anuncian también para quien usa lector
+de pantalla, sin repetir el mismo mensaje.
+1. Abre la pantalla de **Ingreso** y escribe un número de prueba inválido o provoca una validación fallida.
+2. Mantén el cursor en el campo y envía el formulario.
+3. **Deberías ver y oír:** el mensaje de error, mientras el cursor sigue en el mismo campo para poder corregirlo.
+4. En una pantalla administrativa, guarda un cambio permitido (por ejemplo, editar un usuario de prueba).
+5. **Deberías ver y oír una sola vez:** la confirmación de que se guardó, sin interrumpir lo que estabas haciendo.
+**Algo va mal si:** el mensaje solo se ve pero no se anuncia, se oye dos veces, el cursor salta sin explicación
+o el campo con error no permite leer el motivo.
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { BrandSignatureComponent } from '../../layout/brand-signature.component';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 
 interface AdminInicialResponse {
@@ -22,7 +23,7 @@ interface OtpResponse {
 @Component({
   selector: 'app-simulacion-whatsapp-page',
   standalone: true,
-  imports: [FormsModule, RouterLink, BrandSignatureComponent],
+  imports: [FormsModule, RouterLink, BrandSignatureComponent, EstadoAccesibleComponent],
   template: `
     <section class="login-shell simulator-shell">
       <div class="simulator-page">
@@ -37,12 +38,8 @@ interface OtpResponse {
           </div>
         </header>
 
-        @if (error()) {
-          <p class="form-error">{{ error() }}</p>
-        }
-        @if (notice()) {
-          <p class="notice">{{ notice() }}</p>
-        }
+        <app-estado-accesible tipo="error" [mensaje]="error()" />
+        <app-estado-accesible tipo="informacion" [mensaje]="notice()" />
 
         <section class="panel">
           <div class="panel-heading">

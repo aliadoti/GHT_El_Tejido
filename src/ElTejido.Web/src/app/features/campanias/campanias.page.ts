@@ -12,6 +12,7 @@ import {
 } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
 import { NotificacionesService } from '../../core/notificaciones.service';
+import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 import {
   CampaniaConfiguracionPanel,
@@ -35,6 +36,7 @@ import {
   selector: 'app-campanias-page',
   standalone: true,
   imports: [
+    EstadoAccesibleComponent,
     CampaniasListaPanel,
     CampaniaCreacionPanel,
     CampaniaDetallePanel,
@@ -49,9 +51,7 @@ import {
       <div><h2>Campanias</h2></div>
       <button type="button" class="ghost-button" (click)="load()">Actualizar</button>
     </div>
-    @if (error()) {
-      <p class="form-error">{{ error() }}</p>
-    }
+    <app-estado-accesible tipo="error" [mensaje]="error()" />
     <div class="two-column">
       <app-campanias-lista-panel
         [campanias]="campanias()"
