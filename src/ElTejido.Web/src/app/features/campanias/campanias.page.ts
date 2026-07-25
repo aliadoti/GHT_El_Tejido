@@ -228,6 +228,7 @@ export class CampaniasPage {
             formulario.minutosInactividadSesion === null
               ? null
               : Math.max(0, Math.trunc(Number(formulario.minutosInactividadSesion) || 0)),
+          numeroWhatsAppSaliente: formulario.numeroWhatsAppSaliente.trim() || null,
         },
         configSeguridad: {
           maxCaracteresMensaje: actual?.configSeguridad?.maxCaracteresMensaje ?? 1500,

@@ -15,9 +15,11 @@
 > sus 3 consumidores: orquestador, envíos de campaña y OTP; mitigado con parámetro **opcional con
 > default = número predeterminado**, que preserva el comportamiento actual). Cubre REQ §9/§15/§26,
 > ARQ §4.1/§4.2/§4.4; specs base `05 §2`, `03 §3.3`, `appsettings` sección `WhatsApp`.
-> **Estado:** **TODO — especificación lista, implementación pendiente.** Sin código. Este documento
-> define el diseño para ejecutarlo de forma controlada (contratos aditivos, flags de comportamiento
-> preservado, pasos verificables).
+> **Estado:** **DONE local 2026-07-25.** Implementación aditiva completa: configuración `Numeros[]` y
+> `AliasPredeterminado` con fallback legacy, captura de `metadata.phone_number_id`, gateway con emisor
+> opcional, respuestas por el número entrante y alias saliente por campaña. Sin secretos nuevos; sin
+> configuración nueva se conserva el comportamiento de un solo número. Verificación: build Release,
+> 473 pruebas backend (420 unitarias + 53 de integración) y formato limpio.
 
 ## 1. Qué pide / por qué
 Hoy el backend está atado a **un solo número** de WhatsApp: la ruta de envío se arma con un único

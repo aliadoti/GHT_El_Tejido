@@ -21,15 +21,16 @@
 ```csharp
 public interface IWhatsAppGateway
 {
-    Task<EnvioResultado> EnviarPlantillaAsync(string numeroE164, PlantillaWhatsApp plantilla, IReadOnlyDictionary<string,string> variables, TipoEnvio tipo, CancellationToken ct);
-    Task<EnvioResultado> EnviarTextoAsync(string numeroE164, string texto, TipoEnvio tipo, CancellationToken ct);
+    Task<EnvioResultado> EnviarPlantillaAsync(string numeroE164, PlantillaWhatsApp plantilla, IReadOnlyDictionary<string,string> variables, TipoEnvio tipo, CancellationToken ct, string? emisor = null);
+    Task<EnvioResultado> EnviarTextoAsync(string numeroE164, string texto, TipoEnvio tipo, CancellationToken ct, string? emisor = null);
     MensajeEntrante? ParsearWebhook(WhatsAppWebhookPayload payload); // null si no es un mensaje procesable
     bool VerificarFirma(ReadOnlySpan<byte> cuerpoCrudo, string firmaHeader, string appSecret);
 }
 ```
 
 `EnvioResultado`: `{ bool exito; string? whatsappMessageId; string? error; }`.
-`MensajeEntrante`: `{ string numeroE164; string texto; string whatsappMessageId; DateTime timestamp; }`.
+`MensajeEntrante`: `{ string numeroE164; string texto; string whatsappMessageId; DateTime timestamp; string? phoneNumberIdDestino; }`.
+`emisor` es opcional: `null` usa el predeterminado; el alias de campaña y el id de destino del webhook se resuelven dentro de Infraestructura.
 
 ### 2.2 Envío: plantilla vs texto libre (regla de negocio crítica)
 
@@ -42,9 +43,10 @@ El Gateway decide así:
 - **Repregunta fuera de ventana** → plantilla de repregunta aprobada (`ARQ §16`).
 
 La ventana se calcula desde el último mensaje **entrante** del usuario: `ventanaServicioVenceEn = ultimoEntrante.timestamp + 24h`. Se persiste en `Conversacion` (`03 §3.6`).
+**P-21:** cada respuesta conversacional usa siempre el `phone_number_id` del mismo entrante. El envío inicial, reenvío o reintento usa `configConversacional.numeroWhatsAppSaliente ?? AliasPredeterminado`.
 
 ### 2.3 Llamada a Graph API
-- POST a `{GraphApiBaseUrl}/{PhoneNumberId}/messages` con `Authorization: Bearer <access-token>` (token leído de Key Vault por `apiKeyRef`/secreto configurado, vía Managed Identity).
+- POST a `{GraphApiBaseUrl}/{PhoneNumberIdResuelto}/messages` con `Authorization: Bearer <access-token>` (token leído de Key Vault por `apiKeyRef`/secreto configurado, vía Managed Identity). `PhoneNumberIdResuelto` sale del alias solicitado o del predeterminado; `WhatsApp:PhoneNumberId` legacy sigue siendo el fallback compatible.
 - Throttling configurable para envío masivo (respeta límites de Meta) (`ARQ §4.4`).
 - Reintentos con backoff exponencial ante errores transitorios (5xx / rate de Meta); marca `EnvioMensaje.estado = error` con el detalle si agota reintentos.
 - Cada envío persiste un `EnvioMensaje` (`03 §3.5`) con `tipo`, estado y timestamp.
@@ -57,7 +59,7 @@ Invocado desde el endpoint `POST /webhook/whatsapp` (`04 §6.2`). Flujo (`ARQ §
 2. Responde 200 OK inmediato y encola { payload } a la cola in-process.
 3. El worker:
    - Nota: el parser considera entrantes procesables los textos, clicks de boton de plantilla (`type=button`) y respuestas `interactive.button_reply`.
-   a. ParsearWebhook → MensajeEntrante (ignora payloads de estado/no-mensaje).
+   a. ParsearWebhook → MensajeEntrante (incluye `value.metadata.phone_number_id`; ignora payloads de estado/no-mensaje).
    b. Idempotencia: intenta crear WebhookDedupe{ id = whatsappMessageId } en `leases`.
       - Si ya existía → descarta (mensaje repetido por reintento de Meta).
    c. Normaliza número (06 §2) y resuelve participante (06 §3).
@@ -71,7 +73,7 @@ Invocado desde el endpoint `POST /webhook/whatsapp` (`04 §6.2`). Flujo (`ARQ §
 Disparado por `POST /api/admin/.../envios` (`04 §5.4`). El backend encola un job por participante; el worker los procesa con throttling y registra estado individual (`EnvioMensaje`). El reenvío reusa el mecanismo filtrando por `estadoRespuesta = sinRespuesta` (`ARQ §4.4`). El estado por participante alimenta `GET .../envios`.
 
 ### 2.6 Configuración consumida (sección `WhatsApp` de `02 §6`)
-`GraphApiBaseUrl`, `PhoneNumberId`, `VerifyTokenSecretName`, `AppSecretSecretName`, `AccessTokenSecretName`, y el catálogo de plantillas aprobadas (nombre, idioma, mapeo de variables). Los nombres de secretos coinciden con la guía de Azure.
+`GraphApiBaseUrl`, `PhoneNumberId` legacy, `Numeros[]` (`Alias`, `PhoneNumberId`), `AliasPredeterminado`, `VerifyTokenSecretName`, `AppSecretSecretName`, `AccessTokenSecretName`, y el catálogo de plantillas aprobadas (nombre, idioma, mapeo de variables). Los nombres de secretos coinciden con la guía de Azure; no se agregan secretos para el segundo número.
 
 Para el envío inicial de campañas, configurar en el App Service:
 - `WhatsApp__PlantillaEnvioInicial__Nombre` = `el_tejido_inicio_campania` (nombre sugerido para la plantilla aprobada en Meta).

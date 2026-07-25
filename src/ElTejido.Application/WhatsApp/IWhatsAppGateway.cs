@@ -21,7 +21,8 @@ public interface IWhatsAppGateway
         PlantillaWhatsApp plantilla,
         IReadOnlyDictionary<string, string> variables,
         TipoEnvioMensaje tipo,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? emisor = null);
 
     /// <summary>
     /// Envia una plantilla de <b>autenticacion</b> de Meta (categoria Authentication) con boton de
@@ -35,14 +36,16 @@ public interface IWhatsAppGateway
         PlantillaWhatsApp plantilla,
         string codigo,
         TipoEnvioMensaje tipo,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? emisor = null);
 
     /// <summary>Envia texto libre (solo permitido dentro de la ventana de servicio de 24h, 05 §2.2).</summary>
     Task<EnvioResultado> EnviarTextoAsync(
         string numeroE164,
         string texto,
         TipoEnvioMensaje tipo,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? emisor = null);
 
     /// <summary>Parsea el payload de Meta a un <see cref="MensajeEntrante"/>; <c>null</c> si no es un mensaje procesable.</summary>
     MensajeEntrante? ParsearWebhook(WhatsAppWebhookPayload payload);

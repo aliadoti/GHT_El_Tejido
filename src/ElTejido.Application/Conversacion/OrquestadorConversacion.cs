@@ -118,6 +118,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var usuario = participante.Usuario;
         var campania = participante.Campania;
         var numero = usuario.WhatsappNormalizado;
+        var emisor = mensaje.PhoneNumberIdDestino;
         var ahora = _tiempo.GetUtcNow();
 
         // Cupo de mensajes por usuario/campania (10 §2, Campania.ConfigSeguridad): al exceder, el
@@ -232,12 +233,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 : deseaContinuar
                     ? SeleccionarAcuseContinuar(conversacion)
                     : null;
-            await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, ahora, cancellationToken);
+            await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, emisor, ahora, cancellationToken);
             if (!cupoLlmExcedido)
             {
                 // Con el cupo LLM de la campania agotado no tiene sentido abrir la siguiente pregunta
                 // (tampoco podria evaluarse); en los demas cierres se avanza como siempre.
-                await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+                await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
             }
 
             return;
@@ -254,7 +255,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             // un problema operativo al participante y se cierra sin llamar al LLM.
             await RegistrarConfiguracionNoDisponibleAsync(usuario, contexto.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
             await _procesador.GuardarRespuestaAsync(respuestaId, campania.Id, usuario, pregunta, conversacionId, mensaje.Texto, esRepregunta, EstadoRespuesta.EvaluacionPendiente, ahora, cancellationToken);
-            await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, ahora, cancellationToken);
+            await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
             return;
         }
 
@@ -285,6 +286,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 usuario,
                 pregunta,
                 numero,
+                emisor,
                 contextoEval,
                 mensaje.Texto,
                 respuestaPadreId,
@@ -323,7 +325,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             var invitacion = ConstruirInvitacionMejora(conversacion, evaluacion.RepreguntaSugerida);
             var texto = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), invitacion);
-            await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
+            await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
 
             conversacion = conversacion.RegistrarRepregunta();
             await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -351,12 +353,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 campania.ConfigConversacional.MensajeCierre)
             : campania.ConfigConversacional.MensajeCierre;
         var cierre = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), cierreFinal);
-        await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+        await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         conversacion = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
 
-        await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+        await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
     }
 
     private async Task ProcesarIdeasSegmentadasAsync(
@@ -365,6 +367,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         Usuario usuario,
         Pregunta pregunta,
         NumeroWhatsApp numero,
+        string? emisor,
         ContextoEvaluacion contextoBase,
         string textoOriginal,
         string respuestaPadreId,
@@ -400,7 +403,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         if (resultados.Any(resultado => resultado.Resultado is ResultadoEvaluacion.Fallback))
         {
-            await CerrarNeutroAsync(conversacion, numero, campania, ahora, cancellationToken);
+            await CerrarNeutroAsync(conversacion, numero, campania, emisor, ahora, cancellationToken);
             return;
         }
 
@@ -436,7 +439,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (ofrecerMejora)
         {
             var texto = Combinar(confirmacion, ConstruirInvitacionMejora(conversacion, repreguntaSugerida: null));
-            await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, ahora, cancellationToken);
+            await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
             conversacion = conversacion.RegistrarRepregunta();
             await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
             return;
@@ -447,11 +450,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
                 campania.ConfigConversacional.MensajeCierre)
             : campania.ConfigConversacional.MensajeCierre;
-        await EnviarAsync(conversacion, numero, Combinar(confirmacion, cierreFinal), TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+        await EnviarAsync(conversacion, numero, Combinar(confirmacion, cierreFinal), TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         conversacion = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
-        await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, ahora, cancellationToken);
+        await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
     }
 
     private async Task<IdeasResueltas> ResolverIdeasAsync(
@@ -602,7 +605,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
         var texto = Combinar(ResolverSaludoPrimerContacto(campania, usuario), pregunta.Texto);
-        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, mensaje.PhoneNumberIdDestino, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
     }
@@ -633,6 +636,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         Usuario usuario,
         Pregunta preguntaActual,
         NumeroWhatsApp numero,
+        string? emisor,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
@@ -646,7 +650,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var conversacion = DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, siguiente.Id, Canal, null, ahora);
         var texto = Combinar(TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault), siguiente.Texto);
 
-        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, ahora, cancellationToken);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
     }
 
@@ -679,13 +683,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         NumeroWhatsApp numero,
         Campania campania,
         string? acusePrevio,
+        string? emisor,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         var texto = string.IsNullOrWhiteSpace(acusePrevio)
             ? campania.ConfigConversacional.MensajeCierre
             : Combinar(acusePrevio, campania.ConfigConversacional.MensajeCierre);
-        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
@@ -795,6 +800,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private async Task CerrarPorConfiguracionNoDisponibleAsync(
         DominioConversacion conversacion,
         NumeroWhatsApp numero,
+        string? emisor,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
@@ -805,6 +811,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 _mensajes.MensajeConfiguracionNoDisponible,
                 OpcionesMensajesConversacion.MensajeConfiguracionNoDisponibleDefault),
             TipoEnvioMensaje.Cierre,
+            emisor,
             ahora,
             cancellationToken);
 
@@ -816,11 +823,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DominioConversacion conversacion,
         NumeroWhatsApp numero,
         Campania campania,
+        string? emisor,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         var texto = Combinar(EvaluadorLlm.RetroNeutra, campania.ConfigConversacional.MensajeCierre);
-        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, ahora, cancellationToken);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
@@ -1053,11 +1061,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         NumeroWhatsApp numero,
         string texto,
         TipoEnvioMensaje tipo,
+        string? emisor,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         // MVP: dentro de la ventana de servicio (siempre abierta tras un entrante) se usa texto libre (05 §2.2).
-        var resultado = await _gateway.EnviarTextoAsync(numero.Valor, texto, tipo, cancellationToken);
+        var resultado = await _gateway.EnviarTextoAsync(numero.Valor, texto, tipo, cancellationToken, emisor);
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.Out, texto, resultado.WhatsappMessageId, ahora, cancellationToken);
 

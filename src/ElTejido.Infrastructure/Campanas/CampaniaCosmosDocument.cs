@@ -384,6 +384,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("minutosInactividadSesion")]
         public int? MinutosInactividadSesion { get; init; }
 
+        // P-21 (aditivo, 03 §3.3): null en documentos anteriores usa el numero predeterminado.
+        [JsonProperty("numeroWhatsAppSaliente")]
+        public string? NumeroWhatsAppSaliente { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -395,6 +399,7 @@ internal sealed class CampaniaCosmosDocument
                 Parafraseo = config.Parafraseo,
                 UmbralCierreAnticipado = config.UmbralCierreAnticipado,
                 MinutosInactividadSesion = config.MinutosInactividadSesion,
+                NumeroWhatsAppSaliente = config.NumeroWhatsAppSaliente,
             };
         }
 
@@ -402,7 +407,7 @@ internal sealed class CampaniaCosmosDocument
         {
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
                 MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
-                MinutosInactividadSesion);
+                MinutosInactividadSesion, NumeroWhatsAppSaliente);
         }
     }
 

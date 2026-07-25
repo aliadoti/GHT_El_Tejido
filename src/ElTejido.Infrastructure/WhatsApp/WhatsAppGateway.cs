@@ -72,14 +72,11 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
 
     public MensajeEntrante? ParsearWebhook(WhatsAppWebhookPayload payload)
     {
-        var mensaje = payload.Entry?
+        var cambio = payload.Entry?
             .SelectMany(entry => entry.Changes ?? Array.Empty<WhatsAppChange>())
-            .Select(change => change.Value)
-            .Where(value => value is not null)
-            .SelectMany(value => value!.Messages ?? Array.Empty<WhatsAppMessage>())
-            .FirstOrDefault(EsMensajeProcesable);
-
-        if (mensaje is null)
+            .FirstOrDefault(change => change.Value?.Messages?.Any(EsMensajeProcesable) == true);
+        var mensaje = cambio?.Value?.Messages?.FirstOrDefault(EsMensajeProcesable);
+        if (mensaje is null || cambio?.Value is null)
         {
             // Payloads de estado/no-mensaje se ignoran (05 §2.4 paso a).
             return null;
@@ -90,7 +87,8 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             mensaje.From!,
             texto!,
             mensaje.Id!,
-            ParsearTimestamp(mensaje.Timestamp));
+            ParsearTimestamp(mensaje.Timestamp),
+            cambio.Value.Metadata?.PhoneNumberId);
     }
 
     public Task<EnvioResultado> EnviarPlantillaAsync(
@@ -98,7 +96,8 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
         PlantillaWhatsApp plantilla,
         IReadOnlyDictionary<string, string> variables,
         TipoEnvioMensaje tipo,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? emisor = null)
     {
         var parametros = plantilla.Componentes
             .Select(componente => new { type = "text", text = variables.GetValueOrDefault(componente, string.Empty) })
@@ -121,7 +120,7 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             template = plantillaPayload,
         };
 
-        return EnviarAsync(cuerpo, tipo, cancellationToken);
+        return EnviarAsync(cuerpo, tipo, cancellationToken, emisor);
     }
 
     public Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(
@@ -129,7 +128,8 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
         PlantillaWhatsApp plantilla,
         string codigo,
         TipoEnvioMensaje tipo,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? emisor = null)
     {
         // Meta exige el codigo en el body y en el boton (sub_type=url, index=0) para las plantillas
         // de categoria Authentication con boton copy-code/one-tap.
@@ -158,14 +158,15 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             },
         };
 
-        return EnviarAsync(cuerpo, tipo, cancellationToken);
+        return EnviarAsync(cuerpo, tipo, cancellationToken, emisor);
     }
 
     public Task<EnvioResultado> EnviarTextoAsync(
         string numeroE164,
         string texto,
         TipoEnvioMensaje tipo,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? emisor = null)
     {
         var cuerpo = new
         {
@@ -175,10 +176,14 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
             text = new { body = texto },
         };
 
-        return EnviarAsync(cuerpo, tipo, cancellationToken);
+        return EnviarAsync(cuerpo, tipo, cancellationToken, emisor);
     }
 
-    private async Task<EnvioResultado> EnviarAsync(object cuerpo, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
+    private async Task<EnvioResultado> EnviarAsync(
+        object cuerpo,
+        TipoEnvioMensaje tipo,
+        CancellationToken cancellationToken,
+        string? emisor)
     {
         string token;
         try
@@ -196,7 +201,13 @@ public sealed class WhatsAppGateway : IWhatsAppGateway
                 $"WhatsApp no configurado: falta el secreto '{_opciones.AccessTokenSecretName}' en Key Vault.");
         }
 
-        var ruta = $"{_opciones.GraphApiBaseUrl.TrimEnd('/')}/{_opciones.PhoneNumberId}/messages";
+        var phoneNumberId = _opciones.ResolverPhoneNumberId(emisor, out var emisorEncontrado);
+        if (!emisorEncontrado && !string.IsNullOrWhiteSpace(emisor))
+        {
+            _logger.LogWarning("El emisor de WhatsApp solicitado no esta configurado; se usa el predeterminado.");
+        }
+
+        var ruta = $"{_opciones.GraphApiBaseUrl.TrimEnd('/')}/{phoneNumberId}/messages";
 
         for (var intento = 0; ; intento++)
         {

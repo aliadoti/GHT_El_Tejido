@@ -495,7 +495,8 @@ internal static class EndpointsAdminFase4
             request?.TejidoColectivo ?? false,
             request?.Parafraseo ?? false,
             request?.UmbralCierreAnticipado,
-            request?.MinutosInactividadSesion);
+            request?.MinutosInactividadSesion,
+            request?.NumeroWhatsAppSaliente);
 
     private static LimitesSeguridad ToLimitesCampania(LimitesSeguridadRequest? request)
         => LimitesSeguridad.Crear(
@@ -644,7 +645,7 @@ internal static class EndpointsAdminFase4
         => new { tipoArtefacto = ToApiTipoArtefacto(config.TipoArtefacto) };
 
     private static object MapearConfigConversacional(ConfigConversacional config)
-        => new { config.MaxRepreguntas, config.MensajeCierre, config.SegmentacionIdeas, config.TejidoColectivo, config.Parafraseo, config.UmbralCierreAnticipado, config.MinutosInactividadSesion };
+        => new { config.MaxRepreguntas, config.MensajeCierre, config.SegmentacionIdeas, config.TejidoColectivo, config.Parafraseo, config.UmbralCierreAnticipado, config.MinutosInactividadSesion, config.NumeroWhatsAppSaliente };
 
     private static object MapearLimitesCampania(LimitesSeguridad limites)
         => new { limites.MaxCaracteresMensaje, limites.MaxMensajesPorUsuario, limites.MaxLlamadasLlmPorUsuario, limites.PresupuestoTokensCampania };
@@ -786,7 +787,7 @@ internal static class EndpointsAdminFase4
     private sealed record CampaniaRequest(string? Nombre, string? Descripcion, string? Objetivo, string? RubricaRef, IReadOnlyDictionary<string, string>? PromptRefs, string? ConfigLlmRef, ConfigMarkdownRequest? ConfigMarkdown, ConfigConversacionalRequest? ConfigConversacional, LimitesSeguridadRequest? ConfigSeguridad);
     private sealed record CampaniaPatchRequest(string? Nombre, string? Descripcion, string? Objetivo, string? RubricaRef, IReadOnlyDictionary<string, string>? PromptRefs, string? ConfigLlmRef, ConfigMarkdownRequest? ConfigMarkdown, ConfigConversacionalRequest? ConfigConversacional, LimitesSeguridadRequest? ConfigSeguridad);
     private sealed record ConfigMarkdownRequest(string? TipoArtefacto);
-    private sealed record ConfigConversacionalRequest(int? MaxRepreguntas, string? MensajeCierre, bool? SegmentacionIdeas, bool? TejidoColectivo, bool? Parafraseo, double? UmbralCierreAnticipado, int? MinutosInactividadSesion);
+    private sealed record ConfigConversacionalRequest(int? MaxRepreguntas, string? MensajeCierre, bool? SegmentacionIdeas, bool? TejidoColectivo, bool? Parafraseo, double? UmbralCierreAnticipado, int? MinutosInactividadSesion, string? NumeroWhatsAppSaliente);
     private sealed record LimitesSeguridadRequest(int? MaxCaracteresMensaje, int? MaxMensajesPorUsuario, int? MaxLlamadasLlmPorUsuario, int? PresupuestoTokensCampania);
     private sealed record LimitesSeguridadPreguntaRequest(int? MaxCaracteresMensaje, int? MaxLlamadasLlm);
     private sealed record PlantillaWhatsAppRequest(string? Nombre, string? Idioma, IReadOnlyCollection<string>? Componentes);

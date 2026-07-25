@@ -38,6 +38,7 @@ export interface CampaniaEdicionForm extends CampaniaCrearForm {
   parafraseo: boolean;
   umbralCierreAnticipado: number | null;
   minutosInactividadSesion: number | null;
+  numeroWhatsAppSaliente: string;
 }
 export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'participantes';
 export interface MensajeInicialForm {
@@ -125,6 +126,7 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
     parafraseo: campania.configConversacional?.parafraseo ?? false,
     umbralCierreAnticipado: campania.configConversacional?.umbralCierreAnticipado ?? null,
     minutosInactividadSesion: campania.configConversacional?.minutosInactividadSesion ?? null,
+    numeroWhatsAppSaliente: campania.configConversacional?.numeroWhatsAppSaliente ?? '',
   };
 }
 
@@ -323,6 +325,14 @@ export class CampaniaCreacionPanel implements OnChanges {
           step="1"
           name="editarMinutosInactividadSesion"
           [(ngModel)]="formulario.minutosInactividadSesion" /></label
+      ><label
+        >Alias del numero de envio (opcional)<input
+          name="editarNumeroWhatsAppSaliente"
+          placeholder="usar predeterminado"
+          [(ngModel)]="formulario.numeroWhatsAppSaliente"
+        /><small class="muted"
+          >Dejalo vacio para usar el numero predeterminado o escribe un alias configurado.</small
+        ></label
       ><label
         >Prompt de evaluacion<select
           name="editarPromptEvaluarRef"

@@ -205,7 +205,8 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
     "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
     "segmentacionIdeas": false,
     "parafraseo": false,
-    "umbralCierreAnticipado": null
+    "umbralCierreAnticipado": null,
+    "numeroWhatsAppSaliente": null
   }
 }
 ```
@@ -219,6 +220,9 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
   cierre anticipado para esta campaña. `null` hereda `Conversacion:UmbralCierreAnticipado`; `<= 0`
   lo desactiva para la campaña. `Conversacion:CierreAnticipadoHabilitado=false` es el kill-switch
   global que prevalece sobre el default y cualquier override. Campo ausente = herencia segura.
+- `numeroWhatsAppSaliente` (`P-21`, `string?`, default `null`): alias lógico opcional del número que
+  inicia los envíos de la campaña. Vacío o ausente usa el predeterminado global; un alias no configurado
+  también degrada a ese predeterminado y no expone ids de Meta.
 
 #### Sub-recursos embebidos de campaña
 | Método | Ruta | Descripción |

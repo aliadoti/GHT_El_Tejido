@@ -101,6 +101,17 @@ public sealed class ServicioEnviosTests
     }
 
     [Fact]
+    public async Task EncolarIniciales_CampaniaConAliasNumero_LoConservaEnElTrabajo()
+    {
+        ConfigurarCampania(EstadoCampania.Activa, "qas");
+        ConfigurarParticipantes(CrearParticipante("u_1", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta));
+
+        await Construir().EncolarInicialesAsync(CampaniaId, null, null, CancellationToken.None);
+
+        _encolados.Should().ContainSingle().Which.AliasNumeroSaliente.Should().Be("qas");
+    }
+
+    [Fact]
     public async Task EncolarIniciales_SinPlantillaGlobal_LanzaReglaNegocio()
     {
         ConfigurarCampania(EstadoCampania.Activa);
@@ -144,15 +155,15 @@ public sealed class ServicioEnviosTests
     private ServicioEnvios Construir(OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
         => new(_campanias, _participantes, _usuarios, _cola, _jobs, plantillaEnvioInicial ?? _plantillaEnvioInicial);
 
-    private void ConfigurarCampania(EstadoCampania estado)
+    private void ConfigurarCampania(EstadoCampania estado, string? numeroWhatsAppSaliente = null)
         => _campanias.ObtenerCampaniaPorIdAsync(CampaniaId, Arg.Any<CancellationToken>())
-            .Returns(CrearCampania(estado));
+            .Returns(CrearCampania(estado, numeroWhatsAppSaliente));
 
     private void ConfigurarParticipantes(params ParticipanteCampania[] participantes)
         => _participantes.ListarParticipantesAsync(CampaniaId, Arg.Any<CancellationToken>())
             .Returns(participantes);
 
-    private static Campania CrearCampania(EstadoCampania estado)
+    private static Campania CrearCampania(EstadoCampania estado, string? numeroWhatsAppSaliente = null)
     {
         var mensaje = MensajeInicial.Crear(
             "mi_1",
@@ -175,7 +186,7 @@ public sealed class ServicioEnviosTests
             null,
             "llm_1",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
-            ConfigConversacional.Crear(1, "Gracias."),
+            ConfigConversacional.Crear(1, "Gracias.", numeroWhatsAppSaliente: numeroWhatsAppSaliente),
             LimitesSeguridad.Crear(1500, 10, 2),
             null,
             Epoca,

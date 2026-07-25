@@ -17,4 +17,5 @@ public sealed record TrabajoEnvio(
     PlantillaWhatsApp? Plantilla,
     IReadOnlyDictionary<string, string> Variables,
     string TextoLibre,
-    TipoEnvioMensaje Tipo);
+    TipoEnvioMensaje Tipo,
+    string? AliasNumeroSaliente = null);

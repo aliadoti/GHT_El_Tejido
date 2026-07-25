@@ -50,7 +50,7 @@ public sealed class OrquestadorConversacionTests
         _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
         _configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
         _correlacion.CorrelationIdActual.Returns("corr_test");
-        _gateway.EnviarTextoAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoEnvioMensaje>(), Arg.Any<CancellationToken>())
+        _gateway.EnviarTextoAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoEnvioMensaje>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(EnvioResultado.Ok("wamid.out"));
     }
 
@@ -74,6 +74,23 @@ public sealed class OrquestadorConversacionTests
             Arg.Is<Respuesta>(r => r.Estado == EstadoRespuesta.Evaluada), Arg.Any<CancellationToken>());
         await _participantes.Received().GuardarParticipanteAsync(
             Arg.Is<ParticipanteCampania>(p => p.EstadoRespuesta == EstadoRespuestaParticipante.Respondio), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_MensajeConNumeroDestino_RespondePorEseMismoNumero()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea", "meta-qas"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Any<string>(),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            "meta-qas");
     }
 
     [Fact]
@@ -1284,7 +1301,8 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta1);
     }
 
-    private static MensajeEntrante Mensaje(string texto) => new(Numero, texto, "wamid." + Guid.NewGuid().ToString("N"), Epoca);
+    private static MensajeEntrante Mensaje(string texto, string? phoneNumberIdDestino = null)
+        => new(Numero, texto, "wamid." + Guid.NewGuid().ToString("N"), Epoca, phoneNumberIdDestino);
 
     private static Pregunta CrearPregunta(string id, int orden, int maxRepreguntas)
         => Pregunta.Crear(

@@ -9,4 +9,5 @@ public sealed record MensajeEntrante(
     string NumeroE164,
     string Texto,
     string WhatsappMessageId,
-    DateTimeOffset Timestamp);
+    DateTimeOffset Timestamp,
+    string? PhoneNumberIdDestino = null);

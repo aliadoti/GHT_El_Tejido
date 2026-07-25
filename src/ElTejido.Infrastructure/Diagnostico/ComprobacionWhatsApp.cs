@@ -6,7 +6,8 @@ namespace ElTejido.Infrastructure.Diagnostico;
 
 /// <summary>
 /// Comprueba la configuracion <b>no secreta</b> de WhatsApp (05 §2.6, guia de Azure §10): que
-/// <c>WhatsApp:PhoneNumberId</c> y <c>WhatsApp:GraphApiBaseUrl</c> esten poblados. Los secretos
+/// <c>WhatsApp:PhoneNumberId</c> o el numero predeterminado de <c>WhatsApp:Numeros</c>, y
+/// <c>WhatsApp:GraphApiBaseUrl</c> esten poblados. Los secretos
 /// (<c>wa-token</c>, <c>wa-appsec</c>, <c>wa-verify-token</c>) los cubre <see cref="ComprobacionSecretos"/>.
 /// </summary>
 public sealed class ComprobacionWhatsApp : IComprobacionPreparacion
@@ -22,7 +23,7 @@ public sealed class ComprobacionWhatsApp : IComprobacionPreparacion
     {
         IReadOnlyList<ResultadoComprobacion> resultados = new[]
         {
-            Evaluar("whatsapp:PhoneNumberId", _opciones.PhoneNumberId, "Falta el Phone number ID de Meta."),
+            Evaluar("whatsapp:PhoneNumberId", _opciones.ResolverPhoneNumberId(null, out _), "Falta el Phone number ID de Meta."),
             Evaluar("whatsapp:GraphApiBaseUrl", _opciones.GraphApiBaseUrl, "Falta la URL base de Graph API."),
         };
 

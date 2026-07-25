@@ -83,6 +83,7 @@ public sealed class WhatsAppGatewayTests
                                         Text = new WhatsAppMessageText { Body = "Mi idea" },
                                     },
                                 },
+                                Metadata = new WhatsAppMetadata { PhoneNumberId = "meta-destino", DisplayPhoneNumber = "+57 300 111 2233" },
                             },
                         },
                     },
@@ -97,6 +98,7 @@ public sealed class WhatsAppGatewayTests
         mensaje.Texto.Should().Be("Mi idea");
         mensaje.WhatsappMessageId.Should().Be("wamid.ABC");
         mensaje.Timestamp.Should().Be(DateTimeOffset.FromUnixTimeSeconds(1700000000));
+        mensaje.PhoneNumberIdDestino.Should().Be("meta-destino");
     }
 
     [Fact]
@@ -317,6 +319,30 @@ public sealed class WhatsAppGatewayTests
         resultado.Error.Should().Contain("HTTP 404");
         resultado.Error.Should().Contain("code=100");
         resultado.Error.Should().Contain("fbtrace_id=AbC123");
+    }
+
+    [Fact]
+    public async Task EnviarTexto_EmisorPorAlias_UsaElPhoneNumberIdConfigurado()
+    {
+        var secretos = Substitute.For<ISecretProvider>();
+        secretos.ObtenerSecretoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("token-de-prueba");
+        var handler = new HandlerCapturador(HttpStatusCode.OK, "{\"messages\":[{\"id\":\"wamid.1\"}]}");
+        var opciones = new OpcionesWhatsApp
+        {
+            AliasPredeterminado = "produccion",
+            Numeros =
+            [
+                new NumeroWhatsAppConfigurado { Alias = "produccion", PhoneNumberId = "id-produccion" },
+                new NumeroWhatsAppConfigurado { Alias = "qas", PhoneNumberId = "id-qas" },
+            ],
+        };
+        var gateway = Construir(secretos, handler, opciones);
+
+        await gateway.EnviarTextoAsync("573001112233", "Hola", TipoEnvioMensaje.Inicial, CancellationToken.None, "qas");
+
+        handler.UltimaRuta.Should().EndWith("/id-qas/messages");
+        opciones.ResolverPhoneNumberId("alias-inexistente", out var encontrado).Should().Be("id-produccion");
+        encontrado.Should().BeFalse();
     }
 
     private static WhatsAppGateway Construir()

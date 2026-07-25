@@ -47,6 +47,12 @@ participante escribe despues de una pregunta cerrada y aun hay preguntas pendien
 para abrir/enviar la siguiente pregunta y no se evalua como respuesta. Si todas las preguntas activas ya
 estan cerradas, los mensajes posteriores se ignoran.
 
+**P-21 — número de WhatsApp:** el mensaje inicial, reenvío o reintento sale por el alias guardado en
+`configConversacional.numeroWhatsAppSaliente` o, si está vacío, por el número predeterminado. Desde que
+un participante escribe, toda pregunta, retroalimentación y cierre de ese hilo responde por el mismo
+número que recibió el entrante. Si Meta no informa ese destino o el alias no existe, se usa el
+predeterminado sin bloquear la conversación.
+
 El avance entre preguntas no exige siempre agotar las revisiones: una pregunta puede cerrarse antes por
 **calificacion alta** o porque el **participante pide continuar** (ver §2.3, "Dos salidas anticipadas").
 
@@ -254,6 +260,7 @@ lo que otros han dicho. Reglas duras de esta función:
 | `Conversacion:HorasExpiracionSinRespuesta` | App config / env `Conversacion__HorasExpiracionSinRespuesta` | 0 (**desactivado**) | Horas sin actividad tras las que un hilo abierto se cierra solo (legacy; se usa si no hay minutos configurados). Recomendado p. ej. `72`. |
 | `Conversacion:MinutosInactividadSesion` | App config / env `Conversacion__MinutosInactividadSesion` | 0 (**desactivado**) | **I-17 §7** — default global de la ventana de inactividad **en minutos** (granularidad sub-hora; interruptor maestro). Recomendado `5` en el acta del día-D. |
 | `configConversacional.minutosInactividadSesion` | Portal admin (campaña) | ausente (**hereda global**) | **I-17 §7** — override por campaña de la ventana de inactividad en minutos; `<= 0` la apaga solo para esa campaña. |
+| `configConversacional.numeroWhatsAppSaliente` | Portal admin (campaña) | ausente (**usa predeterminado**) | **P-21** — alias lógico para el envío inicial/reenvío; nunca guarda el id de Meta. |
 | `pregunta.umbralCierreAnticipado` | Portal admin (pregunta) | ausente (**hereda campaña**) | **I-17** — override del umbral compartido (madurez + cierre) por pregunta; precedencia pregunta → campaña → global. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |

@@ -157,7 +157,8 @@ public sealed class ServicioEnvios : IServicioEnvios
                 plantilla,
                 variables,
                 RenderizadorMensaje.Reemplazar(mensaje.Texto, variables),
-                tipo);
+                tipo,
+                campania.ConfigConversacional.NumeroWhatsAppSaliente);
 
             await _cola.EncolarAsync(trabajo, cancellationToken);
         }

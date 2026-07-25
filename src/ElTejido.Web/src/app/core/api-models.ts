@@ -88,6 +88,7 @@ export interface ConfigConversacional {
   // I-17 §7 (aditivo): ventana de cierre por inactividad de sesión, en minutos. null hereda el
   // default global; 0 o negativo desactiva el cierre por inactividad solo para esta campaña.
   minutosInactividadSesion?: number | null;
+  numeroWhatsAppSaliente?: string | null;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).

@@ -28,12 +28,24 @@ public sealed record WhatsAppChange
 
 public sealed record WhatsAppChangeValue
 {
+    [JsonPropertyName("metadata")]
+    public WhatsAppMetadata? Metadata { get; init; }
+
     [JsonPropertyName("messages")]
     public IReadOnlyList<WhatsAppMessage>? Messages { get; init; }
 
     /// <summary>Notificaciones de estado de mensajes salientes (sent/delivered/read/failed, 04 §6.2).</summary>
     [JsonPropertyName("statuses")]
     public IReadOnlyList<WhatsAppStatus>? Statuses { get; init; }
+}
+
+public sealed record WhatsAppMetadata
+{
+    [JsonPropertyName("phone_number_id")]
+    public string? PhoneNumberId { get; init; }
+
+    [JsonPropertyName("display_phone_number")]
+    public string? DisplayPhoneNumber { get; init; }
 }
 
 /// <summary>Estado de entrega de un mensaje saliente reportado por Meta (incl. errores de entrega).</summary>

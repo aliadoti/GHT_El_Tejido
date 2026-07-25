@@ -198,16 +198,16 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                 : new MensajeEntrante(mensaje.From!, mensaje.Text!.Body!, mensaje.Id!, Epoca);
         }
 
-        public Task<EnvioResultado> EnviarTextoAsync(string numeroE164, string texto, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
+        public Task<EnvioResultado> EnviarTextoAsync(string numeroE164, string texto, TipoEnvioMensaje tipo, CancellationToken cancellationToken, string? emisor = null)
         {
             Enviados.Enqueue((numeroE164, texto, tipo));
             return Task.FromResult(EnvioResultado.Ok("wamid.out"));
         }
 
-        public Task<EnvioResultado> EnviarPlantillaAsync(string numeroE164, PlantillaWhatsApp plantilla, IReadOnlyDictionary<string, string> variables, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
+        public Task<EnvioResultado> EnviarPlantillaAsync(string numeroE164, PlantillaWhatsApp plantilla, IReadOnlyDictionary<string, string> variables, TipoEnvioMensaje tipo, CancellationToken cancellationToken, string? emisor = null)
             => Task.FromResult(EnvioResultado.Ok("wamid.out"));
 
-        public Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(string numeroE164, PlantillaWhatsApp plantilla, string codigo, TipoEnvioMensaje tipo, CancellationToken cancellationToken)
+        public Task<EnvioResultado> EnviarPlantillaAutenticacionAsync(string numeroE164, PlantillaWhatsApp plantilla, string codigo, TipoEnvioMensaje tipo, CancellationToken cancellationToken, string? emisor = null)
             => Task.FromResult(EnvioResultado.Ok("wamid.out"));
     }
 

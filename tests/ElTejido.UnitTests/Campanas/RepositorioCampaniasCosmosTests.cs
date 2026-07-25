@@ -85,6 +85,22 @@ public sealed class RepositorioCampaniasCosmosTests
         ConfigConversacional.Crear(1, "Gracias.").Parafraseo.Should().BeFalse();
     }
 
+    [Fact]
+    public void ConfigConversacional_NumeroWhatsAppSaliente_SobreviveRoundTripYDocumentoAnteriorHereda()
+    {
+        var campania = CrearCampania(numeroWhatsAppSaliente: "qas");
+        var documento = CampaniaCosmosDocument.FromDomain(campania);
+        var documentoAnterior = new CampaniaCosmosDocument.ConfigConversacionalDocument
+        {
+            MaxRepreguntas = 1,
+            MensajeCierre = "Gracias.",
+        };
+
+        documento.ConfigConversacional.NumeroWhatsAppSaliente.Should().Be("qas");
+        documento.ToDomain().ConfigConversacional.NumeroWhatsAppSaliente.Should().Be("qas");
+        documentoAnterior.ToDomain().NumeroWhatsAppSaliente.Should().BeNull();
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData(0.0)]
@@ -126,7 +142,8 @@ public sealed class RepositorioCampaniasCosmosTests
     private static Campania CrearCampania(
         bool tejidoColectivo = false,
         bool parafraseo = false,
-        double? umbralCierreAnticipado = null)
+        double? umbralCierreAnticipado = null,
+        string? numeroWhatsAppSaliente = null)
     {
         return Campania.Crear(
             "c_2026conv",
@@ -145,7 +162,8 @@ public sealed class RepositorioCampaniasCosmosTests
                 "Gracias. Tu aporte quedo registrado correctamente.",
                 tejidoColectivo: tejidoColectivo,
                 parafraseo: parafraseo,
-                umbralCierreAnticipado: umbralCierreAnticipado),
+                umbralCierreAnticipado: umbralCierreAnticipado,
+                numeroWhatsAppSaliente: numeroWhatsAppSaliente),
             LimitesSeguridad.Crear(1500, 10, 2),
             ["u_1", "u_2"],
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),

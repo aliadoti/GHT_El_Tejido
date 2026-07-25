@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25 (P-20).
+> Última actualización: 2026-07-25 (P-21).
 
 ## Antes de empezar (léelo una vez)
 
@@ -222,6 +222,17 @@ se encienden por campaña.
   encuentra al participante correspondiente.
 
 ---
+
+### P-21 - Usar el numero correcto de WhatsApp
+
+**Que es:** una campana puede salir por el numero de pruebas o por el de produccion, y el bot siempre responde por el mismo numero al que la persona escribio.
+
+1. Pidele al equipo que configure dos numeros de prueba y uno con un alias, por ejemplo **qas**. En **Campanas**, abre una campana de prueba, escribe **qas** en **Alias del numero de envio** y guarda.
+2. Desde **Envios**, manda el mensaje inicial a un telefono de prueba. Debe llegar desde el numero asociado al alias.
+3. Borra el alias, guarda y repite el envio: debe salir desde el numero predeterminado.
+4. Responde desde el telefono: la pregunta, retroalimentacion y cierre deben llegar desde ese mismo numero.
+
+**Algo va mal si:** el mensaje inicial usa otro numero, una respuesta cambia de numero a mitad de la conversacion, o un alias vacio no usa el predeterminado. No escribas ids tecnicos de Meta: usa solo aliases configurados por el equipo.
 
 ## Si encuentras un problema
 Anótalo con: **qué probabas**, **qué hiciste**, **qué esperabas ver** y **qué viste**. Si es de

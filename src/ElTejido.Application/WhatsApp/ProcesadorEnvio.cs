@@ -37,12 +37,14 @@ public sealed class ProcesadorEnvio
                 trabajo.Plantilla,
                 trabajo.Variables,
                 trabajo.Tipo,
-                cancellationToken)
+                cancellationToken,
+                trabajo.AliasNumeroSaliente)
             : await _gateway.EnviarTextoAsync(
                 trabajo.Numero,
                 trabajo.TextoLibre,
                 trabajo.Tipo,
-                cancellationToken);
+                cancellationToken,
+                trabajo.AliasNumeroSaliente);
 
         var ahora = _tiempo.GetUtcNow();
         var estado = resultado.Exito ? EstadoEnvio.Enviado : EstadoEnvio.Error;

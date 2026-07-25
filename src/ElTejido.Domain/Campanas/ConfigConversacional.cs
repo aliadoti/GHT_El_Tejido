@@ -11,7 +11,8 @@ public sealed class ConfigConversacional
         bool tejidoColectivo,
         bool parafraseo,
         double? umbralCierreAnticipado,
-        int? minutosInactividadSesion)
+        int? minutosInactividadSesion,
+        string? numeroWhatsAppSaliente)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -20,6 +21,7 @@ public sealed class ConfigConversacional
         Parafraseo = parafraseo;
         UmbralCierreAnticipado = umbralCierreAnticipado;
         MinutosInactividadSesion = minutosInactividadSesion;
+        NumeroWhatsAppSaliente = string.IsNullOrWhiteSpace(numeroWhatsAppSaliente) ? null : numeroWhatsAppSaliente.Trim();
     }
 
     public int MaxRepreguntas { get; }
@@ -64,6 +66,12 @@ public sealed class ConfigConversacional
     /// </summary>
     public int? MinutosInactividadSesion { get; }
 
+    /// <summary>
+    /// P-21: alias logico opcional del numero que inicia los envios de esta campania. <c>null</c>
+    /// hereda el numero predeterminado de WhatsApp; nunca guarda el id de Meta.
+    /// </summary>
+    public string? NumeroWhatsAppSaliente { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
@@ -71,7 +79,8 @@ public sealed class ConfigConversacional
         bool tejidoColectivo = false,
         bool parafraseo = false,
         double? umbralCierreAnticipado = null,
-        int? minutosInactividadSesion = null)
+        int? minutosInactividadSesion = null,
+        string? numeroWhatsAppSaliente = null)
     {
         if (maxRepreguntas < 0)
         {
@@ -94,6 +103,7 @@ public sealed class ConfigConversacional
             tejidoColectivo,
             parafraseo,
             umbralCierreAnticipado,
-            minutosInactividadSesion);
+            minutosInactividadSesion,
+            numeroWhatsAppSaliente);
     }
 }
