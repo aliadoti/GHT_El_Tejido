@@ -101,7 +101,14 @@ import { formatApiError } from '../../shared-error';
           <table>
             <thead>
               <tr>
-                <th><input type="checkbox" [checked]="allSelected()" (change)="toggleAll()" /></th>
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="Seleccionar todos los envíos visibles"
+                    [checked]="allSelected()"
+                    (change)="toggleAll()"
+                  />
+                </th>
                 <th>Usuario</th>
                 <th>Numero</th>
                 <th>Envio</th>
@@ -115,6 +122,7 @@ import { formatApiError } from '../../shared-error';
                   <td>
                     <input
                       type="checkbox"
+                      [attr.aria-label]="'Seleccionar envío de ' + nombreUsuario(estado.usuarioId)"
                       [checked]="seleccion().includes(estado.usuarioId)"
                       (change)="toggle(estado.usuarioId)"
                     />

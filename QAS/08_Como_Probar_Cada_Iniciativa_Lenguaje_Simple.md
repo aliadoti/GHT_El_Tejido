@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-24.
+> Última actualización: 2026-07-25.
 
 ## Antes de empezar (léelo una vez)
 
@@ -51,6 +51,20 @@ pero ahora cada parte de la pantalla se puede mantener sin afectar a las demás.
 **Algo va mal si:** desaparece una sección, se cambia o se pierde la campaña que estabas viendo, un botón
 de administrador aparece para alguien sin permiso, se guarda dos veces la misma acción o alguna función
 que existía antes deja de responder.
+
+### ✅ P-18 — Identificar claramente qué hace cada casilla y campo
+**Qué es:** una mejora para que las personas que usan teclado o lector de pantalla sepan qué seleccionan
+antes de hacerlo. No cambia los envíos ni la carga de participantes.
+1. Entra al portal y abre **Envíos** de una campaña que tenga al menos dos personas.
+2. Recorre con la tecla Tab la casilla de arriba y dos casillas de personas distintas.
+3. **Deberías oír o ver en el panel de accesibilidad:** que la primera casilla selecciona todos los envíos
+   visibles y que cada una de las otras nombra a la persona correspondiente.
+4. Abre **Usuarios**. En la sección **Tags**, confirma que los tres campos se identifican como nombre,
+   tipo y descripción de la etiqueta.
+5. En **Carga masiva de participantes**, confirma que el selector indica que espera un archivo CSV y que
+   explica las columnas necesarias.
+**Algo va mal si:** una casilla se anuncia solo como “casilla”, un campo solo dice “editar”, o el selector
+de archivo no deja claro que debe ser un CSV de participantes.
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.

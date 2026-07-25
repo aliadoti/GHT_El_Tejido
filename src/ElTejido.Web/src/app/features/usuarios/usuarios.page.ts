@@ -147,9 +147,18 @@ import { formatApiError } from '../../shared-error';
           <span class="muted">{{ tags().length }} visibles</span>
         </div>
         <form class="inline-form" (ngSubmit)="crearTag()">
-          <input name="tagNombre" [(ngModel)]="nuevoTag.nombre" placeholder="Nombre" />
-          <input name="tagTipo" [(ngModel)]="nuevoTag.tipoTag" placeholder="Tipo" />
+          <label class="sr-only" for="tagNombre">Nombre de la etiqueta</label>
           <input
+            id="tagNombre"
+            name="tagNombre"
+            [(ngModel)]="nuevoTag.nombre"
+            placeholder="Nombre"
+          />
+          <label class="sr-only" for="tagTipo">Tipo de la etiqueta</label>
+          <input id="tagTipo" name="tagTipo" [(ngModel)]="nuevoTag.tipoTag" placeholder="Tipo" />
+          <label class="sr-only" for="tagDescripcion">Descripción de la etiqueta</label>
+          <input
+            id="tagDescripcion"
             name="tagDescripcion"
             [(ngModel)]="nuevoTag.descripcion"
             placeholder="Descripcion"
@@ -174,13 +183,20 @@ import { formatApiError } from '../../shared-error';
           <div class="panel-heading">
             <h3>Carga masiva de participantes (CSV)</h3>
           </div>
-          <p class="muted">
+          <p id="instrucciones-carga-csv" class="muted">
             Columnas fijas con cabecera: <code>Nombre, WhatsApp, Area, Empresa, Tags</code> (tags
             separadas por <code>;</code>). Una fila mala no aborta el lote; re-subir el mismo
             archivo actualiza en vez de duplicar.
           </p>
           <form class="inline-form" (ngSubmit)="cargarArchivo()">
-            <input type="file" accept=".csv" (change)="onArchivoSeleccionado($event)" />
+            <label for="archivoCarga">Archivo CSV de participantes</label>
+            <input
+              id="archivoCarga"
+              type="file"
+              accept=".csv"
+              aria-describedby="instrucciones-carga-csv"
+              (change)="onArchivoSeleccionado($event)"
+            />
             <label>
               Asociar a campania (opcional)
               <select name="campaniaCarga" [(ngModel)]="campaniaIdCarga">
