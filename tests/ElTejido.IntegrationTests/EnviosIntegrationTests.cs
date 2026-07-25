@@ -58,6 +58,26 @@ public sealed class EnviosIntegrationTests
         cuerpo.Should().Contain("\"estado\":\"enProceso\"");
     }
 
+    [Fact]
+    public async Task Jobs_Inexistente_Responde404ConModeloUniforme()
+    {
+        // P-17 (API-001): la ruta de jobs ya no devuelve un objeto anonimo; usa ErrorRespuesta (04 §3)
+        // con correlationId que coincide con el encabezado X-Correlation-Id.
+        using var fabrica = Construir(EstadoCampania.Activa);
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/jobs/job-inexistente");
+        request.Headers.Add("X-CSRF-Token", CsrfAdmin);
+        using var respuesta = await client.SendAsync(request);
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var correlationHeader = respuesta.Headers.GetValues("X-Correlation-Id").Should().ContainSingle().Subject;
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<CuerpoErrorTest>();
+        cuerpo!.Error.Code.Should().Be("NOT_FOUND");
+        cuerpo.Error.Message.Should().Be("El job no existe.");
+        cuerpo.Error.CorrelationId.Should().StartWith("corr_").And.Be(correlationHeader);
+    }
+
     private static Task<HttpResponseMessage> EnviarAsync(HttpClient client)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/campanias/{CampaniaId}/envios");

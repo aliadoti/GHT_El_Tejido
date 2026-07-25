@@ -26,7 +26,13 @@ public sealed class PreparacionEndpointTests
 
         using var respuesta = await client.GetAsync("/health/ready");
 
+        // P-17 (API-001): 404 con cuerpo de error uniforme y generico (04 §3) + correlationId; no
+        // revela si la clave estaba configurada (misma respuesta que clave equivocada).
         respuesta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var correlationHeader = respuesta.Headers.GetValues("X-Correlation-Id").Should().ContainSingle().Subject;
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<CuerpoErrorTest>();
+        cuerpo!.Error.Code.Should().Be("NOT_FOUND");
+        cuerpo.Error.CorrelationId.Should().StartWith("corr_").And.Be(correlationHeader);
     }
 
     [Fact]

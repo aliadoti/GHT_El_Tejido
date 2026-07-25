@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ElTejido.Api.Errores;
 using ElTejido.Api.Seguridad;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
@@ -51,7 +52,7 @@ internal static class EndpointsWebhook
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
         {
             // Sin token de verificacion configurado no se puede validar: se rechaza (04 §6.1).
-            return Results.StatusCode(StatusCodes.Status403Forbidden);
+            return ResultadoError.Prohibido("Verificación rechazada.");
         }
 
         if (string.Equals(modo, "subscribe", StringComparison.Ordinal)
@@ -62,7 +63,7 @@ internal static class EndpointsWebhook
             return Results.Text(challenge, "text/plain");
         }
 
-        return Results.StatusCode(StatusCodes.Status403Forbidden);
+        return ResultadoError.Prohibido("Verificación rechazada.");
     }
 
     private static async Task<IResult> RecibirAsync(
@@ -83,13 +84,13 @@ internal static class EndpointsWebhook
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
         {
             // Sin app secret no se puede verificar la firma: se descarta (04 §6.2, 10 §3).
-            return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            return ResultadoError.NoAutenticado("Firma o credenciales inválidas.");
         }
 
         var firma = contexto.Request.Headers[HeaderFirma].ToString();
         if (!gateway.VerificarFirma(cuerpo, firma, appSecret))
         {
-            return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            return ResultadoError.NoAutenticado("Firma o credenciales inválidas.");
         }
 
         // Firma valida: ack 200 inmediato y encolado (ARQ §4.2). El parseo y el procesamiento

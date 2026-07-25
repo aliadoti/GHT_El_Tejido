@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using ElTejido.Api.Errores;
 using ElTejido.Application.Diagnostico;
 
 namespace ElTejido.Api.Diagnostico;
@@ -34,9 +35,11 @@ public sealed class FiltroClaveDiagnostico : IEndpointFilter
         var esperada = await _claves.ObtenerClaveEsperadaAsync(http.RequestAborted);
         var recibida = http.Request.Headers[HeaderClave].ToString();
 
+        // P-17 (API-001): 404 con cuerpo de error uniforme y generico (04 §3), indistinguible de
+        // no-mapeado y sin revelar si la clave esta configurada o solo no coincide.
         if (string.IsNullOrEmpty(esperada) || !ClaveCoincide(recibida, esperada))
         {
-            return Results.NotFound();
+            return ResultadoError.NoEncontrado();
         }
 
         return await next(context);

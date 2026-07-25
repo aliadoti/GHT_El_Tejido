@@ -1,3 +1,4 @@
+using ElTejido.Api.Errores;
 using ElTejido.Application.WhatsApp;
 
 namespace ElTejido.Api.Admin;
@@ -78,7 +79,8 @@ internal static class EndpointsAdminEnvios
         var job = almacen.ObtenerJob(jobId);
         if (job is null)
         {
-            return Results.NotFound(new { error = new { code = "NOT_FOUND", message = "El job no existe." } });
+            // P-17 (API-001): cuerpo de error uniforme (04 §3) con correlationId, no un objeto anonimo.
+            return ResultadoError.NoEncontrado("El job no existe.");
         }
 
         return Results.Ok(new

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
@@ -41,7 +42,16 @@ public sealed class WebhookIntegrationTests
         using var respuesta = await client.GetAsync(
             "/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=incorrecto&hub.challenge=42");
 
+        // P-17 (API-001): 403 con cuerpo de error uniforme (04 §3) y correlationId; sin revelar el
+        // token esperado ni si estaba configurado (mismo mensaje generico para ambos rechazos).
         respuesta.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var correlationHeader = respuesta.Headers.GetValues("X-Correlation-Id").Should().ContainSingle().Subject;
+        var crudo = await respuesta.Content.ReadAsStringAsync();
+        crudo.Should().NotContain(VerifyToken);
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<CuerpoErrorTest>();
+        cuerpo!.Error.Code.Should().Be("FORBIDDEN");
+        cuerpo.Error.Message.Should().NotContain(VerifyToken);
+        cuerpo.Error.CorrelationId.Should().StartWith("corr_").And.Be(correlationHeader);
     }
 
     [Fact]
@@ -55,7 +65,15 @@ public sealed class WebhookIntegrationTests
 
         using var respuesta = await client.PostAsync("/webhook/whatsapp", contenido);
 
+        // P-17 (API-001): 401 con cuerpo de error uniforme (04 §3) y correlationId; sin revelar el
+        // app secret, la firma esperada ni si el secreto estaba configurado.
         respuesta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var correlationHeader = respuesta.Headers.GetValues("X-Correlation-Id").Should().ContainSingle().Subject;
+        var crudo = await respuesta.Content.ReadAsStringAsync();
+        crudo.Should().NotContain(AppSecret);
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<CuerpoErrorTest>();
+        cuerpo!.Error.Code.Should().Be("UNAUTHENTICATED");
+        cuerpo.Error.CorrelationId.Should().StartWith("corr_").And.Be(correlationHeader);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using ElTejido.Api.Errores;
 using ElTejido.Api.Seguridad;
 using ElTejido.Application.Diagnostico;
 
@@ -36,9 +37,10 @@ internal static class EndpointsPreparacion
         var recibida = contexto.Request.Headers[HeaderClave].ToString();
 
         // Sin clave configurada o sin coincidencia: 404 indistinguible (no revela la postura).
+        // P-17 (API-001): cuerpo de error uniforme y generico (04 §3), sin revelar la causa interna.
         if (string.IsNullOrEmpty(esperada) || !ClaveCoincide(recibida, esperada))
         {
-            return Results.NotFound();
+            return ResultadoError.NoEncontrado();
         }
 
         var reporte = await preparacion.GenerarReporteAsync(cancellationToken);

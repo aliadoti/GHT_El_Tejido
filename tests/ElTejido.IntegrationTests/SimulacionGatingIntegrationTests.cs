@@ -48,7 +48,13 @@ public sealed class SimulacionGatingIntegrationTests
             "/diagnostico/simulacion/admin-inicial",
             new { numero = NumeroAdmin, nombre = "Admin" });
 
+        // P-17 (API-001): el filtro de clave de diagnostico responde 404 con cuerpo de error uniforme
+        // (04 §3) + correlationId, indistinguible de no-mapeado y sin revelar la postura de la clave.
         respuesta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var correlationHeader = respuesta.Headers.GetValues("X-Correlation-Id").Should().ContainSingle().Subject;
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<CuerpoErrorTest>();
+        cuerpo!.Error.Code.Should().Be("NOT_FOUND");
+        cuerpo.Error.CorrelationId.Should().StartWith("corr_").And.Be(correlationHeader);
     }
 
     [Fact]
