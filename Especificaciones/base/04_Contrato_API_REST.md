@@ -53,6 +53,8 @@ Todos los errores devuelven este cuerpo, con el HTTP status adecuado (basado en 
 }
 ```
 
+Esta regla aplica también a retornos directos de endpoints, filtros y rutas de diagnóstico: no se devuelven cuerpos vacíos, texto plano ni objetos de error ad hoc cuando la aplicación rechaza una solicitud. El encabezado `X-Correlation-Id` y `error.correlationId` deben estar presentes y coincidir; si la solicitud no trae un identificador válido, la infraestructura común genera uno. Un error que deliberadamente oculte información (por ejemplo, readiness sin clave o firma de webhook inválida) conserva el estado HTTP y un mensaje neutro, pero usa el mismo sobre de error y nunca expone secretos, firmas, excepciones ni estado interno. La remediación de las rutas ya existentes está planificada en `P-17`.
+
 | HTTP | `code` | Cuándo |
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | Payload inválido. |

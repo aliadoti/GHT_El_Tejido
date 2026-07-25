@@ -6,7 +6,7 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-07-21 (tarde) — **RE-PRIORIZACIÓN reunión GHT 20-jul** (grabación Fathom
+> Última revisión: 2026-07-24 — **remediación de auditoría P-15 a P-20 incorporada; P-15 es el próximo ejecutable.** Revisión anterior 2026-07-21 (tarde) — **RE-PRIORIZACIÓN reunión GHT 20-jul** (grabación Fathom
 > "Priorización iniciativas MVP"): **I-09/I-10 (tejido colectivo) → DIFERIDAS a "Capa 3" post-convención;
 > P-07 (consentimiento) → DIFERIDA (herramienta interna, IP de GHT); P-09 (panel en vivo) → DIFERIDO
 > (basta health-check; métricas de tokens no prioritarias);** HITL fuera del MVP; **nueva iniciativa
@@ -22,7 +22,13 @@
 
 | ID   | Spec                                                                                                                                                                                                                                                 | Ventana               | Estado                                                                                                                  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| P-14 | [P-14_Lectura_Rubricas_Prompts.md](P-14_Lectura_Rubricas_Prompts.md)                                                                                                                                                                                 | Sprint 1b — **EJECUTAR DE PRIMERA** | **← ACTUAL (solicitud usuario 2026-07-21).** Vista de **solo lectura** de rúbricas y prompts en el portal (hoy solo hay crear-versión/archivar/aprobar; falta leer). Frontend-only, sin cambio de contratos; el GET ya trae el contenido. |
+| P-14 | [P-14_Lectura_Rubricas_Prompts.md](P-14_Lectura_Rubricas_Prompts.md)                                                                                                                                                                                 | Sprint 1b | **DONE local 2026-07-22.** Vista de **solo lectura** de rúbricas y prompts en el portal; frontend-only, sin cambio de contratos. |
+| P-15 | [P-15_Refactor_Orquestador_Conversacional.md](P-15_Refactor_Orquestador_Conversacional.md) | Remediación auditoría | **TODO — próximo ejecutable (2026-07-24).** `CAL-001`: separar políticas, transición y efectos internos, conservando `IOrquestadorConversacion`, mensajes, flags y contratos. |
+| P-16 | [P-16_Refactor_Pagina_Campanias.md](P-16_Refactor_Pagina_Campanias.md) | Remediación auditoría | **TODO — después de P-15.** `CAL-002`: componentes por flujo administrativo; ruta/API/permisos sin cambio. |
+| P-17 | [P-17_Errores_API_Uniformes.md](P-17_Errores_API_Uniformes.md) | Remediación auditoría | **TODO — después de P-16.** `API-001`: errores directos con `ErrorRespuesta` y correlación uniforme. |
+| P-18 | [P-18_Controles_Con_Nombre_Accesible.md](P-18_Controles_Con_Nombre_Accesible.md) | Remediación auditoría | **TODO — después de P-17.** `UXA11Y-001`: nombre accesible para selección, tags y CSV. |
+| P-19 | [P-19_Estados_Dinamicos_Accesibles.md](P-19_Estados_Dinamicos_Accesibles.md) | Remediación auditoría | **TODO — después de P-18.** `UXA11Y-002`: anuncios fiables de errores y confirmaciones. |
+| P-20 | [P-20_Pestanas_Accesibles_Campanias.md](P-20_Pestanas_Accesibles_Campanias.md) | Remediación auditoría | **TODO — después de P-19 y P-16.** `UXA11Y-003`: patrón ARIA completo para pestañas de campañas. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
@@ -68,6 +74,8 @@ I-01, I-02, I-03 ✓, I-04, I-05 ✓, I-06 ✓, I-07, I-08 ✓, I-11 ✓, I-12, 
 se mantiene también el **cierre no determinista** (I-02 + inactividad ~5 min) y el **health-check +
 acta de flags + runbook** (lo que se conserva de P-09).
 
+**Pista de remediación autorizada el 2026-07-24:** `P-15` a `P-20` corrigen seis hallazgos confirmados de calidad, contrato y accesibilidad. Se ejecutan de forma secuencial antes de retomar un ítem de Sprint 2 bloqueado por terceros; no amplían el comportamiento de producto, no requieren nuevos datos GHT y no sustituyen los bloqueos de I-12/I-13/I-14.
+
 **DIFERIDAS del MVP por la reunión del 20-jul (Capa 3 / post-convención):**
 - **I-09 + I-10 — tejido colectivo:** ligado al HITL (aplazado) y requiere base curada → "Capa 3".
   El core ya existe detrás de flag OFF; **no se valida para el Hito**.
@@ -111,6 +119,8 @@ acta de flags + runbook** (lo que se conserva de P-09).
 > (2) métrica en el dashboard, (3) banco de calibración o suite de regresión en verde,
 > (4) línea en el runbook de rollback. **El LLM propone, el sistema dispone** (R-01).
 
+- **Remediación técnica (24-jul) — INICIO:** se incorpora una secuencia independiente de seis iniciativas: **P-15** (cohesión del orquestador) → **P-16** (descomposición de campañas) → **P-17** (errores API uniformes) → **P-18** (nombres accesibles) → **P-19** (estados dinámicos anunciados) → **P-20** (pestañas accesibles, después de P-16). P-15 es el siguiente trabajo ejecutable; cada iniciativa conserva contratos, permisos y comportamiento funcional salvo la corrección explícita de accesibilidad o de formato de error.
+
 - **Semana 0 (9–13 jul) — CERRADA:** P-02 radicada **y aprobada**; P-01 E2E real **validado**
   (ambas confirmadas 2026-07-20); staging (D8); workshop I-11 **realizado (rúbrica congelada
   18-jul)**; seed thoughts I-12 **NO entregados (vencido — escalar a Felipe)**. Cupos de P-10
@@ -123,9 +133,10 @@ acta de flags + runbook** (lo que se conserva de P-09).
 - **Sprint 1b (21–25 jul) — EN CURSO:** I-06 ✓ (flag off); I-05 parafraseo ✓ (2026-07-20, Codex);
   I-08 UI ✓ (2026-07-20, Claude); I-03 ✓ (2026-07-21) y P-13 ✓ (2026-07-21). **I-09 core** quedó
   hecho pero **DIFERIDO** por la reunión del 20-jul (flag OFF, fuera de ruta crítica). **I-10 ya NO es
-  el ítem actual** (se difirió con I-09). Siguiente: **I-17 (BD de dos niveles)** — confirmar antes los
-  puntos de diseño abiertos (spec I-17 §5) y el ajuste de paráfrasis-tras-umbral en I-05.
-  Criterio de salida: I-06 funcional en staging bajo flag, costo por conversación medido.
+   el ítem actual** (se difirió con I-09). **I-17 está DONE local (2026-07-22).** Siguiente trabajo
+   ejecutable: **P-15, remediación del orquestador**; después siguen P-16 a P-20 conforme a la secuencia
+   registrada arriba. Criterio de salida de la pista: cada corrección mantiene comportamiento/contratos y
+   queda con pruebas focalizadas.
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7, decide
   cola/jobs/RU); **I-17 (clasificación de madurez + paráfrasis tras umbral)**; **extender I-08 con
   variables demográficas** (insumo de Munir); I-12 seed thoughts (**BLOCKED hasta insumo de Felipe —

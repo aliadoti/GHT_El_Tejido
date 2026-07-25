@@ -101,8 +101,9 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 ---
 
 ## 7. Accesibilidad y UX
-- Formularios con validación inline y mensajes claros.
-- Estados de carga/skeletons; manejo visible de errores (toasts).
+- Formularios con validación inline y mensajes claros. Cada control tiene un nombre accesible: `label` asociado cuando sea posible, o un nombre ARIA contextual cuando la tabla no permita texto visible; el placeholder nunca es la única etiqueta. Las listas generan identificadores únicos y los selectores de archivo explican el archivo esperado.
+- Estados de carga/skeletons; manejo visible y anunciado de errores/confirmaciones. Los errores usan una región asertiva y los éxitos/información una región educada; los mensajes de campo se asocian con `aria-invalid` y `aria-describedby` sin anunciar el mismo contenido dos veces. Este patrón también cubre el login, que puede estar fuera del shell de toasts.
+- Los selectores de secciones de campaña siguen el patrón ARIA de pestañas: `tablist` con nombre, activadores `tab`, paneles `tabpanel`, relación `aria-controls`/`aria-labelledby`, foco móvil y teclado Flecha, Inicio y Fin.
 - Tablas con paginación servidor (`04 §2`).
 - Responsive razonable (uso principal en desktop).
 
@@ -113,5 +114,6 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 - El rol `visor` solo ve (sin botones de mutación).
 - La API key nunca se muestra completa.
 - La marca GHT se aplica por tokens; sin colores hardcodeados.
+- Con lector de pantalla y teclado, los controles de envío/tags/CSV anuncian su propósito; login y formularios anuncian error o éxito una sola vez; las pestañas de campaña anuncian nombre y estado y se recorren con teclado.
 
 *Fin del documento.*
