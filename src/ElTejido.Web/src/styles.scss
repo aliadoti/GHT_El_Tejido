@@ -311,6 +311,88 @@ th {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.resultados-master-detail {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(420px, 1.45fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.resultados-resumen,
+.resultados-leyenda {
+  display: grid;
+  gap: 5px;
+}
+
+.resultados-resumen span {
+  color: var(--ght-texto-secundario);
+  font-size: 0.85rem;
+}
+
+.resultados-leyenda {
+  grid-template-columns: repeat(2, max-content);
+  align-self: end;
+}
+
+.resultados-respuesta {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ght-texto);
+  padding: 4px 0;
+  text-align: left;
+}
+
+.resultados-respuesta:hover,
+.resultados-respuesta[aria-current='true'] {
+  color: var(--ght-verde);
+}
+
+.resultados-respuesta-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.compact-list .resultados-extracto {
+  color: var(--ght-texto-secundario);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.resultados-detalle {
+  min-height: 300px;
+}
+
+.resultados-detalle section {
+  display: grid;
+  gap: 12px;
+}
+
+.resultados-actividad summary {
+  color: var(--ght-verde);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.resultados-actividad[open] summary {
+  margin-bottom: 12px;
+}
+
+.resultados-skeleton {
+  display: grid;
+  gap: 10px;
+}
+
+.resultados-skeleton span {
+  height: 38px;
+  border-radius: 6px;
+  background: var(--ght-panel-suave);
+}
+
 .tab-nav {
   display: flex;
   flex-wrap: wrap;
@@ -728,6 +810,7 @@ tbody tr.row-selected {
   .portal-shell,
   .two-column,
   .three-column,
+  .resultados-master-detail,
   .filters-grid {
     grid-template-columns: 1fr;
   }

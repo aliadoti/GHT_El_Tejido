@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25 (P-22).
+> Última actualización: 2026-07-25 (P-23).
 
 ## Antes de empezar (léelo una vez)
 
@@ -100,6 +100,19 @@ página en vez de cambiar de sección, o el contenido activo no tiene un nombre 
 5. Pulsa **“Ver envíos”**. **Deberías ver:** los envíos de esa misma campaña. Vuelve a una campaña sin preguntas o sin participantes: debe indicarte cómo agregar el primer elemento, no dejar una pantalla vacía sin explicación.
 
 **Algo va mal si:** el formulario de creación aparece siempre, se abre otra campaña después de guardar, un paso marca completo sin tener el elemento indicado, “Ver envíos” muestra otra campaña, o activar falla sin explicar qué hace falta.
+
+### ✅ P-23 — Revisar resultados con una vista más clara
+
+**Qué es:** la pantalla de **Resultados** ahora abre una campaña disponible por sí sola y permite elegir una respuesta para ver juntos su evaluación y su documento.
+
+1. Entra al portal y abre **Resultados**. **Deberías ver:** una campaña ya elegida y sus resultados cargados, sin tener que pulsar un botón de consulta. Si no hay campañas, debe aparecer un mensaje amable que explique que aún no hay nada para revisar.
+2. Revisa la parte superior. **Deberías ver:** cuántas respuestas hay, cuántas son maduras y cuántas están en incubación, además de una pequeña leyenda que explica esas marcas y si una respuesta fue evaluada.
+3. En la lista de la izquierda, busca una respuesta larga. **Deberías ver:** el nombre de la persona, sus marcas y solo un fragmento corto de lo que escribió, para poder comparar varias respuestas sin leerlas completas.
+4. Pulsa una respuesta. **Deberías ver:** que queda resaltada y, a la derecha, aparecen su calificación, comentarios y documento. Si el documento existe, puedes abrir **Descargar .md** para guardarlo.
+5. Si entras como administrador, pulsa **Regenerar documento** en una respuesta que ya tenga documento. **Deberías ver:** un aviso de que se regeneró. Si entras como visor, ese botón no debe aparecer.
+6. Abre **Actividad de la campaña** al final. **Deberías ver:** la lista de personas y si su conversación está en curso o cerrada, sin quitar espacio a las respuestas principales.
+
+**Algo va mal si:** aparece el mensaje técnico que pide un id de campaña, hay que consultar manualmente una campaña disponible, al elegir una respuesta no se muestra su detalle, se mezclan datos de otra respuesta, un visor puede regenerar documentos, o una pantalla vacía no explica qué hacer.
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.

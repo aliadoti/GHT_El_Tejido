@@ -96,7 +96,7 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 
 **Config LLM** (`REQ §33.1.15–16`): proveedor/modelo/endpoint/parámetros; campo de API key **write-only** que muestra `••••1234`; nunca solicita ni muestra la key completa.
 
-**Resultados** (`REQ §33.1.17–21`, `§27.3`): filtros completos (campaña, usuario, número, área, empresa, tag, pregunta, categoría, estado, calificación, fecha, estado envío/respuesta, tema, entidad); ver respuestas, calificaciones, explicaciones y Markdown generado; descarga `.md`; regenerar artefacto.
+**Resultados** (`REQ §33.1.17–21`, `§27.3`): la campaña recordada en la sesión (o la primera disponible) se carga sin exigir una consulta manual. El patrón maestro-detalle presenta una lista de respuestas con participante, estados, madurez y extracto; al elegir una se ven su calificación, explicación y Markdown, con descarga `.md` y regeneración solo para admin. Incluye resumen, leyenda visible de estados y actividad de conversaciones como acceso secundario. Los filtros adicionales de campaña, usuario, número, área, empresa, tag, pregunta, categoría, estado, calificación, fecha, envío/respuesta, tema y entidad requieren el soporte de contrato correspondiente; no se agregan desde esta vista.
 
 ---
 
@@ -105,6 +105,7 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 - Estados de carga/skeletons; manejo visible y anunciado de errores/confirmaciones. Los errores usan una región asertiva y los éxitos/información una región educada; los mensajes de campo se asocian con `aria-invalid` y `aria-describedby` sin anunciar el mismo contenido dos veces. Este patrón también cubre el login, que puede estar fuera del shell de toasts.
 - Los selectores de secciones de campaña siguen el patrón ARIA de pestañas: `tablist` con nombre, activadores `tab`, paneles `tabpanel`, relación `aria-controls`/`aria-labelledby`, foco móvil y teclado Flecha, Inicio y Fin.
 - Las pestañas de Campañas se presentan como pasos numerados. Mensajes, Preguntas y Participantes anuncian si están completos o pendientes a partir de los datos ya cargados; esto orienta sin bloquear la navegación. Cuando no hay selección o una lista está vacía, la pantalla explica el siguiente paso.
+- Resultados usa una lista maestra con `aria-current` para la respuesta activa, detalle asociado y leyenda visible. La ausencia de campañas, resultados o detalle se explica en lenguaje humano; carga usa esqueletos y error/confirmación usan las regiones persistentes según su prioridad.
 - Tablas con paginación servidor (`04 §2`).
 - Responsive razonable (uso principal en desktop).
 

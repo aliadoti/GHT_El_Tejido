@@ -11,7 +11,9 @@
 > mismos endpoints (`conversaciones`, `respuestas` con filtro de madurez, `respuesta`, `markdown`,
 > `regenerarMarkdown`). Solo reorganiza layout, copia y navegación con los tokens/primitivas ya
 > existentes. Cubre `REQ §27.3/§33.1.17-21`, `ARQ §3`; spec base `11 §6/§7`.
-> **Estado:** **TODO — especificación lista, implementación pendiente.** Sin código.
+> **Estado:** **DONE local 2026-07-25.** Implementación frontend-only terminada; sin cambios de
+> contratos, rutas, permisos ni datos. Prettier, 24/24 pruebas Angular y build de producción verdes
+> con Node 24.15.0.
 
 ## 1. Qué pide / por qué
 Resultados es donde el administrador (o un `visor`) revisa lo que produjo una campaña: conversaciones,
@@ -167,3 +169,17 @@ vive en memoria de sesión). Revertir P-23 devuelve la vista de tres columnas si
 > **Nota de entorno (para quien implemente):** `ng build`/`ng test` requieren Node temporal 24.15.0; la
 > carpeta sincronizada por OneDrive puede bloquear esbuild — verificar en entorno local; el CD
 > reconstruye `wwwroot` en Linux.
+
+## 9. Implementación realizada (2026-07-25)
+
+- Se recuerda la última campaña solo durante la sesión de la SPA; al abrir Resultados se carga esa
+  campaña o la primera disponible, sin exigir el botón de consulta. Si no hay campañas, se anuncia una
+  guía educada.
+- Las tres listas paralelas se reemplazaron por una lista maestra de respuestas y un detalle asociado
+  con evaluación y Markdown. La actividad de conversaciones queda como sección secundaria desplegable.
+- Cada respuesta muestra participante, estado, madurez y extracto truncado; el resumen y la leyenda
+  permanecen visibles. La selección usa `aria-current`; carga, vacío, error, regenerado y descarga
+  respetan las regiones accesibles existentes. `Regenerar documento` solo aparece para admin.
+- Se añadieron tres pruebas de componente: precarga, selección maestro-detalle y ausencia de campañas.
+  Verificación final: Prettier limpio, `ng test --watch=false` 24/24 y `ng build --configuration
+  production` verdes con Node 24.15.0.
