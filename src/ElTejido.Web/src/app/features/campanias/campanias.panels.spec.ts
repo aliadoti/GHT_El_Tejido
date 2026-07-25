@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { Campania, ParticipantePreview } from '../../core/api-models';
-import { CampaniasListaPanel, ParticipantesCampaniaPanel } from './campanias.panels';
+import {
+  CampaniaDetallePanel,
+  CampaniasListaPanel,
+  ParticipantesCampaniaPanel,
+} from './campanias.panels';
 
 describe('paneles de campanias', () => {
   it('emite la campania que el administrador abre desde el listado', () => {
@@ -44,5 +49,70 @@ describe('paneles de campanias', () => {
     (fixture.nativeElement.querySelector('.primary-button') as HTMLButtonElement).click();
 
     expect(asociados).toEqual(['usuario-1']);
+  });
+
+  it('relaciona las pestanas con su panel y permite recorrerlas con teclado', () => {
+    TestBed.configureTestingModule({
+      imports: [CampaniaDetallePanel],
+      providers: [provideRouter([])],
+    });
+    const fixture = TestBed.createComponent(CampaniaDetallePanel);
+    fixture.componentRef.setInput('campania', {
+      id: 'campania-1',
+      nombre: 'Prueba',
+      estado: 'borrador',
+      objetivo: 'Validar',
+    } as Campania);
+    fixture.componentRef.setInput('esAdmin', true);
+    fixture.componentRef.setInput('activa', 'config');
+    fixture.componentInstance.tabCambiada.subscribe((tab) =>
+      fixture.componentRef.setInput('activa', tab),
+    );
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const tablist = host.querySelector<HTMLElement>('[role="tablist"]');
+    const tabs = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const panel = host.querySelector<HTMLElement>('[role="tabpanel"]');
+
+    expect(tablist?.getAttribute('aria-label')).toBe('Secciones de la campaña');
+    expect(tabs.length).toBe(4);
+    expect(new Set(tabs.map((tab) => tab.id)).size).toBe(4);
+    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false',
+    ]);
+    expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1]);
+    expect(panel?.id).toBe(tabs[0].getAttribute('aria-controls'));
+    expect(panel?.getAttribute('aria-labelledby')).toBe(tabs[0].id);
+
+    tabs[0].focus();
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(tabs[1]);
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+    expect(tabs[1].tabIndex).toBe(0);
+
+    tabs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(tabs[3]);
+    expect(tabs[3].getAttribute('aria-selected')).toBe('true');
+
+    tabs[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(tabs[0]);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(tabs[3]);
+    expect(tabs[3].getAttribute('aria-selected')).toBe('true');
+
+    tabs[2].click();
+    fixture.detectChanges();
+    expect(tabs[2].getAttribute('aria-selected')).toBe('true');
+    expect(panel?.id).toBe(tabs[2].getAttribute('aria-controls'));
   });
 });

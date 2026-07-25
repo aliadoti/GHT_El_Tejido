@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnChanges, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnChanges,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -31,6 +39,7 @@ export interface CampaniaEdicionForm extends CampaniaCrearForm {
   umbralCierreAnticipado: number | null;
   minutosInactividadSesion: number | null;
 }
+export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'participantes';
 export interface MensajeInicialForm {
   nombreInterno: string;
   texto: string;
@@ -762,38 +771,70 @@ export class ParticipantesCampaniaPanel implements OnChanges {
         }
       </div>
     </div>
-    <nav class="tab-nav" role="tablist">
+    <nav class="tab-nav" role="tablist" aria-label="Secciones de la campaña">
       @for (item of tabs; track item.id) {
         <button
           type="button"
           class="tab-button"
-          [class.active]="activa === item.id"
+          role="tab"
+          [id]="idPestana(item.id)"
+          [class.active]="activa() === item.id"
+          [attr.aria-selected]="activa() === item.id"
+          [attr.aria-controls]="idPanel(item.id)"
+          [tabindex]="activa() === item.id ? 0 : -1"
+          [attr.data-tab]="item.id"
           (click)="seleccionar(item.id)"
+          (keydown)="navegarPestanas($event, item.id)"
         >
           {{ item.nombre }}
         </button>
       }
     </nav>
-    <div class="tab-panels"><ng-content /></div>
+    <div
+      class="tab-panels"
+      role="tabpanel"
+      [id]="idPanel(activa())"
+      [attr.aria-labelledby]="idPestana(activa())"
+      tabindex="0"
+    >
+      <ng-content />
+    </div>
   </section>`,
 })
-export class CampaniaDetallePanel implements OnChanges {
+export class CampaniaDetallePanel {
+  private readonly host = inject(ElementRef<HTMLElement>);
   readonly campania = input.required<Campania>();
   readonly esAdmin = input.required<boolean>();
   readonly cambiarEstado = output<string>();
-  readonly tabCambiada = output<'config' | 'mensajes' | 'preguntas' | 'participantes'>();
-  protected activa: 'config' | 'mensajes' | 'preguntas' | 'participantes' = 'config';
+  readonly activa = input<TabCampania>('config');
+  readonly tabCambiada = output<TabCampania>();
   protected readonly tabs = [
     { id: 'config' as const, nombre: 'Configuracion' },
     { id: 'mensajes' as const, nombre: 'Mensajes iniciales' },
     { id: 'preguntas' as const, nombre: 'Preguntas' },
     { id: 'participantes' as const, nombre: 'Participantes' },
   ];
-  ngOnChanges(): void {
-    this.activa = 'config';
+  protected idPestana(tab: TabCampania): string {
+    return `campania-${this.campania().id}-tab-${tab}`;
   }
-  protected seleccionar(tab: 'config' | 'mensajes' | 'preguntas' | 'participantes'): void {
-    this.activa = tab;
+  protected idPanel(tab: TabCampania): string {
+    return `campania-${this.campania().id}-panel-${tab}`;
+  }
+  protected seleccionar(tab: TabCampania): void {
     this.tabCambiada.emit(tab);
+  }
+  protected navegarPestanas(evento: KeyboardEvent, actual: TabCampania): void {
+    const indice = this.tabs.findIndex((tab) => tab.id === actual);
+    let siguiente: TabCampania | null = null;
+    if (evento.key === 'ArrowRight') siguiente = this.tabs[(indice + 1) % this.tabs.length].id;
+    if (evento.key === 'ArrowLeft')
+      siguiente = this.tabs[(indice - 1 + this.tabs.length) % this.tabs.length].id;
+    if (evento.key === 'Home') siguiente = this.tabs[0].id;
+    if (evento.key === 'End') siguiente = this.tabs[this.tabs.length - 1].id;
+    if (!siguiente) return;
+    evento.preventDefault();
+    this.seleccionar(siguiente);
+    const host = this.host.nativeElement as HTMLElement;
+    host.querySelector<HTMLButtonElement>(`[data-tab="${siguiente}"]`)?.focus();
   }
 }

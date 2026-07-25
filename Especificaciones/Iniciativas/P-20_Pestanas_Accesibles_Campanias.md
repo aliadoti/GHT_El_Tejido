@@ -1,6 +1,6 @@
 # P-20 — Completar el patrón ARIA de pestañas en campañas
 
-**Estado:** TODO — después de P-19  
+**Estado:** DONE local — 2026-07-25
 **Origen:** `UXA11Y-003` de la auditoría técnica del 2026-07-24.  
 **Dependencias:** P-16 finalizada; la estructura de paneles debe estar separada antes de aplicar la semántica de pestañas.
 
@@ -35,6 +35,10 @@ La corrección se aplica al selector de secciones del detalle de campaña y a lo
 3. Pulsar Tab desde la pestaña activa y confirmar que se llega a su contenido.
 4. Activar una sección con el mouse y volver a revisar su estado con lector de pantalla.
 5. Es un fallo si el foco queda en una pestaña distinta del panel mostrado, si un panel no tiene nombre o si las flechas desplazan la página en vez de recorrer las secciones.
+
+**Verificación realizada:** prueba de componente para estado inicial, IDs únicos, relación pestaña-panel,
+click y teclas Flecha derecha, Inicio y Fin; `prettier --check`, `ng test --watch=false` (**19**
+pruebas verdes) y `ng build --configuration production`, con Node temporal 24.15.0.
 
 ## 6. Riesgo y reversión
 

@@ -71,6 +71,7 @@ import {
       <app-campania-detalle-panel
         [campania]="campania"
         [esAdmin]="auth.isAdmin()"
+        [activa]="detalleTab()"
         (cambiarEstado)="cambiarEstado(campania, $event)"
         (tabCambiada)="detalleTab.set($event)"
       >

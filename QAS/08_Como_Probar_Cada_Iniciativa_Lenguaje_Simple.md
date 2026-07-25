@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25 (P-19).
+> Última actualización: 2026-07-25 (P-20).
 
 ## Antes de empezar (léelo una vez)
 
@@ -76,6 +76,19 @@ de pantalla, sin repetir el mismo mensaje.
 5. **Deberías ver y oír una sola vez:** la confirmación de que se guardó, sin interrumpir lo que estabas haciendo.
 **Algo va mal si:** el mensaje solo se ve pero no se anuncia, se oye dos veces, el cursor salta sin explicación
 o el campo con error no permite leer el motivo.
+
+### ✅ P-20 — Cambiar las secciones de una campaña con teclado
+**Qué es:** las secciones de una campaña ahora se pueden recorrer claramente con teclado y lector de pantalla.
+1. Entra al portal, abre **Campañas** y selecciona una campaña existente.
+2. Coloca el cursor en **Configuración** usando la tecla Tab.
+3. Pulsa **Flecha derecha** varias veces, y luego **Flecha izquierda**, **Inicio** y **Fin**.
+4. **Deberías ver:** que el nombre resaltado y el contenido cambian juntos entre Configuración, Mensajes
+   iniciales, Preguntas y Participantes. Con un lector de pantalla debe anunciarse el nombre y si está
+   seleccionada.
+5. Desde una sección activa, pulsa Tab: el cursor debe pasar a su contenido. Después selecciona otra sección
+   con el mouse y confirma que muestra el contenido correspondiente.
+**Algo va mal si:** el cursor queda en un nombre mientras se muestra otra sección, las flechas desplazan la
+página en vez de cambiar de sección, o el contenido activo no tiene un nombre reconocible.
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.
