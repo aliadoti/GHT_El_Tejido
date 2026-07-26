@@ -120,6 +120,8 @@ public sealed class AdminFase4EndpointsIntegrationTests
                     maxRepreguntas = 1,
                     mensajeCierre = "Gracias.",
                     segmentacionIdeas = true,
+                    coachingSecuencialIdeas = true,
+                    minutosCoachingPorIdea = 7,
                     parafraseo = true,
                     umbralCierreAnticipado = 0.85,
                 },
@@ -128,6 +130,8 @@ public sealed class AdminFase4EndpointsIntegrationTests
         creacion.StatusCode.Should().Be(HttpStatusCode.Created);
         var cuerpo = await creacion.Content.ReadAsStringAsync();
         cuerpo.Should().Contain("\"segmentacionIdeas\":true");
+        cuerpo.Should().Contain("\"coachingSecuencialIdeas\":true");
+        cuerpo.Should().Contain("\"minutosCoachingPorIdea\":7");
         cuerpo.Should().Contain("\"parafraseo\":true");
         cuerpo.Should().Contain("\"umbralCierreAnticipado\":0.85");
         var campaniaId = await LeerStringAsync(creacion, "id");
@@ -136,6 +140,8 @@ public sealed class AdminFase4EndpointsIntegrationTests
         detalle.StatusCode.Should().Be(HttpStatusCode.OK);
         var detalleJson = await detalle.Content.ReadAsStringAsync();
         detalleJson.Should().Contain("\"segmentacionIdeas\":true");
+        detalleJson.Should().Contain("\"coachingSecuencialIdeas\":true");
+        detalleJson.Should().Contain("\"minutosCoachingPorIdea\":7");
         detalleJson.Should().Contain("\"parafraseo\":true");
         detalleJson.Should().Contain("\"umbralCierreAnticipado\":0.85");
     }

@@ -42,6 +42,8 @@ public sealed class ResultadosIntegrationTests
         listaJson.Should().Contain("resp_1");
         listaJson.Should().Contain("\"ideaIndice\":1");
         listaJson.Should().Contain("\"respuestaPadreId\":\"wamid.1\"");
+        listaJson.Should().Contain("\"ideaRaizId\":\"resp_1\"");
+        listaJson.Should().Contain("\"revisionIndice\":0");
         // I-17: el DTO expone el nivel de madurez sellado (incubacion por defecto / maduro).
         listaJson.Should().Contain("\"nivelMadurez\":\"incubacion\"");
         listaJson.Should().Contain("\"nivelMadurez\":\"maduro\"");
@@ -122,6 +124,8 @@ public sealed class ResultadosIntegrationTests
         var json = await detalle.Content.ReadAsStringAsync();
         json.Should().Contain("conv_1");
         json.Should().Contain("\"direccion\":\"in\"");
+        json.Should().Contain("\"coachingIdeas\"");
+        json.Should().Contain("\"ideaActivaIndice\":1");
     }
 
     private static WebApplicationFactory<Program> Construir()
@@ -129,7 +133,8 @@ public sealed class ResultadosIntegrationTests
         var respuestas = Substitute.For<IRepositorioRespuestas>();
         var respuesta = Respuesta.Crear(
             "resp_1", CampaniaId, "u_1", "p_1", "conv_1", "Mi idea", "whatsapp", false,
-            EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }, ideaIndice: 1, respuestaPadreId: "wamid.1");
+            EstadoRespuesta.Evaluada, Epoca, new[] { "t_oper" }, ideaIndice: 1, respuestaPadreId: "wamid.1",
+            ideaRaizId: "resp_1", revisionIndice: 0);
         // I-17: una madura para verificar exposicion y filtro por nivelMadurez (04 §5.8).
         var respuestaMadura = Respuesta.Crear(
             "resp_2", CampaniaId, "u_2", "p_1", "conv_2", "Idea madura", "whatsapp", false,
@@ -142,8 +147,14 @@ public sealed class ResultadosIntegrationTests
         respuestas.ListarArtefactosAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { artefacto });
 
         var conversaciones = Substitute.For<IRepositorioConversaciones>();
+        var cola = new PoliticaColaCoachingIdeas().Crear(
+            "wamid.1",
+            new[] { new RaizIdeaCoaching(1, "resp_1", null) },
+            Epoca);
         conversaciones.ObtenerConversacionAsync(CampaniaId, "conv_1", Arg.Any<CancellationToken>())
-            .Returns(Conversacion.Iniciar("conv_1", CampaniaId, "u_1", "p_1", "whatsapp", null, Epoca));
+            .Returns(Conversacion
+                .Iniciar("conv_1", CampaniaId, "u_1", "p_1", "whatsapp", null, Epoca)
+                .ConCoachingIdeas(cola));
         conversaciones.ListarMensajesAsync(CampaniaId, "conv_1", Arg.Any<CancellationToken>())
             .Returns(new[] { Mensaje.Crear("msg_1", CampaniaId, "conv_1", DireccionMensaje.In, "Mi idea", "wamid.1", Epoca) });
 

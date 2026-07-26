@@ -76,6 +76,9 @@ export interface ConfigConversacional {
   maxRepreguntas: number;
   mensajeCierre: string;
   segmentacionIdeas: boolean;
+  // I-18: ambos campos son aditivos; OFF/null conserva el flujo multi-idea anterior.
+  coachingSecuencialIdeas?: boolean;
+  minutosCoachingPorIdea?: number | null;
   // I-09 (aditivo): tejido colectivo por campaña. La UI de activación la aporta I-10 (Sprint 2);
   // aquí solo se modela para preservar el valor en el round-trip de edición.
   tejidoColectivo?: boolean;

@@ -167,6 +167,25 @@ internal static class EndpointsAdminResultados
             estado = c.Estado.ToString().ToLowerInvariant(),
             estadoMaquina = MinusculaInicial(c.EstadoMaquina.ToString()),
             c.RepreguntasUsadas,
+            coachingIdeas = c.CoachingIdeas is null ? null : new
+            {
+                estado = MinusculaInicial(c.CoachingIdeas.Estado.ToString()),
+                c.CoachingIdeas.RespuestaPadreId,
+                c.CoachingIdeas.IdeaActivaIndice,
+                ideas = c.CoachingIdeas.Ideas.Select(idea => new
+                {
+                    idea.IdeaIndice,
+                    idea.RespuestaRaizId,
+                    idea.RespuestaVigenteId,
+                    estado = MinusculaInicial(idea.Estado.ToString()),
+                    motivoFinalizacion = idea.MotivoFinalizacion is null
+                        ? null
+                        : MinusculaInicial(idea.MotivoFinalizacion.Value.ToString()),
+                    idea.RepreguntasUsadas,
+                    idea.IniciadaEn,
+                    idea.FinalizadaEn,
+                }),
+            },
             c.VentanaServicioVenceEn,
             c.FechaInicio,
             c.FechaCierre,
@@ -198,6 +217,9 @@ internal static class EndpointsAdminResultados
             tagsSnapshot = r.TagsSnapshot,
             r.IdeaIndice,
             r.RespuestaPadreId,
+            r.IdeaRaizId,
+            r.RespuestaAnteriorId,
+            r.RevisionIndice,
             nivelMadurez = MinusculaInicial(r.NivelMadurez.ToString()),
         };
 

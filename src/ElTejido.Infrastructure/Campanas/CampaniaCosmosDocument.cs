@@ -368,6 +368,12 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("segmentacionIdeas")]
         public bool SegmentacionIdeas { get; init; }
 
+        [JsonProperty("coachingSecuencialIdeas")]
+        public bool CoachingSecuencialIdeas { get; init; }
+
+        [JsonProperty("minutosCoachingPorIdea")]
+        public int? MinutosCoachingPorIdea { get; init; }
+
         // I-09 (aditivo, 03 §3.3): documento viejo sin el campo deserializa false = autocontenido.
         [JsonProperty("tejidoColectivo")]
         public bool TejidoColectivo { get; init; }
@@ -395,6 +401,8 @@ internal sealed class CampaniaCosmosDocument
                 MaxRepreguntas = config.MaxRepreguntas,
                 MensajeCierre = config.MensajeCierre,
                 SegmentacionIdeas = config.SegmentacionIdeas,
+                CoachingSecuencialIdeas = config.CoachingSecuencialIdeas,
+                MinutosCoachingPorIdea = config.MinutosCoachingPorIdea,
                 TejidoColectivo = config.TejidoColectivo,
                 Parafraseo = config.Parafraseo,
                 UmbralCierreAnticipado = config.UmbralCierreAnticipado,
@@ -407,7 +415,7 @@ internal sealed class CampaniaCosmosDocument
         {
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
                 MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
-                MinutosInactividadSesion, NumeroWhatsAppSaliente);
+                MinutosInactividadSesion, NumeroWhatsAppSaliente, CoachingSecuencialIdeas, MinutosCoachingPorIdea);
         }
     }
 

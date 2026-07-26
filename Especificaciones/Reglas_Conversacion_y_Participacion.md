@@ -152,7 +152,7 @@ y agregada para confirmar el registro del turno. Si el segmentador falla, devuel
 o no quedan ideas válidas después de las guardas, el sistema vuelve al modo probado: **1 mensaje = 1
 respuesta**.
 
-### 2.4.2 Coaching secuencial por idea (I-18, especificado; apagado por defecto)
+### 2.4.2 Coaching secuencial por idea (I-18, implementado; apagado por defecto)
 
 Cuando I-06 es efectivo y la campaña activa `configConversacional.coachingSecuencialIdeas`, el sistema
 crea una cola en el orden original y trabaja con **una idea activa**:
@@ -172,7 +172,10 @@ servidor; `recomendacion` del LLM no cierra por sí sola.
 
 Activación: kill-switch `Conversacion:CoachingSecuencialIdeas=true`, campo de campaña en `true` e I-06
 efectivo. El reloj opcional por idea usa `MinutosCoachingPorIdea`; es distinto del cierre de sesión de
-`§2.6`. Ver `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
+`§2.6`. Al vencer, finaliza solo la idea activa y avanza; si la ventana de servicio está abierta,
+envía una sola repregunta sobre la siguiente idea mediante el flujo saliente normal. Fuera de la
+ventana no envía texto libre y espera un nuevo entrante. Ver
+`Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
 Si un gate se apaga con una cola activa, no se envía otra repregunta: el siguiente entrante se
 conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza de forma segura.
 

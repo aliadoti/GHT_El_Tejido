@@ -38,4 +38,7 @@ public enum TipoEventoSeguridad
     // PII de texto: solo el nivel sellado, el score, el valor de corte, la escala y el origen del
     // umbral. Aditivo al final para preservar los valores existentes (03 §3.15, 10 §6.2).
     ClasificacionMadurez,
+
+    // I-18: transiciones de la cola sin texto ni PII.
+    CoachingSecuencialIdeas,
 }

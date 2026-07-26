@@ -113,6 +113,11 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
         sb.Append("- Calificación total: ").AppendLine(evaluacion.CalificacionTotal.ToString(CultureInfo.InvariantCulture));
         // I-17 (09): nivel de madurez sellado al evaluar; metadato determinista, sin secretos. Regenerable.
         sb.Append("- Nivel de madurez: ").AppendLine(TextoNivelMadurez(respuesta.NivelMadurez));
+        if (respuesta.IdeaRaizId is not null)
+        {
+            sb.Append("- Idea raiz: ").AppendLine(respuesta.IdeaRaizId);
+            sb.Append("- Revision: ").AppendLine((respuesta.RevisionIndice ?? 0).ToString(CultureInfo.InvariantCulture));
+        }
         sb.AppendLine();
         sb.AppendLine("## Respuesta original");
         sb.AppendLine(respuesta.Texto);

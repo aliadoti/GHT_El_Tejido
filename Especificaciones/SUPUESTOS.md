@@ -494,8 +494,8 @@
 - Impacto / reversibilidad: **cero cambio de datos/contratos**; revertir cualquiera de las dos deja la pantalla anterior sin afectar API. La documentación del doc base frontend (`11 §6/§7`) se actualizó en la implementación (sin contrato). Specs: `Iniciativas/P-22_UX_Campanias.md`, `Iniciativas/P-23_UX_Resultados.md`. Estado: **P-22 y P-23 DONE local 2026-07-25**; P-23 quedó con 24/24 pruebas Angular, Prettier y build de producción verdes.
 
 ### coaching-secuencial-por-idea-i18 - Afinar varias ideas una por una
-- Fecha: 2026-07-25 - Agente/Rol: Codex - Arquitecto / Tech Lead / SDET - Commit: pendiente
-  (solo especificación; sin código).
+- Fecha: 2026-07-25 - Agente/Rol: Codex - Arquitecto / Tech Lead / Backend / Frontend / SDET -
+  Commits: `d1d0836` (contratos/spec) + implementación y cierre documental en commit posterior.
 - Contexto: el usuario confirmó que la segmentación de un aporte en dos ideas es correcta, pero
   observó que ambas obtuvieron una calificación baja y aun así el sistema ofreció cerrar. También
   pidió reemplazar la confirmación robótica “Registramos N ideas” por una conversación natural que
@@ -523,9 +523,14 @@
   - **Compatibilidad/rollback:** `configConversacional.coachingSecuencialIdeas=false` por defecto +
     kill-switch global. Documento/flag ausente conserva el camino multi-idea anterior. Estado/linaje y
     eventos son campos/enums aditivos; no se borran en rollback.
+  - **Timeout implementado:** el barrido finaliza solo la idea vencida y activa la siguiente. Dentro
+    de la ventana de servicio reutiliza la fachada conversacional para enviar y registrar una sola
+    repregunta; fuera de la ventana no envía texto libre y retoma de forma segura con el próximo
+    entrante.
 - Alternativa(s) descartada(s): ajuste solo de prompt; cambio de modelo como primera acción; una
   respuesta agregada para todas las ideas; conversación o contenedor físico por idea; reutilizar
   `respuestaPadreId` para revisiones; coaching sin topes deterministas.
-- Impacto / reversibilidad: requiere contratos aditivos `03`/`04`, orquestador `05`, prompt `08`,
-  Markdown `09`, guardrails `10`, portal y QA. Todo permanece apagado hasta D5/UAT/costo. Spec:
-  `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
+- Impacto / reversibilidad: implementado de forma aditiva en contratos `03`/`04`, orquestador `05`,
+  prompt `08`, Markdown `09`, guardrails `10`, portal y QA. Las campañas existentes conservan el
+  flujo I-06 porque el gate por campaña queda apagado. D5 real, UAT y costo siguen siendo requisitos
+  operativos antes de activar. Spec: `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.

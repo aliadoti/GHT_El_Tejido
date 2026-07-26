@@ -68,7 +68,10 @@ public sealed class ProcesadorResultadoEvaluacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken,
         int? ideaIndice = null,
-        string? respuestaPadreId = null)
+        string? respuestaPadreId = null,
+        string? ideaRaizId = null,
+        string? respuestaAnteriorId = null,
+        int? revisionIndice = null)
     {
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
@@ -82,7 +85,7 @@ public sealed class ProcesadorResultadoEvaluacion
         await GuardarRespuestaAsync(
             respuestaId, campania.Id, usuario, pregunta, conversacionId, texto, esRepregunta,
             esFallback ? EstadoRespuesta.EvaluacionPendiente : EstadoRespuesta.Evaluada, ahora, cancellationToken,
-            ideaIndice, respuestaPadreId, nivelMadurez);
+            ideaIndice, respuestaPadreId, nivelMadurez, ideaRaizId, respuestaAnteriorId, revisionIndice);
 
         // El Markdown se compila por cada evaluacion valida (cada intento queda con su artefacto; el
         // ultimo es el definitivo). En fallback no se compila (08 §6).
@@ -107,7 +110,10 @@ public sealed class ProcesadorResultadoEvaluacion
         CancellationToken cancellationToken,
         int? ideaIndice = null,
         string? respuestaPadreId = null,
-        NivelMadurez nivelMadurez = NivelMadurez.Incubacion)
+        NivelMadurez nivelMadurez = NivelMadurez.Incubacion,
+        string? ideaRaizId = null,
+        string? respuestaAnteriorId = null,
+        int? revisionIndice = null)
         => _respuestas.GuardarRespuestaAsync(
             RespuestaUsuario.Crear(
                 respuestaId,
@@ -123,7 +129,10 @@ public sealed class ProcesadorResultadoEvaluacion
                 usuario.Tags,
                 ideaIndice,
                 respuestaPadreId,
-                nivelMadurez),
+                nivelMadurez,
+                ideaRaizId,
+                respuestaAnteriorId,
+                revisionIndice),
             cancellationToken);
 
     public async Task CompilarMarkdownAsync(

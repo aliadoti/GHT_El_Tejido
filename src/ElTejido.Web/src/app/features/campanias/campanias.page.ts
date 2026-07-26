@@ -205,6 +205,8 @@ export class CampaniasPage {
           maxRepreguntas: 1,
           mensajeCierre: 'Gracias. Tu aporte quedo registrado.',
           segmentacionIdeas: false,
+          coachingSecuencialIdeas: false,
+          minutosCoachingPorIdea: null,
           umbralCierreAnticipado: null,
         },
         configSeguridad: {
@@ -241,6 +243,11 @@ export class CampaniasPage {
             actual?.configConversacional?.mensajeCierre ??
             'Gracias. Tu aporte quedo registrado correctamente.',
           segmentacionIdeas: Boolean(formulario.segmentacionIdeas),
+          coachingSecuencialIdeas: Boolean(formulario.coachingSecuencialIdeas),
+          minutosCoachingPorIdea:
+            formulario.minutosCoachingPorIdea === null
+              ? null
+              : Math.max(0, Math.trunc(Number(formulario.minutosCoachingPorIdea) || 0)),
           tejidoColectivo: Boolean(actual?.configConversacional?.tejidoColectivo),
           parafraseo: Boolean(formulario.parafraseo),
           umbralCierreAnticipado:

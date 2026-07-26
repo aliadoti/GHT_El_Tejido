@@ -39,4 +39,10 @@ public sealed record ContextoEvaluacion(
     /// degradacion segura; el valor operativo por defecto es 400.
     /// </summary>
     public int MaxCaracteresParafraseo { get; init; } = 400;
+
+    /// <summary>
+    /// I-18: solicita una salida de coach socrático para una idea activa bajo umbral. Default false
+    /// conserva el prompt y la salida legacy.
+    /// </summary>
+    public bool CoachingSecuencialIdeas { get; init; }
 }

@@ -28,7 +28,9 @@ public sealed class TrabajadorExpiracionConversaciones : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (_opciones.MinutosInactividadSesion <= 0 && _opciones.HorasExpiracionSinRespuesta <= 0)
+        if (!_opciones.CoachingSecuencialIdeas
+            && _opciones.MinutosInactividadSesion <= 0
+            && _opciones.HorasExpiracionSinRespuesta <= 0)
         {
             return; // expiracion desactivada por configuracion (ni minutos ni horas)
         }

@@ -70,6 +70,20 @@ public sealed class ConstructorMensajesEvaluacionTests
     }
 
     [Fact]
+    public void Construir_CoachingI18_ExigeUnaPreguntaSinResponderPorLaPersona()
+    {
+        var mensajes = ConstructorMensajesEvaluacion.Construir(
+            CrearContexto() with { CoachingSecuencialIdeas = true });
+        var system = mensajes[0].Contenido;
+
+        system.Should().Contain("COACHING SECUENCIAL ACTIVO");
+        system.Should().Contain("exactamente UNA pregunta abierta");
+        system.Should().Contain("no des ejemplos");
+        system.Should().Contain("\"recomendacion\": \"repreguntar\"");
+        system.Should().NotContain("\"recomendacion\": \"cerrar\"");
+    }
+
+    [Fact]
     public void Construir_ConAportes_InyectaBloqueDelimitadoComoDatoAntesDelUsuario()
     {
         var contexto = CrearContexto() with

@@ -91,6 +91,12 @@ public sealed class OpcionesConversacion
     /// </summary>
     public bool SegmentacionIdeas { get; set; } = true;
 
+    /// <summary>I-18: kill-switch global; el campo de campaña sigue naciendo apagado.</summary>
+    public bool CoachingSecuencialIdeas { get; set; } = true;
+
+    /// <summary>I-18: default global de la ventana por idea. 0 o negativo la desactiva.</summary>
+    public int MinutosCoachingPorIdea { get; set; }
+
     /// <summary>Maximo de ideas procesadas por mensaje cuando I-06 esta activo. Default 5.</summary>
     public int MaxIdeasPorMensaje { get; set; } = 5;
 

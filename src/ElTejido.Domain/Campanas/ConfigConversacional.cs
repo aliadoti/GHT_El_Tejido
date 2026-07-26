@@ -12,7 +12,9 @@ public sealed class ConfigConversacional
         bool parafraseo,
         double? umbralCierreAnticipado,
         int? minutosInactividadSesion,
-        string? numeroWhatsAppSaliente)
+        string? numeroWhatsAppSaliente,
+        bool coachingSecuencialIdeas,
+        int? minutosCoachingPorIdea)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -22,6 +24,8 @@ public sealed class ConfigConversacional
         UmbralCierreAnticipado = umbralCierreAnticipado;
         MinutosInactividadSesion = minutosInactividadSesion;
         NumeroWhatsAppSaliente = string.IsNullOrWhiteSpace(numeroWhatsAppSaliente) ? null : numeroWhatsAppSaliente.Trim();
+        CoachingSecuencialIdeas = coachingSecuencialIdeas;
+        MinutosCoachingPorIdea = minutosCoachingPorIdea;
     }
 
     public int MaxRepreguntas { get; }
@@ -33,6 +37,12 @@ public sealed class ConfigConversacional
     /// defecto es <c>false</c> para que los documentos historicos mantengan el flujo 1-idea.
     /// </summary>
     public bool SegmentacionIdeas { get; }
+
+    /// <summary>I-18: habilita coaching una idea a la vez; default false.</summary>
+    public bool CoachingSecuencialIdeas { get; }
+
+    /// <summary>I-18: override opcional de minutos por idea; null hereda y &lt;= 0 apaga.</summary>
+    public int? MinutosCoachingPorIdea { get; }
 
     /// <summary>
     /// I-09: habilita el <b>tejido colectivo</b> para esta campania — el coach recupera e inyecta como
@@ -80,7 +90,9 @@ public sealed class ConfigConversacional
         bool parafraseo = false,
         double? umbralCierreAnticipado = null,
         int? minutosInactividadSesion = null,
-        string? numeroWhatsAppSaliente = null)
+        string? numeroWhatsAppSaliente = null,
+        bool coachingSecuencialIdeas = false,
+        int? minutosCoachingPorIdea = null)
     {
         if (maxRepreguntas < 0)
         {
@@ -104,6 +116,8 @@ public sealed class ConfigConversacional
             parafraseo,
             umbralCierreAnticipado,
             minutosInactividadSesion,
-            numeroWhatsAppSaliente);
+            numeroWhatsAppSaliente,
+            coachingSecuencialIdeas,
+            minutosCoachingPorIdea);
     }
 }

@@ -35,6 +35,8 @@ export interface CampaniaCrearForm {
 export interface CampaniaEdicionForm extends CampaniaCrearForm {
   presupuestoTokensCampania: number;
   segmentacionIdeas: boolean;
+  coachingSecuencialIdeas: boolean;
+  minutosCoachingPorIdea: number | null;
   parafraseo: boolean;
   umbralCierreAnticipado: number | null;
   minutosInactividadSesion: number | null;
@@ -123,6 +125,8 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
     promptEvaluarRef: campania.promptRefs?.['evaluar'] ?? '',
     presupuestoTokensCampania: campania.configSeguridad?.presupuestoTokensCampania ?? 0,
     segmentacionIdeas: campania.configConversacional?.segmentacionIdeas ?? false,
+    coachingSecuencialIdeas: campania.configConversacional?.coachingSecuencialIdeas ?? false,
+    minutosCoachingPorIdea: campania.configConversacional?.minutosCoachingPorIdea ?? null,
     parafraseo: campania.configConversacional?.parafraseo ?? false,
     umbralCierreAnticipado: campania.configConversacional?.umbralCierreAnticipado ?? null,
     minutosInactividadSesion: campania.configConversacional?.minutosInactividadSesion ?? null,
@@ -343,6 +347,27 @@ export class CampaniaCreacionPanel implements OnChanges {
             name="editarSegmentacionIdeas"
             [(ngModel)]="formulario.segmentacionIdeas"
           />Separar varias ideas de un mismo mensaje</label
+        ><label class="checkbox-label"
+          ><input
+            aria-describedby="ayuda-coaching-ideas"
+            type="checkbox"
+            name="editarCoachingSecuencialIdeas"
+            [(ngModel)]="formulario.coachingSecuencialIdeas"
+          />Afinar ideas una por una</label
+        ><small id="ayuda-coaching-ideas" class="muted"
+          >Requiere separar varias ideas. El coach trabaja una idea y luego la siguiente; nace
+          apagado.</small
+        ><label
+          >Minutos por idea<input
+            aria-describedby="ayuda-minutos-coaching"
+            type="number"
+            min="0"
+            step="1"
+            name="editarMinutosCoachingPorIdea"
+            [(ngModel)]="formulario.minutosCoachingPorIdea"
+          /><small id="ayuda-minutos-coaching" class="muted"
+            >Vacio hereda el valor global; 0 apaga el tiempo por idea.</small
+          ></label
         ><label class="checkbox-label"
           ><input
             type="checkbox"

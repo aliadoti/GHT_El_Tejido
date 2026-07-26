@@ -1,5 +1,7 @@
 using ElTejido.Application.Identidad;
 using ElTejido.Application.WhatsApp;
+using ElTejido.Domain.Campanas;
+using DominioConversacion = ElTejido.Domain.Conversaciones.Conversacion;
 
 namespace ElTejido.Application.Conversacion;
 
@@ -17,5 +19,14 @@ public interface IOrquestadorConversacion
     Task ProcesarMensajeEntranteAsync(
         ParticipanteResuelto participante,
         MensajeEntrante mensaje,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// I-18: envia el turno ya evaluado de la idea activa que el barrido por tiempo acaba de activar.
+    /// La fachada conserva una sola ruta para enviar y persistir mensajes salientes.
+    /// </summary>
+    Task EnviarTurnoCoachingPendienteAsync(
+        DominioConversacion conversacion,
+        Campania campania,
         CancellationToken cancellationToken);
 }

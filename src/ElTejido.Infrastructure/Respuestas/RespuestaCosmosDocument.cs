@@ -49,6 +49,15 @@ internal sealed class RespuestaCosmosDocument
     [JsonProperty("respuestaPadreId")]
     public string? RespuestaPadreId { get; init; }
 
+    [JsonProperty("ideaRaizId")]
+    public string? IdeaRaizId { get; init; }
+
+    [JsonProperty("respuestaAnteriorId")]
+    public string? RespuestaAnteriorId { get; init; }
+
+    [JsonProperty("revisionIndice")]
+    public int? RevisionIndice { get; init; }
+
     /// <summary>
     /// I-17 (03 §3.8) — nivel de madurez. Ausente en documentos historicos: se deserializa a
     /// <see cref="NivelMadurez.Incubacion"/> por defecto seguro (mantiene el comportamiento plano).
@@ -73,6 +82,9 @@ internal sealed class RespuestaCosmosDocument
             TagsSnapshot = respuesta.TagsSnapshot,
             IdeaIndice = respuesta.IdeaIndice,
             RespuestaPadreId = respuesta.RespuestaPadreId,
+            IdeaRaizId = respuesta.IdeaRaizId,
+            RespuestaAnteriorId = respuesta.RespuestaAnteriorId,
+            RevisionIndice = respuesta.RevisionIndice,
             NivelMadurez = MapearNivelMadurez(respuesta.NivelMadurez),
         };
 
@@ -91,7 +103,10 @@ internal sealed class RespuestaCosmosDocument
             TagsSnapshot,
             IdeaIndice,
             RespuestaPadreId,
-            MapearNivelMadurez(NivelMadurez));
+            MapearNivelMadurez(NivelMadurez),
+            IdeaRaizId,
+            RespuestaAnteriorId,
+            RevisionIndice);
 
     private static string MapearNivelMadurez(NivelMadurez nivel)
         => nivel switch

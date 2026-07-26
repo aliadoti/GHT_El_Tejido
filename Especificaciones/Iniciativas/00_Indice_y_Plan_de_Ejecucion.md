@@ -6,7 +6,7 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-07-25 — **`I-18` coaching secuencial por idea ESPECIFICADO; implementación TODO y próximo ejecutable.** Define cola por idea, revisiones enlazadas, umbral server-side, coach socrático sobre el criterio débil, límites/tiempo por idea y gates apagados por campaña; requiere prompt + código, no un cambio de modelo inicial. Revisión anterior 2026-07-25 — **`P-23` UX de Resultados DONE local** (frontend 24/24, Prettier y build de producción verdes): precarga de campaña en memoria, patrón maestro-detalle, leyenda/conteos y estados guiados. Sin contratos ni permisos nuevos. Revisión anterior 2026-07-25 — **`P-22` UX de Campañas DONE local** (frontend 21/21, Prettier y build de producción verdes): creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos con id real, configuración agrupada y estados vacíos guiados. Ambas son frontend-only, sin cambio de contratos y construyen sobre P-16/P-18/P-19/P-20. Revisión anterior 2026-07-25 — **`P-21` multi-número de WhatsApp DONE local** (backend 473/473): dos números bajo la misma WABA/App, alias saliente por campaña y respuesta siempre por el número entrante, con fallback legacy seguro. Revisión anterior 2026-07-24 — **remediación de auditoría P-15 a P-20 incorporada.** Revisión anterior 2026-07-21 (tarde) — **RE-PRIORIZACIÓN reunión GHT 20-jul** (grabación Fathom
+> Última revisión: 2026-07-25 — **`I-18` coaching secuencial por idea DONE local.** Cola por idea, revisiones enlazadas, umbral server-side, coach socrático, límites/tiempo por idea y contratos/portal/observabilidad aditivos. Backend 484/484 y portal 24/24, formatos y builds verdes. Los gates por campaña permanecen apagados; falta D5 real, UAT y revisión de costo antes de activar. Revisión anterior 2026-07-25 — **`P-23` UX de Resultados DONE local** (frontend 24/24, Prettier y build de producción verdes). Revisión anterior 2026-07-25 — **`P-22` UX de Campañas DONE local** (frontend 21/21, Prettier y build de producción verdes). Revisión anterior 2026-07-25 — **`P-21` multi-número de WhatsApp DONE local** (backend 473/473). Revisión anterior 2026-07-24 — **remediación de auditoría P-15 a P-20 incorporada.** Revisión anterior 2026-07-21 (tarde) — **RE-PRIORIZACIÓN reunión GHT 20-jul** (grabación Fathom
 > "Priorización iniciativas MVP"): **I-09/I-10 (tejido colectivo) → DIFERIDAS a "Capa 3" post-convención;
 > P-07 (consentimiento) → DIFERIDA (herramienta interna, IP de GHT); P-09 (panel en vivo) → DIFERIDO
 > (basta health-check; métricas de tokens no prioritarias);** HITL fuera del MVP; **nueva iniciativa
@@ -39,7 +39,7 @@
 | I-09 | [I-09_Tejido_Colectivo.md](I-09_Tejido_Colectivo.md)                                                                                                                                                                                                 | ~~S1b core~~ → **DIFERIDA (Capa 3)** | **⚠️ DIFERIDA del MVP (reunión 20-jul).** Core DONE local 2026-07-17 pero **flag `tejidoColectivo` OFF y fuera de ruta crítica**; no se valida para el Hito. Código permanece; retomar en Capa 3. |
 | I-10 | [I-10_Flag_Base_Previa_vs_Blanco.md](I-10_Flag_Base_Previa_vs_Blanco.md)                                                                                                                                                                             | ~~Sprint 2~~ → **DIFERIDA (Capa 3)** | **⚠️ DIFERIDA con I-09** (es su UI de activación). No se construye el checkbox de tejido para el MVP; el campo ya existe en el modelo y queda OFF. |
 | I-17 | [I-17_BD_Dos_Niveles_Madurez.md](I-17_BD_Dos_Niveles_Madurez.md)                                                                                                                                                                                     | Sprint 1b–2           | **DONE local 2026-07-22 (6/6 slices).** Clasifica cada respuesta `maduro`/`incubacion` por umbral compartido; paráfrasis I-05 solo si madura, resultados/Markdown, rechazo explícito y cierre por inactividad por campaña. D5 real y acta de flags pendientes operativos. |
-| I-18 | [I-18_Coaching_Secuencial_Por_Idea.md](I-18_Coaching_Secuencial_Por_Idea.md) | Sprint 2 | **SPEC DONE 2026-07-25 / implementación TODO — próximo ejecutable.** Extiende I-06 para afinar una idea a la vez con I-03, estado/contador por idea, revisiones enlazadas, umbral server-side, salida/tiempo/fallback y gates apagados por defecto. |
+| I-18 | [I-18_Coaching_Secuencial_Por_Idea.md](I-18_Coaching_Secuencial_Por_Idea.md) | Sprint 2 | **DONE local 2026-07-25.** Extiende I-06 para afinar una idea a la vez con I-03, estado/contador por idea, revisiones enlazadas, umbral server-side, salida/tiempo/fallback y gates apagados por defecto. Pendiente D5/UAT/costo antes de activar. |
 | I-12 | [I-12_Seed_Thoughts.md](I-12_Seed_Thoughts.md)                                                                                                                                                                                                       | Sprint 2              | **BLOCKED — insumo vencido** (seeds de Felipe no recibidos al 2026-07-20; **escalar**)                                                                                        |
 | I-16 | [I-16_Fix_Calificacion_Markdown.md](I-16_Fix_Calificacion_Markdown.md)                                                                                                                                                                               | Sprint 1a             | **DONE 2026-07-15** (Markdown usa la evaluación más reciente por `fecha`; regresión determinística verde)               |
 | P-03 | [P-03_Reiniciar_Conversacion.md](P-03_Reiniciar_Conversacion.md) — **ampliada a sistema de reinicio de datos** (participante Y campaña completa: conserva campaña/config/usuarios, borra conversaciones/respuestas/Markdown y resetea participantes) | Sprint 1a             | **DONE 2026-07-13/14** (reinicio por participante y por campaña; backend verde y committeado; `Seguridad:PermitirReinicioDatos` se apaga en el freeze) |
@@ -74,7 +74,7 @@
 
 **Dentro del alcance — deben quedar listas/validadas para el Hito del 10-ago:**
 I-01, I-02, I-03 ✓, I-04, I-05 ✓, I-06 ✓, I-07, I-08 ✓, I-11 ✓, I-12, I-13, I-14, I-16 ✓,
-**I-17 (BD de dos niveles)**, **I-18 (coaching secuencial; SPEC DONE/implementación TODO)**,
+**I-17 (BD de dos niveles)**, **I-18 (coaching secuencial; DONE local)**,
 P-01 ✓, P-02 ✓, P-03 ✓, P-10 ✓ y P-13 ✓. Del MVP conversacional
 se mantiene también el **cierre no determinista** (I-02 + inactividad ~5 min) y el **health-check +
 acta de flags + runbook** (lo que se conserva de P-09).
@@ -128,9 +128,9 @@ acta de flags + runbook** (lo que se conserva de P-09).
   (descomposición de campañas) → P-17 (errores API uniformes) → P-18 (nombres accesibles) → P-19
   (estados dinámicos anunciados) → P-20 (pestañas accesibles). Se preservaron contratos/permisos y
   el comportamiento salvo las correcciones explícitas.
-- **I-18 coaching secuencial (25-jul) — SPEC DONE / implementación TODO:** próximo trabajo
-  ejecutable. Extiende I-06/I-03/I-17 con cola y revisiones por idea, detrás de flag por campaña y
-  kill-switch; exige D5/UAT/costo antes de activarse.
+- **I-18 coaching secuencial (25-jul) — DONE local:** extiende I-06/I-03/I-17 con cola y revisiones
+  por idea, detrás de flag por campaña y kill-switch. Backend 484/484 y portal 24/24 verdes; exige
+  D5/UAT/costo antes de activarse.
 
 - **Semana 0 (9–13 jul) — CERRADA:** P-02 radicada **y aprobada**; P-01 E2E real **validado**
   (ambas confirmadas 2026-07-20); staging (D8); workshop I-11 **realizado (rúbrica congelada
@@ -145,7 +145,8 @@ acta de flags + runbook** (lo que se conserva de P-09).
   I-08 UI ✓ (2026-07-20, Claude); I-03 ✓ (2026-07-21) y P-13 ✓ (2026-07-21). **I-09 core** quedó
   hecho pero **DIFERIDO** por la reunión del 20-jul (flag OFF, fuera de ruta crítica). **I-10 ya NO es
    el ítem actual** (se difirió con I-09). **I-17 está DONE local (2026-07-22)** y la remediación
-   P-15→P-20 cerró localmente. El siguiente ejecutable pasa a I-18.
+   P-15→P-20 e I-18 cerraron localmente. El siguiente paso es operativo (D5/UAT/costo) o depende de
+   insumos externos de I-12/I-13/I-14.
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7, decide
   cola/jobs/RU); **I-18 coaching secuencial por idea**; **extender I-08 con
   variables demográficas** (insumo de Munir); I-12 seed thoughts (**BLOCKED hasta insumo de Felipe —
@@ -177,7 +178,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
 `P-01/P-02 (Meta)` **✓** → `I-11 (rúbrica)` **✓ 18-jul** → `I-03` **✓ 2026-07-21** ·
 `I-12 (seeds)` **BLOCKED (insumo vencido — escalar)** → `I-04/I-13` · `P-10 cupos` **✓** →
 `I-01/umbral (activar)` ← simplificada por `P-13` **✓** → habilita `I-17 (BD dos niveles)` **✓** ·
-`I-06 + I-03 + I-17 + P-15` → `I-18 (coaching secuencial)` **SPEC DONE / implementación TODO** ·
+`I-06 + I-03 + I-17 + P-15` → `I-18 (coaching secuencial)` **DONE local** ·
 `I-08` **✓ backend + UI** → (extensión demográfica, insumo Munir) → carga
 real del freeze. **Fuera de la ruta crítica del MVP (diferidas a Capa 3):** `I-09 → I-10`, `P-07`,
 panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables demográficas de Munir (I-08).**
@@ -211,7 +212,7 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | I-06 multi-idea | `segmentacionIdeas` (bool, default `false`) — **por campaña** (implementado 2026-07-15; flag apagado hasta validación de staging) | `false` = modo 1-idea |
 | I-05 parafraseo | `parafraseo` (bool, default `false`) — **implementado 2026-07-20**; reunión 20-jul: además **solo dispara tras el umbral** (I-17) | `false` = retro clásica |
 | I-17 madurez (dos niveles) | Reutiliza `umbralCierreAnticipado` (`double?`, precedencia pregunta→campaña→global) — **DONE local** | la clasificación siempre se calcula; el cierre anticipado queda apagado mientras su kill-switch global esté OFF |
-| I-18 coaching secuencial | `coachingSecuencialIdeas` (bool, default `false`) + `minutosCoachingPorIdea` (`int?`, null = hereda global) — **SPEC DONE / implementación TODO** | `false` = confirmación multi-idea anterior; minutos `<=0` = sin timeout por idea |
+| I-18 coaching secuencial | `coachingSecuencialIdeas` (bool, default `false`) + `minutosCoachingPorIdea` (`int?`, null = hereda global) — **DONE local** | `false` = confirmación multi-idea anterior; minutos `<=0` = sin timeout por idea |
 | P-21 número saliente de WhatsApp | `configConversacional.numeroWhatsAppSaliente` (alias `string?`, default null) — **DONE local 2026-07-25** | **null = usa el número predeterminado global** (`WhatsApp:AliasPredeterminado`); la respuesta conversacional NO usa este campo: sale siempre por el número entrante |
 | ~~I-09/I-10 tejido colectivo~~ | ~~`tejidoColectivo`~~ | **DIFERIDA (Capa 3)** — el campo existe en el modelo pero queda OFF; su UI no se construye para el MVP |
 

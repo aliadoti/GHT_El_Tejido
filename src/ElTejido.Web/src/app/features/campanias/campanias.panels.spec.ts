@@ -171,6 +171,14 @@ describe('paneles de campanias', () => {
         ?.getAttribute('aria-describedby'),
     ).toBe('ayuda-inactividad');
     expect(
+      host
+        .querySelector('[name="editarCoachingSecuencialIdeas"]')
+        ?.getAttribute('aria-describedby'),
+    ).toBe('ayuda-coaching-ideas');
+    expect(
+      host.querySelector('[name="editarMinutosCoachingPorIdea"]')?.getAttribute('aria-describedby'),
+    ).toBe('ayuda-minutos-coaching');
+    expect(
       host.querySelector('[name="editarPresupuestoTokens"]')?.getAttribute('aria-describedby'),
     ).toBe('ayuda-presupuesto');
   });

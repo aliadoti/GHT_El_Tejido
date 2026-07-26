@@ -61,6 +61,47 @@ public sealed class ResponsesCosmosMappingTests
     }
 
     [Fact]
+    public void Respuesta_RoundTrip_ConservaLinajeI18YLegacyQuedaSinLinaje()
+    {
+        var revision = Respuesta.Crear(
+            "resp_1_rev_1",
+            "c_1",
+            "u_1",
+            "p_1",
+            "conv_1",
+            "Idea mejorada",
+            "whatsapp",
+            true,
+            EstadoRespuesta.Evaluada,
+            Epoca,
+            null,
+            ideaIndice: 1,
+            respuestaPadreId: "wamid.raiz",
+            ideaRaizId: "resp_1",
+            respuestaAnteriorId: "resp_1",
+            revisionIndice: 1);
+
+        var resultado = RespuestaCosmosDocument.FromDomain(revision).ToDomain();
+        var legacy = new RespuestaCosmosDocument
+        {
+            Id = "resp_legacy",
+            CampaniaId = "c_1",
+            UsuarioId = "u_1",
+            PreguntaId = "p_1",
+            ConversacionId = "conv_1",
+            Texto = "Idea",
+            Estado = "evaluada",
+            Fecha = Epoca,
+        }.ToDomain();
+
+        resultado.IdeaRaizId.Should().Be("resp_1");
+        resultado.RespuestaAnteriorId.Should().Be("resp_1");
+        resultado.RevisionIndice.Should().Be(1);
+        legacy.IdeaRaizId.Should().BeNull();
+        legacy.RevisionIndice.Should().BeNull();
+    }
+
+    [Fact]
     public void Evaluacion_RoundTrip_ConservaSnapshotsYRecomendacion()
     {
         var evaluacion = DominioEvaluacion.Crear(

@@ -51,6 +51,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly bool _cuposHabilitados;
     private readonly int _maxTurnosPorHilo;
     private readonly bool _segmentacionIdeasHabilitada;
+    private readonly bool _coachingSecuencialIdeasHabilitado;
     private readonly int _maxIdeasPorMensaje;
     private readonly int _longitudMinimaIdea;
     private readonly bool _tejidoColectivoHabilitado;
@@ -59,6 +60,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly bool _parafraseoHabilitado;
     private readonly int _maxCaracteresParafraseo;
     private readonly TimeProvider _tiempo;
+    private readonly PoliticaColaCoachingIdeas _colaCoaching = new();
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -91,6 +93,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _cuposHabilitados = opciones.CuposHabilitados;
         _maxTurnosPorHilo = opciones.MaxTurnosPorHilo;
         _segmentacionIdeasHabilitada = opciones.SegmentacionIdeas;
+        _coachingSecuencialIdeasHabilitado = opciones.CoachingSecuencialIdeas;
         _maxIdeasPorMensaje = Math.Max(1, opciones.MaxIdeasPorMensaje);
         _longitudMinimaIdea = Math.Max(1, opciones.LongitudMinimaIdea);
         _tejidoColectivoHabilitado = opciones.TejidoColectivo;
@@ -108,6 +111,45 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var intencionRechazoGuardado = new DetectorIntencionContinuar(frasesRechazo, opciones.MaxCaracteresIntencionContinuar);
         _transicion = new ResolvedorTransicionConversacion(intencionContinuar, intencionRechazoGuardado);
         _tiempo = tiempo;
+    }
+
+    public async Task EnviarTurnoCoachingPendienteAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        CancellationToken cancellationToken)
+    {
+        var ahora = _tiempo.GetUtcNow();
+        var activa = conversacion.CoachingIdeas?.IdeaActiva;
+        if (conversacion.Estado != EstadoConversacion.Abierta
+            || !conversacion.VentanaAbierta(ahora)
+            || activa is null
+            || activa.RepreguntasUsadas > 0)
+        {
+            return;
+        }
+
+        var participante = await _participantes.ObtenerParticipantePorUsuarioAsync(
+            campania.Id,
+            conversacion.UsuarioId,
+            cancellationToken);
+        var evaluacion = await _respuestas.ObtenerEvaluacionPorRespuestaAsync(
+            campania.Id,
+            activa.RespuestaVigenteId,
+            cancellationToken);
+        if (participante is null || evaluacion is null)
+        {
+            return;
+        }
+
+        await EnviarPreguntaCoachingAsync(
+            conversacion,
+            campania,
+            participante.UsuarioId,
+            participante.WhatsappNormalizado,
+            campania.ConfigConversacional.NumeroWhatsAppSaliente,
+            evaluacion,
+            ahora,
+            cancellationToken);
     }
 
     public async Task ProcesarMensajeEntranteAsync(
@@ -151,6 +193,21 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         conversacion ??= DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora);
+        if (conversacion.CoachingIdeas is { Estado: EstadoCoachingIdeas.Activo })
+        {
+            await ProcesarRevisionCoachingAsync(
+                conversacion,
+                campania,
+                usuario,
+                participante,
+                pregunta,
+                numero,
+                emisor,
+                mensaje,
+                ahora,
+                cancellationToken);
+            return;
+        }
         // Interpretacion determinista de la situacion (05 §4.4 salida conversacional; I-17 §5.4 rechazo del
         // guardado): solo cuentan cuando ya ofrecimos una mejora (esperandoRepregunta); el primer mensaje
         // (su respuesta real) nunca se interpreta asi. El rechazo devuelto es la intencion previa a la E/S:
@@ -381,14 +438,20 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // I-17: el origen del umbral (pregunta → campaña → global) es constante por pregunta para todas
         // las ideas; se reusa en la telemetria del cierre por umbral mas abajo.
         var origenUmbral = _limites.OrigenUmbral(campania, pregunta);
+        var coachingEfectivo = CoachingEfectivo(campania) && resolucion.FueSegmentada;
 
-        var resultados = new List<(ResultadoEvaluacion Resultado, ContextoEvaluacion Contexto)>();
+        var resultados = new List<(string RespuestaId, ResultadoEvaluacion Resultado, ContextoEvaluacion Contexto)>();
         foreach (var idea in resolucion.Ideas)
         {
             var respuestaId = resolucion.FueSegmentada
                 ? CrearRespuestaIdIdea(respuestaPadreId, idea.Indice)
                 : "resp_" + Guid.NewGuid().ToString("N");
-            var contexto = contextoBase with { RespuestaId = respuestaId, RespuestaTexto = idea.Texto };
+            var contexto = contextoBase with
+            {
+                RespuestaId = respuestaId,
+                RespuestaTexto = idea.Texto,
+                CoachingSecuencialIdeas = coachingEfectivo,
+            };
             var resultado = await _evaluador.EvaluarAsync(contexto, cancellationToken);
 
             // Mismos efectos posteriores que el flujo de una sola respuesta (P-15 Corte 3), por idea.
@@ -396,9 +459,28 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 resultado, campania, pregunta, usuario, conversacion.Id, respuestaId, idea.Texto, esRepregunta,
                 contexto.RubricaSnapshot.Escala, ahora, cancellationToken,
                 resolucion.FueSegmentada ? idea.Indice : null,
-                resolucion.FueSegmentada ? respuestaPadreId : null);
+                resolucion.FueSegmentada ? respuestaPadreId : null,
+                coachingEfectivo ? respuestaId : null,
+                respuestaAnteriorId: null,
+                coachingEfectivo ? 0 : null);
 
-            resultados.Add((resultado, contexto));
+            resultados.Add((respuestaId, resultado, contexto));
+        }
+
+        if (coachingEfectivo)
+        {
+            await IniciarCoachingSecuencialAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                respuestaPadreId,
+                resultados,
+                ahora,
+                cancellationToken);
+            return;
         }
 
         if (resultados.Any(resultado => resultado.Resultado is ResultadoEvaluacion.Fallback))
@@ -456,6 +538,549 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
         await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
     }
+
+    private async Task IniciarCoachingSecuencialAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string respuestaPadreId,
+        IReadOnlyList<(string RespuestaId, ResultadoEvaluacion Resultado, ContextoEvaluacion Contexto)> resultados,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var umbral = _limites.ResolverUmbralBase(campania, pregunta);
+        var raices = resultados.Select((item, indice) =>
+        {
+            var motivo = item.Resultado is ResultadoEvaluacion.Fallback
+                ? MotivoFinalizacionIdea.Fallback
+                : _limites.UmbralAlcanzado(
+                    item.Resultado.Evaluacion.CalificacionTotal,
+                    item.Contexto.RubricaSnapshot.Escala,
+                    umbral)
+                    ? MotivoFinalizacionIdea.Umbral
+                    : (MotivoFinalizacionIdea?)null;
+            return new RaizIdeaCoaching(indice + 1, item.RespuestaId, motivo);
+        });
+
+        var cola = _colaCoaching.Crear(respuestaPadreId, raices, ahora);
+        if (pregunta.MaxRepreguntas <= 0 && cola.IdeaActiva is not null)
+        {
+            cola = _colaCoaching.FinalizarTodasAbiertas(cola, MotivoFinalizacionIdea.MaxRevisiones, ahora);
+        }
+
+        conversacion = conversacion.ConCoachingIdeas(cola);
+        await RegistrarCoachingAsync(
+            usuario.Id,
+            usuario.WhatsappNormalizado,
+            "iniciado",
+            cola,
+            null,
+            ahora,
+            cancellationToken);
+
+        if (cola.Estado == EstadoCoachingIdeas.Finalizado)
+        {
+            await FinalizarColaAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                prefijo: null,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        var activa = cola.IdeaActiva!;
+        var resultadoActivo = resultados.Single(resultado => resultado.RespuestaId == activa.RespuestaVigenteId).Resultado;
+        await EnviarPreguntaCoachingAsync(
+            conversacion,
+            campania,
+            usuario.Id,
+            numero,
+            emisor,
+            resultadoActivo.Evaluacion,
+            ahora,
+            cancellationToken);
+    }
+
+    private async Task ProcesarRevisionCoachingAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        ParticipanteResuelto participante,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var cola = conversacion.CoachingIdeas!;
+        var activa = cola.IdeaActiva!;
+        var turnosExcedidos = await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
+        var cupoLlamadasExcedido = _cuposHabilitados
+            && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
+        var presupuestoExcedido = _cuposHabilitados
+            && !cupoLlamadasExcedido
+            && await PresupuestoTokensExcedidoAsync(campania, cancellationToken);
+        await GuardarMensajeAsync(
+            conversacion,
+            DireccionMensaje.In,
+            mensaje.Texto,
+            mensaje.WhatsappMessageId,
+            mensaje.Timestamp,
+            cancellationToken);
+        await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
+        conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
+
+        var anterior = await _respuestas.ObtenerRespuestaAsync(campania.Id, activa.RespuestaVigenteId, cancellationToken);
+        if (anterior is null)
+        {
+            cola = _colaCoaching.FinalizarTodasAbiertas(cola, MotivoFinalizacionIdea.Fallback, ahora);
+            await FinalizarColaAsync(
+                conversacion.ConCoachingIdeas(cola),
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                EvaluadorLlm.RetroNeutra,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        // Fuera de la ventana de servicio, el timeout activa la siguiente idea sin enviar texto libre.
+        // El primer entrante posterior solo dispara su turno de coaching; no se atribuye como revision.
+        if (activa.RepreguntasUsadas == 0)
+        {
+            var evaluacionPendiente = await _respuestas.ObtenerEvaluacionPorRespuestaAsync(
+                campania.Id,
+                activa.RespuestaVigenteId,
+                cancellationToken);
+            if (evaluacionPendiente is not null)
+            {
+                await EnviarPreguntaCoachingAsync(
+                    conversacion,
+                    campania,
+                    usuario.Id,
+                    numero,
+                    emisor,
+                    evaluacionPendiente,
+                    ahora,
+                    cancellationToken);
+                return;
+            }
+        }
+
+        var revisionIndice = (anterior.RevisionIndice ?? 0) + 1;
+        var respuestaId = $"{activa.RespuestaRaizId}_rev_{revisionIndice}";
+        var gatesActivos = CoachingEfectivo(campania);
+        if (!gatesActivos)
+        {
+            await _procesador.GuardarRespuestaAsync(
+                respuestaId,
+                campania.Id,
+                usuario,
+                pregunta,
+                conversacion.Id,
+                mensaje.Texto,
+                esRepregunta: true,
+                EstadoRespuesta.Recibida,
+                ahora,
+                cancellationToken,
+                activa.IdeaIndice,
+                cola.RespuestaPadreId,
+                NivelMadurez.Incubacion,
+                activa.RespuestaRaizId,
+                activa.RespuestaVigenteId,
+                revisionIndice);
+            cola = _colaCoaching.ActualizarRespuestaVigente(cola, respuestaId);
+            cola = _colaCoaching.FinalizarTodasAbiertas(cola, MotivoFinalizacionIdea.Desactivacion, ahora);
+            await RegistrarCoachingAsync(
+                usuario.Id,
+                usuario.WhatsappNormalizado,
+                "finalizada",
+                cola,
+                MotivoFinalizacionIdea.Desactivacion,
+                ahora,
+                cancellationToken);
+            await FinalizarColaAsync(
+                conversacion.ConCoachingIdeas(cola),
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                prefijo: null,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        var intencion = _transicion.Interpretar(
+            EstadoMaquinaConversacion.EsperandoRepregunta,
+            activa.RepreguntasUsadas,
+            pregunta.MaxRepreguntas,
+            mensaje.Texto);
+        if (intencion.DeseaContinuar || intencion.DeseaRechazarGuardado)
+        {
+            if (intencion.DeseaRechazarGuardado && anterior.NivelMadurez == NivelMadurez.Maduro)
+            {
+                await _procesador.ReclasificarComoIncubacionAsync(
+                    campania,
+                    usuario,
+                    pregunta,
+                    new[] { anterior },
+                    ahora,
+                    cancellationToken);
+            }
+
+            var motivo = intencion.DeseaRechazarGuardado
+                ? MotivoFinalizacionIdea.Rechazo
+                : MotivoFinalizacionIdea.Participante;
+            cola = _colaCoaching.FinalizarActiva(cola, motivo, ahora);
+            conversacion = conversacion.ConCoachingIdeas(cola);
+            await RegistrarCoachingAsync(
+                usuario.Id,
+                usuario.WhatsappNormalizado,
+                "avance",
+                cola,
+                motivo,
+                ahora,
+                cancellationToken);
+            var acuse = intencion.DeseaRechazarGuardado
+                ? TextoConfigurado(
+                    _mensajes.AcuseRechazoGuardado,
+                    OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault)
+                : SeleccionarAcuseContinuar(conversacion);
+            await ContinuarOFinalizarColaAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                acuse,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        if (turnosExcedidos || cupoLlamadasExcedido || presupuestoExcedido)
+        {
+            await _procesador.GuardarRespuestaAsync(
+                respuestaId,
+                campania.Id,
+                usuario,
+                pregunta,
+                conversacion.Id,
+                mensaje.Texto,
+                esRepregunta: true,
+                EstadoRespuesta.Recibida,
+                ahora,
+                cancellationToken,
+                activa.IdeaIndice,
+                cola.RespuestaPadreId,
+                NivelMadurez.Incubacion,
+                activa.RespuestaRaizId,
+                activa.RespuestaVigenteId,
+                revisionIndice);
+            cola = _colaCoaching.ActualizarRespuestaVigente(cola, respuestaId);
+            cola = _colaCoaching.FinalizarActiva(cola, MotivoFinalizacionIdea.Fallback, ahora);
+            var motivoCupo = turnosExcedidos
+                ? "tope_turnos_hilo"
+                : cupoLlamadasExcedido
+                    ? "cupo_llamadas_llm_usuario"
+                    : "presupuesto_tokens_campania";
+            await RegistrarRateLimitAsync(usuario, motivoCupo, ahora, cancellationToken);
+            await ContinuarOFinalizarColaAsync(
+                conversacion.ConCoachingIdeas(cola),
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                EvaluadorLlm.RetroNeutra,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        var contextoDisponible = await ConstruirContextoAsync(
+            campania,
+            pregunta,
+            usuario,
+            conversacion.Id,
+            respuestaId,
+            mensaje.Texto,
+            cancellationToken);
+        if (contextoDisponible.Contexto is null)
+        {
+            cola = _colaCoaching.FinalizarActiva(cola, MotivoFinalizacionIdea.Fallback, ahora);
+            await ContinuarOFinalizarColaAsync(
+                conversacion.ConCoachingIdeas(cola),
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                EvaluadorLlm.RetroNeutra,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        var contexto = contextoDisponible.Contexto with
+        {
+            HistorialReciente = await ConstruirHistorialIdeaAsync(campania.Id, activa.RespuestaRaizId, cancellationToken),
+            CoachingSecuencialIdeas = true,
+            SolicitarParafraseo = false,
+        };
+        var resultado = await _evaluador.EvaluarAsync(contexto, cancellationToken);
+        await _procesador.PersistirRespuestaEvaluadaAsync(
+            resultado,
+            campania,
+            pregunta,
+            usuario,
+            conversacion.Id,
+            respuestaId,
+            mensaje.Texto,
+            esRepregunta: true,
+            contexto.RubricaSnapshot.Escala,
+            ahora,
+            cancellationToken,
+            activa.IdeaIndice,
+            cola.RespuestaPadreId,
+            activa.RespuestaRaizId,
+            activa.RespuestaVigenteId,
+            revisionIndice);
+        cola = _colaCoaching.ActualizarRespuestaVigente(cola, respuestaId);
+
+        MotivoFinalizacionIdea? motivoFinalizacion = resultado is ResultadoEvaluacion.Fallback
+            ? MotivoFinalizacionIdea.Fallback
+            : _limites.UmbralAlcanzado(
+                resultado.Evaluacion.CalificacionTotal,
+                contexto.RubricaSnapshot.Escala,
+                _limites.ResolverUmbralBase(campania, pregunta))
+                ? MotivoFinalizacionIdea.Umbral
+                : activa.RepreguntasUsadas >= pregunta.MaxRepreguntas
+                    ? MotivoFinalizacionIdea.MaxRevisiones
+                    : null;
+
+        if (motivoFinalizacion.HasValue)
+        {
+            cola = _colaCoaching.FinalizarActiva(cola, motivoFinalizacion.Value, ahora);
+            conversacion = conversacion.ConCoachingIdeas(cola);
+            await RegistrarCoachingAsync(
+                usuario.Id,
+                usuario.WhatsappNormalizado,
+                motivoFinalizacion == MotivoFinalizacionIdea.Fallback ? "fallback" : "avance",
+                cola,
+                motivoFinalizacion,
+                ahora,
+                cancellationToken);
+            await ContinuarOFinalizarColaAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                resultado.Evaluacion.RetroalimentacionEnviada,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        conversacion = conversacion.ConCoachingIdeas(cola);
+        await EnviarPreguntaCoachingAsync(
+            conversacion,
+            campania,
+            usuario.Id,
+            numero,
+            emisor,
+            resultado.Evaluacion,
+            ahora,
+            cancellationToken);
+    }
+
+    private async Task ContinuarOFinalizarColaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string? prefijo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        if (conversacion.CoachingIdeas!.Estado == EstadoCoachingIdeas.Finalizado)
+        {
+            await FinalizarColaAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                prefijo,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        var activa = conversacion.CoachingIdeas.IdeaActiva!;
+        var evaluacion = await _respuestas.ObtenerEvaluacionPorRespuestaAsync(
+            campania.Id,
+            activa.RespuestaVigenteId,
+            cancellationToken);
+        if (evaluacion is null)
+        {
+            var cola = _colaCoaching.FinalizarActiva(
+                conversacion.CoachingIdeas,
+                MotivoFinalizacionIdea.Fallback,
+                ahora);
+            await ContinuarOFinalizarColaAsync(
+                conversacion.ConCoachingIdeas(cola),
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                EvaluadorLlm.RetroNeutra,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        await EnviarPreguntaCoachingAsync(
+            conversacion,
+            campania,
+            usuario.Id,
+            numero,
+            emisor,
+            evaluacion,
+            ahora,
+            cancellationToken,
+            prefijo);
+    }
+
+    private async Task EnviarPreguntaCoachingAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        string usuarioId,
+        NumeroWhatsApp numero,
+        string? emisor,
+        ElTejido.Domain.Evaluacion.Evaluacion evaluacion,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken,
+        string? prefijo = null)
+    {
+        var cola = conversacion.CoachingIdeas!;
+        var activa = cola.IdeaActiva!;
+        var preguntaCoaching = string.IsNullOrWhiteSpace(evaluacion.RepreguntaSugerida)
+            ? EvaluadorLlm.RepreguntaNeutra
+            : evaluacion.RepreguntaSugerida.Trim();
+        var turno = Combinar(Combinar(prefijo, evaluacion.RetroalimentacionEnviada), preguntaCoaching);
+        await EnviarAsync(conversacion, numero, turno, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+
+        cola = _colaCoaching.RegistrarRepregunta(cola);
+        conversacion = conversacion
+            .ConCoachingIdeas(cola)
+            .AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+        await RegistrarCoachingAsync(usuarioId, numero, "repregunta", cola, null, ahora, cancellationToken);
+    }
+
+    private async Task FinalizarColaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string? prefijo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var texto = Combinar(prefijo, campania.ConfigConversacional.MensajeCierre);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
+        conversacion = conversacion.Cerrar(ahora);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+        await RegistrarCoachingAsync(
+            usuario.Id,
+            usuario.WhatsappNormalizado,
+            "finalizada",
+            conversacion.CoachingIdeas!,
+            null,
+            ahora,
+            cancellationToken);
+        await EnviarSiguientePreguntaPendienteAsync(
+            campania,
+            usuario,
+            pregunta,
+            numero,
+            emisor,
+            ahora,
+            cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<string>> ConstruirHistorialIdeaAsync(
+        string campaniaId,
+        string ideaRaizId,
+        CancellationToken cancellationToken)
+    {
+        var respuestas = await _respuestas.ListarRespuestasAsync(campaniaId, cancellationToken);
+        return respuestas
+            .Where(respuesta => respuesta.IdeaRaizId == ideaRaizId)
+            .OrderBy(respuesta => respuesta.RevisionIndice)
+            .TakeLast(8)
+            .Select(respuesta => "Participante: " + Acotar(respuesta.Texto, 300))
+            .ToArray();
+    }
+
+    private bool CoachingEfectivo(Campania campania)
+        => _segmentacionIdeasHabilitada
+            && campania.ConfigConversacional.SegmentacionIdeas
+            && _coachingSecuencialIdeasHabilitado
+            && campania.ConfigConversacional.CoachingSecuencialIdeas;
+
+    private Task RegistrarCoachingAsync(
+        string usuarioId,
+        NumeroWhatsApp numero,
+        string accion,
+        CoachingIdeas cola,
+        MotivoFinalizacionIdea? motivo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var ideaIndice = cola.IdeaActivaIndice ?? cola.Ideas.LastOrDefault()?.IdeaIndice ?? 0;
+        var revision = cola.IdeaActiva?.RepreguntasUsadas ?? 0;
+        var detalle = FormattableString.Invariant(
+            $"accion:{accion};ideaIndice:{ideaIndice};ideasTotal:{cola.Ideas.Count};revision:{revision};motivo:{(motivo is null ? "ninguno" : MinusculaInicial(motivo.Value.ToString()))}");
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.CoachingSecuencialIdeas,
+                usuarioId,
+                numero.Valor,
+                accion,
+                detalle,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+    }
+
+    private static string MinusculaInicial(string valor)
+        => char.ToLowerInvariant(valor[0]) + valor[1..];
 
     private async Task<IdeasResueltas> ResolverIdeasAsync(
         ContextoEvaluacion contexto,

@@ -23,7 +23,8 @@ public sealed class Conversacion
         DateTimeOffset ventanaServicioVenceEn,
         string? correlationId,
         DateTimeOffset fechaInicio,
-        DateTimeOffset? fechaCierre)
+        DateTimeOffset? fechaCierre,
+        CoachingIdeas? coachingIdeas)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -37,6 +38,7 @@ public sealed class Conversacion
         CorrelationId = correlationId;
         FechaInicio = fechaInicio;
         FechaCierre = fechaCierre;
+        CoachingIdeas = coachingIdeas;
     }
 
     public string Id { get; }
@@ -63,6 +65,9 @@ public sealed class Conversacion
 
     public DateTimeOffset? FechaCierre { get; }
 
+    /// <summary>I-18: cola opcional; ausente conserva la maquina legacy.</summary>
+    public CoachingIdeas? CoachingIdeas { get; }
+
     /// <summary>¿La ventana de servicio de 24h sigue abierta? Decide texto libre vs plantilla (05 §2.2).</summary>
     public bool VentanaAbierta(DateTimeOffset ahora) => ahora < VentanaServicioVenceEn;
 
@@ -78,7 +83,8 @@ public sealed class Conversacion
         DateTimeOffset ventanaServicioVenceEn,
         string? correlationId,
         DateTimeOffset fechaInicio,
-        DateTimeOffset? fechaCierre)
+        DateTimeOffset? fechaCierre,
+        CoachingIdeas? coachingIdeas = null)
     {
         if (repreguntasUsadas < 0)
         {
@@ -99,7 +105,8 @@ public sealed class Conversacion
             ventanaServicioVenceEn.ToUniversalTime(),
             string.IsNullOrWhiteSpace(correlationId) ? null : correlationId.Trim(),
             fechaInicio.ToUniversalTime(),
-            fechaCierre?.ToUniversalTime());
+            fechaCierre?.ToUniversalTime(),
+            coachingIdeas);
     }
 
     /// <summary>Inicia un hilo nuevo (esperando la respuesta inicial), con la ventana abierta desde <paramref name="ahora"/>.</summary>
@@ -123,7 +130,8 @@ public sealed class Conversacion
             ahora.AddHours(HorasVentanaServicio),
             correlationId,
             ahora,
-            fechaCierre: null);
+            fechaCierre: null,
+            coachingIdeas: null);
 
     /// <summary>Renueva la ventana de servicio desde el ultimo mensaje entrante (05 §2.2).</summary>
     public Conversacion RegistrarEntrante(DateTimeOffset timestampEntrante)
@@ -131,6 +139,9 @@ public sealed class Conversacion
 
     public Conversacion AvanzarA(EstadoMaquinaConversacion estadoMaquina)
         => With(estadoMaquina: estadoMaquina);
+
+    public Conversacion ConCoachingIdeas(CoachingIdeas coachingIdeas)
+        => With(coachingIdeas: coachingIdeas, reemplazarCoaching: true);
 
     /// <summary>Cuenta una repregunta enviada y pasa a esperar la respuesta del usuario.</summary>
     public Conversacion RegistrarRepregunta()
@@ -147,7 +158,9 @@ public sealed class Conversacion
         EstadoMaquinaConversacion? estadoMaquina = null,
         int? repreguntas = null,
         DateTimeOffset? ventana = null,
-        DateTimeOffset? fechaCierre = null)
+        DateTimeOffset? fechaCierre = null,
+        CoachingIdeas? coachingIdeas = null,
+        bool reemplazarCoaching = false)
         => new(
             Id,
             CampaniaId,
@@ -160,5 +173,6 @@ public sealed class Conversacion
             ventana ?? VentanaServicioVenceEn,
             CorrelationId,
             FechaInicio,
-            fechaCierre ?? FechaCierre);
+            fechaCierre ?? FechaCierre,
+            reemplazarCoaching ? coachingIdeas : CoachingIdeas);
 }

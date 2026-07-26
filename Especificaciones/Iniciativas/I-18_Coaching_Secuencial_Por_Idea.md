@@ -4,13 +4,15 @@
 > se segmenta correctamente, pero la respuesta agregada suena mecánica, ofrece cerrar aunque las ideas
 > estén por debajo del umbral y no usa la evaluación de cada idea para ayudar a mejorarla.
 > **Tipo:** Desarrollo + prompt (aditivo) · **Prioridad:** Alta — afecta la lógica central de la
-> conversación · **Ventana:** Sprint 2, próximo ejecutable · **Dependencias:** I-03 (criterio más débil),
+> conversación · **Ventana:** Sprint 2, DONE local · **Dependencias:** I-03 (criterio más débil),
 > I-06 (segmentación multi-idea), I-17 (madurez, rechazo e inactividad), P-15 (políticas separadas del
 > orquestador) y D5 (calibración). Cubre REQ §9/§21/§22/§25/§26, ARQ §4.2/§6/§7/§12/§13; specs base
 > `03 §3.3/§3.6/§3.8`, `04 §5.3/§5.8`, `05 §4`, `08`, `09`, `10` y
 > `Reglas_Conversacion_y_Participacion.md`.
-> **Estado:** especificación cerrada el 25-jul-2026; implementación **TODO**. Todos los campos y
-> banderas nuevos nacen apagados o ausentes, por lo que el despliegue no cambia campañas existentes.
+> **Estado:** especificación e implementación cerradas localmente el 25-jul-2026. Backend 484/484 y
+> portal 24/24, formatos y builds verdes. Todos los campos y banderas nuevos nacen apagados o
+> ausentes, por lo que el despliegue no cambia campañas existentes. Falta D5 real, UAT y revisión de
+> costo antes de activar.
 
 ## 1. Resultado que se busca
 

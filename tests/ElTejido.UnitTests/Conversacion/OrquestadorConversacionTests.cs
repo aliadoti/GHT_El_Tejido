@@ -993,6 +993,167 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task Procesar_I18Activo_IniciaSoloPrimeraIdeaSinConfirmacionAgregada()
+    {
+        var respuestas = new List<Respuesta>();
+        var contextos = new List<ContextoEvaluacion>();
+        _respuestas.GuardarRespuestaAsync(
+                Arg.Do<Respuesta>(respuesta => respuestas.Add(respuesta)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _segmentadorIdeas.SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoSegmentacionIdeas.Exito(
+                new[]
+                {
+                    new IdeaSegmentada(1, "Primera idea suficientemente larga para ser procesada.", null),
+                    new IdeaSegmentada(2, "Segunda idea suficientemente larga para ser procesada.", null),
+                },
+                UsoTokensLlm.Crear(8, 3)));
+        _evaluador.EvaluarAsync(
+                Arg.Do<ContextoEvaluacion>(contexto => contextos.Add(contexto)),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(
+                    RecomendacionEvaluacion.Repreguntar,
+                    "¿Que resultado concreto esperas?",
+                    calificacionTotal: 1m)));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.coaching", Epoca),
+            CancellationToken.None);
+
+        contextos.Should().HaveCount(2).And.OnlyContain(contexto => contexto.CoachingSecuencialIdeas);
+        respuestas.Should().HaveCount(2);
+        respuestas.Should().OnlyContain(respuesta =>
+            respuesta.IdeaRaizId == respuesta.Id
+            && respuesta.RespuestaAnteriorId == null
+            && respuesta.RevisionIndice == 0);
+        _conversaciones.Ultima!.CoachingIdeas.Should().NotBeNull();
+        _conversaciones.Ultima.CoachingIdeas!.IdeaActivaIndice.Should().Be(1);
+        _conversaciones.Ultima.CoachingIdeas.Ideas.Should().ContainSingle(
+            idea => idea.Estado == EstadoIdeaCoaching.Activa && idea.RepreguntasUsadas == 1);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto =>
+                texto.Contains("¿Que resultado concreto esperas?", StringComparison.Ordinal)
+                && !texto.Contains("Registramos", StringComparison.OrdinalIgnoreCase)
+                && !texto.Contains("asi esta bien", StringComparison.OrdinalIgnoreCase)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_I18Revision_EnlazaEvaluaYAvanzaASiguienteSinResegmentar()
+    {
+        var politica = new PoliticaColaCoachingIdeas();
+        var cola = politica.Crear(
+            "wamid.raiz",
+            new[]
+            {
+                new RaizIdeaCoaching(1, "resp_1", null),
+                new RaizIdeaCoaching(2, "resp_2", null),
+            },
+            Epoca);
+        cola = politica.RegistrarRepregunta(cola);
+        var conversacion = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .ConCoachingIdeas(cola)
+            .AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta);
+        await _conversaciones.GuardarConversacionAsync(conversacion, CancellationToken.None);
+
+        var raiz = Respuesta.Crear(
+            "resp_1",
+            "c_1",
+            "u_1",
+            "p_1",
+            conversacion.Id,
+            "Idea inicial",
+            "whatsapp",
+            false,
+            EstadoRespuesta.Evaluada,
+            Epoca,
+            null,
+            ideaIndice: 1,
+            respuestaPadreId: "wamid.raiz",
+            ideaRaizId: "resp_1",
+            revisionIndice: 0);
+        _respuestas.ObtenerRespuestaAsync("c_1", "resp_1", Arg.Any<CancellationToken>()).Returns(raiz);
+        _respuestas.ObtenerEvaluacionPorRespuestaAsync("c_1", "resp_2", Arg.Any<CancellationToken>())
+            .Returns(CrearEvaluacion(
+                RecomendacionEvaluacion.Repreguntar,
+                "¿Que cambiaria en la segunda idea?",
+                calificacionTotal: 1m));
+        var guardadas = new List<Respuesta>();
+        _respuestas.GuardarRespuestaAsync(
+                Arg.Do<Respuesta>(respuesta => guardadas.Add(respuesta)),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, "La primera ya esta clara.", 5m)));
+
+        await Construir().ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            Mensaje("Ahora aclaro el resultado esperado"),
+            CancellationToken.None);
+
+        await _segmentadorIdeas.DidNotReceiveWithAnyArgs().SegmentarAsync(default!, default);
+        guardadas.Should().ContainSingle(respuesta =>
+            respuesta.IdeaRaizId == "resp_1"
+            && respuesta.RespuestaAnteriorId == "resp_1"
+            && respuesta.RevisionIndice == 1);
+        _conversaciones.Ultima!.CoachingIdeas!.Ideas[0].MotivoFinalizacion.Should().Be(MotivoFinalizacionIdea.Umbral);
+        _conversaciones.Ultima.CoachingIdeas.IdeaActivaIndice.Should().Be(2);
+        _conversaciones.Ultima.CoachingIdeas.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Que cambiaria en la segunda idea?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EnviarTurnoCoachingPendiente_VentanaAbierta_EnviaYRegistraLaSiguienteIdea()
+    {
+        var contexto = ParticipanteConCoaching();
+        var politica = new PoliticaColaCoachingIdeas();
+        var cola = politica.Crear(
+            "wamid.raiz",
+            new[]
+            {
+                new RaizIdeaCoaching(1, "resp_1", null),
+                new RaizIdeaCoaching(2, "resp_2", null),
+            },
+            Epoca);
+        cola = politica.FinalizarActiva(cola, MotivoFinalizacionIdea.Tiempo, Epoca);
+        var conversacion = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .ConCoachingIdeas(cola);
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(contexto.Participante);
+        _respuestas.ObtenerEvaluacionPorRespuestaAsync("c_1", "resp_2", Arg.Any<CancellationToken>())
+            .Returns(CrearEvaluacion(
+                RecomendacionEvaluacion.Repreguntar,
+                "Â¿Que cambiaria en la segunda idea?",
+                calificacionTotal: 1m));
+
+        await Construir().EnviarTurnoCoachingPendienteAsync(
+            conversacion,
+            contexto.Campania,
+            CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Â¿Que cambiaria en la segunda idea?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            contexto.Campania.ConfigConversacional.NumeroWhatsAppSaliente);
+        _conversaciones.Ultima!.CoachingIdeas!.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Procesar_KillSwitchSegmentacionApagado_MantieneFlujoUnaIdea()
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
@@ -1203,6 +1364,21 @@ public sealed class OrquestadorConversacionTests
         var campania = CrearCampania(
             new[] { pregunta },
             configConversacional: ConfigConversacional.Crear(1, "Gracias por participar.", segmentacionIdeas: true));
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    private static ParticipanteResuelto ParticipanteConCoaching()
+    {
+        var pregunta = CrearPregunta("p_1", 1, 2);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(
+                2,
+                "Gracias por participar.",
+                segmentacionIdeas: true,
+                coachingSecuencialIdeas: true));
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);

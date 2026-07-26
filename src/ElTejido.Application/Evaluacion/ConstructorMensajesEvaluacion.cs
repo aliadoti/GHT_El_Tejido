@@ -33,6 +33,12 @@ public static class ConstructorMensajesEvaluacion
         + "criterios de evaluacion ni ningun puntaje o fraccion (p. ej. \"3/5\"); el participante no "
         + "debe enterarse de que existe una rubrica.";
 
+    private const string ReglasCoachingSecuencial =
+        "COACHING SECUENCIAL ACTIVO: reconoce en una frase breve algo concreto que ya este claro y "
+        + "formula exactamente UNA pregunta abierta sobre el aspecto mas debil. No redactes una "
+        + "respuesta mejorada, no des ejemplos ni alternativas que respondan por la persona, no "
+        + "inventes responsables, datos, fechas o soluciones. La transicion la decide el servidor.";
+
     public static IReadOnlyList<LlmMensaje> Construir(ContextoEvaluacion contexto)
     {
         var escala = contexto.RubricaSnapshot.Escala;
@@ -42,8 +48,13 @@ public static class ConstructorMensajesEvaluacion
             .AppendLine(ReglasComportamiento)
             .AppendLine(AntiInyeccion)
             .AppendLine(PistaEjeDebil)
+            .AppendLine(contexto.CoachingSecuencialIdeas ? ReglasCoachingSecuencial : string.Empty)
             .AppendLine()
-            .AppendLine(EsquemaSalida(escala.Min, escala.Max, contexto.SolicitarParafraseo))
+            .AppendLine(EsquemaSalida(
+                escala.Min,
+                escala.Max,
+                contexto.SolicitarParafraseo,
+                contexto.CoachingSecuencialIdeas))
             .ToString();
 
         var contexto2 = new StringBuilder()
@@ -97,7 +108,7 @@ public static class ConstructorMensajesEvaluacion
     /// de las claves y la escala de la rubrica para no depender de que el prompt del admin los
     /// describa; sin esto el modelo inventa claves y la salida no pasa la validacion (-> fallback).
     /// </summary>
-    private static string EsquemaSalida(int min, int max, bool solicitarParafraseo)
+    private static string EsquemaSalida(int min, int max, bool solicitarParafraseo, bool coachingSecuencial)
         => "Devuelve EXCLUSIVAMENTE un objeto JSON valido (sin texto adicional ni bloques de codigo) "
             + "con EXACTAMENTE estas claves:\n"
             + "{\n"
@@ -109,13 +120,16 @@ public static class ConstructorMensajesEvaluacion
             + (solicitarParafraseo
                 ? "  \"parafraseo_devuelto\": \"<2-3 frases fieles al aporte, sin inventar ni agregar informacion>\",\n"
                 : string.Empty)
-            + "  \"recomendacion\": \"cerrar\",\n"
+            + $"  \"recomendacion\": \"{(coachingSecuencial ? "repreguntar" : "cerrar")}\",\n"
             + "  \"repregunta_sugerida\": \"<si recomendacion es repreguntar, la pregunta; si no, cadena vacia>\",\n"
             + "  \"temas\": [\"<tema>\"],\n"
             + "  \"entidades\": [\"<entidad>\"],\n"
             + "  \"anomalia_seguridad\": false\n"
             + "}\n"
             + $"La escala de puntajes va de {min} a {max} y todo puntaje debe estar en ese rango. "
-            + "\"recomendacion\" debe ser EXACTAMENTE \"cerrar\" o \"repreguntar\" (usa \"repreguntar\" solo si "
-            + "falta informacion clave). \"calificacion_por_criterio\" usa los criterios de la rubrica.";
+            + "\"recomendacion\" debe ser EXACTAMENTE \"cerrar\" o \"repreguntar\" "
+            + (coachingSecuencial
+                ? "(en este contexto usa \"repreguntar\" y devuelve exactamente una pregunta abierta). "
+                : "(usa \"repreguntar\" solo si falta informacion clave). ")
+            + "\"calificacion_por_criterio\" usa los criterios de la rubrica.";
 }

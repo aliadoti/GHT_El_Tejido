@@ -123,6 +123,23 @@ public sealed class RepositorioCampaniasCosmosTests
     }
 
     [Fact]
+    public void ConfigConversacional_CoachingI18_SobreviveRoundTripYDocumentoAnteriorQuedaApagado()
+    {
+        var campania = CrearCampania(coachingSecuencialIdeas: true, minutosCoachingPorIdea: 7);
+        var documento = CampaniaCosmosDocument.FromDomain(campania);
+        var legacy = new CampaniaCosmosDocument.ConfigConversacionalDocument
+        {
+            MaxRepreguntas = 1,
+            MensajeCierre = "Gracias.",
+        }.ToDomain();
+
+        documento.ToDomain().ConfigConversacional.CoachingSecuencialIdeas.Should().BeTrue();
+        documento.ToDomain().ConfigConversacional.MinutosCoachingPorIdea.Should().Be(7);
+        legacy.CoachingSecuencialIdeas.Should().BeFalse();
+        legacy.MinutosCoachingPorIdea.Should().BeNull();
+    }
+
+    [Fact]
     public async Task BuscarCampaniasAsync_UsesCosmosFilterAndMapsResults()
     {
         var container = new FakeCampaniasCosmosContainer
@@ -143,7 +160,9 @@ public sealed class RepositorioCampaniasCosmosTests
         bool tejidoColectivo = false,
         bool parafraseo = false,
         double? umbralCierreAnticipado = null,
-        string? numeroWhatsAppSaliente = null)
+        string? numeroWhatsAppSaliente = null,
+        bool coachingSecuencialIdeas = false,
+        int? minutosCoachingPorIdea = null)
     {
         return Campania.Crear(
             "c_2026conv",
@@ -163,7 +182,9 @@ public sealed class RepositorioCampaniasCosmosTests
                 tejidoColectivo: tejidoColectivo,
                 parafraseo: parafraseo,
                 umbralCierreAnticipado: umbralCierreAnticipado,
-                numeroWhatsAppSaliente: numeroWhatsAppSaliente),
+                numeroWhatsAppSaliente: numeroWhatsAppSaliente,
+                coachingSecuencialIdeas: coachingSecuencialIdeas,
+                minutosCoachingPorIdea: minutosCoachingPorIdea),
             LimitesSeguridad.Crear(1500, 10, 2),
             ["u_1", "u_2"],
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),
