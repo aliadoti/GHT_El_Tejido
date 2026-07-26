@@ -4,6 +4,9 @@
 > **Tipo:** Prompt + Desarrollo · **Prioridad:** Crítica · **Ventana:** Sprint 1a-1b (14–25 jul) ·
 > **Dependencia:** I-11 (rúbrica recalibrada) · **Riesgo:** No determinismo (alto).
 > Cubre REQ §21, ARQ §4.2/§6; specs base `08 §4/§5`, `05 §4.5`.
+> **Extensión I-18 (especificada 2026-07-25):** el mismo `CalculadorEjeDebil` y
+> `FiltroSalidaRubrica` se aplican a cada revisión de la idea activa. I-18 añade continuidad y
+> límites por idea; no cambia el cálculo ni relaja el filtro.
 
 ## 1. Qué pide GHT / por qué
 El coach debe repreguntar enfocándose en la **dimensión con menor puntaje** de la evaluación,

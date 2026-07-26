@@ -68,6 +68,8 @@ Registrar la decisión y quién la firma. **Un flag solo va ON si pasó carga + 
 | Flag / App Setting | Default | Decisión día-D | Firmado |
 |---|---|---|---|
 | `Conversacion:SegmentacionIdeas` (I-06) + `configConversacional.segmentacionIdeas` por campaña | kill-switch `true` / campo `false` | ON / **OFF** | |
+| `Conversacion:CoachingSecuencialIdeas` (I-18) + `coachingSecuencialIdeas` por campaña | kill-switch `true` / campo `false` | **ON solo tras D5 + UAT + costo** / OFF | |
+| `Conversacion:MinutosCoachingPorIdea` + override por campaña | `0` (off) | valor probado / **OFF** | |
 | `Conversacion:TejidoColectivo` (I-09) + `tejidoColectivo` por campaña | kill-switch `true` / campo `false` | **OFF obligatorio — DIFERIDO reunión 20-jul (no es decisión)** | |
 | `Conversacion:UmbralCierreAnticipado` (I-01/I-17) + override por campaña/pregunta | `0.6` | valor calibrado / conservar | |
 | `Conversacion:CierreAnticipadoHabilitado` (I-01) | `false` | **ON** solo tras D5 + UAT + costo / **OFF** | |

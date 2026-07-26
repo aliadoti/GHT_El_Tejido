@@ -1,6 +1,6 @@
 # P-16 — Descomponer la página administrativa de campañas
 
-**Estado:** TODO — después de P-15  
+**Estado:** DONE local — 2026-07-24
 **Origen:** `CAL-002` de la auditoría técnica del 2026-07-24.  
 **Dependencias:** P-15 finalizada para mantener una sola iniciativa activa; P-20 depende de esta descomposición.
 

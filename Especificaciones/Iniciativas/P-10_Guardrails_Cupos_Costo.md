@@ -7,8 +7,8 @@
 
 ## 1. Qué pide / por qué
 Límites/cupos de LLM y **control de costos** antes de abrir a todos los participantes. Con I-06
-(multi-idea: 1 segmentación + N evaluaciones por turno) e I-09 (tejido: prompts más grandes) el
-consumo por turno sube — el cupo debe contemplarlo.
+(multi-idea: 1 segmentación + N evaluaciones iniciales), I-18 (una evaluación adicional por revisión
+de cada idea) e I-09 (tejido: prompts más grandes) el consumo sube — el cupo debe contemplarlo.
 
 ## 2. Estado actual del build
 - **HECHO (2026-07-13, `SUPUESTOS.md#guardrails-cupos-conversacion`):** cupos
@@ -38,6 +38,9 @@ consumo por turno sube — el cupo debe contemplarlo.
    el MVP (una instancia); documentar la limitación.
 3. **Conteo con multi-idea (I-06):** la llamada de segmentación cuenta en `maxLlamadasLlmPorUsuario`;
    cap adicional por mensaje = `1 + MaxIdeasPorMensaje`.
+4. **Conteo con coaching secuencial (I-18):** presupuesto máximo por mensaje raíz =
+   `1 segmentación + N evaluaciones iniciales + N × MaxRepreguntas` evaluaciones de revisión, acotado
+   además por cupos/presupuesto/`MaxTurnosPorHilo`. Dimensionar antes de activar I-18.
 
 ## 4. Contratos y configuración
 Sin cambio de contratos `03`/`04` (config `Conversacion:*`/`Seguridad:*` y agregación en App

@@ -54,6 +54,8 @@ public interface ICompiladorMarkdown
 - Tags: {{usuario.tags (snapshot)}}
 - Idea índice: {{respuesta.ideaIndice (si aplica)}}
 - Respuesta padre: {{respuesta.respuestaPadreId (si aplica)}}
+- Idea raíz: {{respuesta.ideaRaizId (si aplica)}}
+- Revisión: {{respuesta.revisionIndice (si aplica; 0 = raíz)}}
 - Rúbrica / Versión: {{rubricaRef}} / v{{versionRubrica}}
 - Prompt / Versión: {{promptRef}} / v{{versionPrompt}}
 - Calificación total: {{evaluacion.calificacionTotal}}
@@ -83,7 +85,7 @@ public interface ICompiladorMarkdown
 - ID de evaluación: {{evaluacion.id}}
 ```
 
-Requisitos del artefacto (`REQ §22.4`): conserva autoría, pregunta y respuesta originales, evaluación, versiones de rúbrica/prompt; es regenerable; preparado para versionamiento e indexación futuros; legible por humanos; sin secretos. Para I-06, cada idea segmentada genera un artefacto `respuesta` independiente y estos campos opcionales permiten reconstruir qué ideas salieron del mismo mensaje original.
+Requisitos del artefacto (`REQ §22.4`): conserva autoría, pregunta y respuesta originales, evaluación, versiones de rúbrica/prompt; es regenerable; preparado para versionamiento e indexación futuros; legible por humanos; sin secretos. Para I-06, cada idea segmentada genera un artefacto `respuesta` independiente y estos campos opcionales permiten reconstruir qué ideas salieron del mismo mensaje original. Con I-18, el artefacto vigente se compila desde `respuestaVigenteId`; `ideaRaizId`/`revisionIndice` preservan el linaje y las versiones anteriores siguen siendo regenerables por id.
 
 ---
 

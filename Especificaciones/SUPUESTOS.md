@@ -492,3 +492,40 @@
   - **(6) `window.confirm/prompt` → diálogo del portal para reinicios** queda como sub-paso **opcional** de P-22 (deseable, no bloqueante).
 - Alternativa(s) descartada(s): una sola spec para ambas pantallas (dificulta implementar/verificar por partes); ampliar los filtros de servidor de Resultados ahora (cambia `04`, fuera del alcance frontend-only pedido); introducir un framework de UI/tema nuevo (viola marca por tokens y anti-patrones `01 §11`); rediseñar el sistema de pestañas (rompería la accesibilidad de P-20).
 - Impacto / reversibilidad: **cero cambio de datos/contratos**; revertir cualquiera de las dos deja la pantalla anterior sin afectar API. La documentación del doc base frontend (`11 §6/§7`) se actualizó en la implementación (sin contrato). Specs: `Iniciativas/P-22_UX_Campanias.md`, `Iniciativas/P-23_UX_Resultados.md`. Estado: **P-22 y P-23 DONE local 2026-07-25**; P-23 quedó con 24/24 pruebas Angular, Prettier y build de producción verdes.
+
+### coaching-secuencial-por-idea-i18 - Afinar varias ideas una por una
+- Fecha: 2026-07-25 - Agente/Rol: Codex - Arquitecto / Tech Lead / SDET - Commit: pendiente
+  (solo especificación; sin código).
+- Contexto: el usuario confirmó que la segmentación de un aporte en dos ideas es correcta, pero
+  observó que ambas obtuvieron una calificación baja y aun así el sistema ofreció cerrar. También
+  pidió reemplazar la confirmación robótica “Registramos N ideas” por una conversación natural que
+  use los criterios bajos para afinar cada idea, sin responder por la persona, y que después continúe
+  con la siguiente idea/pregunta. REQ §9/§21/§22/§25/§26, ARQ §4.2/§6/§7/§12/§13.
+- Decisión:
+  - **No es solo prompt ni capacidad del modelo.** El prompt gobierna la voz y la pregunta
+    socrática; el servidor conserva la cola, aplica umbral/intenciones/límites y decide transiciones.
+    Se mantiene el modelo actual inicialmente; D5 determina después si hace falta otro.
+  - **Inicio:** I-06 segmenta/evalúa todas las raíces y conserva el orden. I-18 activa la primera bajo
+    umbral; las que ya lo alcanzan se finalizan automáticamente.
+  - **Una idea activa:** el siguiente contenido es una revisión de esa idea y no se vuelve a
+    segmentar. Se persiste como nueva `Respuesta` con raíz, anterior e índice de revisión; la versión
+    vigente gobierna madurez/Markdown.
+  - **Coach:** una sola pregunta sobre el criterio más débil calculado por I-03, con reconocimiento
+    breve, sin puntajes/nombres de rúbrica y sin respuesta propuesta, alternativas o ejemplos.
+  - **Finalización por idea:** `umbral`, conformidad del participante, rechazo explícito, máximo de
+    repreguntas, tiempo o fallback. “Así está bien” conserva/finaliza solo la activa; “no lo guardes”
+    degrada solo la activa. Después avanza; al terminar la cola abre la siguiente pregunta.
+  - **Semántica del máximo:** `MaxRepreguntas` es por idea y cuenta preguntas enviadas. La respuesta a
+    la última pregunta se evalúa; el tope impide enviar otra, no descarta la revisión.
+  - **Interpretación de “se cumplió el tiempo”:** reloj aditivo por idea, no la expiración completa de
+    sesión I-17. Global `Conversacion:MinutosCoachingPorIdea=0` (off) y override nullable por campaña;
+    empieza al activar la idea. Fuera de la ventana WhatsApp no se envía texto libre.
+  - **Compatibilidad/rollback:** `configConversacional.coachingSecuencialIdeas=false` por defecto +
+    kill-switch global. Documento/flag ausente conserva el camino multi-idea anterior. Estado/linaje y
+    eventos son campos/enums aditivos; no se borran en rollback.
+- Alternativa(s) descartada(s): ajuste solo de prompt; cambio de modelo como primera acción; una
+  respuesta agregada para todas las ideas; conversación o contenedor físico por idea; reutilizar
+  `respuestaPadreId` para revisiones; coaching sin topes deterministas.
+- Impacto / reversibilidad: requiere contratos aditivos `03`/`04`, orquestador `05`, prompt `08`,
+  Markdown `09`, guardrails `10`, portal y QA. Todo permanece apagado hasta D5/UAT/costo. Spec:
+  `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.

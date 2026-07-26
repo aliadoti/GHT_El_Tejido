@@ -7,6 +7,9 @@
 > Cubre REQ §9/§22/§25, ARQ §4.2/§6/§7/§12/§13; specs base `03 §3.3/§3.8`,
 > `04 §5.3/§5.8`, `05 §4`, `08`, `09`, `10`.
 > **Estado:** implementación local terminada 2026-07-15; flags apagados. Falta validación operativa en staging (D5 real, UAT y medición de costo) antes de activarla.
+> **Extensión I-18 (especificada 2026-07-25):** I-06 conserva segmentación, persistencia y evaluación
+> por idea. Cuando el nuevo gate está activo, I-18 sustituye únicamente la confirmación agregada al
+> participante por una cola de coaching, una idea a la vez; apagado conserva este comportamiento.
 
 ## 1. Qué pide GHT / por qué
 

@@ -13,6 +13,9 @@
 | `configConversacional.tejidoColectivo=false` | Portal, por campaña | Apaga tejido solo en esa campaña. |
 | `Conversacion:SegmentacionIdeas=false` | App Setting | Apaga multi-idea (I-06) global → 1 mensaje = 1 respuesta. |
 | `configConversacional.segmentacionIdeas=false` | Portal, por campaña | Apaga multi-idea en esa campaña. |
+| `Conversacion:CoachingSecuencialIdeas=false` | App Setting | Apaga I-18 global y vuelve al comportamiento I-06 anterior; no borra revisiones. Una cola activa se finaliza por `desactivacion` en el siguiente entrante, sin nueva llamada LLM. |
+| `configConversacional.coachingSecuencialIdeas=false` | Portal, por campaña | Apaga I-18 solo en esa campaña. |
+| `Conversacion:MinutosCoachingPorIdea=0` | App Setting | Apaga el timeout por idea; revisar también el override de campaña. |
 | `Conversacion:Parafraseo=false` | App Setting | Apaga parafraseo (I-05) global → retro clásica. |
 | `Conversacion:CierreAnticipadoHabilitado=false` | App Setting | Botón de pánico: apaga todos los cierres por calificación alta (I-01), sin cambiar la clasificación de madurez. |
 | `Conversacion:UmbralCierreAnticipado=0` | App Setting | Cambia el umbral global heredable; usar para recalibrar, no como botón de pánico. |
@@ -47,6 +50,7 @@
 | C12 | **Firma inválida se estaría procesando** | Config de `wa-appsec` | Verificar secreto en Key Vault; **pausar webhook/envíos** | 401 a firmas inválidas | Ing. + seguridad |
 | C13 | **Envío inicial falla masivamente** | `wa-token`/PhoneNumberId/HSM | Pausar envíos; verificar plantilla HSM aprobada y token | Reintento controlado desde `Envios` | Ops + Meta |
 | C14 | **Reinicio de datos disparado por error en prod** | `PermitirReinicioDatos` quedó `true` | `Seguridad:PermitirReinicioDatos=false` (masivo → 409) | Masivo bloqueado | Ops |
+| C15 | **El coach mezcla ideas, responde por la persona o queda en loop** | I-18/prompt/cola mal calibrados | Primero `configConversacional.coachingSecuencialIdeas=false`; si es general, `Conversacion:CoachingSecuencialIdeas=false` | Nuevos turnos vuelven al flujo I-06 anterior; datos existentes siguen consultables | Ing. + árbitro D5 |
 
 ---
 

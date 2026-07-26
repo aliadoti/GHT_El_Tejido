@@ -33,6 +33,9 @@ El LLM redacta distinto cada vez. Se acepta una salida si cumple **todas** las p
 
 ## 3. Invitación a mejorar / repregunta (I-03) — qué la hace válida
 
+> En el flujo legado se conserva la coletilla de salida descrita abajo. Con I-18 efectivo aplica
+> `§3.1`: no se anexa automáticamente mientras la idea siga bajo umbral y tenga margen.
+
 **Calidad (tolerante):**
 - Es **una sola** invitación (no varias repreguntas).
 - Profundiza en el **aspecto más débil** del aporte, descrito en **lenguaje natural** (no como "tu criterio X está bajo").
@@ -42,6 +45,21 @@ El LLM redacta distinto cada vez. Se acepta una salida si cumple **todas** las p
 **Seguridad (cero tolerancia):** mismas prohibiciones que la retro (§2). Además, cuando `recomendacion=repreguntar`, la repregunta **no** puede quedar vacía: si el filtro la descarta por fuga, debe caer a una **variante de respaldo genérica** no vacía.
 
 **Regla de foco:** el eje débil lo calcula el **sistema** (server-side, `CalculadorEjeDebil`), no el LLM; el modelo solo redacta. El tester no valida "qué eje eligió" (interno), sino que la repregunta **apunte** a lo flojo del aporte y **no** revele el mecanismo.
+
+### 3.1 Coaching secuencial I-18
+
+Cada turno de la idea activa se aprueba si cumple todas:
+
+- suena a conversación, no a reporte de procesamiento (“Registramos N ideas”);
+- reconoce brevemente un avance concreto que sí aparece en el aporte;
+- contiene **exactamente una pregunta** abierta sobre el aspecto más débil;
+- no ofrece cerrar por defecto mientras esté bajo umbral y haya margen;
+- no escribe una respuesta mejorada, no da opciones que sustituyan la reflexión y no añade ejemplos,
+  responsables, fechas o datos no dichos;
+- al subir la calidad cambia el foco de manera coherente o permite la transición server-side.
+
+Seguridad: conserva todas las prohibiciones de §2/§3. Calidad: D5 repite cada caso tres veces y el
+árbitro revisa fidelidad, utilidad y progresión, no coincidencia literal.
 
 ---
 

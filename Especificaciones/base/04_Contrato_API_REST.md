@@ -204,6 +204,8 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
     "maxRepreguntas": 1,
     "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
     "segmentacionIdeas": false,
+    "coachingSecuencialIdeas": false,
+    "minutosCoachingPorIdea": null,
     "parafraseo": false,
     "umbralCierreAnticipado": null,
     "numeroWhatsAppSaliente": null
@@ -213,6 +215,12 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
 - `segmentacionIdeas` (`I-06`, default `false`): si está en `true` y el kill-switch global
   `Conversacion:SegmentacionIdeas` no lo apaga, el backend puede separar un mensaje con varias ideas en
   N respuestas/evaluaciones/Markdown. El portal lo expone como checkbox en Configuración de campaña.
+- `coachingSecuencialIdeas` (`I-18`, default `false`): con segmentación efectiva, activa el coaching
+  de una idea a la vez. Requiere además `Conversacion:CoachingSecuencialIdeas=true`; campo ausente
+  conserva la confirmación multi-idea anterior.
+- `minutosCoachingPorIdea` (`I-18`, `int?`, default `null`): ventana opcional por idea. `null` hereda
+  `Conversacion:MinutosCoachingPorIdea`; `<=0` la desactiva para la campaña. No sustituye la
+  inactividad de sesión I-17.
 - `parafraseo` (`I-05`, default `false`): si está en `true` y `Conversacion:Parafraseo` no lo apaga,
   el evaluador solicita y el orquestador antepone un resumen fiel del aporte a la retroalimentación.
   Campo ausente = retro clásica; ambos flags permiten rollback sin redeploy.
@@ -336,17 +344,24 @@ documentos históricos se interpreta como `incubacion`. `GET /api/admin/respuest
 opcional `nivelMadurez=maduro|incubacion` (vacío = todas), aplicado en memoria como el resto de los
 filtros de `§2`. Permite a la pantalla de Resultados separar "Maduras" e "Incubación".
 
-Campos aditivos de respuesta para I-06:
+Campos aditivos de respuesta para I-06/I-18:
 ```json
 {
   "id": "resp_wamidabc_1",
   "texto": "Idea segmentada...",
   "ideaIndice": 1,
-  "respuestaPadreId": "wamid.abc"
+  "respuestaPadreId": "wamid.abc",
+  "ideaRaizId": "resp_wamidabc_1",
+  "respuestaAnteriorId": null,
+  "revisionIndice": 0
 }
 ```
 - `ideaIndice`/`respuestaPadreId` solo aparecen poblados en respuestas segmentadas; clientes existentes
   pueden ignorarlos.
+- `ideaRaizId`/`respuestaAnteriorId`/`revisionIndice` (I-18) permiten recorrer las revisiones sin
+  cambiar el significado de los campos I-06. Son opcionales y ausentes en datos legacy.
+- `GET /api/admin/conversaciones/{id}` expone opcionalmente `coachingIdeas` (`03 §3.6`) con la idea
+  activa, estados, contadores y referencias vigentes; no incluye nuevos textos ni secretos.
 - Los endpoints de Markdown no cambian: cada idea segmentada produce un artefacto `tipoArtefacto=respuesta`
   con `respuestaRef` propio.
 

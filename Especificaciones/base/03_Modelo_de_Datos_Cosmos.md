@@ -126,7 +126,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "tejidoColectivo": false, "parafraseo": false, "numeroWhatsAppSaliente": null },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "numeroWhatsAppSaliente": null },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -139,6 +139,14 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - La pregunta guarda `versionRubrica` para snapshot; la evaluación persistirá la versión efectiva usada.
 - `configSeguridad.presupuestoTokensCampania` (P-10, **aditivo**, default `0` = sin límite): techo de tokens LLM acumulados de toda la campaña; con `Conversacion:CuposHabilitados` activo, al alcanzarlo la campaña se trata como cupo LLM agotado (cierre elegante). Documento viejo sin el campo = comportamiento actual.
 - `configConversacional.segmentacionIdeas` (I-06, **aditivo**, default `false`): habilita que una respuesta con varias ideas se segmente en N `Respuesta`/`Evaluacion`/Markdown. Documento viejo sin el campo = comportamiento 1-idea actual. El kill-switch global `Conversacion:SegmentacionIdeas=false` lo anula para todas las campañas.
+- `configConversacional.coachingSecuencialIdeas` (**I-18**, **aditivo**, default `false`): cuando I-06
+  también está efectivo, habilita una cola que afina **una idea a la vez** con el criterio más débil.
+  Documento viejo/campo ausente = respuesta multi-idea agregada anterior. El kill-switch global
+  `Conversacion:CoachingSecuencialIdeas=false` lo anula para todas las campañas.
+- `configConversacional.minutosCoachingPorIdea` (**I-18**, **aditivo**, default **ausente/null**):
+  override por campaña de la ventana de coaching de cada idea. Ausente/null hereda
+  `Conversacion:MinutosCoachingPorIdea`; `<=0` la desactiva. Es independiente de
+  `minutosInactividadSesion`, que cierra la sesión completa.
 - `configConversacional.tejidoColectivo` (I-09, **aditivo**, default `false`): habilita el **tejido colectivo** — el coach recupera e inyecta (como dato no confiable delimitado, `08 §3.2`) resúmenes **anonimizados** de aportes de otros participantes de la misma campaña antes de evaluar/retroalimentar. Documento viejo sin el campo = conversación autocontenida (comportamiento actual). Gateado además por el kill-switch operativo global `Conversacion:TejidoColectivo=false`. I-10 (Sprint 2) añade sobre este mismo campo la semántica *base previa vs. blanco* y su UI. Requiere consentimiento de uso colectivo declarado en el arranque de la campaña (P-07). Ver `SUPUESTOS.md#tejido-colectivo-i09-diseno`.
 - `configConversacional.parafraseo` (I-05, **aditivo**, default `false`): solicita un resumen fiel y breve del aporte antes de la retroalimentación. Documento viejo sin el campo = retro clásica (comportamiento actual). El kill-switch global `Conversacion:Parafraseo=false` evita solicitar y mostrar el campo para todas las campañas; rollback sin redeploy.
 - `configConversacional.umbralCierreAnticipado` (P-13 + **I-17**, **aditivo**, default **ausente/null**): **override por campaña** del **umbral único compartido** que gobierna tanto el cierre anticipado por calificación alta (`05 §4.4`) como la **clasificación de madurez** de guardado (I-17: `maduro`/`incubacion`) y el disparo de paráfrasis (I-05). Fracción de la escala de la rúbrica en `[0,1]`, `<= 0` desactiva el cierre para esa campaña. Ausente/null = la campaña **hereda** el default numérico global `Conversacion:UmbralCierreAnticipado` (**I-17: default `0.6`**). **I-17 añade un nivel más de override, por pregunta** (`pregunta.umbralCierreAnticipado`), con precedencia **pregunta → campaña → global**. El kill-switch operativo independiente `Conversacion:CierreAnticipadoHabilitado` (**I-17: default `false`** para no encender el cierre al subir el default global a 0.6; la clasificación de madurez no depende de este kill-switch) prevalece sobre el **cierre**: `false` apaga el cierre anticipado para todas las campañas sin afectar la clasificación. Documento viejo sin el campo = usa el global. Ver `Iniciativas/P-13_Umbral_Cierre_Por_Campania.md`, `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md` y `SUPUESTOS.md#bd-dos-niveles-madurez-i17`.
@@ -201,6 +209,23 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "estado": "abierta",
   "estadoMaquina": "esperandoRespuestaInicial",
   "repreguntasUsadas": 0,
+  "coachingIdeas": {
+    "estado": "activo",
+    "respuestaPadreId": "wamid.entrada-inicial",
+    "ideaActivaIndice": 1,
+    "ideas": [
+      {
+        "ideaIndice": 1,
+        "respuestaRaizId": "resp_idea_1",
+        "respuestaVigenteId": "resp_idea_1_rev_1",
+        "estado": "activa",
+        "motivoFinalizacion": null,
+        "repreguntasUsadas": 1,
+        "iniciadaEn": "2026-07-25T15:00:00Z",
+        "finalizadaEn": null
+      }
+    ]
+  },
   "ventanaServicioVenceEn": "2026-06-12T14:05:00Z",
   "correlationId": "corr_...",
   "fechaInicio": "2026-06-11T14:00:00Z",
@@ -209,6 +234,12 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 ```
 - `estado` ∈ `abierta` | `cerrada`.
 - `estadoMaquina` (control de repregunta): ver máquina de estados en `05 §4`. Valores: `esperandoRespuestaInicial` | `evaluando` | `esperandoRepregunta` | `cerrada`.
+- `coachingIdeas` (**I-18**, **aditivo**, opcional): cola ordenada de ideas del mensaje raíz. Solo una
+  puede estar `activa`; `ideaActivaIndice=null` cuando ninguna lo está. Cada elemento usa estado
+  `pendiente|activa|finalizada` y motivo final
+  `umbral|participante|rechazo|maxRevisiones|tiempo|fallback|desactivacion`. Su
+  `repreguntasUsadas` es por idea; el
+  contador superior permanece como dato legado/single-idea. Ausente = máquina anterior.
 - `ventanaServicioVenceEn`: fin de la ventana de 24h de WhatsApp (`ARQ §4.1`); decide plantilla vs texto libre.
 - Una conversación por (usuario, campaña, pregunta) en el MVP.
 
@@ -247,6 +278,9 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "tagsSnapshot": ["t_area_oper", "t_emp_ght"],
   "ideaIndice": 1,
   "respuestaPadreId": "wamid.HBgM...",
+  "ideaRaizId": "resp_...",
+  "respuestaAnteriorId": null,
+  "revisionIndice": 0,
   "nivelMadurez": "maduro"
 }
 ```
@@ -254,6 +288,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - `tagsSnapshot`: tags vigentes del usuario al momento de responder (`REQ §30.1`).
 - `ideaIndice` (I-06, **aditivo**, opcional): índice 1-based de la idea dentro del mensaje original. Ausente/null = respuesta histórica de una sola idea.
 - `respuestaPadreId` (I-06, **aditivo**, opcional): id lógico del mensaje que originó las N ideas; preferir `whatsappMessageId` y, si no existe, el `Mensaje.id`. Ausente/null = respuesta histórica de una sola idea.
+- `ideaRaizId`, `respuestaAnteriorId` y `revisionIndice` (**I-18**, **aditivos**, opcionales): linaje
+  inmutable de revisiones de una idea. La raíz apunta a sí misma, no tiene anterior y usa índice 0;
+  cada revisión conserva la raíz, apunta a la versión inmediatamente anterior e incrementa el índice.
+  `ideaIndice`/`respuestaPadreId` no cambian de significado. Ausentes = respuesta legacy.
 - `nivelMadurez` (**I-17**, **aditivo**, opcional) ∈ `maduro` | `incubacion`. **Se sella al evaluar**, server-side (no lo decide el LLM): `maduro` cuando la calificación total de una evaluación válida supera el umbral efectivo de la campaña/pregunta (`03 §3.3`); `incubacion` en caso contrario, en fallback/pendiente, o tras un **rechazo explícito** del participante ("guardar salvo que diga no", I-17 §5). **Ausente/null en documentos históricos = `incubacion`** por defecto seguro (comportamiento plano previo). Las consultas de resultados (`04 §5.8`) lo exponen y lo aceptan como filtro; el Markdown (`09`) lo registra como metadato. Ver `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 - Para respuestas segmentadas, el `id` debe ser determinístico (`resp_<respuestaPadreIdNormalizado>_<ideaIndice>`) para que reintentos del webhook no dupliquen registros.
 
@@ -427,9 +465,11 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "timestamp": "2026-06-12T15:06:00Z"
 }
 ```
-- Append-only. `tipoEvento` ∈ `solicitudOtp` | `loginExitoso` | `loginFallido` | `rechazoParticipacion` | `rateLimit` | `anomaliaLlm` | `promptInjectionSospechoso` | `errorEnvio` | `accionAdministrativa` (P-03) | `cierreUmbralAnticipado` (I-01) | `segmentacionIdeas` (I-06) | ...
+- Append-only. `tipoEvento` ∈ `solicitudOtp` | `loginExitoso` | `loginFallido` | `rechazoParticipacion` | `rateLimit` | `anomaliaLlm` | `promptInjectionSospechoso` | `errorEnvio` | `accionAdministrativa` (P-03) | `cierreUmbralAnticipado` (I-01) | `segmentacionIdeas` (I-06) | `coachingSecuencialIdeas` (I-18) | ...
 - `cierreUmbralAnticipado` (I-01, **aditivo** al final del enum, preserva valores): marca de telemetría/calibración emitida cuando el cierre anticipado por umbral de rúbrica dispara (`resultado=cierre_anticipado`; `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`, sin PII de texto). Ver `10 §6.4` y `SUPUESTOS.md#activacion-umbral-i01`.
 - `segmentacionIdeas` (I-06, **aditivo** al final del enum, preserva valores): telemetría por intento de segmentación (`detalle=ideas:<n>;fallback:<bool>;truncada:<bool>;motivo:<...>;promptTokens:<n>;completionTokens:<n>`, sin texto de ideas ni PII). Ver `10 §6.2`.
+- `coachingSecuencialIdeas` (I-18, **aditivo** al final del enum): transición de la cola sin texto ni
+  PII (`accion`, `ideaIndice`, `ideasTotal`, `revision`, `motivo`). Ver `10 §6.2`.
 - **Sin** códigos, secretos ni PII innecesaria.
 
 ### 3.16 `WebhookDedupe` (contenedor `leases`) — idempotencia

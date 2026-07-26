@@ -140,10 +140,17 @@ Reglas duras:
   (`§6`) y la repregunta a un texto genérico y seguro (el dominio exige una repregunta no vacía
   cuando `recomendacion=repreguntar`) — y se registra `LogSeguridad(anomaliaLlm, resultado="fuga_rubrica")`
   sin texto de la fuga, solo qué campo(s) y el criterio esperado.
+- **I-18 — contexto de coaching secuencial:** cuando el orquestador marca una idea activa bajo
+  umbral y aún permite otra oportunidad, exige una `repregunta_sugerida` no vacía, con exactamente
+  una pregunta enfocada en el criterio más débil calculado por I-03. El prompt ordena reconocer
+  brevemente lo ya claro, no mencionar rúbrica/puntajes y no redactar, ejemplificar ni sugerir la
+  respuesta del participante. El historial se limita a la pregunta y revisiones de esa idea.
 
 ### 3.5 Persistencia y decisión
 - Construye y devuelve la `Evaluacion` con **snapshots**: `rubricaRef+versionRubrica`, `promptRef+versionPrompt`, `configLLMRef+configLLMSnapshot`, `pesosUsados` (`REQ §20.3.3–6`, `ARQ §6 paso 5`). La persistencia la realiza el orquestador (`05 §4.3 paso 5`) o este módulo según el cableado; la responsabilidad del **contenido** del documento es de este módulo.
-- La **decisión** (cerrar/repreguntar) la toma el orquestador respetando el tope de 1 repregunta (`05 §4.4`); este módulo solo entrega la `recomendacion` del LLM.
+- La **decisión** (cerrar/repreguntar) la toma el orquestador respetando el tope vigente
+  (`05 §4.4`); este módulo solo entrega la `recomendacion` del LLM. En I-18 la recomendación nunca
+  puede cerrar por sí sola: el servidor arbitra umbral, intención, máximo, tiempo y fallback.
 
 ---
 
@@ -175,6 +182,8 @@ Validaciones:
 - `parafraseo_devuelto` es opcional y se solicita solo bajo el flag I-05; se trata como dato no
   confiable, se recorta en frontera de frase y no altera el fallback si falta.
 - Si `recomendacion=repreguntar`, `repregunta_sugerida` no debe ser `null`.
+- En contexto I-18 bajo umbral y con margen, `repregunta_sugerida` debe contener exactamente una
+  pregunta socrática y no una respuesta propuesta. La `recomendacion` sigue siendo informativa.
 - Estos campos se mapean a `Evaluacion` (`03 §3.9`) traduciendo a los nombres en español de la entidad.
 
 ---
@@ -196,6 +205,8 @@ Validaciones:
 ## 6. Fallback seguro (`REQ §20.3.10`, `§25.3.5`, `ARQ §6 paso 4`)
 Si el proveedor falla (timeout, 5xx tras reintentos) **o** la salida es inválida:
 - Devuelve `Fallback`: el orquestador envía una retroalimentación **neutra** ("Gracias, registramos tu aporte") y cierra el hilo sin repregunta.
+- Con I-18 efectivo, el orquestador acota ese fallback a la idea activa, la conserva en incubación y
+  avanza la cola; no pierde las otras ideas ni cierra la pregunta completa salvo que ya no queden.
 - La `Respuesta` queda `estado=evaluacionPendiente`; se persiste una `Evaluacion` parcial con el motivo en `explicacion` y los campos disponibles.
 - Se registra el evento (telemetría + `LogSeguridad` si aplica). **Nunca** se propaga el error al usuario final como fallo técnico.
 
@@ -215,5 +226,7 @@ Si el proveedor falla (timeout, 5xx tras reintentos) **o** la salida es inválid
 - Cambiar de proveedor (Azure OpenAI ↔ OpenAI compatible ↔ Anthropic nativo) es solo configuración; el módulo no cambia.
 - Un intento de prompt-injection no altera la rúbrica/prompt y, si se detecta, se registra.
 - Una `repregunta_sugerida` o retro que nombre un criterio de la rúbrica o muestre un puntaje nunca llega al participante: `FiltroSalidaRubrica` la reemplaza (retro neutra / repregunta genérica) y queda registrada la anomalía `fuga_rubrica` (I-03).
+- En I-18, la salida reconoce progreso y formula una sola pregunta sobre el eje débil sin ofrecer una
+  respuesta, ejemplo o solución; D5 valida esta propiedad antes de activar campañas.
 
 *Fin del documento.*

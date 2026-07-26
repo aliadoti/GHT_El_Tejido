@@ -129,6 +129,10 @@ ProcesarMensajeEntranteAsync:
      `Conversacion:SegmentacionIdeas` no lo apaga, antes de evaluar se llama `ISegmentadorIdeas`.
      Cada idea válida produce su propia `Respuesta` con `ideaIndice`/`respuestaPadreId`; salida inválida,
      0 ideas o flag apagado → fallback 1-idea = comportamiento actual.
+   - I-18 coaching secuencial: si además
+     `Campania.configConversacional.coachingSecuencialIdeas=true` y el kill-switch
+     `Conversacion:CoachingSecuencialIdeas` está activo, las ideas forman una cola ordenada. Un
+     entrante posterior revisa solo la idea activa y no se vuelve a segmentar.
 3. estadoMaquina = evaluando.
    - I-09 tejido colectivo: si `Campania.configConversacional.tejidoColectivo=true` y
      `Conversacion:TejidoColectivo` no lo apaga, antes de evaluar se llama
@@ -155,6 +159,11 @@ ProcesarMensajeEntranteAsync:
 ### 4.4 Tope duro del MVP
 **Revisiones como oportunidades:** `MaxRepreguntas` controla cuantas invitaciones a mejorar se ofrecen. Cuando el hilo esta en `esperandoRepregunta` y `repreguntasUsadas >= maxRepreguntas`, el siguiente entrante se registra como respuesta `recibida`, no se evalua, no genera retro/Markdown y se cierra con solo el mensaje de cierre (`REQ §25.2`, `§26.6`).
 
+**Excepción I-18, gateada y aditiva:** con coaching secuencial efectivo, `MaxRepreguntas` se aplica
+por idea y cuenta preguntas enviadas. La respuesta a la última oportunidad **sí** se persiste y
+evalúa; el tope impide formular otra pregunta, finaliza esa idea por `maxRevisiones` y avanza. El
+comportamiento del párrafo anterior se conserva cuando I-18 está apagado.
+
 **Cupos y techos deterministas (`10 §2`):** el orquestador ademas aplica, gateados por `Conversacion:CuposHabilitados` (default off), los cupos `maxMensajesPorUsuario` (descarte silencioso + `LogSeguridad(RateLimit)`) y `maxLlamadasLlmPorUsuario` (cierre elegante sin llamar al LLM) de `Campania.configSeguridad`, y un techo duro global de turnos por hilo `Conversacion:MaxTurnosPorHilo` (0=off) que garantiza terminacion. Con I-06 activo, un turno puede consumir `1` llamada LLM de segmentacion + `N` llamadas de evaluacion; por eso los cupos deben dimensionarse antes de activar `segmentacionIdeas`. Ver `Reglas_Conversacion_y_Participacion.md §2.8` y `SUPUESTOS.md#guardrails-cupos-conversacion`.
 
 **Umbral único compartido (P-13 + I-17):** el mismo umbral gobierna el cierre anticipado, la
@@ -168,6 +177,30 @@ clasificación de madurez de guardado (I-17) y el disparo de paráfrasis. Se res
   (**I-17: default `false`** para no encenderlo al subir el default del umbral a 0.6). Cuando dispara,
   `LogSeguridad(CierreUmbralAnticipado)` registra la fracción efectiva y su origen, sin PII.
 
+### 4.4.1 Coaching secuencial por idea (I-18)
+
+I-18 no reemplaza la segmentación I-06: la consume y añade estado conversacional. Al recibir el
+mensaje raíz, el orquestador evalúa las N ideas, finaliza las que ya alcanzan el umbral y activa la
+primera pendiente. Mientras hay idea activa:
+
+1. envía `retroalimentacionEnviada + repreguntaSugerida` para **esa idea**, con exactamente una
+   pregunta enfocada por I-03;
+2. trata el siguiente contenido como una revisión enlazada (`ideaRaizId`, `respuestaAnteriorId`,
+   `revisionIndice`) y actualiza `respuestaVigenteId`;
+3. decide server-side: umbral, salida/rechazo del participante, máximo, tiempo o fallback;
+4. activa la siguiente idea, o abre la siguiente pregunta si la cola terminó.
+
+No envía la confirmación fija “Registramos N ideas” ni la coletilla de salida por defecto mientras la
+idea siga bajo umbral y tenga margen. “Así está bien” conserva/finaliza solo la idea activa; el rechazo
+explícito I-17 degrada solo esa idea. `Conversacion:MinutosCoachingPorIdea` y el override de campaña
+controlan un reloj por idea, distinto del cierre de sesión. El barrido puede avanzar dentro de la
+ventana WhatsApp; fuera de ella no envía texto libre.
+
+La activación requiere gates global y de campaña, además de I-06 efectivo. Documento/flag ausente
+conserva todo el algoritmo anterior. Si un gate se apaga con cola activa, no se formula otra pregunta:
+el siguiente entrante se persiste sin LLM y la cola finaliza por `desactivacion` antes de avanzar. Ver
+`Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`** (en `incubacion` no se antepone: la idea aún no está lista para "guardar y confirmar"); es un campo opcional, acotado en frase completa a `Conversacion:MaxCaracteresParafraseo` (400), por lo que su ausencia conserva exactamente la retro clásica. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 
@@ -180,6 +213,8 @@ Los textos no generados por el LLM se leen de la seccion `Conversacion:Mensajes`
 **Invitacion a mejorar natural y variada (Opcion B):** ademas de `InvitacionMejora`, hay variantes rotadas `Conversacion__Mensajes__InvitacionMejoraVariantes__N` (respaldo del nucleo si el LLM no devuelve `repregunta_sugerida`), `Conversacion__Mensajes__InvitacionContinuarVariantes__N` (coletilla que ensena la salida del "no quiero seguir") y `Conversacion__Mensajes__AcuseContinuarVariantes__N`. La rotacion es determinista por hilo+turno. El orquestador ademas pasa el **historial reciente** del hilo al LLM (`08`) para que no repita ni loopee (ver `Reglas_Conversacion_y_Participacion.md §2.2/§2.3`).
 ### 4.6 Manejo de errores
 - Si la evaluación cae en **fallback** (`08 §6`): el orquestador envía una retroalimentación neutra ("Gracias, registramos tu aporte") y cierra sin romper el hilo; la `Respuesta` queda `evaluacionPendiente` (`REQ §20.3.10`).
+- Con I-18 efectivo, el fallback se acota a la idea activa: queda trazable en incubación, se finaliza
+  por `fallback` y se intenta avanzar a la siguiente sin perder la cola.
 - Si el envío saliente falla: se reintenta (Gateway) y se registra; la conversación no se pierde (el estado persiste en Cosmos).
 
 ### 4.7 Correlación
@@ -204,7 +239,8 @@ El coach deja de ser autocontenido: enriquece la evaluación/retro con la **base
 ## 5. Criterios de aceptación del módulo (resumen; ver `13`)
 - Un mensaje entrante de un participante autorizado genera Respuesta + Evaluación + retroalimentación enviada.
 - Con I-06 activo y configurado, un mensaje con N ideas genera N `Respuesta`/`Evaluacion`/Markdown sin duplicar ante reintentos; con flag apagado o segmentador inválido, conserva el flujo 1-idea.
-- Como máximo se envía **una** repregunta; el segundo turno siempre cierra.
+- En modo legado, como máximo se envía **una** repregunta y el segundo turno cierra; con I-18,
+  `MaxRepreguntas` es por idea, cada revisión se evalúa y la cola avanza una idea a la vez.
 - El cierre envía mensaje de agradecimiento y dispara compilación Markdown.
 - Mensajes repetidos por reintento de Meta no duplican Respuestas ni Evaluaciones (idempotencia).
 - Fuera de ventana de 24h, la repregunta se envía por plantilla aprobada.

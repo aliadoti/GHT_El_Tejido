@@ -80,6 +80,10 @@ defecto), el participante recibe exactamente la retroalimentación de siempre. O
 por campaña o globalmente sin redeploy.
 
 ### 2.3 Revision determinista (revisiones como oportunidades)
+> **Flujo legado/single-idea:** las reglas de contador único, coletilla siempre visible y cierre de la
+> pregunta descritas en esta sección se conservan cuando I-18 está apagado. Con coaching secuencial
+> efectivo aplica `§2.4.2`: contador y salida por idea, sin coletilla de cierre automática bajo umbral.
+
 Tras una **evaluacion valida**, el sistema ofrece al participante una oportunidad de mejorar su respuesta
 con base en la retroalimentacion (envia retro + invitacion) mientras
 `RepreguntasUsadas < MaxRepreguntas`.
@@ -147,6 +151,30 @@ Markdown, pero el participante no recibe N mensajes técnicos: el sistema debe c
 y agregada para confirmar el registro del turno. Si el segmentador falla, devuelve una salida inválida
 o no quedan ideas válidas después de las guardas, el sistema vuelve al modo probado: **1 mensaje = 1
 respuesta**.
+
+### 2.4.2 Coaching secuencial por idea (I-18, especificado; apagado por defecto)
+
+Cuando I-06 es efectivo y la campaña activa `configConversacional.coachingSecuencialIdeas`, el sistema
+crea una cola en el orden original y trabaja con **una idea activa**:
+
+1. evalúa las raíces y omite de la cola de mejora las que ya alcanzan el umbral;
+2. envía para la primera pendiente una retro breve y exactamente una pregunta sobre su criterio más
+   débil, sin puntajes, rúbrica, respuesta propuesta ni ejemplo;
+3. toma el siguiente contenido como revisión de esa idea, conserva el linaje y lo evalúa;
+4. finaliza por `umbral`, `participante`, `rechazo`, `maxRevisiones`, `tiempo`, `fallback` o
+   `desactivacion`;
+5. activa la siguiente idea y, al acabar, abre la siguiente pregunta.
+
+`MaxRepreguntas` se cuenta por idea y la respuesta a la última pregunta siempre se evalúa. “Así está
+bien” finaliza solo la idea activa; “no lo guardes” degrada solo esa idea. Mientras siga bajo umbral y
+pueda mejorar no se anexa automáticamente “si ya te sientes conforme…”. La transición la decide el
+servidor; `recomendacion` del LLM no cierra por sí sola.
+
+Activación: kill-switch `Conversacion:CoachingSecuencialIdeas=true`, campo de campaña en `true` e I-06
+efectivo. El reloj opcional por idea usa `MinutosCoachingPorIdea`; es distinto del cierre de sesión de
+`§2.6`. Ver `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
+Si un gate se apaga con una cola activa, no se envía otra repregunta: el siguiente entrante se
+conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza de forma segura.
 
 ### 2.5 Ventana de 24 h y respuestas tardías
 - WhatsApp solo permite **texto libre** dentro de las **24 h** posteriores al último mensaje del
@@ -250,6 +278,10 @@ lo que otros han dicho. Reglas duras de esta función:
 | `Conversacion:SegmentacionIdeas` | App config / env `Conversacion__SegmentacionIdeas` | `true` | Kill-switch global de I-06. `true` respeta la campaña; `false` apaga multi-idea para todas las campañas sin redeploy. |
 | `Conversacion:MaxIdeasPorMensaje` | App config / env `Conversacion__MaxIdeasPorMensaje` | 5 | Máximo de ideas segmentadas por mensaje; excedentes se ignoran y se registra anomalía sin PII. |
 | `Conversacion:LongitudMinimaIdea` | App config / env `Conversacion__LongitudMinimaIdea` | 30 | Fragmentos más cortos se descartan para evitar sobre-fragmentación trivial. |
+| `configConversacional.coachingSecuencialIdeas` | Portal admin (campaña) | `false` | **I-18** — con I-06 efectivo, afina una idea a la vez. Campo ausente = flujo agregado anterior. |
+| `Conversacion:CoachingSecuencialIdeas` | App config / env `Conversacion__CoachingSecuencialIdeas` | `true` | **I-18** — kill-switch global; `false` apaga el coaching secuencial sin borrar trazabilidad. |
+| `Conversacion:MinutosCoachingPorIdea` | App config / env `Conversacion__MinutosCoachingPorIdea` | 0 (**desactivado**) | **I-18** — default global del reloj por idea. |
+| `configConversacional.minutosCoachingPorIdea` | Portal admin (campaña) | ausente (**hereda global**) | **I-18** — override en minutos; `<=0` lo apaga para esa campaña. |
 | `configConversacional.tejidoColectivo` | Portal admin (campaña) | `false` | Habilita I-09 para esa campaña: el coach teje aportes anonimizados de otros participantes (§2.9). Campo ausente = `false` (autocontenido). |
 | `Conversacion:TejidoColectivo` | App config / env `Conversacion__TejidoColectivo` | `true` | Kill-switch global de I-09. `true` respeta la campaña; `false` apaga el tejido para todas sin redeploy. |
 | `Conversacion:TopKAportes` | App config / env `Conversacion__TopKAportes` | 3 | Máximo de aportes recuperados que se tejen por turno. |
@@ -277,6 +309,8 @@ lo que otros han dicho. Reglas duras de esta función:
 - **Vida:** `abierta` → `cerrada`.
 - **Máquina de turnos:** `esperandoRespuestaInicial` → `evaluando` → (`esperandoRepregunta` →
   `evaluando`)\* → `cerrada`, acotado por `MaxRepreguntas`.
+- **Cola I-18 (opcional):** `pendiente → activa → finalizada` por idea; solo una activa. La
+  conversación se cierra o avanza de pregunta únicamente cuando no quedan ideas pendientes.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).
 
 ## 5. Referencias

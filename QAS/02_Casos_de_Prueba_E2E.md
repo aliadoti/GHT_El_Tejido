@@ -85,6 +85,39 @@
 - **Criterio de aprobación:** no se conserva ninguna respuesta madura en ese hilo; hay cierre y no se llama de nuevo al evaluador.
 - **Ambiente:** sim.
 
+### CNV-10 | I-18 acompaña la primera de varias ideas sin cierre prematuro 🔁
+- **Prioridad:** CORE* si I-18 está ON · **I-18 / Reglas §2.4.2**
+- **Precondición:** I-06 e I-18 efectivos; dos ideas iniciales bajo el umbral; al menos una repregunta
+  por idea.
+- **Pasos:** enviar un mensaje con dos ideas incompletas; leer la primera respuesta del coach.
+- **Resultado esperado:** existen dos raíces evaluadas, pero el coach conversa solo sobre la primera;
+  reconoce brevemente lo claro y hace exactamente una pregunta sobre lo débil.
+- **Criterio de aprobación:** no dice “Registramos 2 ideas”, no muestra nota/rúbrica, no ofrece cerrar
+  por defecto, no redacta la solución y no mezcla la segunda idea.
+- **Ambiente:** sim.
+
+### CNV-11 | I-18 evalúa revisiones y avanza una idea a la vez
+- **Prioridad:** CORE* si I-18 está ON · **I-18**
+- **Precondición:** cola de dos ideas; primera activa; `MaxRepreguntas=2`.
+- **Pasos:** responder la última pregunta permitida con una mejora que alcance el umbral; continuar
+  con la segunda; terminarla.
+- **Resultado esperado:** la revisión final se persiste/enlaza y evalúa; la primera finaliza y se
+  activa la segunda. Solo al terminar ambas se abre la siguiente pregunta.
+- **Criterio de aprobación:** `ideaRaizId`, `respuestaAnteriorId` y `revisionIndice` son coherentes;
+  una sola idea activa; no se vuelve a segmentar; siguiente pregunta una sola vez.
+- **Ambiente:** sim.
+
+### CNV-12 | I-18 acota conformidad, rechazo, tiempo y fallback a la idea activa
+- **Prioridad:** CORE* si I-18 está ON · **I-18 / I-17**
+- **Pasos:** en corridas separadas: 1) escribir `así está bien`; 2) `no lo guardes`; 3) dejar vencer
+  el reloj por idea; 4) forzar fallback del evaluador.
+- **Resultado esperado:** cada corrida finaliza únicamente la idea activa y avanza; el rechazo la
+  deja en incubación. Las otras ideas no se pierden.
+- **Criterio de aprobación:** motivo correcto
+  (`participante|rechazo|tiempo|fallback`), sin evaluación innecesaria en intención explícita y sin
+  cierre de la pregunta mientras queden ideas.
+- **Ambiente:** sim.
+
 ---
 
 ## B. Seguridad y privacidad (SEC) — **cobertura obligatoria**
@@ -463,7 +496,8 @@
 
 ### FLG-03 | I-06 multi-idea: N ideas → N registros
 - **Prioridad:** Ext · **I-06 / Reglas §2.4.1**
-- **Precondición:** `configConversacional.segmentacionIdeas=true`; `SegmentacionIdeas` ON; `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30`.
+- **Precondición:** `configConversacional.segmentacionIdeas=true`; `SegmentacionIdeas` ON;
+  I-18 OFF; `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30`.
 - **Pasos:** P1 envía un mensaje con 3 ideas distintas y claras.
 - **Resultado esperado:** se crean hasta N `Respuesta` independientes con su evaluación y Markdown; el participante recibe **1** confirmación breve agregada (no N mensajes técnicos); `LogSeguridad(segmentacionIdeas)` con conteos.
 - **Criterio de aprobación:** número de respuestas = ideas válidas (≤5); 1 mensaje agregado al participante; evento con conteos. Cualitativo en la segmentación, determinista en el tope.
@@ -492,11 +526,25 @@
 - **Criterio de aprobación:** la conexión es pertinente y **anónima** (ver SEC-06 para la barrera dura de PII); si no hay relevancia → autocontenido (SEC-07). Cualitativo.
 - **Ambiente:** sim.
 
+### FLG-07 | I-18 gates y rollback conservan el flujo anterior
+- **Prioridad:** CORE* si I-18 entra al acta · **I-18**
+- **Pasos:** ejecutar el mismo mensaje multi-idea con: a) campo de campaña OFF; b) campo ON y
+  kill-switch global OFF; c) ambos ON.
+- **Resultado esperado:** a/b usan el comportamiento I-06 anterior; c usa cola secuencial. Apagar el
+  kill-switch durante la prueba no borra respuestas ni revisiones; una cola activa deja de preguntar
+  y finaliza por `desactivacion` en el siguiente entrante, sin llamar al LLM.
+- **Criterio de aprobación:** transición determinista por gates; documentos viejos deserializan; sin
+  migración destructiva.
+- **Ambiente:** sim.
+
 ---
 
 ## Resumen de prioridad
 
 **CORE (must-pass, bloquea go-live):** CNV-01..09, SEC-01..05, SEC-09..11, SEC-13..15, AUT-01..02, AUT-04..05, ADM-01..11 (crear/editar/envíos/snapshots/carga/reinicio), GRD-01..04, GRD-06 (si P-13/umbral se activa), ROB-01..07, ROB-09, FLG-05 (si el acta activa I-01).
+
+**Condicional — si I-18 entra al acta:** CNV-10..12 y FLG-07 pasan a CORE; con I-18 OFF se espera el
+flujo I-06 anterior y estos casos son N/A salvo la regresión de gates.
 
 **Condicional — solo si se enciende el tejido (I-09 DIFERIDO 20-jul; por defecto N/A, el smoke verifica flag OFF):** SEC-06, SEC-07, SEC-08, SEC-12, FLG-06. Si el tejido va ON, SEC-06/07/08/12 vuelven a **CORE de seguridad**.
 

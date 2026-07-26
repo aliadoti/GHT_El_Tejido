@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25 (P-23).
+> Última actualización: 2026-07-25 (I-18 especificada; implementación pendiente).
 
 ## Antes de empezar (léelo una vez)
 
@@ -169,6 +169,26 @@ aspecto**, pero **nunca** te muestra la rúbrica, los criterios ni los puntajes.
    tipo "3/5" o "70%".
 **Algo va mal si:** el coach menciona la rúbrica, nombra los criterios o muestra un puntaje. (Esto es
 grave: avisar de inmediato.)
+
+### ⏳ I-18 — Afinar varias ideas, una por una
+
+**Qué es:** cuando una respuesta contiene varias ideas, el coach trabaja primero una y luego la otra,
+sin responder por ti. La especificación está lista, pero todavía falta construirla.
+
+Cuando esté implementada:
+
+1. En una campaña de prueba, activa multi-idea y coaching secuencial; usa un umbral conocido y dos
+   oportunidades de mejora.
+2. Responde con dos ideas distintas pero incompletas.
+3. **Deberías ver:** una conversación natural sobre la primera idea, con una sola pregunta útil. No
+   debe decir “Registramos 2 ideas”, mostrar notas ni ofrecer cerrar de inmediato.
+4. Mejora la primera. Al alcanzar el nivel esperado —o escribir **“así está bien”**— debe pasar a la
+   segunda, sin perder lo anterior.
+5. Termina la segunda. Solo entonces debe aparecer la siguiente pregunta de la campaña.
+6. En **Resultados**, cada idea debe conservar su versión inicial, sus mejoras y cuál quedó vigente.
+
+**Algo va mal si:** mezcla ambas ideas, escribe una respuesta por ti, hace varias preguntas a la vez,
+ignora tu última mejora, cierra toda la pregunta al decir “así está bien” o salta una idea.
 
 ### 🔧 I-05 — El coach parafrasea ("esto es lo que entendí")
 **Qué es:** que el coach te devuelva un resumen fiel de tu idea antes de la retroalimentación. **Viene
