@@ -258,6 +258,104 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I19_ColaMultiIdea_ComplementoConIdeaNueva_EncolaLaNuevaSinMezclarla()
+    {
+        const string nueva = "Ademas propongo un tablero semanal de seguimiento por equipo.";
+        var almacen = ConfigurarAlmacenIdeas();
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(nueva));
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.i19", Epoca),
+            CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            Mensaje("En realidad seria con el equipo de soporte"),
+            CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.Ideas.Should().HaveCount(3);
+        cola.IdeaActivaIndice.Should().Be(1);
+        cola.Ideas[2].Should().BeEquivalentTo(new
+        {
+            IdeaIndice = 3,
+            Estado = EstadoIdeaCoaching.Pendiente,
+            RepreguntasUsadas = 0,
+        });
+        cola.Ideas[2].IdeaId.Should().NotBeNull();
+        cola.Ideas[2].VersionIdeaVigenteId.Should().NotBeNull();
+        almacen.Respuestas.Should().ContainSingle(respuesta => respuesta.TipoAporte == TipoAporteIdea.NuevaIdea)
+            .Which.Texto.Should().Be(nueva);
+        almacen.Versiones[cola.Ideas[2].VersionIdeaVigenteId!].Texto.Should().Be(nueva);
+        // La idea activa conserva su propio contenido: los textos no se mezclan (§4.6.3).
+        almacen.Versiones[cola.IdeaActiva!.VersionIdeaVigenteId!].Texto.Should().NotContain(nueva);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("equipo de soporte", StringComparison.Ordinal)
+                && !texto.Contains(nueva, StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_ColaMultiIdea_TopeDeIdeasAlcanzado_NoEncolaLaIdeaNueva()
+    {
+        const string nueva = "Ademas propongo un tablero semanal de seguimiento por equipo.";
+        var almacen = ConfigurarAlmacenIdeas();
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion { MaxIdeasPorMensaje = 2 },
+            ConsolidadorQueAcumula(nueva));
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.i19", Epoca),
+            CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            Mensaje("En realidad seria con el equipo de soporte"),
+            CancellationToken.None);
+
+        _conversaciones.Ultima!.CoachingIdeas!.Ideas.Should().HaveCount(2);
+        almacen.Respuestas.Should().NotContain(respuesta => respuesta.TipoAporte == TipoAporteIdea.NuevaIdea);
+    }
+
+    [Fact]
+    public async Task I19_IdeaNuevaSinCola_EsperaTurnoYSeAtiendeAlCerrarLaActiva()
+    {
+        const string nueva = "Ademas propongo un tablero semanal de seguimiento por equipo.";
+        var almacen = ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(nueva));
+
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(), Mensaje("En realidad seria con soporte"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("si"), CancellationToken.None);
+
+        var ideas = almacen.Ideas.Values.OrderBy(idea => idea.IdeaIndice).ToArray();
+        ideas.Should().HaveCount(2);
+        ideas[0].EstadoResultado.Should().Be(EstadoResultadoIdeaConsolidada.Madura);
+        ideas[1].IdeaIndice.Should().Be(2);
+        ideas[1].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains(nueva, StringComparison.Ordinal)
+                && texto.Contains("¿Es correcto?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task I19_ColaReanudada_UsaLasReferenciasCanonicasPersistidas()
     {
         var almacen = ConfigurarAlmacenIdeas();
@@ -1583,8 +1681,11 @@ public sealed class OrquestadorConversacionTests
         return almacen;
     }
 
-    /// <summary>Consolidador determinista: acumula la versión vigente y el aporte nuevo, sin llamar a un LLM.</summary>
-    private static IConsolidadorIdeas ConsolidadorQueAcumula()
+    /// <summary>
+    /// Consolidador determinista: acumula la versión vigente y el aporte nuevo, sin llamar a un LLM. Con
+    /// <paramref name="nuevaIdea"/> simula que además separó una idea nueva del mismo mensaje (I-19 §4.6).
+    /// </summary>
+    private static IConsolidadorIdeas ConsolidadorQueAcumula(string? nuevaIdea = null)
     {
         var consolidador = Substitute.For<IConsolidadorIdeas>();
         consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
@@ -1597,7 +1698,10 @@ public sealed class OrquestadorConversacionTests
                 var tipo = string.IsNullOrWhiteSpace(contexto.TextoConfirmadoAnterior)
                     ? TipoAporteIdea.Inicial
                     : TipoAporteIdea.Correccion;
-                return new ResultadoConsolidacionIdeas.Exito(texto, tipo, [], false, null, false, null);
+                IReadOnlyList<NuevaIdeaDetectada> nuevas = nuevaIdea is null || contexto.NuevoAporte == nuevaIdea
+                    ? []
+                    : new[] { new NuevaIdeaDetectada(nuevaIdea) };
+                return new ResultadoConsolidacionIdeas.Exito(texto, tipo, nuevas, false, null, false, null);
             });
         return consolidador;
     }

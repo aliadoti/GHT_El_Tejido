@@ -98,6 +98,43 @@ public sealed class PoliticaColaCoachingIdeas
         return CoachingIdeas.Crear(cola.Estado, cola.RespuestaPadreId, cola.IdeaActivaIndice, ideas);
     }
 
+    /// <summary>
+    /// I-19 §4.6: ¿cabe otra idea en la cola? El tope y el estado los impone el servidor, no el LLM.
+    /// </summary>
+    public bool PuedeAgregarIdea(CoachingIdeas cola, int maxIdeas)
+        => cola.Estado == EstadoCoachingIdeas.Activo && cola.Ideas.Count < Math.Max(1, maxIdeas);
+
+    /// <summary>Siguiente índice libre al final de la cola (el orden es de llegada).</summary>
+    public int SiguienteIndice(CoachingIdeas cola)
+        => cola.Ideas.Max(idea => idea.IdeaIndice) + 1;
+
+    /// <summary>
+    /// I-19 §4.6: encola al final una idea nueva detectada durante el coaching, sin tocar la activa.
+    /// Es idempotente: una idea ya encolada (mismo <c>ideaId</c> o misma raíz), una cola llena o una
+    /// cola finalizada devuelven la cola sin cambios.
+    /// </summary>
+    public CoachingIdeas AgregarIdeaPendiente(CoachingIdeas cola, RaizIdeaCoaching raiz, int maxIdeas)
+    {
+        var yaEncolada = cola.Ideas.Any(idea =>
+            string.Equals(idea.RespuestaRaizId, raiz.RespuestaId, StringComparison.Ordinal)
+            || (idea.IdeaId is not null && string.Equals(idea.IdeaId, raiz.IdeaId, StringComparison.Ordinal)));
+        if (yaEncolada || !PuedeAgregarIdea(cola, maxIdeas))
+        {
+            return cola;
+        }
+
+        var ideas = cola.Ideas
+            .Append(IdeaCoaching.Crear(
+                SiguienteIndice(cola),
+                raiz.RespuestaId,
+                raiz.RespuestaId,
+                EstadoIdeaCoaching.Pendiente,
+                ideaId: raiz.IdeaId,
+                versionIdeaVigenteId: raiz.VersionIdeaVigenteId))
+            .ToArray();
+        return CoachingIdeas.Crear(cola.Estado, cola.RespuestaPadreId, cola.IdeaActivaIndice, ideas);
+    }
+
     public CoachingIdeas FinalizarActiva(
         CoachingIdeas cola,
         MotivoFinalizacionIdea motivo,
