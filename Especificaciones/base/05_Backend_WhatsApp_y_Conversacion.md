@@ -247,6 +247,13 @@ pendiente según umbral. Una idea nueva explícita durante el coaching se encola
 separando automáticamente el mensaje inicial. Reabrir una idea suspende su curaduría pendiente hasta
 reevaluar la nueva versión confirmada.
 
+La reapertura usa el estado transitorio `estadoMaquina=esperandoSeleccionIdea` (`03 §3.6`, aditivo) solo
+cuando hay que desambiguar: el hilo envía una lista breve numerada de paráfrasis —sin calificaciones— y
+espera un número. La lista se reconstruye de forma determinista con el mismo orden (cierre más reciente
+primero), así que no se persiste ninguna lista aparte. Si la respuesta no es un número válido de esa
+lista, la selección se cancela y el mensaje se procesa como un turno normal de la idea activa: nunca se
+adivina cuál se quiso elegir ni se pierde el contenido.
+
 El participante puede reabrir una idea previa mientras la campaña esté activa. “La anterior” resuelve
 la última idea cerrada; si hay varias posibilidades, se pide elegir una lista numerada. La reapertura
 mantiene el `ideaId`, crea nuevas versiones y obliga a reevaluar la nueva versión confirmada.

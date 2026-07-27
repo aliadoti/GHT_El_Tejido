@@ -239,7 +239,12 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 }
 ```
 - `estado` ∈ `abierta` | `cerrada`.
-- `estadoMaquina` (control de repregunta): ver máquina de estados en `05 §4`. Valores: `esperandoRespuestaInicial` | `evaluando` | `esperandoRepregunta` | `cerrada`.
+- `estadoMaquina` (control de repregunta): ver máquina de estados en `05 §4`. Valores: `esperandoRespuestaInicial` | `evaluando` | `esperandoRepregunta` | `esperandoSeleccionIdea` | `cerrada`.
+  - `esperandoSeleccionIdea` (**I-19 §4.7**, **aditivo**): el hilo ofreció una lista breve **numerada**
+    de ideas cerradas para reabrir y espera que el participante elija un número. Es transitorio: al
+    resolverse (o ante una respuesta que no es un número válido) el hilo vuelve a
+    `esperandoRepregunta`. Un documento anterior nunca trae este valor, así que el comportamiento
+    histórico no cambia.
 - `coachingIdeas` (**I-18**, **aditivo**, opcional): cola ordenada de ideas del mensaje raíz. Solo una
   puede estar `activa`; `ideaActivaIndice=null` cuando ninguna lo está. Cada elemento usa estado
   `pendiente|activa|finalizada` y motivo final
