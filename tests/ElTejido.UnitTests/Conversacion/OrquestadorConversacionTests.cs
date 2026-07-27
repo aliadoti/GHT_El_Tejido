@@ -111,6 +111,193 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I19_CorreccionAntesDeConfirmar_AcumulaElAporteInicialYEncadenaLaVersion()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("En realidad seria con soporte"), CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        almacen.Versiones.Should().HaveCount(2);
+        var segunda = almacen.Versiones.Values.Single(version => version.NumeroVersion == 2);
+        var primera = almacen.Versiones.Values.Single(version => version.NumeroVersion == 1);
+        segunda.VersionAnteriorId.Should().Be(primera.Id);
+        segunda.Origen.Should().Be(TipoAporteIdea.Correccion);
+        segunda.AporteIdsAcumulados.Should().HaveCount(2);
+        segunda.Texto.Should().Be("Aporte inicial + En realidad seria con soporte");
+    }
+
+    [Fact]
+    public async Task I19_ColaMultiIdea_ProponeLaPrimeraIdeaYNoEvaluaNingunaRaiz()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: ConsolidadorQueAcumula()).ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.i19", Epoca),
+            CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        almacen.Respuestas.Should().HaveCount(2);
+        almacen.Respuestas.Should().OnlyContain(respuesta =>
+            respuesta.Estado == EstadoRespuesta.Recibida
+            && respuesta.TipoAporte == TipoAporteIdea.Inicial
+            && respuesta.IdeaId != null
+            && respuesta.IdeaRaizId == respuesta.Id);
+        almacen.Ideas.Values.Should().HaveCount(2).And.OnlyContain(
+            idea => idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.IdeaActivaIndice.Should().Be(1);
+        cola.IdeaActiva!.RepreguntasUsadas.Should().Be(0);
+        cola.Ideas.Should().OnlyContain(idea => idea.IdeaId != null && idea.VersionIdeaVigenteId != null);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto =>
+                texto.Contains("Primera idea", StringComparison.Ordinal)
+                && texto.Contains("¿Es correcto?", StringComparison.Ordinal)
+                && !texto.Contains("Segunda idea", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_ColaMultiIdea_ConfirmarLaPrimera_EvaluaSuVersionYPideConfirmarLaSegunda()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        var contextos = new List<ContextoEvaluacion>();
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextos.Add(contexto)), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.i19", Epoca),
+            CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(ParticipanteConCoaching(), Mensaje("si"), CancellationToken.None);
+
+        contextos.Should().ContainSingle();
+        contextos[0].RespuestaTexto.Should().Be("Primera idea suficientemente larga para ser procesada.");
+        contextos[0].IdeaId.Should().Be("idea_resp_wamid_i19_1");
+        var primera = almacen.Ideas["idea_resp_wamid_i19_1"];
+        primera.EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.Cerrada);
+        primera.EstadoResultado.Should().Be(EstadoResultadoIdeaConsolidada.Madura);
+        primera.EstadoCuraduria.Should().Be(EstadoCuraduriaIdea.Pendiente);
+        almacen.Ideas["idea_resp_wamid_i19_2"].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.Ideas[0].MotivoFinalizacion.Should().Be(MotivoFinalizacionIdea.Umbral);
+        cola.IdeaActivaIndice.Should().Be(2);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Segunda idea", StringComparison.Ordinal)
+                && texto.Contains("¿Es correcto?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_ColaMultiIdea_BajoUmbral_AcompaniaLaMismaIdeaAntesDeAvanzar()
+    {
+        ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Que resultado esperas?", calificacionTotal: 1m)));
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.i19", Epoca),
+            CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(ParticipanteConCoaching(), Mensaje("si"), CancellationToken.None);
+
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.IdeaActivaIndice.Should().Be(1);
+        cola.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Que resultado esperas?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_ColaMultiIdea_RechazoExplicito_CierraSoloEsaIdeaYSigueConLaSiguiente()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.i19", Epoca),
+            CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(), Mensaje("no lo guardes"), CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        almacen.Ideas["idea_resp_wamid_i19_1"].EstadoResultado.Should().Be(EstadoResultadoIdeaConsolidada.Rechazada);
+        almacen.Ideas["idea_resp_wamid_i19_1"].EstadoCuraduria.Should().BeNull();
+        almacen.Ideas["idea_resp_wamid_i19_2"].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.Ideas[0].MotivoFinalizacion.Should().Be(MotivoFinalizacionIdea.Rechazo);
+        cola.IdeaActivaIndice.Should().Be(2);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Segunda idea", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_ColaReanudada_UsaLasReferenciasCanonicasPersistidas()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        var idea = IdeaConsolidada.Crear("idea_1", "c_1", "u_1", "p_1", "conv_c_1_u_1_p_1", "resp_1", 1, Epoca);
+        var version = VersionIdeaConsolidada.Crear(
+            "idea_1_v1", "c_1", "idea_1", 1, null, "Version consolidada persistida.", new[] { "resp_1" },
+            new[] { "resp_1" }, TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
+            null, Epoca);
+        almacen.Ideas[idea.Id] = idea.ConPropuesta(version.Id, Epoca);
+        almacen.Versiones[version.Id] = version;
+        var politica = new PoliticaColaCoachingIdeas();
+        var cola = politica.Crear(
+            "wamid.raiz",
+            new[] { new RaizIdeaCoaching(1, "resp_1", null, idea.Id, version.Id) },
+            Epoca);
+        await _conversaciones.GuardarConversacionAsync(
+            DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+                .ConCoachingIdeas(cola)
+                .AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta),
+            CancellationToken.None);
+        _respuestas.ObtenerRespuestaAsync("c_1", "resp_1", Arg.Any<CancellationToken>()).Returns(
+            Respuesta.Crear(
+                "resp_1", "c_1", "u_1", "p_1", "conv_c_1_u_1_p_1", "Aporte inicial", "whatsapp", false,
+                EstadoRespuesta.Recibida, Epoca, null, ideaIndice: 1, respuestaPadreId: "wamid.raiz",
+                ideaRaizId: "resp_1", revisionIndice: 0, ideaId: idea.Id, tipoAporte: TipoAporteIdea.Inicial));
+        ContextoEvaluacion? contextoEvaluado = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextoEvaluado = contexto), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+
+        await Construir(consolidador: ConsolidadorQueAcumula()).ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(), Mensaje("si"), CancellationToken.None);
+
+        contextoEvaluado.Should().NotBeNull();
+        contextoEvaluado!.RespuestaTexto.Should().Be("Version consolidada persistida.");
+        contextoEvaluado.VersionIdeaId.Should().Be(version.Id);
+        almacen.Versiones[version.Id].EstadoConfirmacion.Should().Be(EstadoConfirmacionVersionIdea.Confirmada);
+        almacen.Ideas[idea.Id].EstadoResultado.Should().Be(EstadoResultadoIdeaConsolidada.Madura);
+    }
+
+    [Fact]
     public async Task Procesar_PrimerTurnoExito_CompilaOfreceMejoraYNoCierra()
     {
         // Aunque el LLM recomiende cerrar, la primera evaluacion valida SIEMPRE ofrece una mejora.
@@ -1369,6 +1556,69 @@ public sealed class OrquestadorConversacionTests
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    /// <summary>Almacén en memoria de ideas y versiones I-19 sobre el doble de <c>IRepositorioRespuestas</c>.</summary>
+    private AlmacenIdeas ConfigurarAlmacenIdeas()
+    {
+        var almacen = new AlmacenIdeas();
+        _respuestas.GuardarRespuestaAsync(Arg.Do<Respuesta>(respuesta => almacen.Respuestas.Add(respuesta)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.ObtenerRespuestaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => almacen.Respuestas.LastOrDefault(respuesta => respuesta.Id == llamada.ArgAt<string>(1)));
+        _respuestas.GuardarIdeaConsolidadaAsync(Arg.Do<IdeaConsolidada>(idea => almacen.Ideas[idea.Id] = idea), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.GuardarVersionIdeaAsync(Arg.Do<VersionIdeaConsolidada>(version => almacen.Versiones[version.Id] = version), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.ObtenerIdeaConsolidadaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => almacen.Ideas.GetValueOrDefault(llamada.ArgAt<string>(1)));
+        _respuestas.ObtenerVersionIdeaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => almacen.Versiones.GetValueOrDefault(llamada.ArgAt<string>(1)));
+        _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyCollection<IdeaConsolidada>)almacen.Ideas.Values.ToArray());
+        _respuestas.ListarVersionesIdeaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => (IReadOnlyCollection<VersionIdeaConsolidada>)almacen.Versiones.Values
+                .Where(version => version.IdeaId == llamada.ArgAt<string>(1))
+                .ToArray());
+        return almacen;
+    }
+
+    /// <summary>Consolidador determinista: acumula la versión vigente y el aporte nuevo, sin llamar a un LLM.</summary>
+    private static IConsolidadorIdeas ConsolidadorQueAcumula()
+    {
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(llamada =>
+            {
+                var contexto = llamada.Arg<ContextoConsolidacionIdeas>();
+                var texto = string.IsNullOrWhiteSpace(contexto.TextoConfirmadoAnterior)
+                    ? contexto.NuevoAporte
+                    : contexto.TextoConfirmadoAnterior + " + " + contexto.NuevoAporte;
+                var tipo = string.IsNullOrWhiteSpace(contexto.TextoConfirmadoAnterior)
+                    ? TipoAporteIdea.Inicial
+                    : TipoAporteIdea.Correccion;
+                return new ResultadoConsolidacionIdeas.Exito(texto, tipo, [], false, null, false, null);
+            });
+        return consolidador;
+    }
+
+    private void SegmentarEnDosIdeas()
+        => _segmentadorIdeas.SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoSegmentacionIdeas.Exito(
+                new[]
+                {
+                    new IdeaSegmentada(1, "Primera idea suficientemente larga para ser procesada.", null),
+                    new IdeaSegmentada(2, "Segunda idea suficientemente larga para ser procesada.", null),
+                },
+                UsoTokensLlm.Crear(8, 3)));
+
+    private sealed class AlmacenIdeas
+    {
+        public List<Respuesta> Respuestas { get; } = new();
+
+        public Dictionary<string, IdeaConsolidada> Ideas { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, VersionIdeaConsolidada> Versiones { get; } = new(StringComparer.Ordinal);
     }
 
     private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null, IConsolidadorIdeas? consolidador = null)

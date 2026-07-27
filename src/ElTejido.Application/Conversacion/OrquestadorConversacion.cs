@@ -145,11 +145,37 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             campania.Id,
             conversacion.UsuarioId,
             cancellationToken);
+        if (participante is null)
+        {
+            return;
+        }
+
+        // I-19: una idea recién activada por timeout todavía no tiene evaluación; su turno pendiente es
+        // la confirmación de la versión propuesta, no una pregunta socrática.
+        if (ConsolidacionIdeasActiva && !string.IsNullOrWhiteSpace(activa.VersionIdeaVigenteId))
+        {
+            var propuesta = await ObtenerVersionAsync(campania.Id, activa.VersionIdeaVigenteId, cancellationToken);
+            if (propuesta is { EstadoConfirmacion: EstadoConfirmacionVersionIdea.Propuesta })
+            {
+                await EnviarAsync(
+                    conversacion,
+                    participante.WhatsappNormalizado,
+                    TextoConfirmacion(propuesta.Texto),
+                    TipoEnvioMensaje.Repregunta,
+                    campania.ConfigConversacional.NumeroWhatsAppSaliente,
+                    ahora,
+                    cancellationToken);
+                await _conversaciones.GuardarConversacionAsync(
+                    conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+                return;
+            }
+        }
+
         var evaluacion = await _respuestas.ObtenerEvaluacionPorRespuestaAsync(
             campania.Id,
             activa.RespuestaVigenteId,
             cancellationToken);
-        if (participante is null || evaluacion is null)
+        if (evaluacion is null)
         {
             return;
         }
@@ -223,10 +249,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         // I-19: el flujo canónico intercepta el hilo simple antes de que la ruta histórica evalúe el
-        // último mensaje. Las campañas I-06/I-18 siguen por su cola temporalmente: el siguiente corte
-        // migra esas referencias a ideaId, sin degradar hoy la segmentación ya validada.
+        // último mensaje. Las campañas con cola I-18 entran por ProcesarIdeasSegmentadasAsync, que aplica
+        // el mismo ciclo idea por idea; las campañas con I-06 sin coaching conservan su ruta histórica.
         var segmentacionLegacyActiva = _segmentacionIdeasHabilitada && campania.ConfigConversacional.SegmentacionIdeas;
-        if (_consolidacionProgresivaHabilitada && _consolidadorIdeas is not null && !segmentacionLegacyActiva)
+        if (ConsolidacionIdeasActiva && !segmentacionLegacyActiva)
         {
             await ProcesarIdeaConsolidadaAsync(
                 conversacion, campania, usuario, participante, pregunta, numero, emisor, mensaje, ahora,
@@ -505,20 +531,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var propuesta = await _consolidadorIdeas!.ConsolidarAsync(
-            new ContextoConsolidacionIdeas(campania, pregunta, null, texto, contexto.Contexto.ConfigLlmSnapshot, _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje),
-            cancellationToken);
-        var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, texto, TipoAporteIdea.Inicial);
-        var versionId = ideaId + "_v1";
-        var version = VersionIdeaConsolidada.Crear(
-            versionId, campania.Id, ideaId, 1, null, textoPropuesto, new[] { respuestaId }, new[] { respuestaId },
-            tipo, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
-            CrearSnapshotConfig(contexto.Contexto.ConfigLlmSnapshot), ahora);
-        var idea = IdeaConsolidada.Crear(ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, 1, ahora)
-            .ConPropuesta(version.Id, ahora);
+        var idea = IdeaConsolidada.Crear(ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, 1, ahora);
+        var version = await ProponerVersionAsync(
+            campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea, versionVigente: null,
+            respuestaId, texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
-        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
-        await EnviarConfirmacionAsync(conversacion, numero, emisor, textoPropuesto, ahora, cancellationToken);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(version.Id, ahora), cancellationToken);
+        await EnviarConfirmacionAsync(conversacion, numero, emisor, version.Texto, ahora, cancellationToken);
     }
 
     private async Task ConfirmarOCorregirIdeaAsync(
@@ -567,14 +586,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             SolicitarParafraseo = false,
             RespuestaTexto = version.Texto,
         };
-        var resultadoOriginal = await _evaluador.EvaluarAsync(contextoEvaluacion, cancellationToken);
-        var evaluacionConProcedencia = resultadoOriginal.Evaluacion.ConProcedenciaIdea(idea.Id, version.Id);
-        ResultadoEvaluacion resultado = resultadoOriginal switch
-        {
-            ResultadoEvaluacion.Exito => new ResultadoEvaluacion.Exito(evaluacionConProcedencia),
-            ResultadoEvaluacion.Fallback fallback => new ResultadoEvaluacion.Fallback(evaluacionConProcedencia, fallback.Motivo),
-            _ => throw new InvalidOperationException("Resultado de evaluación no soportado."),
-        };
+        var resultado = ConProcedenciaIdea(
+            await _evaluador.EvaluarAsync(contextoEvaluacion, cancellationToken), idea.Id, version.Id);
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
 
         var madura = resultado is not ResultadoEvaluacion.Fallback
@@ -618,28 +631,58 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var confirmada = string.IsNullOrWhiteSpace(idea.VersionConfirmadaRef)
-            ? null
-            : await _respuestas.ObtenerVersionIdeaAsync(campania.Id, idea.VersionConfirmadaRef, cancellationToken);
-        var anteriores = await _respuestas.ListarVersionesIdeaAsync(campania.Id, idea.Id, cancellationToken);
-        var propuesta = await _consolidadorIdeas!.ConsolidarAsync(
-            new ContextoConsolidacionIdeas(campania, pregunta, confirmada?.Texto, texto, contexto.Contexto.ConfigLlmSnapshot, _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje),
-            cancellationToken);
-        var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, texto, TipoAporteIdea.Complemento);
-        var version = VersionIdeaConsolidada.Crear(
-            $"{idea.Id}_v{anteriores.Count + 1}", campania.Id, idea.Id, anteriores.Count + 1, idea.VersionConfirmadaRef,
-            textoPropuesto, (confirmada?.AporteIdsAcumulados ?? Array.Empty<string>()).Append(respuestaId).ToArray(), new[] { respuestaId },
-            tipo, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
-            CrearSnapshotConfig(contexto.Contexto.ConfigLlmSnapshot), ahora);
+        var version = await ProponerVersionAsync(
+            campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea,
+            await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
+            respuestaId, texto, TipoAporteIdea.Complemento, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(version.Id, ahora), cancellationToken);
-        await EnviarConfirmacionAsync(conversacion, numero, emisor, textoPropuesto, ahora, cancellationToken);
+        await EnviarConfirmacionAsync(conversacion, numero, emisor, version.Texto, ahora, cancellationToken);
     }
+
+    /// <summary>
+    /// I-19 §4.2: toda propuesta nueva acumula sobre la versión vigente de la idea —la confirmada si
+    /// existe y, mientras no la haya, la propuesta que el participante está corrigiendo—. Así una
+    /// corrección previa a la primera confirmación conserva el aporte original y encadena la versión.
+    /// </summary>
+    private async Task<VersionIdeaConsolidada> ProponerVersionAsync(
+        Campania campania, Pregunta pregunta, ConfigLlm configLlm, IdeaConsolidada idea,
+        VersionIdeaConsolidada? versionVigente, string aporteId, string aporteTexto,
+        TipoAporteIdea tipoFallback, DateTimeOffset ahora, CancellationToken cancellationToken)
+    {
+        var propuesta = await _consolidadorIdeas!.ConsolidarAsync(
+            new ContextoConsolidacionIdeas(
+                campania, pregunta, versionVigente?.Texto, aporteTexto, configLlm,
+                _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje),
+            cancellationToken);
+        var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, aporteTexto, tipoFallback);
+        var numeroVersion = (versionVigente?.NumeroVersion ?? 0) + 1;
+        return VersionIdeaConsolidada.Crear(
+            $"{idea.Id}_v{numeroVersion}", campania.Id, idea.Id, numeroVersion, versionVigente?.Id,
+            textoPropuesto,
+            (versionVigente?.AporteIdsAcumulados ?? Array.Empty<string>()).Append(aporteId).ToArray(),
+            new[] { aporteId }, tipo, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
+            CrearSnapshotConfig(configLlm), ahora);
+    }
+
+    private async Task<VersionIdeaConsolidada?> ObtenerVersionVigenteAsync(
+        string campaniaId, IdeaConsolidada idea, CancellationToken cancellationToken)
+        => await ObtenerVersionAsync(campaniaId, idea.VersionConfirmadaRef, cancellationToken)
+            ?? await ObtenerVersionAsync(campaniaId, idea.VersionPropuestaRef, cancellationToken);
+
+    private async Task<VersionIdeaConsolidada?> ObtenerVersionAsync(
+        string campaniaId, string? versionId, CancellationToken cancellationToken)
+        => string.IsNullOrWhiteSpace(versionId)
+            ? null
+            : await _respuestas.ObtenerVersionIdeaAsync(campaniaId, versionId, cancellationToken);
 
     private async Task EnviarConfirmacionAsync(
         DominioConversacion conversacion, NumeroWhatsApp numero, string? emisor, string textoPropuesto,
         DateTimeOffset ahora, CancellationToken cancellationToken)
-        => await EnviarAsync(conversacion, numero, $"Entendí que propones: {textoPropuesto}\n\n¿Es correcto?", TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        => await EnviarAsync(conversacion, numero, TextoConfirmacion(textoPropuesto), TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+
+    private static string TextoConfirmacion(string textoPropuesto)
+        => $"Entendí que propones: {textoPropuesto}\n\n¿Es correcto?";
 
     private static (string Texto, TipoAporteIdea Tipo) TextoYTipoPropuesta(
         ResultadoConsolidacionIdeas resultado, string aporte, TipoAporteIdea tipoFallback)
@@ -669,6 +712,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         var resolucion = await ResolverIdeasAsync(contextoBase, textoOriginal, cancellationToken);
         await RegistrarSegmentacionAsync(usuario, resolucion, ahora, cancellationToken);
+
+        // I-19 §15 paso 5: con la cola I-18 activa, ninguna raiz segmentada se evalua antes de que el
+        // participante confirme lo entendido. Cada idea recibe su propuesta y la cola atiende una a la vez.
+        if (ConsolidacionIdeasActiva && CoachingEfectivo(campania))
+        {
+            await IniciarColaConsolidadaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, contextoBase, resolucion,
+                respuestaPadreId, esRepregunta, ahora, cancellationToken);
+            return;
+        }
 
         // I-17: el origen del umbral (pregunta → campaña → global) es constante por pregunta para todas
         // las ideas; se reusa en la telemetria del cierre por umbral mas abajo.
@@ -844,6 +897,468 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             cancellationToken);
     }
 
+    /// <summary>
+    /// I-19 §4.1/§4.6: arranca la cola I-18 en modo consolidado. Cada idea del mensaje conserva su aporte
+    /// original inmutable y recibe una versión propuesta propia; la cola mantiene una sola idea activa y
+    /// el participante confirma de a una. Ninguna idea se evalúa en este turno (§8.1).
+    /// </summary>
+    private async Task IniciarColaConsolidadaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        ContextoEvaluacion contextoBase,
+        IdeasResueltas resolucion,
+        string respuestaPadreId,
+        bool esRepregunta,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var raices = new List<RaizIdeaCoaching>();
+        foreach (var segmentada in resolucion.Ideas)
+        {
+            var respuestaId = resolucion.FueSegmentada
+                ? CrearRespuestaIdIdea(respuestaPadreId, segmentada.Indice)
+                : "resp_" + Guid.NewGuid().ToString("N");
+            var ideaId = "idea_" + respuestaId;
+            await _procesador.GuardarRespuestaAsync(
+                respuestaId,
+                campania.Id,
+                usuario,
+                pregunta,
+                conversacion.Id,
+                segmentada.Texto,
+                esRepregunta,
+                EstadoRespuesta.Recibida,
+                ahora,
+                cancellationToken,
+                resolucion.FueSegmentada ? segmentada.Indice : null,
+                resolucion.FueSegmentada ? respuestaPadreId : null,
+                NivelMadurez.Incubacion,
+                respuestaId,
+                null,
+                0,
+                ideaId,
+                TipoAporteIdea.Inicial);
+
+            var idea = IdeaConsolidada.Crear(
+                ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, segmentada.Indice, ahora);
+            var version = await ProponerVersionAsync(
+                campania, pregunta, contextoBase.ConfigLlmSnapshot, idea, versionVigente: null,
+                respuestaId, segmentada.Texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
+            await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(version.Id, ahora), cancellationToken);
+            raices.Add(new RaizIdeaCoaching(segmentada.Indice, respuestaId, null, ideaId, version.Id));
+        }
+
+        var cola = _colaCoaching.Crear(respuestaPadreId, raices, ahora);
+        conversacion = conversacion.ConCoachingIdeas(cola);
+        await RegistrarCoachingAsync(
+            usuario.Id, usuario.WhatsappNormalizado, "iniciado", cola, null, ahora, cancellationToken);
+        await PedirConfirmacionIdeaActivaAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, prefijo: null, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.1: pide confirmación de la versión propuesta de la idea activa. No cuenta como revisión
+    /// (§4.3): las repreguntas socráticas solo se registran tras evaluar una versión confirmada.
+    /// </summary>
+    private async Task PedirConfirmacionIdeaActivaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string? prefijo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var activa = conversacion.CoachingIdeas!.IdeaActiva!;
+        var version = await ObtenerVersionAsync(campania.Id, activa.VersionIdeaVigenteId, cancellationToken);
+        if (version is null)
+        {
+            // Sin propuesta no hay nada que confirmar: la idea queda pendiente y la cola sigue su curso.
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea: null,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "versionNoDisponible",
+                MotivoFinalizacionIdea.Fallback, Combinar(prefijo, EvaluadorLlm.RetroNeutra), ahora, cancellationToken);
+            return;
+        }
+
+        await EnviarAsync(
+            conversacion, numero, Combinar(prefijo, TextoConfirmacion(version.Texto)),
+            TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        await _conversaciones.GuardarConversacionAsync(
+            conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.6: al cerrar una idea se activa la siguiente y se le pide su confirmación; si no queda
+    /// ninguna abierta, la cola finaliza como siempre (I-18).
+    /// </summary>
+    private async Task ContinuarColaConsolidadaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string? prefijo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        if (conversacion.CoachingIdeas!.Estado == EstadoCoachingIdeas.Finalizado)
+        {
+            await FinalizarColaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, prefijo, ahora, cancellationToken);
+            return;
+        }
+
+        await PedirConfirmacionIdeaActivaAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, prefijo, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// Cierra la idea activa con su resultado I-19 (§4.4/§4.5), finaliza su turno en la cola I-18 y
+    /// continúa con la siguiente. Los aportes, versiones y evaluaciones se conservan para auditoría.
+    /// </summary>
+    private async Task CerrarIdeaActivaYContinuarAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        IdeaConsolidada? idea,
+        EstadoResultadoIdeaConsolidada resultado,
+        string? evaluacionId,
+        string motivoCierre,
+        MotivoFinalizacionIdea motivoCola,
+        string? prefijo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        if (idea is not null && idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.Cerrada)
+        {
+            await _respuestas.GuardarIdeaConsolidadaAsync(
+                idea.Cerrar(resultado, evaluacionId, motivoCierre, ahora), cancellationToken);
+        }
+
+        var cola = _colaCoaching.FinalizarActiva(conversacion.CoachingIdeas!, motivoCola, ahora);
+        conversacion = conversacion.ConCoachingIdeas(cola);
+        await RegistrarCoachingAsync(
+            usuario.Id,
+            usuario.WhatsappNormalizado,
+            motivoCola == MotivoFinalizacionIdea.Fallback ? "fallback" : "avance",
+            cola,
+            motivoCola,
+            ahora,
+            cancellationToken);
+        await ContinuarColaConsolidadaAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, prefijo, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.2/§8.2: turno de una idea activa con referencias canónicas. El rechazo manda sobre todo;
+    /// la salida "así está bien" solo corta cuando ya hay una versión confirmada; cualquier otro texto es
+    /// aporte y genera una propuesta nueva. Nunca se evalúa el último mensaje suelto.
+    /// </summary>
+    private async Task ProcesarRevisionIdeaConsolidadaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string texto,
+        string respuestaId,
+        int revisionIndice,
+        bool turnosExcedidos,
+        bool cupoLlamadasExcedido,
+        bool presupuestoExcedido,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var activa = conversacion.CoachingIdeas!.IdeaActiva!;
+        var idea = await _respuestas.ObtenerIdeaConsolidadaAsync(campania.Id, activa.IdeaId!, cancellationToken);
+        if (idea is null || idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada)
+        {
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea: null,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "ideaNoDisponible",
+                MotivoFinalizacionIdea.Fallback, EvaluadorLlm.RetroNeutra, ahora, cancellationToken);
+            return;
+        }
+
+        // §4.5: "no lo guardes" cierra solo esta idea como rechazada, conservando su historial. Los
+        // aportes I-19 nunca se sellan como maduros (la madurez vive en la idea), asi que no hay
+        // respuestas que degradar como en el flujo I-17 §5.4.
+        if (_intencionRechazoIdea.Coincide(texto))
+        {
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante",
+                MotivoFinalizacionIdea.Rechazo,
+                TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        var intencion = _transicion.Interpretar(
+            EstadoMaquinaConversacion.EsperandoRepregunta, activa.RepreguntasUsadas, pregunta.MaxRepreguntas, texto);
+
+        // §4.2: en pendienteConfirmacion "así está bien" primero confirma la versión y se evalúa una vez;
+        // con una versión ya confirmada, la misma frase cierra la idea como pendiente.
+        if (intencion.DeseaContinuar && idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.PendienteConfirmacion)
+        {
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "participante",
+                MotivoFinalizacionIdea.Participante, SeleccionarAcuseContinuar(conversacion), ahora, cancellationToken);
+            return;
+        }
+
+        // Techos deterministas (10 §2 / D2): no se consolida ni se evalua, pero el aporte se conserva
+        // (I-19 §12.3) y la idea queda pendiente con lo ya confirmado.
+        if (turnosExcedidos || cupoLlamadasExcedido || presupuestoExcedido)
+        {
+            await GuardarAporteIdeaAsync(
+                conversacion, campania, usuario, pregunta, idea, texto, respuestaId, revisionIndice,
+                ahora, cancellationToken);
+            var motivoTecho = turnosExcedidos
+                ? "tope_turnos_hilo"
+                : cupoLlamadasExcedido
+                    ? "cupo_llamadas_llm_usuario"
+                    : "presupuesto_tokens_campania";
+            await RegistrarRateLimitAsync(usuario, motivoTecho, ahora, cancellationToken);
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "techoDeterminista",
+                MotivoFinalizacionIdea.Fallback, EvaluadorLlm.RetroNeutra, ahora, cancellationToken);
+            return;
+        }
+
+        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion && _intencionConfirmacion.Coincide(texto))
+        {
+            await ConfirmarYEvaluarIdeaActivaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea, intencion.DeseaContinuar,
+                ahora, cancellationToken);
+            return;
+        }
+
+        await ProponerVersionComplementariaAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, idea, texto, respuestaId,
+            revisionIndice, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.3: la versión confirmada es la unidad que se evalúa completa. El resultado decide, de forma
+    /// determinista, si la idea madura, si sigue en coaching socrático (I-18) o si queda pendiente.
+    /// </summary>
+    private async Task ConfirmarYEvaluarIdeaActivaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        IdeaConsolidada idea,
+        bool conforme,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var activa = conversacion.CoachingIdeas!.IdeaActiva!;
+        var version = await ObtenerVersionAsync(campania.Id, idea.VersionPropuestaRef, cancellationToken);
+        if (version is null)
+        {
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "versionNoDisponible",
+                MotivoFinalizacionIdea.Fallback, EvaluadorLlm.RetroNeutra, ahora, cancellationToken);
+            return;
+        }
+
+        version = version.Confirmar(ahora);
+        idea = idea.ConfirmarVersion(version.Id, ahora);
+        await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        // La respuesta vigente sigue siendo el último aporte; la versión confirmada es lo que se evalúa.
+        conversacion = conversacion.ConCoachingIdeas(
+            _colaCoaching.ActualizarVersionIdeaVigente(conversacion.CoachingIdeas!, idea.Id, version.Id));
+
+        var contextoDisponible = await ConstruirContextoAsync(
+            campania, pregunta, usuario, conversacion.Id, idea.RespuestaRaizId, version.Texto, cancellationToken);
+        if (contextoDisponible.Contexto is null)
+        {
+            await RegistrarConfiguracionNoDisponibleAsync(
+                usuario, contextoDisponible.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "configuracionNoDisponible",
+                MotivoFinalizacionIdea.Fallback, EvaluadorLlm.RetroNeutra, ahora, cancellationToken);
+            return;
+        }
+
+        var contexto = contextoDisponible.Contexto with
+        {
+            IdeaId = idea.Id,
+            VersionIdeaId = version.Id,
+            RespuestaTexto = version.Texto,
+            HistorialReciente = await ConstruirHistorialIdeaAsync(campania.Id, idea.RespuestaRaizId, cancellationToken),
+            CoachingSecuencialIdeas = true,
+            SolicitarParafraseo = false,
+        };
+        var resultado = ConProcedenciaIdea(
+            await _evaluador.EvaluarAsync(contexto, cancellationToken), idea.Id, version.Id);
+        await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
+
+        var esFallback = resultado is ResultadoEvaluacion.Fallback;
+        var madura = !esFallback
+            && _limites.UmbralAlcanzado(
+                resultado.Evaluacion.CalificacionTotal,
+                contexto.RubricaSnapshot.Escala,
+                _limites.ResolverUmbralBase(campania, pregunta));
+        MotivoFinalizacionIdea? motivoCola = madura
+            ? MotivoFinalizacionIdea.Umbral
+            : esFallback
+                ? MotivoFinalizacionIdea.Fallback
+                : conforme
+                    ? MotivoFinalizacionIdea.Participante
+                    : activa.RepreguntasUsadas >= pregunta.MaxRepreguntas
+                        ? MotivoFinalizacionIdea.MaxRevisiones
+                        : null;
+
+        if (motivoCola is null)
+        {
+            // Sigue el acompañamiento I-18 sobre esta misma idea: una sola pregunta socrática por turno.
+            await EnviarPreguntaCoachingAsync(
+                conversacion, campania, usuario.Id, numero, emisor, resultado.Evaluacion, ahora, cancellationToken);
+            return;
+        }
+
+        await CerrarIdeaActivaYContinuarAsync(
+            conversacion,
+            campania,
+            usuario,
+            pregunta,
+            numero,
+            emisor,
+            idea,
+            madura ? EstadoResultadoIdeaConsolidada.Madura : EstadoResultadoIdeaConsolidada.Pendiente,
+            resultado.Evaluacion.Id,
+            madura ? "umbral" : esFallback ? "fallbackEvaluacion" : conforme ? "participante" : "maxRevisiones",
+            motivoCola.Value,
+            resultado.Evaluacion.RetroalimentacionEnviada,
+            ahora,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.2/§4.3: una corrección, un complemento o una mejora se guardan como aporte nuevo y vuelven
+    /// a proponer la versión completa. El ciclo no avanza hasta que el participante confirme.
+    /// </summary>
+    private async Task ProponerVersionComplementariaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        IdeaConsolidada idea,
+        string texto,
+        string respuestaId,
+        int revisionIndice,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var tipoAporte = idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion
+            ? TipoAporteIdea.Correccion
+            : TipoAporteIdea.Complemento;
+        await GuardarAporteIdeaAsync(
+            conversacion, campania, usuario, pregunta, idea, texto, respuestaId, revisionIndice,
+            ahora, cancellationToken, tipoAporte);
+
+        var contextoDisponible = await ConstruirContextoAsync(
+            campania, pregunta, usuario, conversacion.Id, respuestaId, texto, cancellationToken);
+        if (contextoDisponible.Contexto is null)
+        {
+            await RegistrarConfiguracionNoDisponibleAsync(
+                usuario, contextoDisponible.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
+            await CerrarIdeaActivaYContinuarAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                EstadoResultadoIdeaConsolidada.Pendiente, null, "configuracionNoDisponible",
+                MotivoFinalizacionIdea.Fallback, EvaluadorLlm.RetroNeutra, ahora, cancellationToken);
+            return;
+        }
+
+        var version = await ProponerVersionAsync(
+            campania, pregunta, contextoDisponible.Contexto.ConfigLlmSnapshot, idea,
+            await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
+            respuestaId, texto, tipoAporte, ahora, cancellationToken);
+        await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(version.Id, ahora), cancellationToken);
+        conversacion = conversacion.ConCoachingIdeas(
+            _colaCoaching.ActualizarVersionIdeaVigente(
+                _colaCoaching.ActualizarRespuestaVigente(conversacion.CoachingIdeas!, respuestaId),
+                idea.Id,
+                version.Id));
+        await PedirConfirmacionIdeaActivaAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, prefijo: null, ahora, cancellationToken);
+    }
+
+    /// <summary>Persiste un aporte de la idea activa sin evaluarlo (I-19 §8.1).</summary>
+    private Task GuardarAporteIdeaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        IdeaConsolidada idea,
+        string texto,
+        string respuestaId,
+        int revisionIndice,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken,
+        TipoAporteIdea tipoAporte = TipoAporteIdea.Complemento)
+    {
+        var cola = conversacion.CoachingIdeas!;
+        var activa = cola.IdeaActiva!;
+        return _procesador.GuardarRespuestaAsync(
+            respuestaId,
+            campania.Id,
+            usuario,
+            pregunta,
+            conversacion.Id,
+            texto,
+            esRepregunta: true,
+            EstadoRespuesta.Recibida,
+            ahora,
+            cancellationToken,
+            activa.IdeaIndice,
+            cola.RespuestaPadreId,
+            NivelMadurez.Incubacion,
+            activa.RespuestaRaizId,
+            activa.RespuestaVigenteId,
+            revisionIndice,
+            idea.Id,
+            tipoAporte);
+    }
+
+    private static ResultadoEvaluacion ConProcedenciaIdea(
+        ResultadoEvaluacion resultado, string ideaId, string versionIdeaId)
+    {
+        var evaluacion = resultado.Evaluacion.ConProcedenciaIdea(ideaId, versionIdeaId);
+        return resultado switch
+        {
+            ResultadoEvaluacion.Exito => new ResultadoEvaluacion.Exito(evaluacion),
+            ResultadoEvaluacion.Fallback fallback => new ResultadoEvaluacion.Fallback(evaluacion, fallback.Motivo),
+            _ => throw new InvalidOperationException("Resultado de evaluación no soportado."),
+        };
+    }
+
     private async Task ProcesarRevisionCoachingAsync(
         DominioConversacion conversacion,
         Campania campania,
@@ -954,6 +1469,28 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 numero,
                 emisor,
                 prefijo: null,
+                ahora,
+                cancellationToken);
+            return;
+        }
+
+        // I-19 §15 paso 5: si la idea activa ya tiene referencias canónicas, su turno sigue el ciclo
+        // consolidado (propuesta → confirmación → evaluación de la versión completa).
+        if (ConsolidacionIdeasActiva && !string.IsNullOrWhiteSpace(activa.IdeaId))
+        {
+            await ProcesarRevisionIdeaConsolidadaAsync(
+                conversacion,
+                campania,
+                usuario,
+                pregunta,
+                numero,
+                emisor,
+                mensaje.Texto,
+                respuestaId,
+                revisionIndice,
+                turnosExcedidos,
+                cupoLlamadasExcedido,
+                presupuestoExcedido,
                 ahora,
                 cancellationToken);
             return;
@@ -1281,6 +1818,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             .Select(respuesta => "Participante: " + Acotar(respuesta.Texto, 300))
             .ToArray();
     }
+
+    /// <summary>
+    /// I-19 §11.1: la consolidación no tiene opt-in por campaña; solo depende del kill-switch global y de
+    /// que el consolidador esté inyectado.
+    /// </summary>
+    private bool ConsolidacionIdeasActiva => _consolidacionProgresivaHabilitada && _consolidadorIdeas is not null;
 
     private bool CoachingEfectivo(Campania campania)
         => _segmentacionIdeasHabilitada
