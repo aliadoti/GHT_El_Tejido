@@ -225,6 +225,14 @@ I-19 corrige la unidad de evaluación para flujos de una o varias ideas:
 8. una salida, límite, inactividad o fallback bajo umbral deja la idea `pendiente`;
 9. una idea madura queda `estadoCuraduria=pendiente` y no pasa a otro sistema automáticamente.
 
+Una idea nueva explícita detectada junto al complemento (`nuevas_ideas` de `§7.1`) no se mezcla con la
+activa: obtiene su propio `ideaId`, su aporte (`tipoAporte=nuevaIdea`, id determinista derivado del
+aporte que la trajo) y su versión propuesta, y se encola al final. Con cola I-18 el encolado es
+idempotente por `ideaId`/raíz y respeta `Conversacion:MaxIdeasPorMensaje`; sin cola, el hilo atiende las
+ideas abiertas por orden de llegada y solo cierra cuando no queda ninguna. El servidor descarta
+fragmentos (`Conversacion:LongitudMinimaIdea`), repeticiones del propio aporte y duplicados antes de
+encolar: el LLM solo propone texto y clasificación.
+
 Con la cola I-18 activa, el orquestador propone la versión de **cada** idea del mensaje al segmentarlo,
 pero solo pide confirmar la idea activa; `respuestaVigenteId` sigue apuntando al último aporte y
 `versionIdeaVigenteId` es la unidad que se evalúa. Pedir confirmación **no** incrementa

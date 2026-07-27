@@ -4,6 +4,22 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-19 WIP — paso 5b
+  (complemento + idea nueva, §4.6) DONE local.** Un mensaje que complementa la idea activa **y** trae
+  una idea nueva deja de consolidarse como un solo aporte: lo pertinente alimenta la idea activa y la
+  idea nueva obtiene su propio `ideaId`, su aporte (`tipoAporte=nuevaIdea`) y su versión propuesta, y
+  **espera su turno en silencio**. Los contenidos no se mezclan y la confirmación en curso no se
+  interrumpe. Con cola I-18, `PoliticaColaCoachingIdeas.AgregarIdeaPendiente` encola al final, es
+  idempotente (mismo `ideaId` o misma raíz), respeta el tope `Conversacion:MaxIdeasPorMensaje`, ignora
+  colas finalizadas y no toca la idea activa. Sin cola, la idea nueva queda registrada y
+  `ProcesarIdeaConsolidadaAsync` atiende **por orden de llegada** (antes tomaba la más recién
+  actualizada), de modo que la activa se termina primero; al cerrarla —por umbral, salida o rechazo— el
+  hilo continúa con la idea en espera en lugar de cerrarse. El servidor filtra fragmentos, repeticiones
+  del propio aporte y duplicados antes de encolar; el LLM solo propone texto. **Verificado:** build
+  Release `-warnaserror` 0/0, **505 pruebas** no calibración verdes (452 unitarias + 53 integración;
+  +6: encolado sin mezcla, tope alcanzado, idea en espera atendida al cerrar la activa y 3 unitarias de
+  la política) y `dotnet format` limpio. Commit `4e31f94`, **sin push**. Próximo: paso 6, reapertura
+  “la anterior” y desambiguación (§4.7).
 - Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-19 WIP — paso 5
   (transiciones I-18/multi-idea) DONE local.** Las campañas con cola I-18 dejan de evaluar la raíz
   segmentada: cada idea del mensaje conserva su aporte inmutable, recibe su propia versión propuesta y
@@ -74,17 +90,22 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **CONTINUAR I-19 §15 — complemento + idea nueva (§4.6) y luego reapertura (§4.7).** Las
-  transiciones I-18/multi-idea ya están migradas (ver "Estado global"). Lo siguiente es que un mensaje
-  que complementa la idea activa **y además** trae una idea nueva no se mezcle en una sola
-  consolidación: la parte pertinente entra como aporte de la activa y la idea nueva obtiene otro
-  `ideaId` al final de la cola (el servidor impone máximo, orden, idempotencia y una sola activa).
-  Requiere exponer `NuevasIdeas` del consolidador en `ProponerVersionComplementariaAsync` y añadir a
-  `PoliticaColaCoachingIdeas` una transición que agregue una idea pendiente al final. Después:
-  resolver “la anterior”/desambiguación y construir Markdown/API/Resultados canónicos por idea.
-  Cerrar también los pendientes conocidos listados en "Estado global" (cierre por inactividad del
-  documento de idea, ruta I-06 sin coaching y `requiereAclaracion`). No desplegar ni hacer push:
-  faltan D5/UAT/costo y el cierre integral de I-19.
+- [ ] **CONTINUAR I-19 §15 — paso 6: reapertura “la anterior” y desambiguación (§4.7).** Mientras la
+  campaña esté `activa`, “quiero complementar la anterior” debe reabrir determinísticamente la idea
+  **cerrada más reciente** del participante con el mismo `ideaId` (`IdeaConsolidada.Reabrir` ya existe y
+  deja `estadoFlujo=enRevision`, sin `estadoCuraduria`); si hay varias candidatas, se responde una lista
+  breve **numerada** de paráfrasis, sin calificaciones, y se espera la elección. Solo una idea puede
+  estar activa: la actual se conserva en su estado antes de activar la seleccionada. La nueva versión
+  confirmada se reevalúa completa y puede subir o bajar de madurez; el historial registra la reapertura
+  y nunca sobrescribe versiones. Una campaña `cerrada` no acepta cambios. Empezar por un detector
+  determinista de intención de revisitar (junto a `_intencionConfirmacion`/`_intencionRechazoIdea`) y su
+  precedencia en `ProcesarRevisionIdeaConsolidadaAsync` (§8.2: después del rechazo). Después:
+  Markdown/API/Resultados canónicos por idea. Cerrar también los pendientes conocidos listados en
+  "Estado global" (cierre por inactividad del documento de idea, ruta I-06 sin coaching y
+  `requiereAclaracion`). No desplegar ni hacer push: faltan D5/UAT/costo y el cierre integral de I-19.
+- [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 505; commit `4e31f94`, sin push) I-19 §15
+  paso 5b — complemento + idea nueva (§4.6).** La idea nueva se encola aparte, con su propio `ideaId`,
+  y espera turno; los contenidos no se mezclan. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 499; commit `748870f`, sin push) I-19 §15
   paso 5 — transiciones I-18/multi-idea.** Una idea activa a la vez con el ciclo canónico completo;
   ninguna raíz segmentada se evalúa antes de confirmar. Ver "Estado global" arriba.
@@ -226,7 +247,7 @@
 | P-22 | UX de Campañas | DONE local | pendiente | frontend 21/21, build producción y Prettier verdes | Creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos con id real, configuración agrupada y estados vacíos guiados. Próximo: P-23. |
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
-| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-5 locales | `748870f` (paso 5) | build + 499 pruebas no calibración verdes | Dominio/persistencia/consolidador, flujo canónico de una idea y **transiciones I-18/multi-idea migradas**: una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar. Pendiente: complemento + idea nueva (§4.6), reapertura (§4.7), Markdown/API/Resultados, observabilidad y D5/UAT. |
+| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-5b locales | `748870f` (paso 5), `4e31f94` (paso 5b) | build + 505 pruebas no calibración verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) y **complemento + idea nueva** encolada aparte sin mezclar contenidos. Pendiente: reapertura (§4.7), Markdown/API/Resultados, observabilidad y D5/UAT. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -354,6 +375,8 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 5b: complemento + idea nueva (§4.6) — DONE local (commit `4e31f94`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-19`, REQ §9/§21/§22/§27 y ARQ §4/§6/§7/§12/§13. (1) `ProponerVersionAsync` ahora devuelve `PropuestaConsolidada` (versión + `nuevasIdeas`), de modo que la clasificación “complemento de la activa vs. idea nueva” que ya producía `IConsolidadorIdeas` deja de descartarse. (2) `IdeasNuevasAdmisibles` aplica los filtros server-side antes de encolar nada: descarta fragmentos por `Conversacion:LongitudMinimaIdea`, repeticiones del propio aporte o de la versión activa y duplicados entre sí (misma normalización que I-06). (3) **Con cola I-18:** `PoliticaColaCoachingIdeas.AgregarIdeaPendiente` añade la idea al final como `Pendiente`, conserva la activa y su índice, es idempotente por `ideaId`/raíz, respeta el tope `Conversacion:MaxIdeasPorMensaje` y no encola sobre una cola finalizada; `EncolarIdeasNuevasAsync` crea el aporte inmutable (`tipoAporte=nuevaIdea`, id determinista `{aporte}_n{k}`), la `IdeaConsolidada` y su versión propuesta. La idea nueva **no se anuncia**: espera su turno y solo se pide su confirmación cuando se activa. (4) **Sin cola (hilo simple):** `RegistrarIdeasNuevasSinColaAsync` registra igual la idea nueva y `ObtenerIdeaActivaAsync` sustituye la selección “la más recientemente actualizada” por **orden de llegada** (`ideaIndice`, luego `creadaEn`), para que la activa se termine antes de empezar la nueva; al cerrarla —por umbral, salida “así está bien”, fallback o rechazo— `ContinuarConIdeaEnEsperaAsync` pide la confirmación de la idea en espera con la retro/acuse como prefijo, en vez de cerrar el hilo. El cierre y `EnviarSiguientePreguntaPendienteAsync` solo ocurren cuando no queda ninguna idea abierta. Sin cambios de contratos; el flujo legacy sin consolidador queda intacto. **Verificado:** build Release `-warnaserror` 0/0, **505 pruebas** no calibración (452 unit + 53 integración; +6: encolado al final sin mezclar textos, tope alcanzado que no encola, idea en espera atendida al cerrar la activa, y 3 unitarias de la política —encolar al final, idempotencia/tope y cola finalizada—), `dotnet format --verify-no-changes` limpio. **Próximo:** paso 6, reapertura “la anterior” y desambiguación (§4.7).
 
 - 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 5: transiciones I-18/multi-idea — DONE local (commit `748870f`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-19`, REQ §9/§21/§22/§27 y ARQ §4/§6/§7/§12/§13. (1) `ProcesarIdeasSegmentadasAsync` deriva a `IniciarColaConsolidadaAsync` cuando la consolidación está activa y la campaña tiene cola I-18: persiste **un aporte inmutable por idea** (`tipoAporte=inicial`, `ideaId`, `Recibida`, sin evaluar), crea `IdeaConsolidada` + `VersionIdeaConsolidada` v1 propuesta por idea, arma la cola con `ideaId`/`versionIdeaVigenteId` y **solo pide la confirmación de la idea activa**. (2) `ProcesarRevisionCoachingAsync` deriva a `ProcesarRevisionIdeaConsolidadaAsync` cuando la idea activa tiene referencias canónicas, con las prioridades de `I-19 §8.2`: rechazo explícito (cierra esa idea como `rechazada`, sin `estadoCuraduria`, y avanza con acuse) → “así está bien” con versión confirmada (cierra `pendiente`) → techos deterministas (conservan el aporte, no consolidan ni evalúan, `LogSeguridad(RateLimit)`) → confirmación (confirma la versión, evalúa **el texto consolidado completo** con `ideaId`/`versionIdeaId`/`origenTextoEvaluado`, compara con el umbral I-17 y cierra `madura`/`pendiente` o sigue con una pregunta socrática I-18) → cualquier otro texto = aporte nuevo que genera otra propuesta (`correccion` si aún no hay confirmación, `complemento` si ya la hay). (3) Al cerrar una idea, la cola activa la siguiente y **pide su confirmación** en lugar de una repregunta; `EnviarTurnoCoachingPendienteAsync` (timeout, ventana abierta) hace lo mismo. (4) **Bug corregido** en el flujo de una idea: una corrección previa a la primera confirmación creaba `v2` sin versión anterior (violando la invariante de `VersionIdeaConsolidada`) y perdía el aporte inicial acumulado; ahora `ProponerVersionAsync` acumula sobre la versión vigente —confirmada si existe, propuesta mientras no la haya— y encadena `versionAnteriorId`. Sin cambios de contratos (`03`/`04`/`08 §4` intactos) y **flujo legacy sin consolidador inalterado** (las 12 pruebas I-06/I-18 previas siguen verdes sin tocarse). **Verificado:** build Release `-warnaserror` 0/0, **499 pruebas** no calibración (446 unit + 53 integración; +6: propuesta por idea sin evaluar raíces, confirmación → evalúa versión y pasa a la segunda idea, bajo umbral acompaña la misma idea, rechazo cierra solo la activa, reanudación con referencias persistidas y regresión del encadenado de versiones), `dotnet format --verify-no-changes` limpio. **Pendientes registrados:** cierre por inactividad no marca aún la `IdeaConsolidada` como `pendiente` (§4.8); campañas I-06 sin coaching conservan su ruta histórica; `requiereAclaracion` del consolidador todavía no pide la aclaración breve (§4.2). **Próximo:** complemento + idea nueva durante el coaching (§4.6), luego reapertura “la anterior” (§4.7).
 

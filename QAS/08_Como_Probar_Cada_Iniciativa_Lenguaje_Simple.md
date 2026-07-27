@@ -163,9 +163,10 @@ o el resumen aparece para una idea en incubación.
 ### 📝 I-19 — Construir y calificar una sola idea completa
 
 **Qué es:** cada respuesta del participante complementa la misma idea. El sistema devuelve lo que
-entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Los pasos 1 a 4 y
-los de "varias ideas en un mensaje" ya están construidos y probados en el equipo; los pasos 5 a 7
-(pantalla de Resultados y reapertura) llegan en las siguientes entregas.
+entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Los pasos 1 a 4,
+"varias ideas en un mensaje" y "se te ocurre otra idea a mitad de camino" ya están construidos y
+probados en el equipo; los pasos 5 a 7 (pantalla de Resultados y reapertura) llegan en las siguientes
+entregas.
 
 1. Responde una pregunta con una idea incompleta. **Deberías ver:** una paráfrasis de lo entendido y
    una petición de confirmación.
@@ -200,6 +201,22 @@ acompañamiento idea por idea encendido:
 
 **Algo va mal si:** el sistema mezcla las dos ideas en un mismo resumen, califica alguna antes de que
 la confirmes, trabaja las dos a la vez, o descarta todo cuando solo pediste descartar una.
+
+**Se te ocurre otra idea a mitad de camino (ya disponible en pruebas del equipo).** Funciona con o sin
+el acompañamiento idea por idea encendido:
+
+1. Mientras trabajas una idea, escribe un mensaje que **corrija o complete la idea en curso y, además,
+   proponga una idea distinta** (por ejemplo: "en realidad sería con soporte; además propongo un
+   tablero semanal de seguimiento").
+2. **Deberías ver:** un solo mensaje que te devuelve **la idea en curso** con tu corrección incluida y
+   te pregunta si es correcta. La idea nueva **no** aparece ahí: quedó anotada esperando turno.
+3. Termina la idea en curso (confirma y sigue hasta que el sistema la dé por cerrada).
+4. **Deberías ver:** enseguida el resumen de **la idea nueva** con su "¿Es correcto?", sin que tengas
+   que repetirla y sin que la conversación se cierre.
+
+**Algo va mal si:** la idea nueva se mezcla dentro del resumen de la idea en curso, el sistema se pone
+a trabajar la idea nueva antes de terminar la anterior, la conversación se cierra y pierdes la idea
+nueva, o el sistema anota como "idea" un pedazo suelto de frase.
 
 ### ✅ I-03 — El coach repregunta sobre lo más flojo, sin "delatar" la rúbrica
 **Qué es:** cuando tu respuesta es floja en algún aspecto, el coach te invita a profundizar **en ese

@@ -659,21 +659,25 @@ una calificación de una versión anterior; o publica una idea sin curaduría.
 
 ## 15. Estado de implementación y plan de continuación
 
-**Estado al 2026-07-27:** implementación autorizada y WIP local. Los pasos 1–5 están cubiertos: el hilo
-de una idea y la cola I-18/multi-idea recorren el mismo ciclo canónico, con una sola idea activa a la
-vez. La última validación fue: `dotnet build -c Release -warnaserror`, `dotnet test -c Release
---no-build --filter "Category!=Calibracion"` (**499: 446 unitarias + 53 integración**) y `dotnet format
---verify-no-changes --no-restore`, todas verdes (commit `748870f`, sin push).
+**Estado al 2026-07-27:** implementación autorizada y WIP local. Los pasos 1–5b están cubiertos: el
+hilo de una idea y la cola I-18/multi-idea recorren el mismo ciclo canónico con una sola idea activa a
+la vez, y una idea nueva explícita se encola aparte sin mezclarse con la activa. La última validación
+fue: `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build --filter
+"Category!=Calibracion"` (**505: 452 unitarias + 53 integración**) y `dotnet format
+--verify-no-changes --no-restore`, todas verdes (commits `748870f` y `4e31f94`, sin push).
 
-**Próximo corte ejecutable (paso 5b — complemento + idea nueva, §4.6):** hoy un mensaje que complementa
-la idea activa y además propone una idea nueva se consolida como un solo aporte. Falta exponer las
-`NuevasIdeas` que ya devuelve el consolidador en `ProponerVersionComplementariaAsync`, agregar a
-`PoliticaColaCoachingIdeas` una transición que **encole una idea pendiente al final** (respetando el
-máximo, el orden, la idempotencia y la regla de una sola activa) y crear su `IdeaConsolidada` con
-`tipoAporte=nuevaIdea`. Después sigue el paso 6 (reapertura “la anterior” y desambiguación). No
-eliminar lectores legacy y no activar/desplegar el cambio.
+**Próximo corte ejecutable (paso 6 — reapertura y desambiguación, §4.7):** falta interpretar “quiero
+complementar la anterior” mientras la campaña esté `activa`. `IdeaConsolidada.Reabrir` ya existe
+(`estadoFlujo=enRevision`, sin `estadoCuraduria`); falta el detector determinista de la intención —junto
+a los de confirmación y rechazo—, su precedencia en `ProcesarRevisionIdeaConsolidadaAsync` (§8.2:
+inmediatamente después del rechazo), la selección determinista de “la anterior” (idea cerrada más
+reciente del participante), la lista breve numerada de paráfrasis cuando hay varias candidatas —sin
+calificaciones—, la devolución de la idea actual a la cola antes de activar la seleccionada y la
+reevaluación completa de la nueva versión confirmada. Una campaña `cerrada` no admite cambios del
+participante. Después sigue el paso 7 (Markdown/API/Resultados por idea). No eliminar lectores legacy
+y no activar/desplegar el cambio.
 
-**Pendientes conocidos del paso 5** (registrados, no bloquean el corte):
+**Pendientes conocidos de los pasos 5/5b** (registrados, no bloquean el corte):
 
 - el cierre por inactividad (`ServicioExpiracionConversaciones`) finaliza el turno en la cola pero no
   cierra todavía el documento `IdeaConsolidada` como `pendiente` (§4.8);
@@ -689,7 +693,8 @@ Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUE
 2. **[Hecho local] Contratos primero:** cambios aditivos en `03`/`04`/`08`/`09`; DTOs legacy preservados.
 3. **[Hecho local] Consolidador:** puerto, prompt versionado, esquema de salida, validación y fallback.
 4. **[Hecho local] Orquestador de una idea:** confirmación/corrección, evaluación de versión completa y prioridades de intención.
-5. **[Hecho local] I-18/multi-idea:** propuesta, confirmación y evaluación por cada idea, con una sola activa y confirmación de la siguiente al cerrar la anterior. Falta el sub-corte 5b: complemento + idea nueva en el mismo mensaje (§4.6).
+5. **[Hecho local] I-18/multi-idea:** propuesta, confirmación y evaluación por cada idea, con una sola activa y confirmación de la siguiente al cerrar la anterior.
+5b. **[Hecho local] Complemento + idea nueva (§4.6):** la idea nueva obtiene su propio `ideaId`, aporte y propuesta, se encola al final (tope/orden/idempotencia server-side) y espera turno sin mezclarse con la activa; sin cola I-18, el hilo la atiende por orden de llegada al cerrar la activa.
 6. **[Pendiente] Reapertura:** resolver “la anterior”, desambiguación y nueva versión.
 7. **[Pendiente] Markdown/API/Resultados:** una fila/artefacto por idea y detalle auditable.
 8. **[Pendiente] Seeds:** consumir I-12 cuando estén configuradas; degradación vacía.

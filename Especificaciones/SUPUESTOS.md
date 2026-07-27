@@ -591,3 +591,18 @@
     avanza. Prevalece la regla D2/`10 §2` sobre la de consolidar siempre.
   - **La confirmación no consume revisión.** Pedir “¿es correcto?” no incrementa `repreguntasUsadas`:
     ese contador sigue midiendo preguntas socráticas sobre una versión ya evaluada (I-18/§4.3).
+- Ambigüedades resueltas al encolar ideas nuevas (§4.6, 2026-07-27, Claude Opus 5):
+  - **Tope de ideas = `Conversacion:MaxIdeasPorMensaje`** (default 5) aplicado al **total abierto del
+    hilo**, no solo por mensaje. Es el límite server-side más simple compatible con el Hito; si el uso
+    real lo pide, se puede separar en un parámetro propio sin cambiar contratos.
+  - **Idempotencia por identidad de la idea, no por reintento del mensaje.** El aporte de una idea nueva
+    usa un id determinista derivado del aporte que la trajo (`{aporte}_n{k}`) y la cola ignora una idea
+    ya encolada (mismo `ideaId` o misma raíz). Un reintento de WhatsApp no duplica la idea encolada.
+  - **La idea nueva se consolida al detectarla, no al activarla.** Así toda entrada de la cola tiene su
+    versión propuesta (invariante “idea y versión se informan juntas”) y el turno de activación no
+    depende de una llamada al LLM que pueda fallar. Coste: una consolidación por idea, acotada por el
+    tope anterior.
+  - **Sin cola I-18, el orden lo da la llegada.** `ProcesarIdeaConsolidadaAsync` pasa a elegir la idea
+    abierta de menor `ideaIndice`/antigüedad en vez de la más recientemente actualizada, para cumplir
+    “trabaja primero la idea activa y luego la nueva” (§4.6.4). El hilo solo se cierra cuando no queda
+    ninguna idea abierta; antes cerraba al terminar la idea en curso.

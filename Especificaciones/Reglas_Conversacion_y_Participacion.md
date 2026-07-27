@@ -193,8 +193,8 @@ conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza
 ### 2.4.3 Consolidación progresiva por idea (I-19, WIP local)
 
 I-19 aplica a todas las campañas. El recorrido está implementado localmente tanto para una idea única
-como para la cola I-18/multi-idea; falta solo separar, dentro de un mismo mensaje, el complemento de la
-idea activa de una idea nueva (punto 8). El comportamiento para ideas únicas o múltiples es:
+como para la cola I-18/multi-idea; falta la reapertura de una idea anterior. El comportamiento para
+ideas únicas o múltiples es:
 
 1. cada mensaje significativo queda como aporte original enlazado a un `ideaId`;
 2. el sistema propone una paráfrasis que acumula la versión confirmada anterior y el aporte nuevo;
@@ -204,12 +204,14 @@ idea activa de una idea nueva (punto 8). El comportamiento para ideas únicas o 
 5. bajo umbral, la idea continúa con una pregunta socrática; al terminar queda `pendiente`;
 6. al superar el umbral queda `madura` y `pendiente de curaduría`;
 7. “no lo guardes” deja la idea `rechazada`, conservada solo para auditoría;
-8. complemento + idea nueva actualiza la activa y añade la nueva al final de la cola (**pendiente de
-   implementar**; hoy el mensaje se consolida completo sobre la idea activa).
+8. complemento + idea nueva actualiza la activa y añade la nueva al final de la cola.
 
 Con varias ideas en un mismo mensaje, el sistema propone la versión de cada una pero **solo pide
 confirmar la idea activa**; las demás esperan su turno en silencio y se trabajan al cerrarse la
-anterior. Pedir la confirmación no consume una revisión: el tope de repreguntas sigue contando solo las
+anterior. Lo mismo ocurre con una idea nueva que aparece durante el acompañamiento: se registra aparte,
+no se mezcla con la idea en curso y no se anuncia hasta que llega su turno. El servidor limita cuántas
+ideas caben (`Conversacion:MaxIdeasPorMensaje`), descarta fragmentos y repeticiones, y mantiene una sola
+idea activa. Pedir la confirmación no consume una revisión: el tope de repreguntas sigue contando solo las
 preguntas socráticas posteriores a una evaluación. Si se agota un techo determinista (turnos, cupo de
 llamadas o presupuesto de la campaña) durante el acompañamiento, el aporte se conserva, no se evalúa y
 la idea activa queda `pendiente` antes de pasar a la siguiente.
