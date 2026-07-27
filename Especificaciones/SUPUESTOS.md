@@ -572,6 +572,22 @@
   campaña; publicar maduras automáticamente; migración destructiva de históricos.
 - Impacto / reversibilidad: contratos aditivos `03`/`04`/`08`/`09`, orquestador `05`, Reglas,
   Resultados, QAS y observabilidad. Sin migración masiva; históricos siguen visibles. Especificación:
-  `Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md`. Implementación autorizada y WIP local: cortes
-  1–4 y el soporte estructural de cola están listos; falta migrar las transiciones multi-idea, reapertura,
+  `Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md`. Implementación autorizada y WIP local: pasos
+  1–5 listos (hilo simple y cola I-18/multi-idea); falta complemento + idea nueva, reapertura,
   Resultados/Markdown, seeds, observabilidad y las validaciones D5/UAT/costo previas a desplegar.
+- Ambigüedades resueltas al migrar las transiciones I-18 (2026-07-27, Claude Opus 5; `05 §4`):
+  - **Una propuesta por idea desde el primer turno.** Al segmentar un mensaje se consolida cada idea y
+    se guarda su versión propuesta, pero **solo se pide confirmación de la idea activa**; las demás
+    esperan su turno en silencio. Alternativa descartada: consolidar de forma perezosa al activar cada
+    idea, que dejaría entradas de cola sin `versionIdeaVigenteId` y rompería la invariante “idea y
+    versión se informan juntas”. Costo: una llamada de consolidación por idea del mensaje, acotada por
+    `Conversacion:MaxIdeasPorMensaje` (I-19 §12.3).
+  - **Alcance de la migración = campañas con cola I-18.** Una campaña con I-06 (segmentación) y el
+    coaching I-18 apagado conserva por ahora su ruta histórica: sin cola no hay dónde sostener “una
+    idea activa” entre turnos. Ambos gates nacen apagados, así que ninguna campaña viva cambia de
+    comportamiento; queda registrado como pendiente antes de cerrar I-19.
+  - **Techos deterministas por idea.** Al agotarse turnos/cupo LLM/presupuesto durante el coaching, el
+    aporte se conserva, **no** se consolida ni se evalúa, la idea activa queda `pendiente` y la cola
+    avanza. Prevalece la regla D2/`10 §2` sobre la de consolidar siempre.
+  - **La confirmación no consume revisión.** Pedir “¿es correcto?” no incrementa `repreguntasUsadas`:
+    ese contador sigue midiendo preguntas socráticas sobre una versión ya evaluada (I-18/§4.3).

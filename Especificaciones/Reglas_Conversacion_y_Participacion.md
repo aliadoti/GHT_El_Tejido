@@ -3,7 +3,8 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-07-27 (I-19 WIP: flujo de una idea implementado localmente).
+> y `09` (Markdown). Última revisión: 2026-07-27 (I-19 WIP: flujo de una idea y cola multi-idea
+> implementados localmente).
 
 ## 1. Visión general del flujo
 
@@ -191,9 +192,9 @@ conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza
 
 ### 2.4.3 Consolidación progresiva por idea (I-19, WIP local)
 
-I-19 aplica a todas las campañas. El recorrido de una idea única está implementado localmente; el de
-ideas múltiples conserva transitoriamente las transiciones I-18 mientras se migra en el siguiente corte.
-El comportamiento objetivo para ideas únicas o múltiples es:
+I-19 aplica a todas las campañas. El recorrido está implementado localmente tanto para una idea única
+como para la cola I-18/multi-idea; falta solo separar, dentro de un mismo mensaje, el complemento de la
+idea activa de una idea nueva (punto 8). El comportamiento para ideas únicas o múltiples es:
 
 1. cada mensaje significativo queda como aporte original enlazado a un `ideaId`;
 2. el sistema propone una paráfrasis que acumula la versión confirmada anterior y el aporte nuevo;
@@ -203,7 +204,15 @@ El comportamiento objetivo para ideas únicas o múltiples es:
 5. bajo umbral, la idea continúa con una pregunta socrática; al terminar queda `pendiente`;
 6. al superar el umbral queda `madura` y `pendiente de curaduría`;
 7. “no lo guardes” deja la idea `rechazada`, conservada solo para auditoría;
-8. complemento + idea nueva actualiza la activa y añade la nueva al final de la cola.
+8. complemento + idea nueva actualiza la activa y añade la nueva al final de la cola (**pendiente de
+   implementar**; hoy el mensaje se consolida completo sobre la idea activa).
+
+Con varias ideas en un mismo mensaje, el sistema propone la versión de cada una pero **solo pide
+confirmar la idea activa**; las demás esperan su turno en silencio y se trabajan al cerrarse la
+anterior. Pedir la confirmación no consume una revisión: el tope de repreguntas sigue contando solo las
+preguntas socráticas posteriores a una evaluación. Si se agota un techo determinista (turnos, cupo de
+llamadas o presupuesto de la campaña) durante el acompañamiento, el aporte se conserva, no se evalúa y
+la idea activa queda `pendiente` antes de pasar a la siguiente.
 
 En confirmación, “así está bien” confirma y termina la mejora: se evalúa esa versión; madura si alcanza
 el umbral y, si no, queda pendiente. Una idea nueva explícita durante el coaching se encola aunque la

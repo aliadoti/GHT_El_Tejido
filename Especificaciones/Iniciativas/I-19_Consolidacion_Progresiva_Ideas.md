@@ -659,32 +659,37 @@ una calificación de una versión anterior; o publica una idea sin curaduría.
 
 ## 15. Estado de implementación y plan de continuación
 
-**Estado al 2026-07-27:** implementación autorizada y WIP local. Los pasos 1–4 están cubiertos para el
-hilo de una idea; el paso 5 tiene listo el soporte estructural de la cola (`ideaId` y
-`versionIdeaVigenteId`) pero aún conserva las transiciones I-18 para mensajes segmentados. La última
-validación fue: `dotnet build -c Release -warnaserror`, `dotnet test -c Release --no-build --filter
-"Category!=Calibracion"` (**493: 440 unitarias + 53 integración**) y `dotnet format
---verify-no-changes --no-restore`, todas verdes.
+**Estado al 2026-07-27:** implementación autorizada y WIP local. Los pasos 1–5 están cubiertos: el hilo
+de una idea y la cola I-18/multi-idea recorren el mismo ciclo canónico, con una sola idea activa a la
+vez. La última validación fue: `dotnet build -c Release -warnaserror`, `dotnet test -c Release
+--no-build --filter "Category!=Calibracion"` (**499: 446 unitarias + 53 integración**) y `dotnet format
+--verify-no-changes --no-restore`, todas verdes (commit `748870f`, sin push).
 
-**Próximo corte ejecutable (paso 5):** en
-`OrquestadorConversacion.ProcesarIdeasSegmentadasAsync` y `ProcesarRevisionCoachingAsync`, sustituir la
-evaluación inmediata de cada `Respuesta` segmentada por el mismo ciclo ya usado para una idea única:
-aporte inmutable → propuesta → confirmación inequívoca → evaluación de la versión consolidada completa.
-La cola debe conservar una sola idea activa y avanzar solo al cerrar esa idea. `RespuestaVigenteId` sigue
-siendo el último aporte; `VersionIdeaVigenteId` es la unidad que se evalúa. No eliminar lectores legacy,
-no evaluar una raíz segmentada antes de confirmar y no activar/desplegar el cambio.
+**Próximo corte ejecutable (paso 5b — complemento + idea nueva, §4.6):** hoy un mensaje que complementa
+la idea activa y además propone una idea nueva se consolida como un solo aporte. Falta exponer las
+`NuevasIdeas` que ya devuelve el consolidador en `ProponerVersionComplementariaAsync`, agregar a
+`PoliticaColaCoachingIdeas` una transición que **encole una idea pendiente al final** (respetando el
+máximo, el orden, la idempotencia y la regla de una sola activa) y crear su `IdeaConsolidada` con
+`tipoAporte=nuevaIdea`. Después sigue el paso 6 (reapertura “la anterior” y desambiguación). No
+eliminar lectores legacy y no activar/desplegar el cambio.
+
+**Pendientes conocidos del paso 5** (registrados, no bloquean el corte):
+
+- el cierre por inactividad (`ServicioExpiracionConversaciones`) finaliza el turno en la cola pero no
+  cierra todavía el documento `IdeaConsolidada` como `pendiente` (§4.8);
+- las campañas con I-06 activo y coaching I-18 apagado conservan su ruta histórica de evaluación por
+  idea segmentada, sin confirmación previa;
+- `requiereAclaracion` del consolidador aún no genera la pregunta breve de aclaración (§4.2).
 
 Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUESTOS.md`, esta sección,
-`I-18_Coaching_Secuencial_Por_Idea.md` y `Reglas_Conversacion_y_Participacion.md`; después debe añadir
-regresiones que cubran dos ideas independientes, la confirmación de la primera antes de avanzar a la
-segunda y la conservación de las referencias canónicas al reanudar la conversación. Mantener
+`I-18_Coaching_Secuencial_Por_Idea.md` y `Reglas_Conversacion_y_Participacion.md`. Mantener
 `.obsidian/workspace.json` fuera del alcance: es un cambio ajeno ya presente en el árbol de trabajo.
 
 1. **[Hecho local] Dominio y persistencia:** `IdeaConsolidada`, versiones, estados, repositorios e idempotencia.
 2. **[Hecho local] Contratos primero:** cambios aditivos en `03`/`04`/`08`/`09`; DTOs legacy preservados.
 3. **[Hecho local] Consolidador:** puerto, prompt versionado, esquema de salida, validación y fallback.
 4. **[Hecho local] Orquestador de una idea:** confirmación/corrección, evaluación de versión completa y prioridades de intención.
-5. **[En curso] I-18/multi-idea:** cola por `ideaId` lista; faltan propuesta/confirmación/evaluación por cada idea, complemento + nueva idea y transiciones.
+5. **[Hecho local] I-18/multi-idea:** propuesta, confirmación y evaluación por cada idea, con una sola activa y confirmación de la siguiente al cerrar la anterior. Falta el sub-corte 5b: complemento + idea nueva en el mismo mensaje (§4.6).
 6. **[Pendiente] Reapertura:** resolver “la anterior”, desambiguación y nueva versión.
 7. **[Pendiente] Markdown/API/Resultados:** una fila/artefacto por idea y detalle auditable.
 8. **[Pendiente] Seeds:** consumir I-12 cuando estén configuradas; degradación vacía.

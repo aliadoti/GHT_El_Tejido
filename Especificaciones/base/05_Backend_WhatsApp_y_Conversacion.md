@@ -225,6 +225,15 @@ I-19 corrige la unidad de evaluación para flujos de una o varias ideas:
 8. una salida, límite, inactividad o fallback bajo umbral deja la idea `pendiente`;
 9. una idea madura queda `estadoCuraduria=pendiente` y no pasa a otro sistema automáticamente.
 
+Con la cola I-18 activa, el orquestador propone la versión de **cada** idea del mensaje al segmentarlo,
+pero solo pide confirmar la idea activa; `respuestaVigenteId` sigue apuntando al último aporte y
+`versionIdeaVigenteId` es la unidad que se evalúa. Pedir confirmación **no** incrementa
+`repreguntasUsadas` (ese contador mide preguntas socráticas posteriores a una evaluación). Al cerrar la
+idea activa —por umbral, salida, rechazo, máximo de revisiones o fallback— la cola activa la siguiente y
+le pide su confirmación; el turno pendiente por timeout envía esa misma confirmación en lugar de una
+repregunta. Si un techo determinista (turnos, cupo de llamadas o presupuesto) se agota durante el
+acompañamiento, el aporte se conserva sin consolidar ni evaluar y la idea queda `pendiente`.
+
 “Así está bien” durante confirmación confirma y termina: la versión se evalúa una vez y queda madura o
 pendiente según umbral. Una idea nueva explícita durante el coaching se encola aunque I-06 no esté
 separando automáticamente el mensaje inicial. Reabrir una idea suspende su curaduría pendiente hasta

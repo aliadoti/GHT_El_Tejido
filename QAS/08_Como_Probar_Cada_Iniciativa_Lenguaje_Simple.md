@@ -3,7 +3,8 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-27 (I-19 especificada; implementación pendiente de aprobación).
+> Última actualización: 2026-07-27 (I-19: idea única y varias ideas en un mensaje ya construidas en
+> local; Resultados por idea y reapertura pendientes).
 
 ## Antes de empezar (léelo una vez)
 
@@ -162,8 +163,9 @@ o el resumen aparece para una idea en incubación.
 ### 📝 I-19 — Construir y calificar una sola idea completa
 
 **Qué es:** cada respuesta del participante complementa la misma idea. El sistema devuelve lo que
-entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Esta prueba se
-ejecutará cuando la implementación sea autorizada; hoy sirve como criterio de revisión.
+entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Los pasos 1 a 4 y
+los de "varias ideas en un mensaje" ya están construidos y probados en el equipo; los pasos 5 a 7
+(pantalla de Resultados y reapertura) llegan en las siguientes entregas.
 
 1. Responde una pregunta con una idea incompleta. **Deberías ver:** una paráfrasis de lo entendido y
    una petición de confirmación.
@@ -182,6 +184,22 @@ ejecutará cuando la implementación sea autorizada; hoy sirve como criterio de 
 **Algo va mal si:** una frase complementaria aparece/califica como otra idea; el sistema olvida o
 inventa información; evalúa antes de confirmar; muestra una fila por revisión; conserva una nota de
 otra versión; o publica sin curaduría.
+
+**Varias ideas en un mensaje (ya disponible en pruebas del equipo).** Requiere una campaña con el
+acompañamiento idea por idea encendido:
+
+1. Responde la pregunta con **dos ideas distintas en un solo mensaje**.
+2. **Deberías ver:** un único mensaje que devuelve **solo la primera idea** y pregunta si es correcta.
+   La segunda queda esperando su turno, en silencio.
+3. Responde **"sí"**. **Deberías ver:** la retroalimentación de esa primera idea y, si ya está
+   completa, enseguida la petición de confirmar **la segunda**.
+4. Si la primera todavía necesita trabajo, el sistema hace **una sola pregunta** sobre ella y no pasa a
+   la segunda hasta terminarla.
+5. Escribe **"no lo guardes"** mientras trabajas una idea. **Deberías ver:** un acuse breve, esa idea
+   descartada y el paso a la siguiente; las demás no se pierden.
+
+**Algo va mal si:** el sistema mezcla las dos ideas en un mismo resumen, califica alguna antes de que
+la confirmes, trabaja las dos a la vez, o descarta todo cuando solo pediste descartar una.
 
 ### ✅ I-03 — El coach repregunta sobre lo más flojo, sin "delatar" la rúbrica
 **Qué es:** cuando tu respuesta es floja en algún aspecto, el coach te invita a profundizar **en ese

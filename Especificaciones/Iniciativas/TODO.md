@@ -9,13 +9,24 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **ESTADO VIGENTE 2026-07-25 — `I-18` coaching secuencial por idea DONE local.** Se implementaron prompt socrático + cola server-side por idea, revisiones enlazadas, umbral efectivo, salidas/límites/tiempo/fallback, contratos aditivos, portal, observabilidad y rollback. Las campañas existentes conservan el flujo anterior porque el gate por campaña permanece apagado; no hubo despliegue ni activación. **PRÓXIMO OBJETIVO = ejecutar D5 real, UAT y revisión de costo antes de decidir la activación de I-18.** I-12/I-13/I-14 mantienen sus bloqueos externos y no deben inventarse sus insumos.
+> **ESTADO VIGENTE 2026-07-27 — `I-19` WIP, pasos 1–5 locales (backend verde 499, commit `748870f`).**
+> Dominio, persistencia y consolidador están implementados; **tanto el hilo simple como la cola
+> I-18/multi-idea** recorren aporte → propuesta → confirmación → evaluación de la versión completa, con
+> una sola idea activa a la vez. Ninguna raíz segmentada se evalúa antes de que el participante
+> confirme.
+> **PRÓXIMO OBJETIVO = paso 5b (complemento + idea nueva en el mismo mensaje, §4.6) y luego la
+> reapertura “la anterior” (§4.7); después Markdown/API/Resultados por idea.** No desplegar
+> ni hacer push: faltan pruebas D5/UAT/costo y el cierre integral de I-19.
 
 > **✅ `I-17` (BD de dos niveles: maduras vs. incubación) — COMPLETA local 2026-07-22 (6/6 slices).** Diseño §5/§7 **CONFIRMADO con el usuario** (spec RESUELTO; `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). (1-2) umbral único compartido con precedencia pregunta→campaña→global, sellado determinista de `nivelMadurez`, paráfrasis I-05 solo si `maduro`, telemetría; default global 0.6 y kill-switch de cierre `false` (comportamiento efectivo = como hoy). (3) filtro/DTO en `04 §5.8` + pantalla Resultados (selector/badge/conteos) + controles por campaña (umbral, inactividad, paráfrasis) y por pregunta (umbral). (4) metadato `nivelMadurez` en Markdown `09`. (5) reclasificación por **rechazo explícito** (degradar+cerrar con acuse). (6) cierre por inactividad **sub-hora y por campaña** (barrido per-campaña). Cerró con **420** pruebas; la suite actual tiene **423** verdes. Frontend prettier/tsc limpios (`ng build/test` bloqueado por esbuild/WSL, infra). **Pendiente operativo (no bloquea):** calibrar umbral 0.6 con D5 real y fijar flags globales en el acta del día-D. **Sin commit/push aún.** **⚠️ PRÓXIMO OBJETIVO = rotar al siguiente ítem de §4** (todos con insumo externo: `I-12` BLOCKED por seeds, `I-13` espera decisión GHT 25-jul, `I-14` BLOCKED por catálogo). Spec I-17: `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa originalmente objetivo de este TODO: `ID-INICIATIVA=I-10` — DIFERIDA (no implementar).** No es un desarrollo desde cero: continúas un MVP vivo. **Contexto ya HECHO y verificado:** P-03, P-10, D5 (baseline real pendiente), I-16, I-08 backend **e I-08 UI (2026-07-20, Claude Sonnet 5)**, I-06 diseño+implementación local, I-09 diseño **e I-09 core (DIFERIDO)**, I-05 parafraseo DONE local e I-03 follow-ups eje débil DONE local. **P-13 umbral de cierre por campaña DONE local (2026-07-21):** `configConversacional.umbralCierreAnticipado` nullable, default numérico `Conversacion:UmbralCierreAnticipado`, kill-switch real `Conversacion:CierreAnticipadoHabilitado` (default `true`), API/Cosmos/portal/telemetría y 400 pruebas backend verdes; D5 real y calibración I-01 en staging siguen pendientes. **P-14 lectura de rúbricas y prompts DONE local (2026-07-22):** visor seguro, sin contratos ni backend; frontend lint/test/build verdes. I-01 queda BLOCKED para activación real. **Próximo objetivo (tras confirmar diseño): I-17** — clasificación determinista `maduro`/`incubacion` por umbral (aditiva sobre `responses`), paráfrasis I-05 solo tras umbral, filtro en Resultados; reutiliza el patrón de umbral por campaña de P-13. Lee la spec I-17, `03`/`04` actuales y el código antes de editar; **confirma con el usuario los puntos §5 ANTES de codificar.** Al terminar, rota este TODO al siguiente ítem según §4 y actualiza siempre cabecera, tabla, §8 y AVANCES.md.
+**Iniciativa objetivo vigente: `ID-INICIATIVA=I-19` — IMPLEMENTACIÓN WIP.** El paso 5 (transiciones
+I-18/multi-idea) quedó **DONE local**: la cola atiende una idea a la vez con propuesta, confirmación y
+evaluación de la versión consolidada. Continúa con el sub-corte 5b (complemento + idea nueva en el
+mismo mensaje) y luego la reapertura. Conserva los contratos aditivos, las pruebas verdes y la
+activación solo local hasta completar D5/UAT/costo.
 
 ---
 
@@ -131,13 +142,18 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 25 | **`P-22` UX de Campañas** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Creación bajo demanda, pasos numerados con completitud y nombre accesible, enlace contextual a Envíos con id real, fieldsets con ayuda y estados vacíos. Preserva P-16/P-18/P-19/P-20 y no cambia contratos. Prettier, 21/21 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 26 | **`P-23` UX de Resultados** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Precarga de campaña en memoria, patrón maestro-detalle (respuesta → evaluación + Markdown), leyenda/conteos, extractos, estados guiados y actividad secundaria. Preserva I-17/P-18/P-19; sin contratos, rutas ni permisos nuevos. Prettier, 24/24 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 27 | **`I-18` coaching secuencial por idea** | Sprint 2 | **Codex** | **DONE local 2026-07-25.** Cola y contador por idea, revisiones enlazadas, prompt socrático, timeout/fallback acotados, DTOs/Markdown/telemetría aditivos y controles accesibles. Backend 484/484 y portal 24/24, formato y builds verdes. Gates por campaña OFF; D5/UAT/costo antes de activar. |
+| 28 | **`I-19` consolidación progresiva de ideas** | En curso | **Codex / Claude** | **Pasos 1–5 locales (2026-07-27, Claude Opus 5; commit `748870f`, backend verde 499):** idea/versiones, persistencia, consolidador, ciclo canónico del hilo simple y **transiciones I-18/multi-idea** (una idea activa a la vez; rechazo, salida, techos y avance con confirmación de la siguiente). Siguiente: 5b complemento + idea nueva (§4.6); después reapertura (§4.7), Markdown/API/Resultados, seeds, observabilidad y D5/UAT. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
 
-**Dependencias duras (ruta crítica, actualizada 2026-07-25):** `P-01/P-02 (Meta)` **✓** → `I-11 (rúbrica)` **✓ 18-jul** → `I-03` **✓** · `I-12 (seeds)` **BLOCKED (insumo vencido — escalar a Felipe)** → `I-04/I-13` · `P-10 cupos` **✓** → `I-01/umbral (activar)` ← simplificada por `P-13` **✓** → `I-17` **✓** · **`I-06 + I-03 + I-17 + P-15` → `I-18`** · `I-08` **backend + UI ✓** → (variables demográficas de Munir) → carga real del freeze. **Fuera de ruta crítica (diferidas Capa 3):** `I-09 → I-10`, `P-07`, panel `P-09`. **D5 es árbitro de I-18 y del umbral; baseline real pendiente.**
+**Dependencias duras (actualizada 2026-07-27):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
+`I-18 + I-05 + P-23` → `I-19` **WIP local / autorización confirmada**. I-12 sigue bloqueada por el insumo
+de seeds, pero **no bloquea I-19**: campo vacío degrada limpio. D5/UAT/costo arbitran la implementación
+antes del despliegue.
 
-> **Parametrización por campaña (índice §4):** todo lo que define el **comportamiento del coach o el contenido** de una campaña es parametrizable **por campaña** (campo aditivo con default seguro, `03 §3.3` en commit aparte); las **salvaguardas de seguridad y costo** quedan **globales** como kill-switch de operación (aunque sus *valores* vivan en la campaña). Consúltalo antes de decidir dónde vive un flag nuevo.
+> **Excepción I-19 confirmada por el usuario:** la consolidación no tiene opt-in por campaña y se
+> activa para todas. Solo conserva un kill-switch global de emergencia, default `true`.
 
 ---
 
@@ -179,14 +195,23 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Cierre de código vigente: no queda otra iniciativa independiente ejecutable sin insumo externo.**
-   I-18 está DONE local y mantiene sus gates apagados. El siguiente paso operativo es correr D5 real,
-   UAT y revisión de costo/latencia en una campaña de pruebas; solo el acta humana puede autorizar su
-   activación. I-12 espera seeds, I-13 la decisión GHT e I-14 el catálogo oficial de tags: no crear,
-   inferir ni hardcodear esos datos.
+1. **Continuar I-19, paso 5b de §15: complemento + idea nueva en el mismo mensaje (§4.6).** Antes de
+   editar, leer `AVANCES.md`, `SUPUESTOS.md`, `00_Indice…`, I-19 §15, I-18 y Reglas; revisar el árbol de
+   trabajo y no tocar `.obsidian/workspace.json`. Hoy, un mensaje que complementa la idea activa **y**
+   trae una idea nueva se consolida como un solo aporte. Exponer las `NuevasIdeas` que ya devuelve
+   `IConsolidadorIdeas` dentro de `ProponerVersionComplementariaAsync`, añadir a
+   `PoliticaColaCoachingIdeas` una transición que encole una idea **pendiente al final** (el servidor
+   impone máximo, orden, idempotencia y una sola activa) y crear su `IdeaConsolidada` con
+   `tipoAporte=nuevaIdea`. Cubrir con pruebas: complemento + idea nueva en un turno, tope de ideas y no
+   mezcla de contenidos. Luego “la anterior”, desambiguación y reapertura (§4.7). **Pendientes ya
+   registrados que también deben cerrarse antes del final de I-19:** cierre por inactividad que marque
+   la `IdeaConsolidada` como `pendiente` (§4.8), ruta I-06 sin coaching y `requiereAclaracion` (§4.2).
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-4. Implementa en pasos pequeños siguiendo el bucle de §3: build `-warnaserror` + test + format (y frontend si aplica) verdes en cada paso.
+4. **La aprobación expresa de I-19 ya existe.** Implementa sus cortes en pasos pequeños: contratos/dominio
+   → consolidador → orquestador → reapertura → Resultados/Markdown → observabilidad/QA. Solo vuelve a
+   consultar al usuario si aparece una decisión de producto o contrato no resuelta por I-19 §17 o
+   `SUPUESTOS.md#consolidacion-progresiva-i19`.
 5. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
 5b. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
 6. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
