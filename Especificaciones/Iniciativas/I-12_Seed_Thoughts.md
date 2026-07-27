@@ -4,6 +4,11 @@
 > **Tipo:** Config/Prompt + Desarrollo aditivo · **Prioridad:** Alta · **Ventana:** Sprint 2 ·
 > **Dependencia:** entrega de GHT · **Riesgo:** insumo tardío; costo de tokens.
 > Cubre REQ §15/§21, ARQ §4.2/§12; specs base `03 §3.3`, `08 §3`.
+>
+> **Integración I-19 (especificada 27-jul-2026):** la consolidación progresiva funciona con el campo
+> vacío. Cuando GHT entregue/configure las semillas, se inyectan de forma acotada al evaluar la versión
+> consolidada confirmada. Orientan relevancia/coaching, pero no crean criterios ocultos ni reemplazan
+> la rúbrica. I-19 no autoriza inventar seeds provisionales.
 
 ## 1. Qué pide GHT / por qué
 Incorporar material de las charlas de la convención y pendientes del año pasado ("seed thoughts":

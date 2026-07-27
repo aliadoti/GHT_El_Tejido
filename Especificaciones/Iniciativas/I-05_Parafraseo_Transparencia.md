@@ -4,6 +4,11 @@
 > **Tipo:** Prompt + Desarrollo · **Prioridad:** Alta · **Ventana:** Sprint 1b (21–25 jul) ·
 > **Dependencia:** — · **Riesgo:** No determinismo (medio) · **Estado:** DONE local 2026-07-20 (flags apagados).
 > Cubre REQ §21, ARQ §4.2; specs base `08 §4`, `05 §4.5`.
+>
+> **Extensión I-19 (especificada 27-jul-2026):** la paráfrasis opcional I-05 permanece para datos
+> históricos/rollback, pero el flujo I-19 usa una paráfrasis **acumulada y obligatoria** que el
+> participante confirma antes de evaluar. No se envían ambas; la versión consolidada propuesta cumple
+> la función de transparencia.
 
 ## 1. Qué pide GHT / por qué
 El coach devuelve "**esto es lo que entendí**": parafrasea y organiza el aporte del participante

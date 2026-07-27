@@ -4,6 +4,15 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-27 por Codex (Arquitecto/Backend/AppSec/SDET): **I-19 WIP — cortes
+  1, 2 y 3 estructural locales.** Se incorporaron `IdeaConsolidada`, versiones auditables, trazabilidad
+  en aportes y evaluaciones, Cosmos/memoria, consolidación LLM validada y el flujo de una sola idea:
+  aporte → propuesta → confirmación → evaluación de la versión completa. Ningún primer aporte ni “sí” se
+  evalúa como idea aislada. La cola I-18 ya conserva, de forma aditiva y compatible, `ideaId` y
+  `versionIdeaVigenteId` junto con el último aporte legacy; aún falta que su comportamiento multi-idea
+  use esas referencias para proponer, confirmar y evaluar. **Verificado:** build Release sin warnings y
+  493 pruebas no calibración verdes (440 unitarias + 53 integración). Próximo: migrar las transiciones
+  I-18/multi-idea; después reapertura y Markdown/API/Resultados por idea.
 - Ultima actualizacion: 2026-07-25 por Codex (Arquitecto/Tech Lead/Backend/Frontend/SDET): **I-18 coaching secuencial por idea — DONE local.** I-06 ahora puede mantener una cola por idea, preguntar de forma socrática sobre una sola idea, enlazar y evaluar sus revisiones, avanzar por umbral/intención/rechazo/máximo/tiempo/fallback y continuar con la siguiente pregunta al terminar. Cosmos/API/Resultados/Markdown exponen estado y linaje aditivos; Campañas ofrece controles accesibles. El timeout avanza por idea, envía la siguiente repregunta solo dentro de la ventana de WhatsApp y no envía texto libre fuera. Guardrails P-10, telemetría sin PII y flujo legacy con gate OFF quedan preservados. **Verificado:** backend 484/484, portal 24/24, builds y formatos verdes. Contratos/spec en `d1d0836`; implementación y cierre incluidos en el segundo commit de la sesión. Sin push ni activación. **Próximo: D5 real + UAT + revisión de costo/latencia antes del acta de activación; I-12/I-13/I-14 siguen bloqueadas por insumos externos.**
 - Ultima actualizacion: 2026-07-25 por Codex (UX/Frontend/SDET): **P-23 UX de Resultados — DONE local.** Resultados recuerda la campaña solo durante la sesión de la SPA y carga la recordada o la primera disponible sin obligar a consultar; sin campañas muestra una guía educada. La vista ahora es maestro-detalle: lista de respuestas con participante, estado, madurez y extracto → evaluación y Markdown asociados, con `aria-current`, leyenda/conteos visibles, esqueletos y estados vacíos. Conversaciones quedan como actividad secundaria; regenerar sigue solo para admin y descarga confirma su inicio. Sin rutas, APIs, DTOs, permisos, datos ni librerías nuevas; preserva I-17/P-18/P-19. **Verificado con Node 24.15.0:** Prettier limpio, `ng test --watch=false` **24/24 verde** y `ng build --configuration production` verde. **Próximo: esperar insumo externo de I-12, I-13 o I-14.**
 - Ultima actualizacion: 2026-07-25 por Codex (Tech Lead/Frontend/SDET): **P-22 UX de Campanas — DONE local.** La lista queda como vista principal y el formulario aparece solo con **"+ Nueva campana"**; al guardarla se cierra y se selecciona la nueva campana. El detalle conserva rutas, APIs, DTOs, permisos y las pestañas accesibles de P-20, ahora como pasos numerados con completitud y ayuda de siguiente paso; **"Ver envios"** usa el id real. Configuracion separa Evaluacion, Conversacion y Seguridad/costo con ayuda asociada, y los estados vacios orientan la siguiente accion. La activacion explica si faltan una pregunta activa o participantes. Sin contratos, datos ni librerias nuevas; el dialogo propio de reinicios sigue opcional. **Verificado con Node 24.15.0:** Prettier limpio, `ng test --watch=false` **21/21 verde** y `ng build --configuration production` verde. **Proximo: P-23 UX de Resultados.**
@@ -43,6 +52,13 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **CONTINUAR I-19 §15 — transiciones I-18/multi-idea y reapertura.** La cola ya referencia
+  `ideaId` y su versión consolidada; falta usar esas referencias para proponer, confirmar y evaluar la
+  idea activa antes de avanzar. Empezar en `ProcesarIdeasSegmentadasAsync` y
+  `ProcesarRevisionCoachingAsync`, sin evaluar una raíz segmentada antes de confirmación. Después separar
+  complemento + nueva idea, resolver “la anterior” y construir Markdown/API/Resultados canónicos. Añadir
+  regresiones de dos ideas, confirmación por turno y reanudación de referencias. No desplegar ni hacer
+  push: faltan D5/UAT/costo y el cierre integral de I-19.
 - [x] **(HECHO 2026-07-25, Codex — frontend verde 21/21) `P-22` UX Campañas.** Creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos de la campaña real, configuración agrupada y estados vacíos guiados. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-25, Codex — frontend verde 24/24) `P-23` UX Resultados.** Precarga de campaña en sesión, patrón maestro-detalle, leyenda/conteos, extractos y estados guiados; sin contratos. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-25, Codex — backend verde 473/473) `P-21` multi-número de WhatsApp.** Alias por campaña para envíos iniciales y respuestas por el número entrante, con fallback seguro al predeterminado. Ver "Estado global" arriba.
@@ -181,6 +197,7 @@
 | P-22 | UX de Campañas | DONE local | pendiente | frontend 21/21, build producción y Prettier verdes | Creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos con id real, configuración agrupada y estados vacíos guiados. Próximo: P-23. |
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
+| I-19 | Consolidación progresiva de ideas | WIP — cortes 1/2 + 3 estructural | — | build + 493 pruebas no calibración verdes | Dominio/persistencia/consolidador, flujo canónico de una idea y referencias canónicas en la cola; pendiente migrar transiciones I-18, reapertura, Markdown/API/Resultados, observabilidad y D5/UAT. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -391,3 +408,20 @@
   `d1d0836`; implementación/cierre en commit posterior. Validación local: backend 484/484, portal
   24/24, builds Release/producción y verificaciones de formato verdes. Sin push ni activación.
   Próximo: D5 real, UAT y costo/latencia antes del acta humana; I-12/I-13/I-14 esperan insumos.
+- 2026-07-27 - Codex - **I-19 consolidación progresiva especificada (solo documentación; sin
+  código).** Rol: Arquitecto/Tech Lead/AppSec/SDET; cubre REQ §9/§20/§21/§22/§25/§26/§27 y
+  ARQ §4.2/§6/§7/§8.3/§12/§13. El usuario confirmó: aportes inmutables + idea canónica, paráfrasis
+  confirmada antes de evaluar, umbral sobre versión completa, pendientes/rechazadas auditables,
+  complemento+nueva idea, reapertura, seeds opcionales, curaduría futura obligatoria para maduras y
+  activación inmediata en todas las campañas. Se creó
+  `Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md` y se sincronizaron contratos, Reglas, plan,
+  TODO, SUPUESTOS y QAS. No se ejecutó build/test porque no cambió código. Handoff: revisar la spec
+  con el usuario y esperar autorización expresa antes de I-19 §15.
+- 2026-07-27 - Codex - **I-19 implementación WIP, cortes 1/2 y 3 estructural.** Se implementaron
+  idea y versiones consolidadas auditables, persistencia Cosmos/memoria, procedencia de aportes y
+  evaluaciones, consolidador LLM validado, confirmación y evaluación de la versión completa para una
+  idea, y referencias canónicas `ideaId`/`versionIdeaVigenteId` en la cola I-18. La transición multi-idea
+  aún permanece legacy de forma deliberada; el siguiente corte está detallado en I-19 §15 y TODO §8.
+  Validación local: build Release sin warnings, 493 pruebas no calibración (440 unitarias + 53
+  integración), formato y `git diff --check` verdes. Sin commit, push ni despliegue; se preservó el
+  cambio ajeno `.obsidian/workspace.json`.

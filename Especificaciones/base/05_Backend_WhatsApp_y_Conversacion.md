@@ -124,7 +124,7 @@ Estados de `Conversacion.estadoMaquina` (`03 §3.6`):
 ```
 ProcesarMensajeEntranteAsync:
 1. Cargar/crear Conversacion (usuario, campaña, pregunta vigente).
-2. Persistir Respuesta (esRepregunta según estadoMaquina) con tagsSnapshot.
+2. Persistir Respuesta/aporte (esRepregunta según estadoMaquina) con tagsSnapshot.
    - I-06 multi-idea: si `Campania.configConversacional.segmentacionIdeas=true` y
      `Conversacion:SegmentacionIdeas` no lo apaga, antes de evaluar se llama `ISegmentadorIdeas`.
      Cada idea válida produce su propia `Respuesta` con `ideaIndice`/`respuestaPadreId`; salida inválida,
@@ -132,7 +132,11 @@ ProcesarMensajeEntranteAsync:
    - I-18 coaching secuencial: si además
      `Campania.configConversacional.coachingSecuencialIdeas=true` y el kill-switch
      `Conversacion:CoachingSecuencialIdeas` está activo, las ideas forman una cola ordenada. Un
-     entrante posterior revisa solo la idea activa y no se vuelve a segmentar.
+      entrante posterior se vincula con la idea activa.
+   - I-19 consolidación progresiva (siempre activa para campañas tras su implementación): el aporte
+     no se evalúa aislado. Se crea una versión consolidada propuesta, se pide confirmación y solo una
+     versión confirmada completa pasa al evaluador. Si el entrante mezcla complemento + idea nueva,
+     se consolida lo pertinente y la nueva se añade a la cola.
 3. estadoMaquina = evaluando.
    - I-09 tejido colectivo: si `Campania.configConversacional.tejidoColectivo=true` y
      `Conversacion:TejidoColectivo` no lo apaga, antes de evaluar se llama
@@ -140,9 +144,11 @@ ProcesarMensajeEntranteAsync:
      tags=respuesta.tagsSnapshot, topK)`. Los aportes recuperados (resúmenes anonimizados) se pasan
      al evaluador como bloque de DATO delimitado (`08 §3.2`). Sin aportes o error de recuperación →
      conversación autocontenida (degradación limpia, sin fallo visible). Ver §4.8.
-4. Llamar IEvaluadorLlm.EvaluarAsync(...) (08) por cada respuesta/idea.  // guardrails de pre/post dentro de 08
-5. Persistir Evaluacion (03 §3.9) por cada respuesta/idea.
-6. Decisión:
+4. Con I-19, esperar confirmación de la paráfrasis; correcciones crean otra versión y no consumen
+   evaluación. Sin I-19 (solo rollback de emergencia), aplicar el camino legacy.
+5. Llamar IEvaluadorLlm.EvaluarAsync(...) (08) por cada versión de idea confirmada.  // guardrails de pre/post dentro de 08
+6. Persistir Evaluacion (03 §3.9) vinculada al `ideaId`/`versionIdeaId`.
+7. Decisión:
    - Si Evaluacion.recomendacion == repreguntar
         AND conversacion.repreguntasUsadas < campaña/pregunta.maxRepreguntas (MVP=1):
         → enviar UNA repregunta (Gateway: texto libre si ventana abierta, si no plantilla repregunta)
@@ -153,7 +159,7 @@ ProcesarMensajeEntranteAsync:
         → enviar mensaje de cierre (Gateway, tipo=Cierre) (REQ §26.8)
         → encolar compilación Markdown (09) para la(s) respuesta(s) válida(s) del hilo
         → estadoMaquina = cerrada; cerrar Conversacion (fechaCierre).
-7. Enviar la retroalimentación breve al usuario por WhatsApp (outbound).
+8. Enviar la retroalimentación breve al usuario por WhatsApp (outbound).
 ```
 
 ### 4.4 Tope duro del MVP
@@ -186,7 +192,8 @@ primera pendiente. Mientras hay idea activa:
 1. envía `retroalimentacionEnviada + repreguntaSugerida` para **esa idea**, con exactamente una
    pregunta enfocada por I-03;
 2. trata el siguiente contenido como una revisión enlazada (`ideaRaizId`, `respuestaAnteriorId`,
-   `revisionIndice`) y actualiza `respuestaVigenteId`;
+   `revisionIndice`) y actualiza `respuestaVigenteId`; con I-19 además consolida/confirma y actualiza
+   `versionIdeaVigenteId`;
 3. decide server-side: umbral, salida/rechazo del participante, máximo, tiempo o fallback;
 4. activa la siguiente idea, o abre la siguiente pregunta si la cola terminó.
 
@@ -201,8 +208,39 @@ conserva todo el algoritmo anterior. Si un gate se apaga con cola activa, no se 
 el siguiente entrante se persiste sin LLM y la cola finaliza por `desactivacion` antes de avanzar. Ver
 `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
 
+### 4.4.2 Consolidación progresiva y confirmación (I-19)
+
+I-19 corrige la unidad de evaluación para flujos de una o varias ideas:
+
+1. cada entrante significativo se conserva como `Respuesta`/aporte inmutable con `ideaId`;
+2. el consolidador propone una paráfrasis acumulada usando la versión confirmada anterior y el aporte
+   nuevo;
+3. el orquestador persiste `VersionIdeaConsolidada(estadoConfirmacion=propuesta)` y pregunta
+   “Entendí que… ¿Es correcto?”;
+4. una confirmación la vuelve vigente; una corrección crea otra propuesta; un rechazo cierra solo esa
+   idea como `rechazada`;
+5. únicamente el texto completo de una versión confirmada se envía a `IEvaluadorLlm`;
+6. la comparación de umbral, estados, límites, cola y curaduría pendiente es server-side;
+7. una versión bajo umbral recibe una pregunta I-03/I-18 y el siguiente aporte repite el ciclo;
+8. una salida, límite, inactividad o fallback bajo umbral deja la idea `pendiente`;
+9. una idea madura queda `estadoCuraduria=pendiente` y no pasa a otro sistema automáticamente.
+
+“Así está bien” durante confirmación confirma y termina: la versión se evalúa una vez y queda madura o
+pendiente según umbral. Una idea nueva explícita durante el coaching se encola aunque I-06 no esté
+separando automáticamente el mensaje inicial. Reabrir una idea suspende su curaduría pendiente hasta
+reevaluar la nueva versión confirmada.
+
+El participante puede reabrir una idea previa mientras la campaña esté activa. “La anterior” resuelve
+la última idea cerrada; si hay varias posibilidades, se pide elegir una lista numerada. La reapertura
+mantiene el `ideaId`, crea nuevas versiones y obliga a reevaluar la nueva versión confirmada.
+
+I-19 no tiene opt-in por campaña: se activa para todas. El kill-switch global de emergencia
+`Conversacion:ConsolidacionProgresivaHabilitada` nace `true`; al apagarlo se conservan nuevos aportes
+como pendientes y no se vuelve a calificarlos aisladamente. Ver
+`Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
-La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`** (en `incubacion` no se antepone: la idea aún no está lista para "guardar y confirmar"); es un campo opcional, acotado en frase completa a `Conversacion:MaxCaracteresParafraseo` (400), por lo que su ausencia conserva exactamente la retro clásica. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
+La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. En el flujo legacy, I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`**. Con I-19, la paráfrasis acumulada para confirmación es obligatoria y reemplaza esa salida opcional para no enviar dos resúmenes; no depende del flag I-05. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 
 
 #### Textos operativos configurables
@@ -215,6 +253,9 @@ Los textos no generados por el LLM se leen de la seccion `Conversacion:Mensajes`
 - Si la evaluación cae en **fallback** (`08 §6`): el orquestador envía una retroalimentación neutra ("Gracias, registramos tu aporte") y cierra sin romper el hilo; la `Respuesta` queda `evaluacionPendiente` (`REQ §20.3.10`).
 - Con I-18 efectivo, el fallback se acota a la idea activa: queda trazable en incubación, se finaliza
   por `fallback` y se intenta avanzar a la siguiente sin perder la cola.
+- Con I-19, un fallo de consolidación conserva el aporte y la última versión confirmada; un fallo de
+  evaluación deja la idea pendiente. Ninguna propuesta no confirmada ni evaluación de otro texto
+  puede producir madurez.
 - Si el envío saliente falla: se reintenta (Gateway) y se registra; la conversación no se pierde (el estado persiste en Cosmos).
 
 ### 4.7 Correlación
@@ -241,6 +282,9 @@ El coach deja de ser autocontenido: enriquece la evaluación/retro con la **base
 - Con I-06 activo y configurado, un mensaje con N ideas genera N `Respuesta`/`Evaluacion`/Markdown sin duplicar ante reintentos; con flag apagado o segmentador inválido, conserva el flujo 1-idea.
 - En modo legado, como máximo se envía **una** repregunta y el segundo turno cierra; con I-18,
   `MaxRepreguntas` es por idea, cada revisión se evalúa y la cola avanza una idea a la vez.
+- Con I-19, el participante confirma la paráfrasis acumulada y todas las evaluaciones/retroalimentaciones
+  usan esa versión completa; Resultados no duplica una fila por aporte.
+- Una idea reabierta conserva el mismo `ideaId`, crea otra versión y se vuelve a evaluar.
 - El cierre envía mensaje de agradecimiento y dispara compilación Markdown.
 - Mensajes repetidos por reintento de Meta no duplican Respuestas ni Evaluaciones (idempotencia).
 - Fuera de ventana de 24h, la repregunta se envía por plantilla aprobada.

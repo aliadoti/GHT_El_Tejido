@@ -6,6 +6,11 @@
 > y su resolución por campaña), I-05 (paráfrasis tras umbral) · **Riesgo:** Medio (clasificación
 > deriva de una calificación no determinista → se acota con umbral determinista). Cubre REQ §9/§22/§25,
 > ARQ §4.2/§6; specs base `03 §3.8`, `05 §4.4`, `08`, `09`.
+>
+> **Extensión I-19 (especificada 27-jul-2026):** I-17 conserva la fórmula y el umbral, pero la
+> clasificación pasa de cada `Respuesta` a la `IdeaConsolidada`/versión confirmada. La compatibilidad
+> sigue proyectando `madura→maduro` y `pendiente|rechazada→incubacion`. I-19 añade confirmación
+> obligatoria, estado `rechazada` separado y curaduría pendiente para maduras.
 
 ## 1. Qué pide GHT / por qué
 La reunión del 20-jul definió la **lógica central de guardado en dos niveles**:

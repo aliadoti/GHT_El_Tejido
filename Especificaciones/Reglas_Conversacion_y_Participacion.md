@@ -3,7 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-07-13.
+> y `09` (Markdown). Última revisión: 2026-07-27 (I-19 WIP: flujo de una idea implementado localmente).
 
 ## 1. Visión general del flujo
 
@@ -13,11 +13,14 @@ Participante                         El Tejido
      │ ────────────────────────────────► │  (no evalúa el saludo)
      │  ◄──────── Saludo + PREGUNTA ───── │
      │  Su respuesta                      │
-     │ ────────────────────────────────► │  Evalúa con el LLM (rúbrica + prompt)
-     │  ◄──── Retro + INVITACIÓN a mejorar│  (compila Markdown del intento)
-     │  Versión mejorada (opcional)       │
-     │ ────────────────────────────────► │  Re-evalúa (cuenta esta última)
-     │  ◄──── Retro + CIERRE ──────────── │  (compila Markdown, cierra el hilo)
+     │ ────────────────────────────────► │  Consolida lo entendido
+     │  ◄──── Paráfrasis + CONFIRMACIÓN ─ │
+     │  Confirma o corrige                │
+     │ ────────────────────────────────► │  Evalúa la idea completa confirmada
+     │  ◄──── Retro + pregunta de mejora ─│
+     │  Aporta un complemento             │
+     │ ────────────────────────────────► │  Consolida + confirma + reevalúa
+     │  ◄──── Retro + CIERRE ──────────── │  (Markdown canónico por idea)
 ```
 
 Una **conversación** es el hilo de un trío `(participante, campaña, pregunta)`. Su id es determinista
@@ -45,7 +48,8 @@ mantiene el hilo abierto actual hasta completar sus revisiones disponibles; cuan
 crea el hilo de la siguiente pregunta activa y la envia como texto libre en la misma ventana. Si un
 participante escribe despues de una pregunta cerrada y aun hay preguntas pendientes, el entrante se usa
 para abrir/enviar la siguiente pregunta y no se evalua como respuesta. Si todas las preguntas activas ya
-estan cerradas, los mensajes posteriores se ignoran.
+estan cerradas, I-19 permite interpretar una petición explícita de revisitar una idea; otro mensaje
+posterior se aclara o se ignora según su intención, sin crear una respuesta huérfana.
 
 **P-21 — número de WhatsApp:** el mensaje inicial, reenvío o reintento sale por el alias guardado en
 `configConversacional.numeroWhatsAppSaliente` o, si está vacío, por el número predeterminado. Desde que
@@ -57,11 +61,12 @@ El avance entre preguntas no exige siempre agotar las revisiones: una pregunta p
 **calificacion alta** o porque el **participante pide continuar** (ver §2.3, "Dos salidas anticipadas").
 
 ### 2.2 Evaluación con LLM
-Cada respuesta se evalúa con el LLM usando la **rúbrica**, el **prompt** aprobado y la **ConfigLLM**
-activos de la pregunta/campaña. El modelo debe devolver un JSON con el esquema acordado (el sistema le
-incrusta el esquema y la escala). El sistema le pasa además el **historial reciente** del hilo (turnos
-previos persistidos, acotado en cantidad y longitud, **sin** duplicar la respuesta que se está
-evaluando) para que el LLM **no repita** preguntas/retroalimentación ni entre en bucles. Requisitos
+Con I-19, cada aporte primero se integra en una paráfrasis acumulada y el participante la confirma o
+corrige. Solo la **versión consolidada confirmada completa** se evalúa con el LLM usando la
+**rúbrica**, el **prompt** aprobado y la **ConfigLLM** activos de la pregunta/campaña. El último
+complemento nunca sustituye la idea completa. El modelo debe devolver un JSON con el esquema acordado
+(el sistema le incrusta el esquema y la escala). El historial acotado ayuda a evitar repeticiones,
+pero no reemplaza la versión canónica. Requisitos
 para evaluar:
 - ConfigLLM en estado **activo**, prompt **activo y aprobado**, rúbrica **activa**.
 - Si falta rubrica, prompt o ConfigLLM valida, no se llama al LLM: se informa al participante que hay
@@ -78,6 +83,11 @@ de 2–3 frases de lo que entendió. Debe ser fiel al aporte, sin agregar inform
 devuelve, viene vacío o no cabe una frase completa en `Conversacion:MaxCaracteresParafraseo` (400 por
 defecto), el participante recibe exactamente la retroalimentación de siempre. Operación puede apagarlo
 por campaña o globalmente sin redeploy.
+
+**Confirmación I-19 (obligatoria al implementarse):** la paráfrasis acumulada se muestra en todas las
+campañas y no depende de I-05. Si I-05 está activo, no se muestra un segundo resumen. Una corrección
+crea otra versión propuesta; solo una confirmación inequívoca permite evaluar. Las ideas semilla I-12
+se usan cuando existan, pero no crean criterios de calificación fuera de la rúbrica.
 
 ### 2.3 Revision determinista (revisiones como oportunidades)
 > **Flujo legado/single-idea:** las reglas de contador único, coletilla siempre visible y cierre de la
@@ -138,10 +148,10 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
    promueve (idempotente) y no toca contratos compartidos.
 
 ### 2.4 Cierre y Markdown
-Hay dos cierres normales: si la evaluacion valida decide cerrar sin ofrecer revision, se envia
-**retro + mensaje de cierre** y se compila el **Markdown** del aporte (`09`); si el participante responde
-despues de agotar revisiones, se envia **solo el mensaje de cierre** y no se compila un Markdown nuevo.
-Una conversacion **cerrada ignora** cualquier mensaje posterior (se descarta en silencio).
+En I-19, el cierre deja una única idea como `madura`, `pendiente` o `rechazada` y compila su Markdown
+canónico. Una idea madura queda `pendiente` de curaduría experta; no se publica ni prioriza
+automáticamente. Una conversación cerrada no acepta contenido nuevo como otra respuesta independiente,
+pero puede reabrir la misma idea ante una petición explícita mientras la campaña siga activa.
 
 ### 2.4.1 Multi-idea por mensaje (I-06, implementado; flags apagados)
 Si la campaña tiene `configConversacional.segmentacionIdeas=true` y el kill-switch global
@@ -178,6 +188,36 @@ ventana no envía texto libre y espera un nuevo entrante. Ver
 `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
 Si un gate se apaga con una cola activa, no se envía otra repregunta: el siguiente entrante se
 conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza de forma segura.
+
+### 2.4.3 Consolidación progresiva por idea (I-19, WIP local)
+
+I-19 aplica a todas las campañas. El recorrido de una idea única está implementado localmente; el de
+ideas múltiples conserva transitoriamente las transiciones I-18 mientras se migra en el siguiente corte.
+El comportamiento objetivo para ideas únicas o múltiples es:
+
+1. cada mensaje significativo queda como aporte original enlazado a un `ideaId`;
+2. el sistema propone una paráfrasis que acumula la versión confirmada anterior y el aporte nuevo;
+3. el participante confirma o corrige; una corrección crea otra versión sin borrar la anterior;
+4. solo la versión completa confirmada se evalúa y gobierna retroalimentación, umbral, madurez y
+   Markdown;
+5. bajo umbral, la idea continúa con una pregunta socrática; al terminar queda `pendiente`;
+6. al superar el umbral queda `madura` y `pendiente de curaduría`;
+7. “no lo guardes” deja la idea `rechazada`, conservada solo para auditoría;
+8. complemento + idea nueva actualiza la activa y añade la nueva al final de la cola.
+
+En confirmación, “así está bien” confirma y termina la mejora: se evalúa esa versión; madura si alcanza
+el umbral y, si no, queda pendiente. Una idea nueva explícita durante el coaching se encola aunque la
+segmentación automática inicial I-06 esté apagada.
+
+Mientras la campaña esté activa, el participante puede pedir “quiero complementar la anterior”. Se
+reabre el mismo `ideaId`; si la referencia es ambigua, el sistema muestra una lista breve numerada. La
+nueva versión confirmada se reevalúa completa y puede subir o bajar de madurez. Una campaña cerrada no
+admite cambios del participante. Si estaba pendiente de curaduría, la reapertura suspende ese estado
+hasta reevaluar.
+
+No hay flag por campaña. `Conversacion:ConsolidacionProgresivaHabilitada=true` es solo un kill-switch
+global de emergencia y nace activo; al apagarlo, los aportes nuevos quedan pendientes y no se
+califican de forma aislada. Ver `Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md`.
 
 ### 2.5 Ventana de 24 h y respuestas tardías
 - WhatsApp solo permite **texto libre** dentro de las **24 h** posteriores al último mensaje del
@@ -285,6 +325,9 @@ lo que otros han dicho. Reglas duras de esta función:
 | `Conversacion:CoachingSecuencialIdeas` | App config / env `Conversacion__CoachingSecuencialIdeas` | `true` | **I-18** — kill-switch global; `false` apaga el coaching secuencial sin borrar trazabilidad. |
 | `Conversacion:MinutosCoachingPorIdea` | App config / env `Conversacion__MinutosCoachingPorIdea` | 0 (**desactivado**) | **I-18** — default global del reloj por idea. |
 | `configConversacional.minutosCoachingPorIdea` | Portal admin (campaña) | ausente (**hereda global**) | **I-18** — override en minutos; `<=0` lo apaga para esa campaña. |
+| `Conversacion:ConsolidacionProgresivaHabilitada` | App config / env `Conversacion__ConsolidacionProgresivaHabilitada` | `true` | **I-19** — kill-switch global de emergencia. No hay flag por campaña: `true` consolida/confirma en todas; `false` conserva aportes nuevos como pendientes y no los evalúa aisladamente. |
+| `Conversacion:MaxCaracteresIdeaConsolidada` | App config / env `Conversacion__MaxCaracteresIdeaConsolidada` | 4000 | **I-19** — límite de la versión acumulada; al exceder, pide acotar/aclarar y nunca trunca silenciosamente hechos confirmados. |
+| `Conversacion:MaxTokensSeedThoughts` | App config / env `Conversacion__MaxTokensSeedThoughts` | 800 (**calibrar con el insumo real**) | **I-12/I-19** — presupuesto del contexto orientador; campo de campaña vacío o valor `<=0` omite el bloque sin afectar el flujo. |
 | `configConversacional.tejidoColectivo` | Portal admin (campaña) | `false` | Habilita I-09 para esa campaña: el coach teje aportes anonimizados de otros participantes (§2.9). Campo ausente = `false` (autocontenido). |
 | `Conversacion:TejidoColectivo` | App config / env `Conversacion__TejidoColectivo` | `true` | Kill-switch global de I-09. `true` respeta la campaña; `false` apaga el tejido para todas sin redeploy. |
 | `Conversacion:TopKAportes` | App config / env `Conversacion__TopKAportes` | 3 | Máximo de aportes recuperados que se tejen por turno. |
@@ -314,6 +357,8 @@ lo que otros han dicho. Reglas duras de esta función:
   `evaluando`)\* → `cerrada`, acotado por `MaxRepreguntas`.
 - **Cola I-18 (opcional):** `pendiente → activa → finalizada` por idea; solo una activa. La
   conversación se cierra o avanza de pregunta únicamente cuando no quedan ideas pendientes.
+- **Idea I-19:** flujo `pendienteConfirmacion ↔ enMejora|enRevision → cerrada`; resultado
+  `madura|pendiente|rechazada`. Una idea madura recibe `estadoCuraduria=pendiente`.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).
 
 ## 5. Referencias

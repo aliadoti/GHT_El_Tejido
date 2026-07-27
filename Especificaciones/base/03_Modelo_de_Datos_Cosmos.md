@@ -27,7 +27,7 @@
 | `campaigns` | `Campania` (con mensajes y preguntas embebidos) | `/id` | No | Unidad de configuración; se lee completa. |
 | `participants` | `ParticipanteCampania`, `EnvioMensaje` | `/campaniaId` | No | Consultas y envíos siempre por campaña. |
 | `conversations` | `Conversacion`, `Mensaje` | `/campaniaId` | No | Hilo conversacional agrupado por campaña. |
-| `responses` | `Respuesta`, `Evaluacion`, `ArtefactoMarkdown` | `/campaniaId` | No | Consulta administrativa filtra por campaña/área/tag/calificación. |
+| `responses` | `Respuesta`, `IdeaConsolidada`, `VersionIdeaConsolidada`, `Evaluacion`, `ArtefactoMarkdown` | `/campaniaId` | No | Consulta administrativa filtra por campaña/idea/madurez; I-19 conserva aportes y versiones en la misma partición. |
 | `config` | `Rubrica`, `Prompt`, `ConfigLLM` (todas las versiones) | `/pk` (= `tipo`) | No | Catálogo versionado de baja escritura. |
 | `security` | `CodigoAuthAdmin`, `LogSeguridad` | `/pk` (= `tipo`) | **Sí** (en `CodigoAuthAdmin`) | OTP con TTL; logs append-only. |
 | `leases` | `WebhookDedupe`, locks | `/id` | **Sí** (corto, p. ej. 7 días) | Idempotencia de mensajes WhatsApp. |
@@ -94,6 +94,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "nombre": "Convención 2026 - Ideas",
   "descripcion": "Captura de ideas para ingresos, costos y productividad",
   "objetivo": "Recolectar y evaluar ideas",
+  "seedThoughts": [],
   "estado": "borrador",
   "mensajesIniciales": [
     {
@@ -137,6 +138,9 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - Solo `activa` permite envío y recepción (`REQ §11.3.1–2`).
 - `promptRefs` y `rubricaRef` a nivel campaña son defaults; cada pregunta puede sobreescribirlos.
 - La pregunta guarda `versionRubrica` para snapshot; la evaluación persistirá la versión efectiva usada.
+- `seedThoughts` (**I-12/I-19**, aditivo, default vacío): lista de contextos orientadores administrados
+  por campaña. Vacío/ausente omite el bloque y no altera consolidación/evaluación. Cuando tenga
+  contenido, `08` lo acota por `Conversacion:MaxTokensSeedThoughts`; no sustituye la rúbrica.
 - `configSeguridad.presupuestoTokensCampania` (P-10, **aditivo**, default `0` = sin límite): techo de tokens LLM acumulados de toda la campaña; con `Conversacion:CuposHabilitados` activo, al alcanzarlo la campaña se trata como cupo LLM agotado (cierre elegante). Documento viejo sin el campo = comportamiento actual.
 - `configConversacional.segmentacionIdeas` (I-06, **aditivo**, default `false`): habilita que una respuesta con varias ideas se segmente en N `Respuesta`/`Evaluacion`/Markdown. Documento viejo sin el campo = comportamiento 1-idea actual. El kill-switch global `Conversacion:SegmentacionIdeas=false` lo anula para todas las campañas.
 - `configConversacional.coachingSecuencialIdeas` (**I-18**, **aditivo**, default `false`): cuando I-06
@@ -216,8 +220,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
     "ideas": [
       {
         "ideaIndice": 1,
+        "ideaId": "idea_resp_idea_1",
         "respuestaRaizId": "resp_idea_1",
         "respuestaVigenteId": "resp_idea_1_rev_1",
+        "versionIdeaVigenteId": "idea_resp_idea_1_v2",
         "estado": "activa",
         "motivoFinalizacion": null,
         "repreguntasUsadas": 1,
@@ -240,6 +246,9 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   `umbral|participante|rechazo|maxRevisiones|tiempo|fallback|desactivacion`. Su
   `repreguntasUsadas` es por idea; el
   contador superior permanece como dato legado/single-idea. Ausente = máquina anterior.
+- `ideaId` y `versionIdeaVigenteId` (**I-19**, aditivos): identifican la unidad consolidada y su
+  versión confirmada vigente. `respuestaVigenteId` se conserva para lectores I-18 y señala el último
+  aporte, pero ya no define por sí solo el texto que se evalúa.
 - `ventanaServicioVenceEn`: fin de la ventana de 24h de WhatsApp (`ARQ §4.1`); decide plantilla vs texto libre.
 - Una conversación por (usuario, campaña, pregunta) en el MVP.
 
@@ -281,6 +290,8 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "ideaRaizId": "resp_...",
   "respuestaAnteriorId": null,
   "revisionIndice": 0,
+  "ideaId": "idea_resp_...",
+  "tipoAporte": "inicial",
   "nivelMadurez": "maduro"
 }
 ```
@@ -292,8 +303,83 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   inmutable de revisiones de una idea. La raíz apunta a sí misma, no tiene anterior y usa índice 0;
   cada revisión conserva la raíz, apunta a la versión inmediatamente anterior e incrementa el índice.
   `ideaIndice`/`respuestaPadreId` no cambian de significado. Ausentes = respuesta legacy.
+- `ideaId` y `tipoAporte` (**I-19**, aditivos, opcionales): enlazan el mensaje original con su unidad
+  lógica consolidada. `tipoAporte` ∈ `inicial|complemento|correccion|nuevaIdea`. La `Respuesta`
+  continúa siendo inmutable y no es la unidad de madurez cuando existe `ideaId`.
 - `nivelMadurez` (**I-17**, **aditivo**, opcional) ∈ `maduro` | `incubacion`. **Se sella al evaluar**, server-side (no lo decide el LLM): `maduro` cuando la calificación total de una evaluación válida supera el umbral efectivo de la campaña/pregunta (`03 §3.3`); `incubacion` en caso contrario, en fallback/pendiente, o tras un **rechazo explícito** del participante ("guardar salvo que diga no", I-17 §5). **Ausente/null en documentos históricos = `incubacion`** por defecto seguro (comportamiento plano previo). Las consultas de resultados (`04 §5.8`) lo exponen y lo aceptan como filtro; el Markdown (`09`) lo registra como metadato. Ver `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 - Para respuestas segmentadas, el `id` debe ser determinístico (`resp_<respuestaPadreIdNormalizado>_<ideaIndice>`) para que reintentos del webhook no dupliquen registros.
+
+### 3.8.1 `IdeaConsolidada` (contenedor `responses`) — I-19
+
+Unidad lógica que se confirma, evalúa, clasifica y muestra en Resultados. No reemplaza ni sobrescribe
+los aportes originales.
+
+```json
+{
+  "id": "idea_resp_wamidabc_1",
+  "type": "IdeaConsolidada",
+  "campaniaId": "c_2026conv",
+  "usuarioId": "u_8f3c...",
+  "preguntaId": "p_ingresos",
+  "conversacionId": "conv_...",
+  "respuestaRaizId": "resp_wamidabc_1",
+  "ideaIndice": 1,
+  "versionConfirmadaRef": "idea_resp_wamidabc_1_v2",
+  "versionPropuestaRef": null,
+  "evaluacionVigenteRef": "eval_...",
+  "estadoFlujo": "cerrada",
+  "estadoResultado": "madura",
+  "nivelMadurez": "maduro",
+  "motivoCierre": "umbral",
+  "estadoCuraduria": "pendiente",
+  "reaperturas": 0,
+  "creadaEn": "2026-07-27T14:00:00Z",
+  "actualizadaEn": "2026-07-27T14:08:00Z",
+  "cerradaEn": "2026-07-27T14:08:00Z"
+}
+```
+
+- `id` es estable y determinístico a partir de `respuestaRaizId`.
+- `estadoFlujo` ∈ `pendienteConfirmacion|enMejora|enRevision|cerrada`.
+- `estadoResultado` ∈ `madura|pendiente|rechazada`; es null mientras no exista resultado cerrado.
+- `nivelMadurez` conserva la vista I-17: `madura→maduro`; `pendiente|rechazada→incubacion`.
+- `estadoCuraduria` solo puede ser `pendiente` en I-19 y solo para una idea madura. Las transiciones
+  humanas se implementarán en una iniciativa posterior.
+- Al reabrir una idea madura, `estadoFlujo=enRevision` y `estadoCuraduria=null` hasta reevaluar la
+  nueva versión confirmada, para que una versión en cambio no avance a curaduría.
+- Una reapertura mantiene el mismo `ideaId`; cambia punteros/estado de forma idempotente y conserva
+  todas las versiones.
+
+### 3.8.2 `VersionIdeaConsolidada` (contenedor `responses`) — I-19
+
+Paráfrasis acumulada e inmutable:
+
+```json
+{
+  "id": "idea_resp_wamidabc_1_v2",
+  "type": "VersionIdeaConsolidada",
+  "campaniaId": "c_2026conv",
+  "ideaId": "idea_resp_wamidabc_1",
+  "numero": 2,
+  "versionAnteriorId": "idea_resp_wamidabc_1_v1",
+  "texto": "Crear una comunidad de mentores dirigida a empleados nuevos...",
+  "aporteIdsAcumulados": ["resp_raiz", "resp_revision_1"],
+  "aporteNuevoIds": ["resp_revision_1"],
+  "origen": "complemento",
+  "estadoConfirmacion": "confirmada",
+  "evaluacionRef": "eval_...",
+  "promptConsolidacionRef": "pr_consolidar",
+  "versionPromptConsolidacion": 1,
+  "configLLMSnapshot": { "proveedor": "AzureOpenAI", "modelo": "..." },
+  "generadaEn": "2026-07-27T14:06:00Z",
+  "confirmadaEn": "2026-07-27T14:07:00Z"
+}
+```
+
+- `estadoConfirmacion` ∈ `propuesta|confirmada|descartada|expirada`.
+- `origen` ∈ `inicial|complemento|correccion|reapertura`.
+- Solo una versión `confirmada` puede ser `versionConfirmadaRef` y recibir evaluación.
+- Una corrección crea otra versión; nunca modifica texto ni procedencia de una versión existente.
 
 ### 3.9 `Evaluacion` (contenedor `responses`) — `REQ §29.13`, `§20`
 
@@ -305,6 +391,9 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "type": "Evaluacion",
   "campaniaId": "c_2026conv",
   "respuestaId": "resp_...",
+  "ideaId": "idea_resp_...",
+  "versionIdeaId": "idea_resp_..._v2",
+  "origenTextoEvaluado": "ideaConsolidada",
   "usuarioId": "u_8f3c...",
   "preguntaId": "p_ingresos",
   "rubricaRef": "r_general",
@@ -313,6 +402,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "versionPrompt": 5,
   "configLLMRef": "llm_default",
   "configLLMSnapshot": { "proveedor": "AzureOpenAI", "modelo": "gpt-4o-mini", "endpoint": "https://...", "parametros": { "temperature": 0.2 } },
+  "seedThoughtsSnapshot": { "usadas": false, "contenido": [], "truncadas": false },
   "pesosUsados": { "claridad": 0.3, "impacto": 0.5, "viabilidad": 0.2 },
   "calificacionPorCriterio": [
     { "criterio": "claridad", "puntaje": 4, "justificacion": "Idea clara." }
@@ -333,6 +423,12 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 - `recomendacion` ∈ `cerrar` | `repreguntar`.
 - `usoTokens` (P-10, **aditivo**, ausente = uso desconocido → suma 0): tokens reportados por el proveedor en la llamada; el costo acumulado de la campaña se deriva sumando este campo sobre las evaluaciones (sin documentos contadores). Ver `Campania.configSeguridad.presupuestoTokensCampania` y `10 §2`.
 - `parafraseoDevuelto` (I-05, **aditivo**, opcional): resumen fiel del aporte mostrado antes de la retroalimentación. Ausente/null (documento previo, flag apagado o salida LLM sin el campo) conserva la retro clásica; si supera `Conversacion:MaxCaracteresParafraseo`, se guarda solo hasta la última frase completa dentro del límite.
+- `ideaId`, `versionIdeaId` y `origenTextoEvaluado` (**I-19**, aditivos, opcionales): demuestran qué
+  versión consolidada completa fue evaluada. En I-19, `respuestaId` conserva la raíz por
+  compatibilidad. Una evaluación sin `versionIdeaId` no puede promover una `IdeaConsolidada` a madura.
+- `seedThoughtsSnapshot` (**I-12/I-19**, aditivo, opcional): contenido orientador efectivamente usado
+  y marca de truncamiento para reproducibilidad. Vacío/ausente significa que la evaluación no usó
+  semillas y no altera el contrato de puntuación.
 - Si la evaluación cayó en fallback (proveedor falló o salida inválida): `estado` de la `Respuesta` = `evaluacionPendiente`, y este documento se guarda con los campos disponibles + `anomaliaSeguridad`/marca de fallo en `explicacion` (ver `08 §6`).
 
 ### 3.10 `ArtefactoMarkdown` (contenedor `responses`) — `REQ §29.14`, `§22`
@@ -342,20 +438,25 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "id": "md_...",
   "type": "ArtefactoMarkdown",
   "campaniaId": "c_2026conv",
-  "tipoArtefacto": "respuesta",
+  "tipoArtefacto": "idea",
   "usuarioId": "u_8f3c...",
   "preguntaId": "p_ingresos",
-  "respuestaRef": "resp_...",
+  "respuestaRef": null,
+  "ideaRef": "idea_resp_...",
+  "versionIdeaRef": "idea_resp_..._v2",
   "evaluacionRef": "eval_...",
   "contenidoMarkdown": "# Título...\n",
-  "blobPath": "campanias/c_2026conv/respuesta/resp_....md",
+  "blobPath": "campanias/c_2026conv/idea/idea_resp_....md",
   "estado": "generado",
   "version": 1,
   "creadoEn": "2026-06-11T14:05:12Z",
   "actualizadoEn": "2026-06-11T14:05:12Z"
 }
 ```
-- `tipoArtefacto` ∈ `respuesta` | `participante` | `campania` | `entidad` | `capitulo` (`REQ §29.14`). MVP: al menos `respuesta` (`REQ §22.2`).
+- `tipoArtefacto` ∈ `respuesta` | `idea` | `participante` | `campania` | `entidad` | `capitulo`
+  (`REQ §29.14`). I-19 usa `idea` como artefacto canónico por `ideaId`; `respuesta` permanece para
+  históricos/compatibilidad.
+- `ideaRef`/`versionIdeaRef` son opcionales y obligatorios para `tipoArtefacto=idea`.
 - El contenido se guarda en Blob **y** embebido aquí para consulta rápida (`ARQ §7.3`). El Blob/Cosmos es **caché materializada**; siempre regenerable desde datos operativos (`REQ §22.4.6`, `§23.3`).
 
 ### 3.11 `Rubrica` (contenedor `config`) — `REQ §29.8`, `§17`
@@ -513,7 +614,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 | Campania (+ mensajes, preguntas) | `campaigns` | 07 |
 | ParticipanteCampania, EnvioMensaje | `participants` | 05, 07 |
 | Conversacion, Mensaje | `conversations` | 05 |
-| Respuesta, Evaluacion, ArtefactoMarkdown | `responses` | 05, 08, 09 |
+| Respuesta, IdeaConsolidada, VersionIdeaConsolidada, Evaluacion, ArtefactoMarkdown | `responses` | 05, 08, 09, I-19 |
 | Rubrica, Prompt, ConfigLLM | `config` | 07, 08 |
 | CodigoAuthAdmin, LogSeguridad | `security` | 06, 10 |
 | WebhookDedupe | `leases` | 05 |

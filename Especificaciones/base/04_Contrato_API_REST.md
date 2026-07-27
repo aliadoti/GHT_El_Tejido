@@ -200,6 +200,7 @@ Ana Perez,573001112233,Operaciones,GHT,t_area_oper;t_lider
 Campos de configuración conversacional (aditivos; documento viejo/campo ausente conserva comportamiento actual):
 ```json
 {
+  "seedThoughts": [],
   "configConversacional": {
     "maxRepreguntas": 1,
     "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
@@ -212,6 +213,9 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
   }
 }
 ```
+- `seedThoughts` (`I-12/I-19`, default `[]`): lista opcional de contexto orientador. Vacía/ausente no
+  cambia el flujo; la API nunca inventa valores. Se usa al evaluar la versión consolidada confirmada,
+  acotada por `Conversacion:MaxTokensSeedThoughts`, sin agregar criterios fuera de la rúbrica.
 - `segmentacionIdeas` (`I-06`, default `false`): si está en `true` y el kill-switch global
   `Conversacion:SegmentacionIdeas` no lo apaga, el backend puede separar un mensaje con varias ideas en
   N respuestas/evaluaciones/Markdown. El portal lo expone como checkbox en Configuración de campaña.
@@ -266,8 +270,11 @@ Asociar por filtro (ejemplo):
 
 Ambos responden **200** con el reporte de conteos:
 ```json
-{ "conversaciones": 1, "mensajes": 3, "respuestas": 1, "evaluaciones": 1, "artefactos": 1, "blobsBorrados": 1, "blobsFallidos": 0, "participantesReseteados": 1 }
+{ "conversaciones": 1, "mensajes": 3, "respuestas": 1, "ideas": 1, "versionesIdeas": 2, "evaluaciones": 1, "artefactos": 1, "blobsBorrados": 1, "blobsFallidos": 0, "participantesReseteados": 1 }
 ```
+`ideas` y `versionesIdeas` son conteos aditivos I-19; clientes anteriores pueden ignorarlos. El
+reinicio elimina esos documentos dentro del mismo participante/campaña para no dejar resultados
+canónicos huérfanos.
 Reset de participante (`03 §3.4`, campos existentes): `estadoRespuesta=sinRespuesta`, `fechaUltimaRespuesta=null`; con `reiniciarEnvios=true` además `estadoEnvio=pendiente` y `fechaPrimerEnvio=null` (permite re-disparar el envío inicial desde Envíos). La acción queda auditada en `LogSeguridad` (`AccionAdministrativa`) con conteos y `correlationId`; sin PII.
 
 ### 5.4 Envíos — `REQ §15`, `§26.2`
@@ -327,7 +334,9 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 |---|---|---|
 | GET | `/api/admin/conversaciones` | Lista/filtra conversaciones. |
 | GET | `/api/admin/conversaciones/{id}` | Detalle con mensajes in/out. |
-| GET | `/api/admin/respuestas` | Lista/filtra (`usuarioId, preguntaId, estado` y, **I-17**, `nivelMadurez`). |
+| GET | `/api/admin/ideas` | **I-19:** lista una fila por idea lógica (`usuarioId, preguntaId, estadoResultado, estadoFlujo, estadoCuraduria`). |
+| GET | `/api/admin/ideas/{id}` | **I-19:** idea vigente + evaluación + aportes/versiones auditables. |
+| GET | `/api/admin/respuestas` | Lista/filtra aportes originales (`usuarioId, preguntaId, estado` y, para legacy, `nivelMadurez`). |
 | GET | `/api/admin/respuestas/{id}` | Respuesta + evaluación asociada. |
 | GET | `/api/admin/evaluaciones/{id}` | Evaluación completa (calificación, explicación, versiones). |
 | GET | `/api/admin/markdown` | Lista artefactos Markdown (`campaniaId, tipoArtefacto, usuarioId, preguntaId`). |
@@ -344,11 +353,30 @@ documentos históricos se interpreta como `incubacion`. `GET /api/admin/respuest
 opcional `nivelMadurez=maduro|incubacion` (vacío = todas), aplicado en memoria como el resto de los
 filtros de `§2`. Permite a la pantalla de Resultados separar "Maduras" e "Incubación".
 
+**I-19 (aditivo):** cuando existe `ideaId`, la unidad principal de Resultados es
+`IdeaConsolidada`, no cada `Respuesta`. `GET /api/admin/ideas` exige `campaniaId` como el resto de los
+resultados y acepta:
+
+```text
+usuarioId, preguntaId,
+estadoResultado=madura|pendiente|rechazada,
+estadoFlujo=pendienteConfirmacion|enMejora|enRevision|cerrada,
+estadoCuraduria=pendiente
+```
+
+El DTO de lista devuelve `id`, `usuarioId`, `preguntaId`, `ideaIndice`, extracto de la versión
+confirmada (o propuesta marcada si todavía no hay confirmación), estados, `nivelMadurez`,
+`evaluacionVigenteRef`, `versionConfirmadaRef`, fechas y motivo de cierre. El detalle devuelve además
+las versiones ordenadas, aportes originales, evaluación vigente y propuesta pendiente. Las versiones
+rechazadas requieren los mismos roles administrativos vigentes y nunca aparecen al filtrar maduras.
+
 Campos aditivos de respuesta para I-06/I-18:
 ```json
 {
   "id": "resp_wamidabc_1",
   "texto": "Idea segmentada...",
+  "ideaId": "idea_resp_wamidabc_1",
+  "tipoAporte": "inicial",
   "ideaIndice": 1,
   "respuestaPadreId": "wamid.abc",
   "ideaRaizId": "resp_wamidabc_1",
@@ -360,10 +388,14 @@ Campos aditivos de respuesta para I-06/I-18:
   pueden ignorarlos.
 - `ideaRaizId`/`respuestaAnteriorId`/`revisionIndice` (I-18) permiten recorrer las revisiones sin
   cambiar el significado de los campos I-06. Son opcionales y ausentes en datos legacy.
+- `ideaId`/`tipoAporte` (I-19) enlazan el aporte con la idea lógica. `/respuestas` se conserva para
+  auditoría/compatibilidad y deja de alimentar una fila independiente de Resultados cuando existe
+  `ideaId`.
 - `GET /api/admin/conversaciones/{id}` expone opcionalmente `coachingIdeas` (`03 §3.6`) con la idea
   activa, estados, contadores y referencias vigentes; no incluye nuevos textos ni secretos.
-- Los endpoints de Markdown no cambian: cada idea segmentada produce un artefacto `tipoArtefacto=respuesta`
-  con `respuestaRef` propio.
+- Los endpoints de Markdown conservan sus rutas. Para I-19, una idea produce un artefacto canónico
+  `tipoArtefacto=idea`, con `ideaRef`/`versionIdeaRef`; los artefactos históricos
+  `tipoArtefacto=respuesta` no se eliminan.
 
 ### 5.9 Catálogos auxiliares
 | Método | Ruta | Descripción |

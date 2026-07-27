@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-25 (I-18 implementada y verificada localmente; activación operativa pendiente).
+> Última actualización: 2026-07-27 (I-19 especificada; implementación pendiente de aprobación).
 
 ## Antes de empezar (léelo una vez)
 
@@ -158,6 +158,30 @@ o el resumen aparece para una idea en incubación.
 ---
 
 ## B. Lo que se prueba conversando (simulación o WhatsApp real)
+
+### 📝 I-19 — Construir y calificar una sola idea completa
+
+**Qué es:** cada respuesta del participante complementa la misma idea. El sistema devuelve lo que
+entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Esta prueba se
+ejecutará cuando la implementación sea autorizada; hoy sirve como criterio de revisión.
+
+1. Responde una pregunta con una idea incompleta. **Deberías ver:** una paráfrasis de lo entendido y
+   una petición de confirmación.
+2. Corrige un dato. **Deberías ver:** una nueva paráfrasis completa, con la corrección y sin perder lo
+   anterior.
+3. Confirma. Solo entonces debe llegar la evaluación o una pregunta para mejorar.
+4. Responde únicamente con el dato faltante. La siguiente paráfrasis debe contener la idea completa,
+   no solo esa última frase.
+5. Termina la idea y abre **Resultados**. **Deberías ver:** una sola fila, marcada como madura,
+   pendiente o rechazada, con los aportes/versiones dentro del detalle.
+6. Escribe **“quiero complementar la anterior”**. Debe reabrir esa misma idea, volver a confirmar la
+   nueva versión y recalificarla.
+7. Si queda madura, debe decir **Pendiente de curaduría**; no debe enviarse automáticamente a
+   implementación, conocimiento o acta.
+
+**Algo va mal si:** una frase complementaria aparece/califica como otra idea; el sistema olvida o
+inventa información; evalúa antes de confirmar; muestra una fila por revisión; conserva una nota de
+otra versión; o publica sin curaduría.
 
 ### ✅ I-03 — El coach repregunta sobre lo más flojo, sin "delatar" la rúbrica
 **Qué es:** cuando tu respuesta es floja en algún aspecto, el coach te invita a profundizar **en ese

@@ -13,6 +13,13 @@
 > portal 24/24, formatos y builds verdes. Todos los campos y banderas nuevos nacen apagados o
 > ausentes, por lo que el despliegue no cambia campañas existentes. Falta D5 real, UAT y revisión de
 > costo antes de activar.
+>
+> **Extensión normativa I-19 (especificada 27-jul-2026; no implementada):** al implementar
+> `I-19_Consolidacion_Progresiva_Ideas.md`, la “versión vigente” deja de ser el último aporte y pasa a
+> ser la `VersionIdeaConsolidada` confirmada. Cada aporte se conserva, se parafrasea de forma acumulada,
+> se confirma y solo entonces se evalúa. I-19 también permite detectar complemento + idea nueva y
+> reabrir una idea anterior. Estas reglas prevalecen sobre cualquier frase legacy de esta spec que diga
+> evaluar o mostrar `respuestaVigenteId` como resultado final.
 
 ## 1. Resultado que se busca
 
@@ -98,10 +105,12 @@ dentro de las reglas anteriores.
 
 Mientras existe una idea activa, el siguiente entrante que no sea una intención explícita de salida:
 
-- se interpreta como revisión de **esa idea**, no se vuelve a segmentar;
+- se interpreta inicialmente como aporte a **esa idea**; con I-19, el consolidador puede separar una
+  idea nueva adicional y añadirla al final de la cola;
 - se persiste como una nueva `Respuesta`, enlazada con la raíz y la revisión anterior;
-- se evalúa con la misma rúbrica/pregunta y el historial acotado de esa idea;
-- sustituye a `respuestaVigenteId` para decidir madurez y Markdown vigentes;
+- con I-19 se integra en una paráfrasis acumulada y se pide confirmación;
+- solo la versión consolidada confirmada se evalúa con la misma rúbrica/pregunta;
+- `versionIdeaVigenteId` decide madurez y Markdown; `respuestaVigenteId` conserva el último aporte;
 - conserva las versiones anteriores para auditoría.
 
 La revisión que responde a la última repregunta permitida **sí se evalúa**. El límite impide enviar
@@ -208,8 +217,10 @@ Bloque opcional, ausente en conversaciones históricas y en campañas legacy:
   "ideas": [
     {
       "ideaIndice": 1,
+      "ideaId": "idea_resp_idea_1",
       "respuestaRaizId": "resp_idea_1",
       "respuestaVigenteId": "resp_idea_1_rev_1",
+      "versionIdeaVigenteId": "idea_resp_idea_1_v2",
       "estado": "activa",
       "motivoFinalizacion": null,
       "repreguntasUsadas": 1,
@@ -247,8 +258,9 @@ Campos opcionales nuevos:
 - Cada revisión apunta a la respuesta inmediatamente anterior y conserva la misma raíz.
 - `ideaIndice` y `respuestaPadreId` de I-06 conservan su significado; no se reutilizan.
 - El DTO de resultado y el detalle de conversación exponen estos campos/bloque de forma opcional.
-- El Markdown vigente se compila desde `respuestaVigenteId` e incluye raíz/revisión como metadatos
-  auditables; no elimina artefactos históricos.
+- Antes de I-19, el Markdown vigente se compila desde `respuestaVigenteId`. Con I-19 se compila desde
+  `ideaId`/`versionIdeaVigenteId`; raíz/revisión permanecen como metadatos auditables y no se eliminan
+  artefactos históricos.
 
 ## 6. Prompt y arbitraje del servidor
 
@@ -286,7 +298,8 @@ estado, el umbral, el número de preguntas ni los guardrails.
 2. Aplicar idempotencia, cupos, techo de turnos e intenciones.
 3. Si es salida/rechazo explícito, finalizar la idea sin una llamada LLM innecesaria.
 4. Si es contenido, persistir la revisión enlazada y evaluarla.
-5. Actualizar `respuestaVigenteId`, madurez y Markdown.
+5. Actualizar `respuestaVigenteId`; con I-19, consolidar/confirmar y actualizar
+   `versionIdeaVigenteId`, madurez y Markdown canónico.
 6. Si alcanza umbral, finalizar y avanzar.
 7. Si no alcanza y quedan repreguntas, enviar un nuevo turno de coaching.
 8. Si no quedan, finalizar por `maxRevisiones` y avanzar.
@@ -328,7 +341,8 @@ Antes de activar, P-10 debe dimensionar `maxLlamadasLlmPorUsuario`, costo por ca
 - [ ] Con dos ideas bajo umbral, se crean/evalúan dos raíces y se activa únicamente la primera.
 - [ ] El primer mensaje de coaching no dice “Registramos 2 ideas”, no ofrece cerrar por defecto y
   contiene exactamente una pregunta centrada en el criterio más débil.
-- [ ] Una revisión se enlaza a la idea activa, se evalúa y no se vuelve a segmentar.
+- [ ] Una revisión se enlaza a la idea activa. Con I-19 se consolida/confirma antes de evaluar y, si
+  también contiene otra idea, esa nueva idea se añade a la cola sin mezclarlas.
 - [ ] Al superar el umbral efectivo, la idea finaliza y el sistema pasa a la siguiente.
 - [ ] “Así está bien” finaliza solo la idea activa; “no lo guardes” la degrada y también avanza.
 - [ ] La respuesta a la última repregunta se evalúa antes de finalizar por límite.

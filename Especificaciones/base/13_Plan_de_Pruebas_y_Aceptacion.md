@@ -27,22 +27,29 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 5. Envía mensajes iniciales desde el portal; reenvía a quienes no respondieron; reintenta fallidos.
 6. Carga/edita una rúbrica Markdown (versionada); edita y **aprueba** prompts.
 7. Configura proveedor/modelo LLM y guarda la API key de forma segura (enmascarada; solo `apiKeyRef` en BD).
-8. Consulta respuestas, calificaciones, explicaciones y Markdown; filtra por campaña, usuario, área, empresa, tag, pregunta, calificación, etc.
+8. Consulta una fila por idea consolidada, con estado, calificación, explicación, Markdown e historial
+   de aportes/versiones; los resultados históricos siguen disponibles.
 
 ## 3. Criterios de aceptación — Participante (`REQ §33.2`)
 1. Recibe el mensaje inicial por WhatsApp tras el envío del admin.
 2. Al responder, el sistema lo reconoce por su número normalizado.
 3. Un no matriculado recibe mensaje neutral de no-acceso; uno activo y asociado continúa.
-4. La respuesta se guarda y se evalúa con el LLM y la rúbrica configurada.
-5. Recibe retroalimentación corta y útil; como máximo **una** repregunta.
-6. La interacción cierra con un mensaje de agradecimiento.
+4. Su aporte se guarda; el sistema parafrasea la idea completa y pide confirmación.
+5. Puede corregir la paráfrasis sin perder lo dicho anteriormente.
+6. Solo la versión consolidada confirmada se evalúa con el LLM y la rúbrica configurada.
+7. Recibe retroalimentación corta y útil y trabaja una idea a la vez.
+8. Puede volver a una idea anterior mientras la campaña esté activa.
+9. La interacción cierra dejando la idea madura, pendiente o rechazada; una madura queda pendiente de
+   curaduría y no se publica automáticamente.
 
 ## 4. Criterios de aceptación — Sistema y Seguridad (`REQ §33.3`, `§36.6`)
-1. Guarda historial, mensajes iniciales enviados, estado de envío por participante, respuestas, evaluaciones.
+1. Guarda historial, mensajes iniciales enviados, estado de envío, aportes, ideas consolidadas,
+   versiones, confirmaciones y evaluaciones.
 2. Guarda **prompt+versión, rúbrica+versión, config LLM** usadas (snapshots reproducibles).
 3. Genera Markdown, permite consultarlo y **regenerarlo** desde datos operativos.
 4. Permite cambiar configuración sin tocar código.
-5. Controla **máximo una repregunta** (≤2 evaluaciones por hilo).
+5. Controla el máximo configurado de repreguntas por idea; una corrección no se evalúa hasta
+   confirmarse.
 6. Aplica límites de seguridad (longitud, cupos, rate limit, intentos).
 7. Verifica la firma del webhook; idempotencia ante reintentos de Meta.
 8. No filtra secretos en logs, telemetría ni Markdown; auth neutral; anti prompt-injection efectivo.
@@ -59,10 +66,13 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 6. Configurar proveedor/modelo LLM y API key.
 7. Login del admin con código por WhatsApp.
 8. Enviar mensajes iniciales; verificar recepción en los 5 teléfonos.
-9. Cada usuario responde; verificar evaluación, retroalimentación breve y (si aplica) una repregunta.
-10. Verificar cierre con agradecimiento.
-11. Verificar generación de Markdown y consulta/filtros en el portal.
-12. Verificar trazabilidad (versiones, snapshots) y ausencia de secretos en artefactos/logs.
+9. Cada usuario responde; verificar paráfrasis completa y pedir confirmación.
+10. En al menos un caso, responder después solo con un dato faltante y comprobar que la nueva
+    paráfrasis mantiene lo anterior; confirmar y verificar que esa versión completa es la evaluada.
+11. Probar una idea madura, una pendiente, una rechazada y la reapertura de “la anterior”.
+12. Verificar cierre, Markdown canónico por idea y una sola fila por idea en Resultados.
+13. Verificar trazabilidad (aportes, versiones, confirmaciones, snapshots) y ausencia de secretos en
+    artefactos/logs.
 
 ---
 
@@ -81,6 +91,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §20, §25.3, §26.5 Evaluación LLM | 08 | Unit (validación salida, fallback) + §3.4, §4 |
 | §21, §26.6 Retro y repregunta única | 05 §4 | Unit (máquina de estados) + §3.5 |
 | §22, §26.7 Markdown | 09 | Unit (render) + integración (regenerar) + §4.3 |
+| §9/§20/§21/§22 Consolidación progresiva I-19 | I-19, 03 §3.8.1–2, 05 §4.4.2, 08 §2.2 | Unit (versiones/estados/intenciones) + integración (confirmar/evaluar/reabrir) + E2E §5.9–13 |
 | §25 Guardrails/abuso | 10 §2 | Unit + integración límites + §4.6 |
 | §30 Trazabilidad | 10 §6 | Integración (snapshots, logs) + §4.1–2 |
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |
@@ -97,6 +108,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 - [ ] Plantillas de WhatsApp aprobadas por Meta (mensaje inicial, autenticación, repregunta).
 - [ ] Secretos en Key Vault; ninguno en repo/logs.
 - [ ] E2E §5 ejecutado con 5 usuarios reales.
+- [ ] I-19: ninguna evaluación vigente usa solo el último complemento; ideas maduras quedan
+  pendientes de curaduría.
 - [ ] `SUPUESTOS.md` revisado (decisiones de ambigüedad documentadas).
 
 ---
@@ -106,5 +119,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 - Ventana de 24h vencida antes de la repregunta → probar el camino de plantilla de repregunta.
 - Pérdida de jobs en cola in-memory ante reinicio (`02 §5`) → verificar re-disparo de envío por estado de participante.
 - Consistencia de la evaluación LLM → revisión humana de calificaciones en el MVP (`REQ §8.3`).
+- Fidelidad de consolidación I-19 → probar correcciones, contradicciones, reaperturas, mezcla de
+  complemento+nueva idea y fallback; una propuesta incorrecta nunca debe madurar sin confirmación.
 
 *Fin del documento.*

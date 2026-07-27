@@ -534,3 +534,44 @@
   prompt `08`, Markdown `09`, guardrails `10`, portal y QA. Las campañas existentes conservan el
   flujo I-06 porque el gate por campaña queda apagado. D5 real, UAT y costo siguen siendo requisitos
   operativos antes de activar. Spec: `Iniciativas/I-18_Coaching_Secuencial_Por_Idea.md`.
+
+### consolidacion-progresiva-i19 - Idea canónica confirmada, reevaluable y preparada para curaduría
+
+- Fecha: 2026-07-27 - Agente/Rol: Codex - Arquitecto/Tech Lead/Backend/AppSec/SDET - Decisiones
+  confirmadas por el usuario antes de escribir la especificación.
+- Contexto: el hilo actual ya es único por participante/campaña/pregunta, pero cada aporte/revisión se
+  guarda y evalúa como `Respuesta` independiente. El historial acotado no equivale a una idea
+  acumulada, por lo que una frase complementaria puede recibir una calificación que no representa el
+  resultado completo. I-18 conserva linaje/última respuesta, pero no una versión canónica confirmada.
+- Decisión:
+  - **Unidad lógica nueva:** aportes originales inmutables + `IdeaConsolidada` estable +
+    `VersionIdeaConsolidada` inmutable. La madurez, Resultados y Markdown usan la versión confirmada,
+    no el último mensaje.
+  - **Confirmación obligatoria:** cada consolidación se parafrasea y el participante confirma o
+    corrige antes de evaluar. Una propuesta no confirmada nunca puede ser madura.
+  - **Evaluación coherente:** rúbrica, prompt, retroalimentación y pregunta socrática usan la misma
+    versión consolidada completa. I-17 conserva fórmula/umbral y proyecta
+    `madura→maduro`, `pendiente|rechazada→incubacion`.
+  - **Estados:** madura al superar umbral; pendiente al terminar bajo umbral/fallback/inactividad;
+    rechazada ante “no lo guardes”, siempre conservada para auditoría. Las maduras reciben
+    `estadoCuraduria=pendiente`; no hay publicación/priorización automática.
+  - **Multi-idea:** una sola idea activa. Un mensaje con complemento + idea nueva alimenta la activa y
+    encola la nueva; I-19 prevalece sobre la regla I-18 que antes no resegmentaba revisiones.
+  - **Reapertura:** mientras la campaña esté activa, “la anterior” reabre la idea cerrada más reciente;
+    referencias ambiguas se resuelven con lista numerada. Conserva `ideaId`, crea versión nueva y
+    reevalúa; una campaña cerrada no admite cambios del participante.
+  - **Seeds:** el flujo funciona con `seedThoughts` vacío. Cuando I-12 tenga insumo, orienta
+    relevancia/coaching de forma separada y acotada, sin crear criterios ocultos ni sustituir rúbrica.
+  - **Activación:** sin flag por campaña; se enciende para todas al desplegar. Solo existe
+    `Conversacion:ConsolidacionProgresivaHabilitada=true` como kill-switch global de emergencia. En
+    `false`, los nuevos aportes quedan pendientes y no se vuelve al defecto de calificarlos aislados.
+  - **Mediano plazo:** `ideaId`, versiones, procedencia y `estadoCuraduria` preparan crowdsourcing,
+    conocimiento y actas, pero la UI/transiciones de curaduría y los destinos se implementan aparte.
+- Alternativas descartadas: concatenar texto sin confirmación; sobrescribir `Respuesta.texto`; evaluar
+  el último mensaje y usar historial como sustituto; una fila/Markdown por revisión; activar por
+  campaña; publicar maduras automáticamente; migración destructiva de históricos.
+- Impacto / reversibilidad: contratos aditivos `03`/`04`/`08`/`09`, orquestador `05`, Reglas,
+  Resultados, QAS y observabilidad. Sin migración masiva; históricos siguen visibles. Especificación:
+  `Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md`. Implementación autorizada y WIP local: cortes
+  1–4 y el soporte estructural de cola están listos; falta migrar las transiciones multi-idea, reapertura,
+  Resultados/Markdown, seeds, observabilidad y las validaciones D5/UAT/costo previas a desplegar.
