@@ -14,6 +14,24 @@ public interface IRepositorioRespuestas
 
     Task<Respuesta?> ObtenerRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken);
 
+    Task GuardarIdeaConsolidadaAsync(IdeaConsolidada idea, CancellationToken cancellationToken)
+        => throw new NotSupportedException("El repositorio no implementa ideas consolidadas I-19.");
+
+    Task<IdeaConsolidada?> ObtenerIdeaConsolidadaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+        => throw new NotSupportedException("El repositorio no implementa ideas consolidadas I-19.");
+
+    Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasConsolidadasAsync(string campaniaId, CancellationToken cancellationToken)
+        => throw new NotSupportedException("El repositorio no implementa ideas consolidadas I-19.");
+
+    Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
+        => throw new NotSupportedException("El repositorio no implementa versiones de ideas I-19.");
+
+    Task<VersionIdeaConsolidada?> ObtenerVersionIdeaAsync(string campaniaId, string versionId, CancellationToken cancellationToken)
+        => throw new NotSupportedException("El repositorio no implementa versiones de ideas I-19.");
+
+    Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesIdeaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+        => throw new NotSupportedException("El repositorio no implementa versiones de ideas I-19.");
+
     Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken);
 
     /// <summary>
@@ -83,4 +101,6 @@ public sealed record ConteoBorradoRespuestas(
     int Respuestas,
     int Evaluaciones,
     int Artefactos,
-    IReadOnlyCollection<string> RutasBlob);
+    IReadOnlyCollection<string> RutasBlob,
+    int Ideas = 0,
+    int VersionesIdea = 0);

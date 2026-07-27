@@ -21,6 +21,7 @@ public static class ServiciosLlm
         services.TryAddSingleton(TimeProvider.System);
         services.AddHttpClient<ILlmClient, LlmClientHttp>();
         services.AddScoped<ISegmentadorIdeas, SegmentadorIdeas>();
+        services.AddScoped<IConsolidadorIdeas, ConsolidadorIdeas>();
 
         if (OpcionesPersistencia.HayAlmacen(configuration))
         {

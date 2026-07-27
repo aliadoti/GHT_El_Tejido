@@ -53,4 +53,23 @@ public sealed class PoliticaColaCoachingIdeasTests
         cola.IdeaActiva.Should().BeNull();
         cola.Ideas.Should().OnlyContain(idea => idea.Estado == EstadoIdeaCoaching.Finalizada);
     }
+
+    [Fact]
+    public void ActualizarVersionIdeaVigente_ConservaElAporteYEstableceLaReferenciaCanonica()
+    {
+        var cola = _politica.Crear(
+            "wamid.raiz",
+            new[] { new RaizIdeaCoaching(1, "resp_1", null) },
+            Ahora);
+
+        cola = _politica.ActualizarRespuestaVigente(cola, "resp_1_complemento");
+        cola = _politica.ActualizarVersionIdeaVigente(cola, "idea_1", "idea_1_v2");
+
+        cola.IdeaActiva.Should().BeEquivalentTo(new
+        {
+            RespuestaVigenteId = "resp_1_complemento",
+            IdeaId = "idea_1",
+            VersionIdeaVigenteId = "idea_1_v2",
+        });
+    }
 }

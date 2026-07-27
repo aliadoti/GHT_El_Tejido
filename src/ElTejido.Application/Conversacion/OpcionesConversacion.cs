@@ -140,6 +140,15 @@ public sealed class OpcionesConversacion
     public bool Parafraseo { get; set; } = true;
 
     /// <summary>
+    /// I-19: kill-switch global de emergencia. Nace activo para todas las campañas; al apagarlo los
+    /// aportes nuevos no vuelven a ser evaluados como respuestas aisladas.
+    /// </summary>
+    public bool ConsolidacionProgresivaHabilitada { get; set; } = true;
+
+    /// <summary>I-19: límite de la versión acumulada; evita truncar silenciosamente hechos confirmados.</summary>
+    public int MaxCaracteresIdeaConsolidada { get; set; } = 4000;
+
+    /// <summary>
     /// Máximo de caracteres del parafraseo que se muestra al participante (I-05). Si excede el
     /// límite, el evaluador conserva solo frases completas; 400 es el default operativo.
     /// </summary>

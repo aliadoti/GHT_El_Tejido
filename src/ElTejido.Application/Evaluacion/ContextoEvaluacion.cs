@@ -45,4 +45,9 @@ public sealed record ContextoEvaluacion(
     /// conserva el prompt y la salida legacy.
     /// </summary>
     public bool CoachingSecuencialIdeas { get; init; }
+
+    /// <summary>I-19: la evaluación corresponde a esta idea y versión confirmada, no al último aporte.</summary>
+    public string? IdeaId { get; init; }
+
+    public string? VersionIdeaId { get; init; }
 }

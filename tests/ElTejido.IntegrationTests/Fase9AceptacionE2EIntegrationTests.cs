@@ -139,6 +139,8 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                     ["WhatsApp:PlantillaEnvioInicial:Idioma"] = "es_CO",
                     ["WhatsApp:PlantillaEnvioInicial:Componentes:0"] = "nombre",
                     ["WhatsApp:PlantillaEnvioInicial:Componentes:1"] = "campania",
+                    // Aceptación histórica del MVP; el flujo I-19 se valida en su propio recorrido.
+                    ["Conversacion:ConsolidacionProgresivaHabilitada"] = "false",
                 });
             });
             builder.ConfigureTestServices(services =>

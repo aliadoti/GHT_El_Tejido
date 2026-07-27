@@ -25,7 +25,9 @@ public sealed class Respuesta
         NivelMadurez nivelMadurez,
         string? ideaRaizId,
         string? respuestaAnteriorId,
-        int? revisionIndice)
+        int? revisionIndice,
+        string? ideaId,
+        TipoAporteIdea? tipoAporte)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -44,6 +46,8 @@ public sealed class Respuesta
         IdeaRaizId = ideaRaizId;
         RespuestaAnteriorId = respuestaAnteriorId;
         RevisionIndice = revisionIndice;
+        IdeaId = ideaId;
+        TipoAporte = tipoAporte;
     }
 
     public string Id { get; }
@@ -80,6 +84,12 @@ public sealed class Respuesta
 
     public int? RevisionIndice { get; }
 
+    /// <summary>I-19: idea lógica a la que aporta este texto original; nulo conserva documentos históricos.</summary>
+    public string? IdeaId { get; }
+
+    /// <summary>I-19: clasificación auditable del aporte, asignada por el servidor.</summary>
+    public TipoAporteIdea? TipoAporte { get; }
+
     /// <summary>
     /// I-17 — nivel de madurez sellado al evaluar (03 §3.8). Default seguro <see cref="NivelMadurez.Incubacion"/>
     /// para documentos historicos sin el campo. Se reclasifica a <c>Incubacion</c> si el participante
@@ -110,7 +120,9 @@ public sealed class Respuesta
         NivelMadurez nivelMadurez = NivelMadurez.Incubacion,
         string? ideaRaizId = null,
         string? respuestaAnteriorId = null,
-        int? revisionIndice = null)
+        int? revisionIndice = null,
+        string? ideaId = null,
+        TipoAporteIdea? tipoAporte = null)
     {
         if (ideaIndice is <= 0)
         {
@@ -147,6 +159,13 @@ public sealed class Respuesta
             }
         }
 
+        if (string.IsNullOrWhiteSpace(ideaId) != !tipoAporte.HasValue)
+        {
+            throw new DomainValidationException(
+                "TRAZABILIDAD_IDEA_CONSOLIDADA_INCOMPLETA",
+                "ideaId y tipoAporte deben informarse juntos.");
+        }
+
         return new(
             DomainGuards.Required(id, nameof(id)),
             DomainGuards.Required(campaniaId, nameof(campaniaId)),
@@ -164,7 +183,9 @@ public sealed class Respuesta
             nivelMadurez,
             string.IsNullOrWhiteSpace(ideaRaizId) ? null : ideaRaizId.Trim(),
             string.IsNullOrWhiteSpace(respuestaAnteriorId) ? null : respuestaAnteriorId.Trim(),
-            revisionIndice);
+            revisionIndice,
+            string.IsNullOrWhiteSpace(ideaId) ? null : ideaId.Trim(),
+            tipoAporte);
     }
 
     public static IReadOnlyCollection<string> NormalizarTags(IEnumerable<string>? tags)

@@ -241,7 +241,10 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             uso,
             contexto.SolicitarParafraseo
                 ? AcotarEnFronteraDeFrase(salida.ParafraseoDevuelto, contexto.MaxCaracteresParafraseo)
-                : null);
+                : null,
+            contexto.IdeaId,
+            contexto.VersionIdeaId,
+            contexto.IdeaId is null ? null : "ideaConsolidada");
     }
 
     private async Task<ResultadoEvaluacion> FallbackAsync(
@@ -275,7 +278,10 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             null,
             anomaliaSeguridad: false,
             _tiempo.GetUtcNow(),
-            uso);
+            uso,
+            ideaId: contexto.IdeaId,
+            versionIdeaId: contexto.VersionIdeaId,
+            origenTextoEvaluado: contexto.IdeaId is null ? null : "ideaConsolidada");
 
         return new ResultadoEvaluacion.Fallback(evaluacion, motivo);
     }

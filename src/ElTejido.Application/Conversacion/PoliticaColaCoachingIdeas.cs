@@ -20,7 +20,9 @@ public sealed class PoliticaColaCoachingIdeas
                 raiz.RespuestaId,
                 raiz.MotivoFinalizacion.HasValue ? EstadoIdeaCoaching.Finalizada : EstadoIdeaCoaching.Pendiente,
                 raiz.MotivoFinalizacion,
-                finalizadaEn: raiz.MotivoFinalizacion.HasValue ? ahora : null))
+                finalizadaEn: raiz.MotivoFinalizacion.HasValue ? ahora : null,
+                ideaId: raiz.IdeaId,
+                versionIdeaVigenteId: raiz.VersionIdeaVigenteId))
             .ToArray();
 
         var cola = CoachingIdeas.Crear(EstadoCoachingIdeas.Activo, respuestaPadreId, null, ideas);
@@ -60,6 +62,37 @@ public sealed class PoliticaColaCoachingIdeas
         var ideas = cola.Ideas
             .Select(idea => idea.IdeaIndice == activa.IdeaIndice
                 ? idea with { RespuestaVigenteId = respuestaVigenteId }
+                : idea)
+            .ToArray();
+        return CoachingIdeas.Crear(cola.Estado, cola.RespuestaPadreId, cola.IdeaActivaIndice, ideas);
+    }
+
+    /// <summary>
+    /// I-19: actualiza de forma atómica la versión consolidada que gobierna las decisiones
+    /// de la idea activa. La respuesta vigente conserva exclusivamente el último aporte.
+    /// </summary>
+    public CoachingIdeas ActualizarVersionIdeaVigente(
+        CoachingIdeas cola,
+        string ideaId,
+        string versionIdeaVigenteId)
+    {
+        var activa = RequerirActiva(cola);
+        if (!string.IsNullOrWhiteSpace(activa.IdeaId)
+            && !string.Equals(activa.IdeaId, ideaId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("La versión consolidada no pertenece a la idea activa.");
+        }
+
+        var ideaIdRequerido = RequerirTexto(ideaId, nameof(ideaId));
+        var versionIdRequerida = RequerirTexto(versionIdeaVigenteId, nameof(versionIdeaVigenteId));
+
+        var ideas = cola.Ideas
+            .Select(idea => idea.IdeaIndice == activa.IdeaIndice
+                ? idea with
+                {
+                    IdeaId = ideaIdRequerido,
+                    VersionIdeaVigenteId = versionIdRequerida,
+                }
                 : idea)
             .ToArray();
         return CoachingIdeas.Crear(cola.Estado, cola.RespuestaPadreId, cola.IdeaActivaIndice, ideas);
@@ -106,9 +139,16 @@ public sealed class PoliticaColaCoachingIdeas
 
     private static IdeaCoaching RequerirActiva(CoachingIdeas cola)
         => cola.IdeaActiva ?? throw new InvalidOperationException("La cola no tiene una idea activa.");
+
+    private static string RequerirTexto(string? valor, string nombre)
+        => !string.IsNullOrWhiteSpace(valor)
+            ? valor
+            : throw new ArgumentException("El valor es obligatorio.", nombre);
 }
 
 public sealed record RaizIdeaCoaching(
     int IdeaIndice,
     string RespuestaId,
-    MotivoFinalizacionIdea? MotivoFinalizacion);
+    MotivoFinalizacionIdea? MotivoFinalizacion,
+    string? IdeaId = null,
+    string? VersionIdeaVigenteId = null);

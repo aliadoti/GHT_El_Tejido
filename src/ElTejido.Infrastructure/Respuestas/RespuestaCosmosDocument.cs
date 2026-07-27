@@ -58,6 +58,12 @@ internal sealed class RespuestaCosmosDocument
     [JsonProperty("revisionIndice")]
     public int? RevisionIndice { get; init; }
 
+    [JsonProperty("ideaId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? IdeaId { get; init; }
+
+    [JsonProperty("tipoAporte", NullValueHandling = NullValueHandling.Ignore)]
+    public string? TipoAporte { get; init; }
+
     /// <summary>
     /// I-17 (03 §3.8) — nivel de madurez. Ausente en documentos historicos: se deserializa a
     /// <see cref="NivelMadurez.Incubacion"/> por defecto seguro (mantiene el comportamiento plano).
@@ -85,6 +91,8 @@ internal sealed class RespuestaCosmosDocument
             IdeaRaizId = respuesta.IdeaRaizId,
             RespuestaAnteriorId = respuesta.RespuestaAnteriorId,
             RevisionIndice = respuesta.RevisionIndice,
+            IdeaId = respuesta.IdeaId,
+            TipoAporte = respuesta.TipoAporte is null ? null : MapearTipoAporte(respuesta.TipoAporte.Value),
             NivelMadurez = MapearNivelMadurez(respuesta.NivelMadurez),
         };
 
@@ -106,7 +114,30 @@ internal sealed class RespuestaCosmosDocument
             MapearNivelMadurez(NivelMadurez),
             IdeaRaizId,
             RespuestaAnteriorId,
-            RevisionIndice);
+            RevisionIndice,
+            IdeaId,
+            MapearTipoAporte(TipoAporte));
+
+    private static string MapearTipoAporte(TipoAporteIdea tipo)
+        => tipo switch
+        {
+            TipoAporteIdea.Inicial => "inicial",
+            TipoAporteIdea.Complemento => "complemento",
+            TipoAporteIdea.Correccion => "correccion",
+            TipoAporteIdea.NuevaIdea => "nuevaIdea",
+            _ => throw new InvalidOperationException($"Tipo de aporte no soportado: {tipo}."),
+        };
+
+    private static TipoAporteIdea? MapearTipoAporte(string? tipo)
+        => tipo switch
+        {
+            null or "" => null,
+            "inicial" => TipoAporteIdea.Inicial,
+            "complemento" => TipoAporteIdea.Complemento,
+            "correccion" => TipoAporteIdea.Correccion,
+            "nuevaIdea" => TipoAporteIdea.NuevaIdea,
+            _ => throw new InvalidOperationException($"Tipo de aporte no soportado en Cosmos: {tipo}."),
+        };
 
     private static string MapearNivelMadurez(NivelMadurez nivel)
         => nivel switch

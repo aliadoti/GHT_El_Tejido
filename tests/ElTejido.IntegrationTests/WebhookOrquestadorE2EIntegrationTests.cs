@@ -103,7 +103,13 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         {
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration(config =>
-                config.AddInMemoryCollection(new Dictionary<string, string?> { ["Secretos:wa-appsec"] = AppSecret }));
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Secretos:wa-appsec"] = AppSecret,
+                    // Este recorrido conserva explícitamente el contrato histórico; I-19 tiene sus
+                    // propias pruebas de confirmación antes de sustituir este escenario E2E.
+                    ["Conversacion:ConsolidacionProgresivaHabilitada"] = "false",
+                }));
 
             builder.ConfigureTestServices(services =>
             {

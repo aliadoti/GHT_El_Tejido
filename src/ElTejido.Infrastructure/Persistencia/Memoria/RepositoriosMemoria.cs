@@ -356,6 +356,8 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
     private readonly ConcurrentDictionary<string, Respuesta> _respuestas = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, DominioEvaluacion> _evaluaciones = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ArtefactoMarkdown> _artefactos = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, IdeaConsolidada> _ideas = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, VersionIdeaConsolidada> _versionesIdea = new(StringComparer.Ordinal);
 
     public Task GuardarRespuestaAsync(Respuesta respuesta, CancellationToken cancellationToken)
     {
@@ -365,6 +367,32 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
 
     public Task<Respuesta?> ObtenerRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
         => Task.FromResult(_respuestas.Values.FirstOrDefault(r => r.CampaniaId == campaniaId && r.Id == respuestaId));
+
+    public Task GuardarIdeaConsolidadaAsync(IdeaConsolidada idea, CancellationToken cancellationToken)
+    {
+        _ideas[idea.Id] = idea;
+        return Task.CompletedTask;
+    }
+
+    public Task<IdeaConsolidada?> ObtenerIdeaConsolidadaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+        => Task.FromResult(_ideas.Values.FirstOrDefault(idea => idea.CampaniaId == campaniaId && idea.Id == ideaId));
+
+    public Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasConsolidadasAsync(string campaniaId, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyCollection<IdeaConsolidada>>(_ideas.Values.Where(idea => idea.CampaniaId == campaniaId).ToArray());
+
+    public Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
+    {
+        _versionesIdea[version.Id] = version;
+        return Task.CompletedTask;
+    }
+
+    public Task<VersionIdeaConsolidada?> ObtenerVersionIdeaAsync(string campaniaId, string versionId, CancellationToken cancellationToken)
+        => Task.FromResult(_versionesIdea.Values.FirstOrDefault(version => version.CampaniaId == campaniaId && version.Id == versionId));
+
+    public Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesIdeaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyCollection<VersionIdeaConsolidada>>(_versionesIdea.Values
+            .Where(version => version.CampaniaId == campaniaId && version.IdeaId == ideaId)
+            .OrderBy(version => version.NumeroVersion).ToArray());
 
     public Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken)
     {
@@ -412,6 +440,9 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
         var respuestas = _respuestas.Values.Where(r => EnAlcance(r.CampaniaId, r.UsuarioId)).ToArray();
         var evaluaciones = _evaluaciones.Values.Where(e => EnAlcance(e.CampaniaId, e.UsuarioId)).ToArray();
         var artefactos = _artefactos.Values.Where(a => EnAlcance(a.CampaniaId, a.UsuarioId)).ToArray();
+        var ideas = _ideas.Values.Where(idea => EnAlcance(idea.CampaniaId, idea.UsuarioId)).ToArray();
+        var ideaIds = ideas.Select(idea => idea.Id).ToHashSet(StringComparer.Ordinal);
+        var versiones = _versionesIdea.Values.Where(version => version.CampaniaId == campaniaId && ideaIds.Contains(version.IdeaId)).ToArray();
 
         foreach (var respuesta in respuestas)
         {
@@ -428,13 +459,23 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
             _artefactos.TryRemove(artefacto.Id, out _);
         }
 
+        foreach (var idea in ideas)
+        {
+            _ideas.TryRemove(idea.Id, out _);
+        }
+
+        foreach (var version in versiones)
+        {
+            _versionesIdea.TryRemove(version.Id, out _);
+        }
+
         var rutas = artefactos
             .Select(a => a.BlobPath)
             .Where(r => !string.IsNullOrWhiteSpace(r))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        return Task.FromResult(new ConteoBorradoRespuestas(respuestas.Length, evaluaciones.Length, artefactos.Length, rutas));
+        return Task.FromResult(new ConteoBorradoRespuestas(respuestas.Length, evaluaciones.Length, artefactos.Length, rutas, ideas.Length, versiones.Length));
     }
 }
 

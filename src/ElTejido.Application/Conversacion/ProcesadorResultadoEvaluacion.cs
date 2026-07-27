@@ -113,7 +113,9 @@ public sealed class ProcesadorResultadoEvaluacion
         NivelMadurez nivelMadurez = NivelMadurez.Incubacion,
         string? ideaRaizId = null,
         string? respuestaAnteriorId = null,
-        int? revisionIndice = null)
+        int? revisionIndice = null,
+        string? ideaId = null,
+        TipoAporteIdea? tipoAporte = null)
         => _respuestas.GuardarRespuestaAsync(
             RespuestaUsuario.Crear(
                 respuestaId,
@@ -132,7 +134,9 @@ public sealed class ProcesadorResultadoEvaluacion
                 nivelMadurez,
                 ideaRaizId,
                 respuestaAnteriorId,
-                revisionIndice),
+                revisionIndice,
+                ideaId,
+                tipoAporte),
             cancellationToken);
 
     public async Task CompilarMarkdownAsync(

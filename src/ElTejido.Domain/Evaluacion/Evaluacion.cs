@@ -34,7 +34,11 @@ public sealed class Evaluacion
         IReadOnlyCollection<string> entidades,
         bool anomaliaSeguridad,
         DateTimeOffset fecha,
-        UsoTokensLlm? usoTokens)
+        UsoTokensLlm? usoTokens,
+        string? ideaId,
+        string? versionIdeaId,
+        string? origenTextoEvaluado,
+        SeedThoughtsSnapshot? seedThoughtsSnapshot)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -60,6 +64,10 @@ public sealed class Evaluacion
         AnomaliaSeguridad = anomaliaSeguridad;
         Fecha = fecha;
         UsoTokens = usoTokens;
+        IdeaId = ideaId;
+        VersionIdeaId = versionIdeaId;
+        OrigenTextoEvaluado = origenTextoEvaluado;
+        SeedThoughtsSnapshot = seedThoughtsSnapshot;
     }
 
     public string Id { get; }
@@ -115,6 +123,12 @@ public sealed class Evaluacion
     /// <summary>P-10 — tokens consumidos por esta evaluación (null si el proveedor no lo reportó o doc previo).</summary>
     public UsoTokensLlm? UsoTokens { get; }
 
+    /// <summary>I-19: relación opcional con la idea y versión canónica evaluada.</summary>
+    public string? IdeaId { get; }
+    public string? VersionIdeaId { get; }
+    public string? OrigenTextoEvaluado { get; }
+    public SeedThoughtsSnapshot? SeedThoughtsSnapshot { get; }
+
     public static Evaluacion Crear(
         string id,
         string campaniaId,
@@ -139,7 +153,11 @@ public sealed class Evaluacion
         bool anomaliaSeguridad,
         DateTimeOffset fecha,
         UsoTokensLlm? usoTokens = null,
-        string? parafraseoDevuelto = null)
+        string? parafraseoDevuelto = null,
+        string? ideaId = null,
+        string? versionIdeaId = null,
+        string? origenTextoEvaluado = null,
+        SeedThoughtsSnapshot? seedThoughtsSnapshot = null)
     {
         if (versionRubrica <= 0 || versionPrompt <= 0)
         {
@@ -154,6 +172,21 @@ public sealed class Evaluacion
             throw new DomainValidationException(
                 "REPREGUNTA_REQUERIDA",
                 "Una recomendacion de repreguntar exige una repregunta sugerida.");
+        }
+
+        if (string.IsNullOrWhiteSpace(ideaId) != string.IsNullOrWhiteSpace(versionIdeaId))
+        {
+            throw new DomainValidationException(
+                "TRAZABILIDAD_EVALUACION_IDEA_INCOMPLETA",
+                "ideaId y versionIdeaId deben informarse juntos.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(origenTextoEvaluado)
+            && origenTextoEvaluado != "ideaConsolidada")
+        {
+            throw new DomainValidationException(
+                "ORIGEN_TEXTO_EVALUADO_INVALIDO",
+                "El origen de texto evaluado no es válido.");
         }
 
         return new Evaluacion(
@@ -182,8 +215,21 @@ public sealed class Evaluacion
             NormalizarLista(entidades),
             anomaliaSeguridad,
             fecha.ToUniversalTime(),
-            usoTokens);
+            usoTokens,
+            Normalizar(ideaId),
+            Normalizar(versionIdeaId),
+            Normalizar(origenTextoEvaluado),
+            seedThoughtsSnapshot);
     }
+
+    /// <summary>I-19: adjunta la procedencia canónica cuando un adaptador de evaluación no la provee.</summary>
+    public Evaluacion ConProcedenciaIdea(string ideaId, string versionIdeaId, SeedThoughtsSnapshot? seedThoughtsSnapshot = null)
+        => Crear(
+            Id, CampaniaId, RespuestaId, UsuarioId, PreguntaId, RubricaRef, VersionRubrica, PromptRef,
+            VersionPrompt, ConfigLlmRef, ConfigLlmSnapshot, PesosUsados, CalificacionPorCriterio,
+            CalificacionTotal, Explicacion, RetroalimentacionEnviada, Recomendacion, RepreguntaSugerida,
+            Temas, Entidades, AnomaliaSeguridad, Fecha, UsoTokens, ParafraseoDevuelto, ideaId,
+            versionIdeaId, "ideaConsolidada", seedThoughtsSnapshot ?? SeedThoughtsSnapshot);
 
     private static IReadOnlyCollection<string> NormalizarLista(IEnumerable<string>? valores)
         => valores is null
@@ -193,4 +239,6 @@ public sealed class Evaluacion
                 .Where(valor => valor.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+
+    private static string? Normalizar(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 }

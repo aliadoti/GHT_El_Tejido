@@ -42,6 +42,52 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documento?.ToDomain();
     }
 
+    public Task GuardarIdeaConsolidadaAsync(IdeaConsolidada idea, CancellationToken cancellationToken)
+        => _container.UpsertAsync(IdeaConsolidadaCosmosDocument.FromDomain(idea), idea.CampaniaId, cancellationToken);
+
+    public async Task<IdeaConsolidada?> ObtenerIdeaConsolidadaAsync(
+        string campaniaId, string ideaId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ideaId);
+        var documento = await _container.ReadByIdAsync<IdeaConsolidadaCosmosDocument>(ideaId.Trim(), campaniaId.Trim(), cancellationToken);
+        return documento?.ToDomain();
+    }
+
+    public async Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasConsolidadasAsync(
+        string campaniaId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
+            .WithParameter("@type", IdeaConsolidadaCosmosDocument.DocumentType);
+        var documentos = await _container.QueryAsync<IdeaConsolidadaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
+    public Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
+        => _container.UpsertAsync(VersionIdeaConsolidadaCosmosDocument.FromDomain(version), version.CampaniaId, cancellationToken);
+
+    public async Task<VersionIdeaConsolidada?> ObtenerVersionIdeaAsync(
+        string campaniaId, string versionId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(versionId);
+        var documento = await _container.ReadByIdAsync<VersionIdeaConsolidadaCosmosDocument>(versionId.Trim(), campaniaId.Trim(), cancellationToken);
+        return documento?.ToDomain();
+    }
+
+    public async Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesIdeaAsync(
+        string campaniaId, string ideaId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ideaId);
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.ideaId = @ideaId ORDER BY c.numeroVersion")
+            .WithParameter("@type", VersionIdeaConsolidadaCosmosDocument.DocumentType)
+            .WithParameter("@ideaId", ideaId.Trim());
+        var documentos = await _container.QueryAsync<VersionIdeaConsolidadaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
     public Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken)
         => _container.UpsertAsync(EvaluacionCosmosDocument.FromDomain(evaluacion), evaluacion.CampaniaId, cancellationToken);
 
@@ -160,6 +206,16 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         var respuestas = await ConsultarPorTipoAsync<RespuestaCosmosDocument>(RespuestaCosmosDocument.DocumentType, pk, usuario, cancellationToken);
         var evaluaciones = await ConsultarPorTipoAsync<EvaluacionCosmosDocument>(EvaluacionCosmosDocument.DocumentType, pk, usuario, cancellationToken);
         var artefactos = await ConsultarPorTipoAsync<ArtefactoMarkdownCosmosDocument>(ArtefactoMarkdownCosmosDocument.DocumentType, pk, usuario, cancellationToken);
+        var ideas = await ConsultarPorTipoAsync<IdeaConsolidadaCosmosDocument>(IdeaConsolidadaCosmosDocument.DocumentType, pk, usuario, cancellationToken);
+        // Las versiones no duplican usuarioId: solo si hay ideas autorizadas se consulta y filtra por
+        // sus ids. Así el reinicio histórico conserva sus consultas acotadas por usuario.
+        var ideaIds = ideas.Select(idea => idea.Id).ToHashSet(StringComparer.Ordinal);
+        var versiones = ideaIds.Count == 0
+            ? Array.Empty<VersionIdeaConsolidadaCosmosDocument>()
+            : (await ConsultarPorTipoAsync<VersionIdeaConsolidadaCosmosDocument>(
+                VersionIdeaConsolidadaCosmosDocument.DocumentType, pk, null, cancellationToken))
+                .Where(version => ideaIds.Contains(version.IdeaId))
+                .ToArray();
 
         foreach (var respuesta in respuestas)
         {
@@ -176,13 +232,23 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
             await _container.DeleteAsync(artefacto.Id, pk, cancellationToken);
         }
 
+        foreach (var idea in ideas)
+        {
+            await _container.DeleteAsync(idea.Id, pk, cancellationToken);
+        }
+
+        foreach (var version in versiones)
+        {
+            await _container.DeleteAsync(version.Id, pk, cancellationToken);
+        }
+
         var rutas = artefactos
             .Select(a => a.BlobPath)
             .Where(r => !string.IsNullOrWhiteSpace(r))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        return new ConteoBorradoRespuestas(respuestas.Count, evaluaciones.Count, artefactos.Count, rutas);
+        return new ConteoBorradoRespuestas(respuestas.Count, evaluaciones.Count, artefactos.Count, rutas, ideas.Count, versiones.Length);
     }
 
     // Consulta acotada a la particion (campaniaId), filtrando por tipo y, si se pide, por usuario.

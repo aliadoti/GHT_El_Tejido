@@ -148,6 +148,12 @@ internal sealed class ConversacionCosmosDocument
         [JsonProperty("respuestaVigenteId")]
         public string RespuestaVigenteId { get; init; } = string.Empty;
 
+        [JsonProperty("ideaId", NullValueHandling = NullValueHandling.Ignore)]
+        public string? IdeaId { get; init; }
+
+        [JsonProperty("versionIdeaVigenteId", NullValueHandling = NullValueHandling.Ignore)]
+        public string? VersionIdeaVigenteId { get; init; }
+
         [JsonProperty("estado")]
         public string Estado { get; init; } = "pendiente";
 
@@ -169,6 +175,8 @@ internal sealed class ConversacionCosmosDocument
                 IdeaIndice = idea.IdeaIndice,
                 RespuestaRaizId = idea.RespuestaRaizId,
                 RespuestaVigenteId = idea.RespuestaVigenteId,
+                IdeaId = idea.IdeaId,
+                VersionIdeaVigenteId = idea.VersionIdeaVigenteId,
                 Estado = idea.Estado switch
                 {
                     EstadoIdeaCoaching.Activa => "activa",
@@ -197,7 +205,9 @@ internal sealed class ConversacionCosmosDocument
                 ParseMotivo(MotivoFinalizacion),
                 RepreguntasUsadas,
                 IniciadaEn,
-                FinalizadaEn);
+                FinalizadaEn,
+                IdeaId,
+                VersionIdeaVigenteId);
 
         private static MotivoFinalizacionIdea? ParseMotivo(string? motivo)
             => string.IsNullOrWhiteSpace(motivo)

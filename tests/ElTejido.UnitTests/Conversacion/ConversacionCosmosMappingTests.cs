@@ -16,7 +16,7 @@ public sealed class ConversacionCosmosMappingTests
             "wamid.raiz",
             new[]
             {
-                new RaizIdeaCoaching(1, "resp_1", null),
+                new RaizIdeaCoaching(1, "resp_1", null, "idea_1", "idea_1_v1"),
                 new RaizIdeaCoaching(2, "resp_2", null),
             },
             ahora);
@@ -39,6 +39,8 @@ public sealed class ConversacionCosmosMappingTests
         resultado.CoachingIdeas.Should().NotBeNull();
         resultado.CoachingIdeas!.IdeaActivaIndice.Should().Be(1);
         resultado.CoachingIdeas.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
+        resultado.CoachingIdeas.IdeaActiva.IdeaId.Should().Be("idea_1");
+        resultado.CoachingIdeas.IdeaActiva.VersionIdeaVigenteId.Should().Be("idea_1_v1");
         legacy.CoachingIdeas.Should().BeNull();
     }
 }

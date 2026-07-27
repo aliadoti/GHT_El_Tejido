@@ -55,6 +55,62 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I19_PrimerAporte_CreaPropuestaYNoEvaluaHastaConfirmacion()
+    {
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsolidacionIdeas.Exito("Idea consolidada completa.", TipoAporteIdea.Inicial, [], false, null, false, null));
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: consolidador).ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.Received(1).GuardarRespuestaAsync(
+            Arg.Is<Respuesta>(r => r.Texto == "Aporte inicial" && r.TipoAporte == TipoAporteIdea.Inicial && r.IdeaId != null),
+            Arg.Any<CancellationToken>());
+        await _respuestas.Received(1).GuardarVersionIdeaAsync(
+            Arg.Is<VersionIdeaConsolidada>(v => v.Texto == "Idea consolidada completa." && v.EstadoConfirmacion == EstadoConfirmacionVersionIdea.Propuesta),
+            Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero, Arg.Is<string>(t => t.Contains("¿Es correcto?", StringComparison.Ordinal)), TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_Confirmacion_EvaluaVersionCompletaEnLugarDelUltimoMensaje()
+    {
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsolidacionIdeas.Exito("Idea consolidada completa.", TipoAporteIdea.Inicial, [], false, null, false, null));
+        IdeaConsolidada? ideaGuardada = null;
+        VersionIdeaConsolidada? versionGuardada = null;
+        _respuestas.GuardarIdeaConsolidadaAsync(Arg.Do<IdeaConsolidada>(idea => ideaGuardada = idea), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.GuardarVersionIdeaAsync(Arg.Do<VersionIdeaConsolidada>(version => versionGuardada = version), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>())
+            .Returns(_ => ideaGuardada is null ? Array.Empty<IdeaConsolidada>() : new[] { ideaGuardada });
+        _respuestas.ObtenerVersionIdeaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => versionGuardada);
+        ContextoEvaluacion? contextoEvaluado = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextoEvaluado = contexto), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: consolidador);
+
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("sí"), CancellationToken.None);
+
+        contextoEvaluado.Should().NotBeNull();
+        contextoEvaluado!.RespuestaTexto.Should().Be("Idea consolidada completa.");
+        contextoEvaluado.IdeaId.Should().Be(ideaGuardada!.Id);
+        contextoEvaluado.VersionIdeaId.Should().Be(versionGuardada!.Id);
+        await _respuestas.Received(1).GuardarEvaluacionAsync(
+            Arg.Is<DominioEvaluacion>(evaluacion => evaluacion.IdeaId == ideaGuardada.Id && evaluacion.VersionIdeaId == versionGuardada.Id),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Procesar_PrimerTurnoExito_CompilaOfreceMejoraYNoCierra()
     {
         // Aunque el LLM recomiende cerrar, la primera evaluacion valida SIEMPRE ofrece una mejora.
@@ -1315,7 +1371,7 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
-    private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null)
+    private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null, IConsolidadorIdeas? consolidador = null)
         => new(
             _conversaciones,
             _respuestas,
@@ -1329,7 +1385,8 @@ public sealed class OrquestadorConversacionTests
             _logSeguridad,
             _correlacion,
             opciones ?? new OpcionesConversacion(),
-            _reloj);
+            _reloj,
+            consolidador);
 
     private Task PrepararConversacionAsync()
         => _conversaciones.GuardarConversacionAsync(

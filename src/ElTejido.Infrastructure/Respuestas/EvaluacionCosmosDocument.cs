@@ -85,6 +85,18 @@ internal sealed class EvaluacionCosmosDocument
     [JsonProperty("usoTokens", NullValueHandling = NullValueHandling.Ignore)]
     public UsoTokensDocument? UsoTokens { get; init; }
 
+    [JsonProperty("ideaId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? IdeaId { get; init; }
+
+    [JsonProperty("versionIdeaId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? VersionIdeaId { get; init; }
+
+    [JsonProperty("origenTextoEvaluado", NullValueHandling = NullValueHandling.Ignore)]
+    public string? OrigenTextoEvaluado { get; init; }
+
+    [JsonProperty("seedThoughtsSnapshot", NullValueHandling = NullValueHandling.Ignore)]
+    public SeedThoughtsSnapshotDocument? SeedThoughtsSnapshot { get; init; }
+
     public static EvaluacionCosmosDocument FromDomain(DominioEvaluacion evaluacion)
         => new()
         {
@@ -132,6 +144,15 @@ internal sealed class EvaluacionCosmosDocument
                     PromptTokens = evaluacion.UsoTokens.PromptTokens,
                     CompletionTokens = evaluacion.UsoTokens.CompletionTokens,
                 },
+            IdeaId = evaluacion.IdeaId,
+            VersionIdeaId = evaluacion.VersionIdeaId,
+            OrigenTextoEvaluado = evaluacion.OrigenTextoEvaluado,
+            SeedThoughtsSnapshot = evaluacion.SeedThoughtsSnapshot is null ? null : new SeedThoughtsSnapshotDocument
+            {
+                Usadas = evaluacion.SeedThoughtsSnapshot.Usadas,
+                Contenido = evaluacion.SeedThoughtsSnapshot.Contenido.ToList(),
+                Truncadas = evaluacion.SeedThoughtsSnapshot.Truncadas,
+            },
         };
 
     public DominioEvaluacion ToDomain()
@@ -165,7 +186,13 @@ internal sealed class EvaluacionCosmosDocument
             AnomaliaSeguridad,
             Fecha,
             UsoTokens is null ? null : UsoTokensLlm.Crear(UsoTokens.PromptTokens, UsoTokens.CompletionTokens),
-            ParafraseoDevuelto);
+            ParafraseoDevuelto,
+            IdeaId,
+            VersionIdeaId,
+            OrigenTextoEvaluado,
+            SeedThoughtsSnapshot is null
+                ? null
+                : new SeedThoughtsSnapshot(SeedThoughtsSnapshot.Usadas, SeedThoughtsSnapshot.Contenido, SeedThoughtsSnapshot.Truncadas));
 
     private static string MapearRecomendacion(RecomendacionEvaluacion recomendacion)
         => recomendacion == RecomendacionEvaluacion.Repreguntar ? "repreguntar" : "cerrar";
@@ -207,5 +234,17 @@ internal sealed class EvaluacionCosmosDocument
 
         [JsonProperty("completionTokens")]
         public int CompletionTokens { get; init; }
+    }
+
+    internal sealed class SeedThoughtsSnapshotDocument
+    {
+        [JsonProperty("usadas")]
+        public bool Usadas { get; init; }
+
+        [JsonProperty("contenido")]
+        public List<string> Contenido { get; init; } = new();
+
+        [JsonProperty("truncadas")]
+        public bool Truncadas { get; init; }
     }
 }

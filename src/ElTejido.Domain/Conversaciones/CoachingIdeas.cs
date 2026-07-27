@@ -83,6 +83,12 @@ public sealed record IdeaCoaching(
     DateTimeOffset? IniciadaEn,
     DateTimeOffset? FinalizadaEn)
 {
+    // I-19: referencias canónicas de la unidad que se evalúa. Las respuestas se
+    // conservan para reconstruir los aportes y para que lectores I-18 sigan funcionando.
+    public string? IdeaId { get; init; }
+
+    public string? VersionIdeaVigenteId { get; init; }
+
     public static IdeaCoaching Crear(
         int ideaIndice,
         string respuestaRaizId,
@@ -91,7 +97,9 @@ public sealed record IdeaCoaching(
         MotivoFinalizacionIdea? motivoFinalizacion = null,
         int repreguntasUsadas = 0,
         DateTimeOffset? iniciadaEn = null,
-        DateTimeOffset? finalizadaEn = null)
+        DateTimeOffset? finalizadaEn = null,
+        string? ideaId = null,
+        string? versionIdeaVigenteId = null)
     {
         if (ideaIndice <= 0 || repreguntasUsadas < 0)
         {
@@ -107,6 +115,15 @@ public sealed record IdeaCoaching(
                 "Una idea finalizada requiere motivo y una idea abierta no puede tenerlo.");
         }
 
+        var tieneIdea = !string.IsNullOrWhiteSpace(ideaId);
+        var tieneVersion = !string.IsNullOrWhiteSpace(versionIdeaVigenteId);
+        if (tieneIdea != tieneVersion)
+        {
+            throw new DomainValidationException(
+                "COACHING_REFERENCIA_CANONICA_INVALIDA",
+                "La idea y su versión vigente deben informarse juntas.");
+        }
+
         return new IdeaCoaching(
             ideaIndice,
             DomainGuards.Required(respuestaRaizId, nameof(respuestaRaizId)),
@@ -115,7 +132,13 @@ public sealed record IdeaCoaching(
             motivoFinalizacion,
             repreguntasUsadas,
             iniciadaEn?.ToUniversalTime(),
-            finalizadaEn?.ToUniversalTime());
+            finalizadaEn?.ToUniversalTime())
+        {
+            IdeaId = tieneIdea ? DomainGuards.Required(ideaId!, nameof(ideaId)) : null,
+            VersionIdeaVigenteId = tieneVersion
+                ? DomainGuards.Required(versionIdeaVigenteId!, nameof(versionIdeaVigenteId))
+                : null,
+        };
     }
 }
 

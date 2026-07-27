@@ -141,6 +141,19 @@ public sealed class ResponsesCosmosMappingTests
     }
 
     [Fact]
+    public void Respuesta_I19_RoundTrip_ConservaIdeaYTipoAporte()
+    {
+        var respuesta = Respuesta.Crear(
+            "resp_1", "c_1", "u_1", "p_1", "conv_1", "Complemento", "whatsapp", true,
+            EstadoRespuesta.Recibida, Epoca, null, ideaId: "idea_1", tipoAporte: TipoAporteIdea.Complemento);
+
+        var resultado = RespuestaCosmosDocument.FromDomain(respuesta).ToDomain();
+
+        resultado.IdeaId.Should().Be("idea_1");
+        resultado.TipoAporte.Should().Be(TipoAporteIdea.Complemento);
+    }
+
+    [Fact]
     public void Artefacto_RoundTrip_ConservaVersionYRefs()
     {
         var artefacto = ArtefactoMarkdown.Crear(

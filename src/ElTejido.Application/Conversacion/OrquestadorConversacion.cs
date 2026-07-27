@@ -39,6 +39,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IRepositorioParticipantes _participantes;
     private readonly IRepositorioConfiguracion _configuracion;
     private readonly IEvaluadorLlm _evaluador;
+    private readonly IConsolidadorIdeas? _consolidadorIdeas;
     private readonly ISegmentadorIdeas _segmentadorIdeas;
     private readonly IBaseConocimientoCampania _baseConocimiento;
     private readonly IWhatsAppGateway _gateway;
@@ -58,9 +59,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly int _topKAportes;
     private readonly int _presupuestoTokensTejido;
     private readonly bool _parafraseoHabilitado;
+    private readonly bool _consolidacionProgresivaHabilitada;
+    private readonly int _maxCaracteresIdeaConsolidada;
     private readonly int _maxCaracteresParafraseo;
     private readonly TimeProvider _tiempo;
     private readonly PoliticaColaCoachingIdeas _colaCoaching = new();
+    private readonly DetectorIntencionContinuar _intencionConfirmacion;
+    private readonly DetectorIntencionContinuar _intencionRechazoIdea;
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -75,13 +80,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IRepositorioLogSeguridad logSeguridad,
         IProveedorCorrelacion correlacion,
         OpcionesConversacion opciones,
-        TimeProvider tiempo)
+        TimeProvider tiempo,
+        IConsolidadorIdeas? consolidadorIdeas = null)
     {
         _conversaciones = conversaciones;
         _respuestas = respuestas;
         _participantes = participantes;
         _configuracion = configuracion;
         _evaluador = evaluador;
+        _consolidadorIdeas = consolidadorIdeas;
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
@@ -100,6 +107,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _topKAportes = Math.Max(1, opciones.TopKAportes);
         _presupuestoTokensTejido = opciones.PresupuestoTokensTejido;
         _parafraseoHabilitado = opciones.Parafraseo;
+        _consolidacionProgresivaHabilitada = opciones.ConsolidacionProgresivaHabilitada;
+        _maxCaracteresIdeaConsolidada = Math.Max(1, opciones.MaxCaracteresIdeaConsolidada);
         _maxCaracteresParafraseo = Math.Max(0, opciones.MaxCaracteresParafraseo);
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
             ? opciones.FrasesContinuar
@@ -110,6 +119,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             : DetectorIntencionContinuar.FrasesRechazoGuardadoPorDefecto;
         var intencionRechazoGuardado = new DetectorIntencionContinuar(frasesRechazo, opciones.MaxCaracteresIntencionContinuar);
         _transicion = new ResolvedorTransicionConversacion(intencionContinuar, intencionRechazoGuardado);
+        _intencionConfirmacion = new DetectorIntencionContinuar(
+            frases.Concat(new[] { "si", "sí", "correcto", "eso es", "exacto", "confirmo" }),
+            opciones.MaxCaracteresIntencionContinuar);
+        _intencionRechazoIdea = intencionRechazoGuardado;
         _tiempo = tiempo;
     }
 
@@ -205,6 +218,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 emisor,
                 mensaje,
                 ahora,
+                cancellationToken);
+            return;
+        }
+
+        // I-19: el flujo canónico intercepta el hilo simple antes de que la ruta histórica evalúe el
+        // último mensaje. Las campañas I-06/I-18 siguen por su cola temporalmente: el siguiente corte
+        // migra esas referencias a ideaId, sin degradar hoy la segmentación ya validada.
+        var segmentacionLegacyActiva = _segmentacionIdeasHabilitada && campania.ConfigConversacional.SegmentacionIdeas;
+        if (_consolidacionProgresivaHabilitada && _consolidadorIdeas is not null && !segmentacionLegacyActiva)
+        {
+            await ProcesarIdeaConsolidadaAsync(
+                conversacion, campania, usuario, participante, pregunta, numero, emisor, mensaje, ahora,
                 cancellationToken);
             return;
         }
@@ -417,6 +442,216 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
     }
+
+    /// <summary>
+    /// I-19 §4.1-§4.3: conserva el aporte original, propone una versión completa, exige confirmación y
+    /// solo entonces evalúa exactamente ese texto. Esta primera integración aplica al hilo de una idea;
+    /// la cola I-18 se adapta en el siguiente corte para conservar su semántica una-a-una.
+    /// </summary>
+    private async Task ProcesarIdeaConsolidadaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        ParticipanteResuelto participante,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
+        await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
+        conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
+        await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+
+        var ideas = await _respuestas.ListarIdeasConsolidadasAsync(campania.Id, cancellationToken);
+        var idea = ideas
+            .Where(candidata => candidata.ConversacionId == conversacion.Id && candidata.EstadoFlujo != EstadoFlujoIdeaConsolidada.Cerrada)
+            .OrderByDescending(candidata => candidata.ActualizadaEn)
+            .FirstOrDefault();
+
+        if (idea is null)
+        {
+            await CrearPropuestaInicialAsync(conversacion, campania, usuario, pregunta, numero, emisor, mensaje.Texto, ahora, cancellationToken);
+            return;
+        }
+
+        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion)
+        {
+            await ConfirmarOCorregirIdeaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, mensaje.Texto, ahora, cancellationToken);
+            return;
+        }
+
+        // En mejora, el texto entrante es un nuevo aporte; no se evalúa aislado.
+        await CrearPropuestaComplementariaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, mensaje.Texto, ahora, cancellationToken);
+    }
+
+    private async Task CrearPropuestaInicialAsync(
+        DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,
+        NumeroWhatsApp numero, string? emisor, string texto, DateTimeOffset ahora, CancellationToken cancellationToken)
+    {
+        var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
+        var ideaId = "idea_" + respuestaId;
+        await _procesador.GuardarRespuestaAsync(
+            respuestaId, campania.Id, usuario, pregunta, conversacion.Id, texto, false, EstadoRespuesta.Recibida,
+            ahora, cancellationToken, ideaId: ideaId, tipoAporte: TipoAporteIdea.Inicial);
+
+        var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacion.Id, respuestaId, texto, cancellationToken);
+        if (contexto.Contexto is null)
+        {
+            await RegistrarConfiguracionNoDisponibleAsync(usuario, contexto.Motivo ?? "configuracion_no_disponible", ahora, cancellationToken);
+            await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
+            return;
+        }
+
+        var propuesta = await _consolidadorIdeas!.ConsolidarAsync(
+            new ContextoConsolidacionIdeas(campania, pregunta, null, texto, contexto.Contexto.ConfigLlmSnapshot, _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje),
+            cancellationToken);
+        var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, texto, TipoAporteIdea.Inicial);
+        var versionId = ideaId + "_v1";
+        var version = VersionIdeaConsolidada.Crear(
+            versionId, campania.Id, ideaId, 1, null, textoPropuesto, new[] { respuestaId }, new[] { respuestaId },
+            tipo, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
+            CrearSnapshotConfig(contexto.Contexto.ConfigLlmSnapshot), ahora);
+        var idea = IdeaConsolidada.Crear(ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, 1, ahora)
+            .ConPropuesta(version.Id, ahora);
+        await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await EnviarConfirmacionAsync(conversacion, numero, emisor, textoPropuesto, ahora, cancellationToken);
+    }
+
+    private async Task ConfirmarOCorregirIdeaAsync(
+        DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,
+        NumeroWhatsApp numero, string? emisor, IdeaConsolidada idea, string texto, DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        if (_intencionRechazoIdea.Coincide(texto))
+        {
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea.Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", ahora), cancellationToken);
+            await EnviarAsync(conversacion, numero, TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault), TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
+            await _conversaciones.GuardarConversacionAsync(conversacion.Cerrar(ahora), cancellationToken);
+            return;
+        }
+
+        if (!_intencionConfirmacion.Coincide(texto))
+        {
+            await CrearPropuestaComplementariaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, texto, ahora, cancellationToken);
+            return;
+        }
+
+        var version = await _respuestas.ObtenerVersionIdeaAsync(campania.Id, idea.VersionPropuestaRef!, cancellationToken);
+        if (version is null)
+        {
+            await EnviarAsync(conversacion, numero, EvaluadorLlm.RetroNeutra, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+            return;
+        }
+
+        version = version.Confirmar(ahora);
+        idea = idea.ConfirmarVersion(version.Id, ahora);
+        await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+
+        var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacion.Id, idea.RespuestaRaizId, version.Texto, cancellationToken);
+        if (contexto.Contexto is null)
+        {
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "configuracionNoDisponible", ahora), cancellationToken);
+            await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
+            return;
+        }
+
+        var contextoEvaluacion = contexto.Contexto with
+        {
+            IdeaId = idea.Id,
+            VersionIdeaId = version.Id,
+            SolicitarParafraseo = false,
+            RespuestaTexto = version.Texto,
+        };
+        var resultadoOriginal = await _evaluador.EvaluarAsync(contextoEvaluacion, cancellationToken);
+        var evaluacionConProcedencia = resultadoOriginal.Evaluacion.ConProcedenciaIdea(idea.Id, version.Id);
+        ResultadoEvaluacion resultado = resultadoOriginal switch
+        {
+            ResultadoEvaluacion.Exito => new ResultadoEvaluacion.Exito(evaluacionConProcedencia),
+            ResultadoEvaluacion.Fallback fallback => new ResultadoEvaluacion.Fallback(evaluacionConProcedencia, fallback.Motivo),
+            _ => throw new InvalidOperationException("Resultado de evaluación no soportado."),
+        };
+        await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
+
+        var madura = resultado is not ResultadoEvaluacion.Fallback
+            && _limites.UmbralAlcanzado(resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
+                _limites.ResolverUmbralBase(campania, pregunta));
+        var conforme = _intencionConfirmacion.Coincide(texto) && _transicion.Interpretar(
+            EstadoMaquinaConversacion.EsperandoRepregunta, 0, pregunta.MaxRepreguntas, texto).DeseaContinuar;
+
+        if (madura || conforme || resultado is ResultadoEvaluacion.Fallback || pregunta.MaxRepreguntas <= 0)
+        {
+            var estado = madura ? EstadoResultadoIdeaConsolidada.Madura : EstadoResultadoIdeaConsolidada.Pendiente;
+            var motivo = madura ? "umbral" : conforme ? "participante" : resultado is ResultadoEvaluacion.Fallback ? "fallbackEvaluacion" : "sinRepreguntas";
+            idea = idea.Cerrar(estado, resultado.Evaluacion.Id, motivo, ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+            var cierre = Combinar(resultado.Evaluacion.RetroalimentacionEnviada, campania.ConfigConversacional.MensajeCierre);
+            await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
+            await _conversaciones.GuardarConversacionAsync(conversacion.Cerrar(ahora), cancellationToken);
+            await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
+            return;
+        }
+
+        var invitacion = ConstruirInvitacionMejora(conversacion, resultado.Evaluacion.RepreguntaSugerida);
+        await EnviarAsync(conversacion, numero, Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion), TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        await _conversaciones.GuardarConversacionAsync(conversacion.RegistrarRepregunta(), cancellationToken);
+    }
+
+    private async Task CrearPropuestaComplementariaAsync(
+        DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,
+        NumeroWhatsApp numero, string? emisor, IdeaConsolidada idea, string texto, DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var respuestaId = "resp_" + Guid.NewGuid().ToString("N");
+        await _procesador.GuardarRespuestaAsync(
+            respuestaId, campania.Id, usuario, pregunta, conversacion.Id, texto, true, EstadoRespuesta.Recibida,
+            ahora, cancellationToken, ideaId: idea.Id, tipoAporte: TipoAporteIdea.Complemento);
+        var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacion.Id, respuestaId, texto, cancellationToken);
+        if (contexto.Contexto is null)
+        {
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "configuracionNoDisponible", ahora), cancellationToken);
+            await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
+            return;
+        }
+
+        var confirmada = string.IsNullOrWhiteSpace(idea.VersionConfirmadaRef)
+            ? null
+            : await _respuestas.ObtenerVersionIdeaAsync(campania.Id, idea.VersionConfirmadaRef, cancellationToken);
+        var anteriores = await _respuestas.ListarVersionesIdeaAsync(campania.Id, idea.Id, cancellationToken);
+        var propuesta = await _consolidadorIdeas!.ConsolidarAsync(
+            new ContextoConsolidacionIdeas(campania, pregunta, confirmada?.Texto, texto, contexto.Contexto.ConfigLlmSnapshot, _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje),
+            cancellationToken);
+        var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, texto, TipoAporteIdea.Complemento);
+        var version = VersionIdeaConsolidada.Crear(
+            $"{idea.Id}_v{anteriores.Count + 1}", campania.Id, idea.Id, anteriores.Count + 1, idea.VersionConfirmadaRef,
+            textoPropuesto, (confirmada?.AporteIdsAcumulados ?? Array.Empty<string>()).Append(respuestaId).ToArray(), new[] { respuestaId },
+            tipo, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
+            CrearSnapshotConfig(contexto.Contexto.ConfigLlmSnapshot), ahora);
+        await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(version.Id, ahora), cancellationToken);
+        await EnviarConfirmacionAsync(conversacion, numero, emisor, textoPropuesto, ahora, cancellationToken);
+    }
+
+    private async Task EnviarConfirmacionAsync(
+        DominioConversacion conversacion, NumeroWhatsApp numero, string? emisor, string textoPropuesto,
+        DateTimeOffset ahora, CancellationToken cancellationToken)
+        => await EnviarAsync(conversacion, numero, $"Entendí que propones: {textoPropuesto}\n\n¿Es correcto?", TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+
+    private static (string Texto, TipoAporteIdea Tipo) TextoYTipoPropuesta(
+        ResultadoConsolidacionIdeas resultado, string aporte, TipoAporteIdea tipoFallback)
+        => resultado switch
+        {
+            ResultadoConsolidacionIdeas.Exito exito => (exito.TextoConsolidado, exito.TipoCambio),
+            ResultadoConsolidacionIdeas.Fallback fallback => (fallback.TextoConservador, tipoFallback),
+            _ => (aporte, tipoFallback),
+        };
+
+    private static ConfigLlmSnapshot CrearSnapshotConfig(ConfigLlm config)
+        => new(config.Proveedor, config.Modelo, config.Endpoint, config.Parametros);
 
     private async Task ProcesarIdeasSegmentadasAsync(
         DominioConversacion conversacion,
