@@ -115,6 +115,77 @@ public sealed class CompiladorMarkdownTests
     }
 
     [Fact]
+    public async Task Compilar_Idea_GeneraArtefactoCanonicoDesdeLaVersionConfirmada()
+    {
+        SembrarIdea(EstadoResultadoIdeaConsolidada.Madura, "eval_1");
+        await _respuestas.GuardarEvaluacionAsync(CrearEvaluacion(), CancellationToken.None);
+
+        var artefacto = await Construir().CompilarAsync(SolicitudIdea(), CancellationToken.None);
+
+        artefacto.BlobPath.Should().Be("campanias/c_1/idea/idea_1.md");
+        artefacto.Id.Should().Be("md_idea_1");
+        artefacto.IdeaRef.Should().Be("idea_1");
+        artefacto.VersionIdeaRef.Should().Be("idea_1_v2");
+        artefacto.EvaluacionRef.Should().Be("eval_1");
+        artefacto.RespuestaRef.Should().BeNull();
+        var contenido = artefacto.ContenidoMarkdown;
+        contenido.Should().Contain("# Idea de Ana");
+        // El cuerpo es la version consolidada completa, no el ultimo aporte suelto (I-19 §10).
+        contenido.Should().Contain("Idea completa y confirmada por el participante.");
+        contenido.Should().Contain("- Estado de la idea: madura");
+        contenido.Should().Contain("- Nivel de madurez: maduro");
+        contenido.Should().Contain("- Estado de curaduría: pendiente");
+        contenido.Should().Contain("- Motivo de cierre: umbral");
+        // El historial deja ver que hubo una propuesta anterior y los aportes originales.
+        contenido.Should().Contain("- v1 (descartada): Primera propuesta sin confirmar.");
+        contenido.Should().Contain("- v2 (confirmada): Idea completa y confirmada por el participante.");
+        contenido.Should().Contain("- inicial: Mi idea de mejora");
+        contenido.Should().Contain("ID de idea: idea_1");
+        contenido.Should().Contain("ID de versión vigente: idea_1_v2");
+        _blob.Leer(artefacto.BlobPath).Should().Be(contenido);
+    }
+
+    [Fact]
+    public async Task Compilar_IdeaRechazadaSinEvaluacion_ConservaElArtefactoSinCalificacion()
+    {
+        SembrarIdea(EstadoResultadoIdeaConsolidada.Rechazada, evaluacionId: null);
+
+        var artefacto = await Construir().CompilarAsync(SolicitudIdea(), CancellationToken.None);
+
+        artefacto.EvaluacionRef.Should().BeNull();
+        artefacto.ContenidoMarkdown.Should().Contain("- Estado de la idea: rechazada");
+        artefacto.ContenidoMarkdown.Should().Contain("- Estado de curaduría: no aplica");
+        artefacto.ContenidoMarkdown.Should().Contain("ID de evaluación: sin evaluación");
+        artefacto.ContenidoMarkdown.Should().NotContain("## Evaluación");
+    }
+
+    [Fact]
+    public async Task Compilar_Idea_Regenerar_IncrementaVersionSobreLaMismaRuta()
+    {
+        SembrarIdea(EstadoResultadoIdeaConsolidada.Madura, "eval_1");
+        await _respuestas.GuardarEvaluacionAsync(CrearEvaluacion(), CancellationToken.None);
+        var compilador = Construir();
+
+        var v1 = await compilador.CompilarAsync(SolicitudIdea(), CancellationToken.None);
+        _reloj.Avanzar(TimeSpan.FromMinutes(5));
+        var v2 = await compilador.CompilarAsync(SolicitudIdea(), CancellationToken.None);
+
+        v1.Version.Should().Be(1);
+        v2.Version.Should().Be(2);
+        v2.Id.Should().Be(v1.Id);
+        v2.BlobPath.Should().Be(v1.BlobPath);
+        v2.CreadoEn.Should().Be(v1.CreadoEn);
+    }
+
+    [Fact]
+    public async Task Compilar_IdeaInexistente_LanzaNoEncontrado()
+    {
+        var accion = () => Construir().CompilarAsync(SolicitudIdea(), CancellationToken.None);
+
+        await accion.Should().ThrowAsync<ElTejido.Application.Common.ErrorNoEncontrado>();
+    }
+
+    [Fact]
     public async Task Compilar_RespuestaInexistente_LanzaNoEncontrado()
     {
         var accion = () => Construir().CompilarAsync(Solicitud(), CancellationToken.None);
@@ -127,6 +198,37 @@ public sealed class CompiladorMarkdownTests
 
     private static SolicitudCompilacion Solicitud()
         => new("c_1", TipoArtefactoMarkdown.Respuesta, "resp_1", "u_1", "p_1");
+
+    private static SolicitudCompilacion SolicitudIdea()
+        => new("c_1", TipoArtefactoMarkdown.Idea, null, null, null, "idea_1");
+
+    /// <summary>Idea cerrada con dos versiones (una descartada y una confirmada) y su aporte original.</summary>
+    private void SembrarIdea(EstadoResultadoIdeaConsolidada resultado, string? evaluacionId)
+    {
+        SembrarRespuesta();
+        _respuestas.GuardarRespuestaAsync(
+            Respuesta.Crear(
+                "resp_1", "c_1", "u_1", "p_1", "conv_1", "Mi idea de mejora", "whatsapp", false,
+                EstadoRespuesta.Recibida, Epoca, new[] { "t_oper" }, ideaId: "idea_1",
+                tipoAporte: TipoAporteIdea.Inicial),
+            CancellationToken.None).GetAwaiter().GetResult();
+
+        var v1 = VersionIdeaConsolidada.Crear(
+            "idea_1_v1", "c_1", "idea_1", 1, null, "Primera propuesta sin confirmar.", new[] { "resp_1" },
+            new[] { "resp_1" }, TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Descartada, null, null, null,
+            null, Epoca);
+        var v2 = VersionIdeaConsolidada.Crear(
+            "idea_1_v2", "c_1", "idea_1", 2, v1.Id, "Idea completa y confirmada por el participante.",
+            new[] { "resp_1" }, new[] { "resp_1" }, TipoAporteIdea.Complemento,
+            EstadoConfirmacionVersionIdea.Confirmada, null, null, null, null, Epoca, Epoca);
+        _respuestas.GuardarVersionIdeaAsync(v1, CancellationToken.None).GetAwaiter().GetResult();
+        _respuestas.GuardarVersionIdeaAsync(v2, CancellationToken.None).GetAwaiter().GetResult();
+
+        var idea = IdeaConsolidada.Crear("idea_1", "c_1", "u_1", "p_1", "conv_1", "resp_1", 1, Epoca)
+            .ConfirmarVersion(v2.Id, Epoca)
+            .Cerrar(resultado, evaluacionId, resultado == EstadoResultadoIdeaConsolidada.Madura ? "umbral" : "rechazoParticipante", Epoca);
+        _respuestas.GuardarIdeaConsolidadaAsync(idea, CancellationToken.None).GetAwaiter().GetResult();
+    }
 
     private void Sembrar()
     {
@@ -174,6 +276,33 @@ public sealed class CompiladorMarkdownTests
         private readonly Dictionary<string, Respuesta> _respuestas = new(StringComparer.Ordinal);
         private readonly List<DominioEvaluacion> _evaluaciones = new();
         private readonly Dictionary<string, ArtefactoMarkdown> _artefactos = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, IdeaConsolidada> _ideas = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, VersionIdeaConsolidada> _versiones = new(StringComparer.Ordinal);
+
+        public Task GuardarIdeaConsolidadaAsync(IdeaConsolidada idea, CancellationToken cancellationToken)
+        {
+            _ideas[idea.Id] = idea;
+            return Task.CompletedTask;
+        }
+
+        public Task<IdeaConsolidada?> ObtenerIdeaConsolidadaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+            => Task.FromResult(_ideas.GetValueOrDefault(ideaId));
+
+        public Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasConsolidadasAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<IdeaConsolidada>>(_ideas.Values.Where(i => i.CampaniaId == campaniaId).ToArray());
+
+        public Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
+        {
+            _versiones[version.Id] = version;
+            return Task.CompletedTask;
+        }
+
+        public Task<VersionIdeaConsolidada?> ObtenerVersionIdeaAsync(string campaniaId, string versionId, CancellationToken cancellationToken)
+            => Task.FromResult(_versiones.GetValueOrDefault(versionId));
+
+        public Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesIdeaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<VersionIdeaConsolidada>>(
+                _versiones.Values.Where(v => v.CampaniaId == campaniaId && v.IdeaId == ideaId).ToArray());
 
         public Task GuardarRespuestaAsync(Respuesta respuesta, CancellationToken cancellationToken)
         {

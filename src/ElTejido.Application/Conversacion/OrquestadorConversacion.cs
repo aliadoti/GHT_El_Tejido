@@ -810,6 +810,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (_intencionRechazoIdea.Coincide(texto))
         {
             await _respuestas.GuardarIdeaConsolidadaAsync(idea.Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", ahora), cancellationToken);
+            await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
             var acuseRechazo = TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault);
             // §4.5: el rechazo cierra solo esta idea; si otra espera turno, se sigue con ella.
             if (await ContinuarConIdeaEnEsperaAsync(
@@ -872,6 +873,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             var motivo = madura ? "umbral" : conforme ? "participante" : resultado is ResultadoEvaluacion.Fallback ? "fallbackEvaluacion" : "sinRepreguntas";
             idea = idea.Cerrar(estado, resultado.Evaluacion.Id, motivo, ahora);
             await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+            await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
 
             // I-19 §4.6: si una idea nueva quedó esperando su turno, se atiende ahora en lugar de
             // cerrar el hilo; el cierre solo llega cuando no queda ninguna idea abierta.
@@ -889,6 +891,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        // La idea sigue abierta pero su versión confirmada ya fue evaluada: el artefacto se regenera.
+        await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
         var invitacion = ConstruirInvitacionMejora(conversacion, resultado.Evaluacion.RepreguntaSugerida);
         await EnviarAsync(conversacion, numero, Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion), TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion.RegistrarRepregunta(), cancellationToken);
@@ -1450,6 +1454,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             await _respuestas.GuardarIdeaConsolidadaAsync(
                 idea.Cerrar(resultado, evaluacionId, motivoCierre, ahora), cancellationToken);
+            // I-19 §10: el artefacto canónico refleja el estado final de la idea (madura/pendiente/rechazada).
+            await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
         }
 
         var cola = _colaCoaching.FinalizarActiva(conversacion.CoachingIdeas!, motivoCola, ahora);
@@ -1669,6 +1675,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (motivoCola is null)
         {
             // Sigue el acompañamiento I-18 sobre esta misma idea: una sola pregunta socrática por turno.
+            // El artefacto se regenera con la versión confirmada y su evaluación (I-19 §10).
+            await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
             await EnviarPreguntaCoachingAsync(
                 conversacion, campania, usuario.Id, numero, emisor, resultado.Evaluacion, ahora, cancellationToken);
             return;

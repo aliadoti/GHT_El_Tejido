@@ -26,11 +26,18 @@ internal sealed class ArtefactoMarkdownCosmosDocument
     [JsonProperty("preguntaId")]
     public string PreguntaId { get; init; } = string.Empty;
 
-    [JsonProperty("respuestaRef")]
-    public string RespuestaRef { get; init; } = string.Empty;
+    [JsonProperty("respuestaRef", NullValueHandling = NullValueHandling.Ignore)]
+    public string? RespuestaRef { get; init; }
 
-    [JsonProperty("evaluacionRef")]
-    public string EvaluacionRef { get; init; } = string.Empty;
+    [JsonProperty("evaluacionRef", NullValueHandling = NullValueHandling.Ignore)]
+    public string? EvaluacionRef { get; init; }
+
+    // I-19 (03 §3.10): referencias canonicas del artefacto por idea; ausentes en artefactos historicos.
+    [JsonProperty("ideaRef", NullValueHandling = NullValueHandling.Ignore)]
+    public string? IdeaRef { get; init; }
+
+    [JsonProperty("versionIdeaRef", NullValueHandling = NullValueHandling.Ignore)]
+    public string? VersionIdeaRef { get; init; }
 
     [JsonProperty("contenidoMarkdown")]
     public string ContenidoMarkdown { get; init; } = string.Empty;
@@ -61,6 +68,8 @@ internal sealed class ArtefactoMarkdownCosmosDocument
             PreguntaId = artefacto.PreguntaId,
             RespuestaRef = artefacto.RespuestaRef,
             EvaluacionRef = artefacto.EvaluacionRef,
+            IdeaRef = artefacto.IdeaRef,
+            VersionIdeaRef = artefacto.VersionIdeaRef,
             ContenidoMarkdown = artefacto.ContenidoMarkdown,
             BlobPath = artefacto.BlobPath,
             Estado = "generado",
@@ -83,12 +92,15 @@ internal sealed class ArtefactoMarkdownCosmosDocument
             EstadoArtefacto.Generado,
             Version,
             CreadoEn,
-            ActualizadoEn);
+            ActualizadoEn,
+            IdeaRef,
+            VersionIdeaRef);
 
     private static TipoArtefactoMarkdown MapearTipo(string tipo)
         => tipo switch
         {
             "respuesta" => TipoArtefactoMarkdown.Respuesta,
+            "idea" => TipoArtefactoMarkdown.Idea,
             "participante" => TipoArtefactoMarkdown.Participante,
             "campania" => TipoArtefactoMarkdown.Campania,
             "entidad" => TipoArtefactoMarkdown.Entidad,

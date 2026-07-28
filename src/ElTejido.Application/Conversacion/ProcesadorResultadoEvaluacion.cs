@@ -139,6 +139,27 @@ public sealed class ProcesadorResultadoEvaluacion
                 tipoAporte),
             cancellationToken);
 
+    /// <summary>
+    /// I-19 §10: (re)genera el artefacto canónico de una idea desde su versión vigente y su evaluación.
+    /// Como el Markdown es caché regenerable (REQ §22.4.6), un fallo aquí no rompe el hilo.
+    /// </summary>
+    public async Task CompilarMarkdownIdeaAsync(
+        string campaniaId,
+        string ideaId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _compilador.CompilarAsync(
+                new SolicitudCompilacion(campaniaId, TipoArtefactoMarkdown.Idea, null, null, null, ideaId),
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // El artefacto es regenerable desde datos (REQ §22.4.6); un fallo de compilacion no rompe el hilo.
+        }
+    }
+
     public async Task CompilarMarkdownAsync(
         string campaniaId,
         Pregunta pregunta,

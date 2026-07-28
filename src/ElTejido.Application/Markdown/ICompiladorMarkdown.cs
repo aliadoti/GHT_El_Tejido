@@ -21,4 +21,6 @@ public sealed record SolicitudCompilacion(
     TipoArtefactoMarkdown Tipo,
     string? RespuestaId,
     string? UsuarioId,
-    string? PreguntaId);
+    string? PreguntaId,
+    /// <summary>I-19 (§10): idea lógica del artefacto canónico. Obligatorio si <c>Tipo</c> es <c>Idea</c>.</summary>
+    string? IdeaId = null);

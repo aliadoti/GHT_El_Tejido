@@ -75,6 +75,70 @@ public sealed class ResultadosIntegrationTests
     }
 
     [Fact]
+    public async Task Ideas_ListaUnaFilaPorIdeaConSuEstadoYTextoVigente()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var lista = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}");
+
+        lista.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await lista.Content.ReadAsStringAsync();
+        json.Should().Contain("\"total\":2");
+        json.Should().Contain("\"id\":\"idea_1\"");
+        json.Should().Contain("\"texto\":\"Idea consolidada y confirmada.\"");
+        json.Should().Contain("\"estadoResultado\":\"madura\"");
+        json.Should().Contain("\"estadoCuraduria\":\"pendiente\"");
+        json.Should().Contain("\"nivelMadurez\":\"maduro\"");
+        // La idea rechazada conserva su texto propuesto y se marca como no confirmada.
+        json.Should().Contain("\"estadoResultado\":\"rechazada\"");
+        json.Should().Contain("\"confirmada\":false");
+    }
+
+    [Fact]
+    public async Task Ideas_FiltroPorEstadoResultado_SeparaMadurasDeRechazadas()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var maduras = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}&estadoResultado=madura");
+        var madurasJson = await maduras.Content.ReadAsStringAsync();
+        using var curaduria = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}&estadoCuraduria=pendiente");
+        var curaduriaJson = await curaduria.Content.ReadAsStringAsync();
+
+        madurasJson.Should().Contain("idea_1").And.NotContain("idea_2");
+        curaduriaJson.Should().Contain("idea_1").And.NotContain("idea_2");
+    }
+
+    [Fact]
+    public async Task Ideas_DetalleDevuelveVersionesAportesYEvaluacion()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var detalle = await client.GetAsync($"/api/admin/ideas/idea_1?campaniaId={CampaniaId}");
+
+        detalle.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await detalle.Content.ReadAsStringAsync();
+        json.Should().Contain("\"versionConfirmada\"");
+        json.Should().Contain("\"estadoConfirmacion\":\"confirmada\"");
+        json.Should().Contain("\"numeroVersion\":1");
+        json.Should().Contain("eval_1");
+        json.Should().Contain("\"aportes\"");
+    }
+
+    [Fact]
+    public async Task Ideas_SinCampaniaId_Responde400()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync("/api/admin/ideas");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Respuestas_SinCampaniaId_Responde400()
     {
         using var fabrica = Construir();
@@ -145,6 +209,30 @@ public sealed class ResultadosIntegrationTests
         var artefacto = CrearArtefacto(1);
         respuestas.ObtenerArtefactoAsync(CampaniaId, "md_1", Arg.Any<CancellationToken>()).Returns(artefacto);
         respuestas.ListarArtefactosAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { artefacto });
+
+        // I-19 (04 §5.8): una idea madura y una rechazada para cubrir lista, filtros y detalle.
+        var versionMadura = VersionIdeaConsolidada.Crear(
+            "idea_1_v1", CampaniaId, "idea_1", 1, null, "Idea consolidada y confirmada.", new[] { "resp_1" },
+            new[] { "resp_1" }, TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Confirmada, null, null, null,
+            null, Epoca, Epoca);
+        var versionRechazada = VersionIdeaConsolidada.Crear(
+            "idea_2_v1", CampaniaId, "idea_2", 1, null, "Idea que el participante descarto.", new[] { "resp_2" },
+            new[] { "resp_2" }, TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
+            null, Epoca);
+        var ideaMadura = IdeaConsolidada.Crear("idea_1", CampaniaId, "u_1", "p_1", "conv_1", "resp_1", 1, Epoca)
+            .ConfirmarVersion(versionMadura.Id, Epoca)
+            .Cerrar(EstadoResultadoIdeaConsolidada.Madura, "eval_1", "umbral", Epoca);
+        var ideaRechazada = IdeaConsolidada.Crear("idea_2", CampaniaId, "u_2", "p_1", "conv_2", "resp_2", 2, Epoca)
+            .ConPropuesta(versionRechazada.Id, Epoca)
+            .Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", Epoca);
+        respuestas.ListarIdeasConsolidadasAsync(CampaniaId, Arg.Any<CancellationToken>())
+            .Returns(new[] { ideaMadura, ideaRechazada });
+        respuestas.ObtenerIdeaConsolidadaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>()).Returns(ideaMadura);
+        respuestas.ObtenerVersionIdeaAsync(CampaniaId, "idea_1_v1", Arg.Any<CancellationToken>()).Returns(versionMadura);
+        respuestas.ObtenerVersionIdeaAsync(CampaniaId, "idea_2_v1", Arg.Any<CancellationToken>()).Returns(versionRechazada);
+        respuestas.ListarVersionesIdeaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>())
+            .Returns(new[] { versionMadura });
+        respuestas.ObtenerEvaluacionPorIdAsync(CampaniaId, "eval_1", Arg.Any<CancellationToken>()).Returns(CrearEvaluacion());
 
         var conversaciones = Substitute.For<IRepositorioConversaciones>();
         var cola = new PoliticaColaCoachingIdeas().Crear(

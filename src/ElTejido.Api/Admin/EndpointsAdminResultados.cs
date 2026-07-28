@@ -25,6 +25,8 @@ internal static class EndpointsAdminResultados
 
         grupo.MapGet("/conversaciones", ListarConversacionesAsync);
         grupo.MapGet("/conversaciones/{id}", ObtenerConversacionAsync);
+        grupo.MapGet("/ideas", ListarIdeasAsync);
+        grupo.MapGet("/ideas/{id}", ObtenerIdeaAsync);
         grupo.MapGet("/respuestas", ListarRespuestasAsync);
         grupo.MapGet("/respuestas/{id}", ObtenerRespuestaAsync);
         grupo.MapGet("/evaluaciones/{id}", ObtenerEvaluacionAsync);
@@ -64,6 +66,86 @@ internal static class EndpointsAdminResultados
             mensajes = mensajes.Select(MapearMensaje),
         });
     }
+
+    /// <summary>
+    /// I-19 (04 §5.8): una fila por idea lógica. Los filtros opcionales se aplican en memoria como el
+    /// resto de resultados; el extracto usa la versión confirmada y, si aún no hay, la propuesta marcada.
+    /// </summary>
+    private static async Task<IResult> ListarIdeasAsync(HttpContext contexto, CancellationToken ct)
+    {
+        var query = contexto.Request.Query;
+        var campaniaId = RequerirCampania(query);
+        var repo = Respuestas(contexto);
+        var ideas = await repo.ListarIdeasConsolidadasAsync(campaniaId, ct);
+
+        var filtradas = ideas
+            .Where(i => CoincideOpcional(query["usuarioId"], i.UsuarioId)
+                && CoincideOpcional(query["preguntaId"], i.PreguntaId)
+                && CoincideEnum(query["estadoResultado"], i.EstadoResultado?.ToString())
+                && CoincideEnum(query["estadoFlujo"], i.EstadoFlujo.ToString())
+                && CoincideEnum(query["estadoCuraduria"], i.EstadoCuraduria?.ToString()))
+            .OrderBy(i => i.PreguntaId, StringComparer.Ordinal)
+            .ThenBy(i => i.IdeaIndice)
+            .ThenBy(i => i.CreadaEn)
+            .ToArray();
+
+        var resumenes = new List<object>(filtradas.Length);
+        foreach (var idea in filtradas)
+        {
+            var version = await VersionVigenteAsync(repo, campaniaId, idea, ct);
+            resumenes.Add(MapearIdeaResumen(idea, version));
+        }
+
+        return Results.Ok(Paginar(resumenes, query));
+    }
+
+    /// <summary>
+    /// I-19: detalle auditable de una idea — versión confirmada vigente, propuesta pendiente si aplica,
+    /// evaluación vigente, aportes originales y todas las versiones en orden.
+    /// </summary>
+    private static async Task<IResult> ObtenerIdeaAsync(string id, HttpContext contexto, CancellationToken ct)
+    {
+        var campaniaId = RequerirCampania(contexto.Request.Query);
+        var repo = Respuestas(contexto);
+        var idea = await repo.ObtenerIdeaConsolidadaAsync(campaniaId, id, ct)
+            ?? throw new ErrorNoEncontrado("La idea no existe.");
+
+        var confirmada = await VersionAsync(repo, campaniaId, idea.VersionConfirmadaRef, ct);
+        var propuesta = await VersionAsync(repo, campaniaId, idea.VersionPropuestaRef, ct);
+        var evaluacion = string.IsNullOrWhiteSpace(idea.EvaluacionVigenteRef)
+            ? null
+            : await repo.ObtenerEvaluacionPorIdAsync(campaniaId, idea.EvaluacionVigenteRef, ct);
+        var versiones = (await repo.ListarVersionesIdeaAsync(campaniaId, id, ct))
+            .OrderBy(v => v.NumeroVersion)
+            .Select(MapearVersionIdea)
+            .ToArray();
+        var aportes = (await repo.ListarRespuestasAsync(campaniaId, ct))
+            .Where(r => r.IdeaId == id)
+            .OrderBy(r => r.Fecha)
+            .Select(MapearRespuesta)
+            .ToArray();
+
+        return Results.Ok(new
+        {
+            idea = MapearIdeaResumen(idea, confirmada ?? propuesta),
+            versionConfirmada = confirmada is null ? null : MapearVersionIdea(confirmada),
+            versionPropuesta = propuesta is null ? null : MapearVersionIdea(propuesta),
+            evaluacion = evaluacion is null ? null : MapearEvaluacion(evaluacion),
+            versiones,
+            aportes,
+        });
+    }
+
+    private static async Task<VersionIdeaConsolidada?> VersionVigenteAsync(
+        IRepositorioRespuestas repo, string campaniaId, IdeaConsolidada idea, CancellationToken ct)
+        => await VersionAsync(repo, campaniaId, idea.VersionConfirmadaRef, ct)
+            ?? await VersionAsync(repo, campaniaId, idea.VersionPropuestaRef, ct);
+
+    private static async Task<VersionIdeaConsolidada?> VersionAsync(
+        IRepositorioRespuestas repo, string campaniaId, string? versionId, CancellationToken ct)
+        => string.IsNullOrWhiteSpace(versionId)
+            ? null
+            : await repo.ObtenerVersionIdeaAsync(campaniaId, versionId, ct);
 
     private static async Task<IResult> ListarRespuestasAsync(HttpContext contexto, CancellationToken ct)
     {
@@ -201,6 +283,48 @@ internal static class EndpointsAdminResultados
             m.Timestamp,
         };
 
+    private static object MapearIdeaResumen(IdeaConsolidada idea, VersionIdeaConsolidada? vigente)
+        => new
+        {
+            idea.Id,
+            idea.CampaniaId,
+            idea.UsuarioId,
+            idea.PreguntaId,
+            idea.ConversacionId,
+            idea.IdeaIndice,
+            idea.RespuestaRaizId,
+            texto = vigente?.Texto,
+            // Deja explícito si el texto que se muestra todavía no fue confirmado por el participante.
+            confirmada = vigente?.EstadoConfirmacion == EstadoConfirmacionVersionIdea.Confirmada,
+            estadoFlujo = MinusculaInicial(idea.EstadoFlujo.ToString()),
+            estadoResultado = idea.EstadoResultado is null ? null : MinusculaInicial(idea.EstadoResultado.Value.ToString()),
+            nivelMadurez = MinusculaInicial(idea.NivelMadurez.ToString()),
+            estadoCuraduria = idea.EstadoCuraduria is null ? null : MinusculaInicial(idea.EstadoCuraduria.Value.ToString()),
+            idea.MotivoCierre,
+            idea.VersionConfirmadaRef,
+            idea.VersionPropuestaRef,
+            idea.EvaluacionVigenteRef,
+            idea.CreadaEn,
+            idea.ActualizadaEn,
+        };
+
+    private static object MapearVersionIdea(VersionIdeaConsolidada v)
+        => new
+        {
+            v.Id,
+            v.IdeaId,
+            v.NumeroVersion,
+            v.VersionAnteriorId,
+            v.Texto,
+            estadoConfirmacion = MinusculaInicial(v.EstadoConfirmacion.ToString()),
+            origen = MinusculaInicial(v.Origen.ToString()),
+            aporteIdsAcumulados = v.AporteIdsAcumulados,
+            aporteNuevoIds = v.AporteNuevoIds,
+            v.EvaluacionRef,
+            v.GeneradaEn,
+            v.ConfirmadaEn,
+        };
+
     private static object MapearRespuesta(Respuesta r)
         => new
         {
@@ -267,6 +391,8 @@ internal static class EndpointsAdminResultados
             a.PreguntaId,
             a.RespuestaRef,
             a.EvaluacionRef,
+            a.IdeaRef,
+            a.VersionIdeaRef,
             a.BlobPath,
             estado = a.Estado.ToString().ToLowerInvariant(),
             a.Version,
@@ -284,6 +410,8 @@ internal static class EndpointsAdminResultados
             a.PreguntaId,
             a.RespuestaRef,
             a.EvaluacionRef,
+            a.IdeaRef,
+            a.VersionIdeaRef,
             a.ContenidoMarkdown,
             a.BlobPath,
             estado = a.Estado.ToString().ToLowerInvariant(),
@@ -315,6 +443,16 @@ internal static class EndpointsAdminResultados
     {
         var texto = filtro.ToString();
         return string.IsNullOrWhiteSpace(texto) || string.Equals(texto.Trim(), MinusculaInicial(estado.ToString()), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // I-19 (04 §5.8): filtro aditivo por un enum en minuscula inicial; vacio = todas. Un valor nulo en
+    // el documento (p. ej. una idea sin estadoResultado) nunca coincide con un filtro explicito.
+    private static bool CoincideEnum(StringValues filtro, string? valor)
+    {
+        var texto = filtro.ToString();
+        return string.IsNullOrWhiteSpace(texto)
+            || (valor is not null
+                && string.Equals(texto.Trim(), MinusculaInicial(valor), StringComparison.OrdinalIgnoreCase));
     }
 
     // I-17 (04 §5.8): filtro aditivo por nivel de madurez (maduro|incubacion); vacio = todas.
