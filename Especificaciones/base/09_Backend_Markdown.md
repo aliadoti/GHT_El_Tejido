@@ -74,7 +74,8 @@ public interface ICompiladorMarkdown
 - Revisión: {{respuesta.revisionIndice (si aplica; 0 = raíz)}}
 - Rúbrica / Versión: {{rubricaRef}} / v{{versionRubrica}}
 - Prompt / Versión: {{promptRef}} / v{{versionPrompt}}
-- Calificación total: {{evaluacion.calificacionTotal}}
+- Umbral de madurez: {{corteEfectivo}} de {{escala.max}} puntos ({{umbralEfectivoPorcentaje}} %; {{origenUmbral}}) <!-- I-20: solo si aplica una rúbrica/umbral -->
+- Calificación total: {{evaluacion.calificacionTotal}} de {{escala.max}} puntos <!-- I-20: cultura es-CO; sin evaluación vigente = "pendiente de evaluación" -->
 - Nivel de madurez: {{respuesta.nivelMadurez}}  <!-- I-17: maduro|incubacion; ausente en datos históricos = incubacion. Determinista, sin secretos, regenerable. -->
 - Estado de la idea: {{idea.estadoResultado (si aplica)}}  <!-- I-19: madura|pendiente|rechazada -->
 - Estado de confirmación: {{versionIdea.estadoConfirmacion (si aplica)}}
@@ -115,6 +116,9 @@ legible por humanos; sin secretos. Para I-06, cada idea segmentada conserva un a
 I-18 mantiene el linaje de aportes. I-19 compila el vigente desde `ideaId` +
 `versionConfirmadaRef`/`evaluacionVigenteRef`, por lo que las revisiones dejan de aparecer como
 resultados separados.
+
+I-20 calcula corte, escala, porcentaje y origen con precedencia pregunta → campaña → global. Esos
+valores son determinísticos: el LLM no los genera ni interpreta para el Markdown.
 
 ---
 

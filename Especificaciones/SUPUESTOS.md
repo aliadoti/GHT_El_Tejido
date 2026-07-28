@@ -681,3 +681,28 @@
     hilo— y riesgo alto sobre la máquina de estados. **Se retoma si UAT o el día-D muestran
     participantes intentándolo, o por decisión explícita de GHT.** Mientras tanto ese mensaje se trata
     como un aporte normal de la idea en curso, sin perder contenido.
+
+### redaccion-fluida-i20 - Voz contextual sin delegar decisiones al LLM
+
+- Fecha: 2026-07-28 - Agente/Rol: Codex - Arquitecto/Backend/AppSec/SDET - decisión derivada de la
+  observación del usuario sobre confirmaciones repetitivas y Markdown sin contexto ejecutivo.
+- Decisión:
+  - La redacción visible normal es generada por un LLM estructurado, pero el servidor fija primero el
+    acto (`confirmar`, `mejorar`, `transicionar`, `aclarar`, `reabrir` o `cerrar`), la idea activa,
+    umbral, estado y límites. El modelo solo devuelve `puente` y `pregunta`.
+  - La versión consolidada se inserta exactamente por el servidor al pedir confirmación. Esto conserva
+    la transparencia I-19 y evita que un redactor omita, resuma de más o modifique el texto a confirmar.
+  - `promptRefs.conversacion` es opcional y versionado; pregunta prevalece sobre campaña. Si no existe,
+    el prompt de retro efectivo guía el tono para no romper campañas configuradas hoy. No se crea API ni
+    un campo de activación por campaña.
+  - El kill-switch global `Conversacion:RedaccionConversacionalFluidaHabilitada` nace `true`; apagarlo
+    solo usa respaldos breves. No altera consolidación, evaluación ni los datos históricos.
+  - El Markdown muestra nota y umbral efectivos como escala humana, con cultura `es-CO` y origen
+    pregunta/campaña/global. La nota puede bajar entre versiones: la invariante es evaluar la versión
+    completa exacta, no una mejora artificial de la nota.
+- Alternativas descartadas: dejar frases fijas y solo multiplicar variantes; permitir al LLM decidir
+  cuándo cerrar o pasar de idea; concatenar retroalimentación y confirmación; garantizar que toda nota
+  crezca; escribir el Markdown con LLM; crear otro hilo o resultado por complemento.
+- Impacto / reversibilidad: contrato aditivo de `promptRefs`, puerto interno y configuración global;
+  sin endpoint público, migración de datos ni cambio de la máquina de estados. La activación se revierte
+  con kill-switch. Spec: `Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md`.

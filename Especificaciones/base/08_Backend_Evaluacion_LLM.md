@@ -196,6 +196,9 @@ Reglas duras:
 - **I-19 — coherencia de versión:** la calificación, `retroalimentacion_usuario`,
   `repregunta_sugerida`, temas, entidades y explicación deben referirse a la misma versión consolidada
   completa. La evaluación persiste `ideaId`/`versionIdeaId`; sin ese vínculo no puede sellar madurez.
+- **I-20 — redacción de turno:** el redactor recibe el acto ya resuelto y devuelve solo `puente` y
+  `pregunta` en JSON estricto. Ambos pasan guardas de longitud y fuga de rúbrica; no agregan hechos,
+  puntajes, criterios ni decisiones. Esta llamada no crea ni modifica una `Evaluacion`.
 
 ### 3.5 Persistencia y decisión
 - Construye y devuelve la `Evaluacion` con **snapshots**: `rubricaRef+versionRubrica`,
@@ -259,6 +262,9 @@ Validaciones:
 11. **Consolidación (I-19):** versión previa y aporte nuevo son datos no confiables delimitados. La
     propuesta del consolidador no se considera verdadera ni se evalúa hasta que el participante la
     confirme; una corrección explícita produce otra versión inmutable.
+12. **Redacción (I-20):** campaña, pregunta, versión y retroalimentación se delimitan como datos. El
+    JSON del redactor es no confiable: se valida y filtra; jamás altera el acto server-side ni sustituye
+    la versión que se confirma.
 
 ---
 
@@ -293,6 +299,8 @@ Si el proveedor falla (timeout, 5xx tras reintentos) **o** la salida es inválid
   respuesta, ejemplo o solución; D5 valida esta propiedad antes de activar campañas.
 - En I-19, toda evaluación con `ideaId` usa una versión confirmada completa y deja vínculo
   reproducible a `versionIdeaId`; una frase complementaria aislada nunca crea la calificación vigente.
+- En I-20, cada turno visible tiene una sola intención; la variación de lenguaje no revela rúbrica ni
+  altera evaluación, estados o límites.
 - Seeds vacías no alteran el contexto; configuradas se acotan y no reemplazan la rúbrica.
 
 *Fin del documento.*

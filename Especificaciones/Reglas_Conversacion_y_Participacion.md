@@ -3,8 +3,8 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-07-27 (I-19 WIP: flujo de una idea y cola multi-idea
-> implementados localmente).
+> y `09` (Markdown). Última revisión: 2026-07-28 (I-20 especificada: redacción fluida por acto y
+> Markdown ejecutivo; implementación pendiente).
 
 ## 1. Visión general del flujo
 
@@ -90,6 +90,12 @@ campañas y no depende de I-05. Si I-05 está activo, no se muestra un segundo r
 crea otra versión propuesta; solo una confirmación inequívoca permite evaluar. Las ideas semilla I-12
 se usan cuando existan, pero no crean criterios de calificación fuera de la rúbrica.
 
+**Redacción fluida I-20:** la forma de confirmar, acompañar, aclarar, transicionar o cerrar se redacta
+con LLM según campaña, pregunta, idea consolidada y contexto reciente. El servidor decide el acto; el
+LLM solo redacta. Cada mensaje tiene una sola intención y como máximo una pregunta. La versión propuesta
+completa se muestra sin que el redactor pueda sustituirla. Si falla o la salida es insegura, se usa un
+respaldo breve sin cambiar evaluación ni estado.
+
 ### 2.3 Revision determinista (revisiones como oportunidades)
 > **Flujo legado/single-idea:** las reglas de contador único, coletilla siempre visible y cierre de la
 > pregunta descritas en esta sección se conservan cuando I-18 está apagado. Con coaching secuencial
@@ -153,6 +159,10 @@ En I-19, el cierre deja una única idea como `madura`, `pendiente` o `rechazada`
 canónico. Una idea madura queda `pendiente` de curaduría experta; no se publica ni prioriza
 automáticamente. Una conversación cerrada no acepta contenido nuevo como otra respuesta independiente,
 pero puede reabrir la misma idea ante una petición explícita mientras la campaña siga activa.
+
+El Markdown de la idea muestra para curaduría campaña, pregunta, umbral de madurez efectivo con origen
+y calificación total como `X de Y puntos`. Es información administrativa: no se envían puntajes ni
+rúbrica al participante durante el acompañamiento.
 
 ### 2.4.1 Multi-idea por mensaje (I-06, implementado; flags apagados)
 Si la campaña tiene `configConversacional.segmentacionIdeas=true` y el kill-switch global

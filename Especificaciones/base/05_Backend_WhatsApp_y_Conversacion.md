@@ -215,8 +215,9 @@ I-19 corrige la unidad de evaluación para flujos de una o varias ideas:
 1. cada entrante significativo se conserva como `Respuesta`/aporte inmutable con `ideaId`;
 2. el consolidador propone una paráfrasis acumulada usando la versión confirmada anterior y el aporte
    nuevo;
-3. el orquestador persiste `VersionIdeaConsolidada(estadoConfirmacion=propuesta)` y pregunta
-   “Entendí que… ¿Es correcto?”;
+3. el orquestador persiste `VersionIdeaConsolidada(estadoConfirmacion=propuesta)` y solicita al
+   redactor I-20 un puente contextual y una sola pregunta de confirmación; inserta entre ambos la
+   versión propuesta exacta;
 4. una confirmación la vuelve vigente; una corrección crea otra propuesta; un rechazo cierra solo esa
    idea como `rechazada`;
 5. únicamente el texto completo de una versión confirmada se envía a `IEvaluadorLlm`;
@@ -263,8 +264,17 @@ I-19 no tiene opt-in por campaña: se activa para todas. El kill-switch global d
 como pendientes y no se vuelve a calificarlos aisladamente. Ver
 `Iniciativas/I-19_Consolidacion_Progresiva_Ideas.md`.
 
+**I-20 — redacción fluida:** el LLM redacta el turno visible a partir de campaña, pregunta, idea,
+versión completa y acto ya decidido por el servidor. No puede decidir estado, cola, límite, umbral o
+cierre. Cada turno expresa una sola intención y a lo sumo una pregunta; salida inválida, timeout o fuga
+cae a un respaldo breve y seguro. Ver `Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. En el flujo legacy, I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`**. Con I-19, la paráfrasis acumulada para confirmación es obligatoria y reemplaza esa salida opcional para no enviar dos resúmenes; no depende del flag I-05. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
+
+Con I-20, la composición normal se delega al redactor LLM estructurado; las constantes de
+`Conversacion:Mensajes` quedan como respaldo. No se concatena una pregunta de mejora con una
+confirmación de otra versión o idea.
 
 
 #### Textos operativos configurables

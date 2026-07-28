@@ -117,14 +117,14 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
       "estado": "activo",
       "rubricaRef": "r_general",
       "versionRubrica": 3,
-      "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "cierre": "pr_cierre", "compilar": "pr_md" },
+      "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "conversacion": "pr_conversar", "cierre": "pr_cierre", "compilar": "pr_md" },
       "maxRepreguntas": 1,
       "limitesSeguridad": { "maxCaracteresMensaje": 1500, "maxLlamadasLlm": 2 },
       "configMarkdown": { "tipoArtefacto": "respuesta" }
     }
   ],
   "rubricaRef": "r_general",
-  "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "cierre": "pr_cierre", "compilar": "pr_md" },
+  "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "conversacion": "pr_conversar", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
   "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "numeroWhatsAppSaliente": null },
@@ -137,6 +137,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - `estado` ∈ `borrador` | `activa` | `cerrada` | `archivada` (`REQ §11.2`).
 - Solo `activa` permite envío y recepción (`REQ §11.3.1–2`).
 - `promptRefs` y `rubricaRef` a nivel campaña son defaults; cada pregunta puede sobreescribirlos.
+- `promptRefs.conversacion` (**I-20**, aditivo, opcional): prompt aprobado y versionado que da voz al
+  redactor de turnos visibles. La referencia de pregunta prevalece sobre campaña. Ausente conserva
+  compatibilidad: usa `retro` efectivo solo como guía de tono junto a las instrucciones de seguridad;
+  nunca cambia rúbrica, estados ni límites.
 - La pregunta guarda `versionRubrica` para snapshot; la evaluación persistirá la versión efectiva usada.
 - `seedThoughts` (**I-12/I-19**, aditivo, default vacío): lista de contextos orientadores administrados
   por campaña. Vacío/ausente omite el bloque y no altera consolidación/evaluación. Cuando tenga

@@ -73,6 +73,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 12. Verificar cierre, Markdown canónico por idea y una sola fila por idea en Resultados.
 13. Verificar trazabilidad (aportes, versiones, confirmaciones, snapshots) y ausencia de secretos en
     artefactos/logs.
+14. Verificar que confirmación, mejora y transición son un solo acto natural; que no se revelan
+    puntajes al participante; y que Markdown muestra umbral/origen y nota `X de Y puntos`.
 
 ---
 
@@ -92,6 +94,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §21, §26.6 Retro y repregunta única | 05 §4 | Unit (máquina de estados) + §3.5 |
 | §22, §26.7 Markdown | 09 | Unit (render) + integración (regenerar) + §4.3 |
 | §9/§20/§21/§22 Consolidación progresiva I-19 | I-19, 03 §3.8.1–2, 05 §4.4.2, 08 §2.2 | Unit (versiones/estados/intenciones) + integración (confirmar/evaluar/reabrir) + E2E §5.9–13 |
+| §9/§20/§21/§22 Redacción fluida I-20 | I-20, 03 §3.3, 05 §4.4–§4.5, 08, 09 | Unit (JSON/guardrails/fallback/formato) + integración (un acto por turno) + E2E §5.9–14 |
 | §25 Guardrails/abuso | 10 §2 | Unit + integración límites + §4.6 |
 | §30 Trazabilidad | 10 §6 | Integración (snapshots, logs) + §4.1–2 |
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |
@@ -110,6 +113,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 - [ ] E2E §5 ejecutado con 5 usuarios reales.
 - [ ] I-19: ninguna evaluación vigente usa solo el último complemento; ideas maduras quedan
   pendientes de curaduría.
+- [ ] I-20: no se concatenan actos, la redacción no revela rúbrica y cada Markdown expone umbral,
+  origen y calificación de la versión exacta.
 - [ ] `SUPUESTOS.md` revisado (decisiones de ambigüedad documentadas).
 
 ---

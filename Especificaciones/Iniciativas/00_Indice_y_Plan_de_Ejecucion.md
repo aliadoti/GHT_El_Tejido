@@ -6,12 +6,11 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-07-27 — **`I-19` consolidación progresiva WIP local (cortes 1/2 y 3
-> estructural).** Una idea estable acumula aportes, se parafrasea/confirma y solo su versión completa se
-> evalúa; ya existen el dominio, persistencia, consolidador, flujo de una idea y referencias canónicas en
-> la cola I-18. Falta migrar las transiciones multi-idea, reapertura, Resultados/Markdown, seeds y
-> observabilidad. Activación acordada para todas las campañas, sin opt-in por campaña; no desplegar hasta
-> D5/UAT/costo. Revisión anterior: 2026-07-25 — **`I-18` coaching secuencial DONE local.**
+> Última revisión: 2026-07-28 — **`I-20` redacción conversacional fluida y Markdown ejecutivo,
+> especificada y lista para implementar.** I-19 está completa localmente: una idea acumula aportes, se
+> confirma y solo su versión completa se evalúa. I-20 elimina confirmaciones repetitivas mediante un
+> redactor LLM controlado por el servidor y hace visible umbral/escala en Markdown. Revisión anterior:
+> **`I-18` coaching secuencial DONE local.**
 > Cola por idea, revisiones enlazadas y coach socrático; gates aún apagados y sin activación.
 > "Priorización iniciativas MVP"): **I-09/I-10 (tejido colectivo) → DIFERIDAS a "Capa 3" post-convención;
 > P-07 (consentimiento) → DIFERIDA (herramienta interna, IP de GHT); P-09 (panel en vivo) → DIFERIDO
@@ -46,7 +45,8 @@
 | I-10 | [I-10_Flag_Base_Previa_vs_Blanco.md](I-10_Flag_Base_Previa_vs_Blanco.md)                                                                                                                                                                             | ~~Sprint 2~~ → **DIFERIDA (Capa 3)** | **⚠️ DIFERIDA con I-09** (es su UI de activación). No se construye el checkbox de tejido para el MVP; el campo ya existe en el modelo y queda OFF. |
 | I-17 | [I-17_BD_Dos_Niveles_Madurez.md](I-17_BD_Dos_Niveles_Madurez.md)                                                                                                                                                                                     | Sprint 1b–2           | **DONE local 2026-07-22 (6/6 slices).** Clasifica cada respuesta `maduro`/`incubacion` por umbral compartido; paráfrasis I-05 solo si madura, resultados/Markdown, rechazo explícito y cierre por inactividad por campaña. D5 real y acta de flags pendientes operativos. |
 | I-18 | [I-18_Coaching_Secuencial_Por_Idea.md](I-18_Coaching_Secuencial_Por_Idea.md) | Sprint 2 | **DONE local 2026-07-25.** Extiende I-06 para afinar una idea a la vez con I-03, estado/contador por idea, revisiones enlazadas, umbral server-side, salida/tiempo/fallback y gates apagados por defecto. Pendiente D5/UAT/costo antes de activar. |
-| I-19 | [I-19_Consolidacion_Progresiva_Ideas.md](I-19_Consolidacion_Progresiva_Ideas.md) | En curso | **WIP local 2026-07-27 (cortes 1/2 y 3 estructural).** Aportes inmutables + idea/versiones consolidadas, confirmación/evaluación completa de una idea y referencias canónicas en cola. Siguiente: transiciones I-18/multi-idea; luego reapertura, Resultados/Markdown, seeds y observabilidad. |
+| I-19 | [I-19_Consolidacion_Progresiva_Ideas.md](I-19_Consolidacion_Progresiva_Ideas.md) | Completa local | **DONE local 2026-07-28.** Idea/versiones, confirmación y evaluación de versión completa, cola/reapertura, Resultados/Markdown, observabilidad y QA; quedan D5/UAT/costo operativos y seeds I-12 bloqueadas. |
+| I-20 | [I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md](I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md) | Inmediata | **TODO — especificada 2026-07-28.** Redactor LLM por acto, sin delegar decisiones; `promptRefs.conversacion`, guardrails/fallback/cupos y Markdown con umbral/origen/escala. |
 | I-12 | [I-12_Seed_Thoughts.md](I-12_Seed_Thoughts.md)                                                                                                                                                                                                       | Sprint 2              | **BLOCKED — insumo vencido** (seeds de Felipe no recibidos al 2026-07-20; **escalar**)                                                                                        |
 | I-16 | [I-16_Fix_Calificacion_Markdown.md](I-16_Fix_Calificacion_Markdown.md)                                                                                                                                                                               | Sprint 1a             | **DONE 2026-07-15** (Markdown usa la evaluación más reciente por `fecha`; regresión determinística verde)               |
 | P-03 | [P-03_Reiniciar_Conversacion.md](P-03_Reiniciar_Conversacion.md) — **ampliada a sistema de reinicio de datos** (participante Y campaña completa: conserva campaña/config/usuarios, borra conversaciones/respuestas/Markdown y resetea participantes) | Sprint 1a             | **DONE 2026-07-13/14** (reinicio por participante y por campaña; backend verde y committeado; `Seguridad:PermitirReinicioDatos` se apaga en el freeze) |
@@ -139,9 +139,9 @@ acta de flags + runbook** (lo que se conserva de P-09).
 - **I-18 coaching secuencial (25-jul) — DONE local:** extiende I-06/I-03/I-17 con cola y revisiones
   por idea, detrás de flag por campaña y kill-switch. Backend 484/484 y portal 24/24 verdes; exige
   D5/UAT/costo antes de activarse.
-- **I-19 consolidación progresiva (27-jul) — SOLO SPEC:** corrige que cada revisión sea evaluada como
-  texto independiente. Introduce una idea canónica confirmada, reapertura y resultados por idea. No
-  implementar hasta aprobación conjunta.
+- **I-19 consolidación progresiva (27–28 jul) — DONE local:** la idea canónica confirmada ya gobierna
+  evaluación, reapertura y resultados. **I-20 (28-jul) — TODO inmediata:** vuelve fluida la redacción
+  visible sin delegar decisiones y muestra umbral/escala en Markdown.
 
 - **Semana 0 (9–13 jul) — CERRADA:** P-02 radicada **y aprobada**; P-01 E2E real **validado**
   (ambas confirmadas 2026-07-20); staging (D8); workshop I-11 **realizado (rúbrica congelada
@@ -159,7 +159,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
    P-15→P-20 e I-18 cerraron localmente. El siguiente paso es operativo (D5/UAT/costo) o depende de
    insumos externos de I-12/I-13/I-14.
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7, decide
-  cola/jobs/RU); **I-19 consolidación progresiva (tras aprobación)** sobre I-18; **extender I-08 con
+  cola/jobs/RU); **I-20 redacción fluida y Markdown ejecutivo** sobre I-19; **extender I-08 con
   variables demográficas** (insumo de Munir); I-12 seed thoughts (**BLOCKED hasta insumo de Felipe —
   escalar**); I-13 decisión; I-14 tags; **cierre por inactividad ~5 min** (granularidad sub-hora,
   I-17 §7); P-10 restante **ya hecho en S1a** (verificar y saltar); resiliencia LLM (D6).
@@ -190,7 +190,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
 `I-12 (seeds)` **BLOCKED (insumo vencido — escalar)** → `I-04/I-13` · `P-10 cupos` **✓** →
 `I-01/umbral (activar)` ← simplificada por `P-13` **✓** → habilita `I-17 (BD dos niveles)` **✓** ·
 `I-06 + I-03 + I-17 + P-15` → `I-18 (coaching secuencial)` **DONE local** ·
-`I-18 + I-05 + P-23` → `I-19 (idea consolidada)` **SPEC / aprobación pendiente** ·
+`I-18 + I-05 + P-23` → `I-19 (idea consolidada)` **DONE local** → `I-20 (redacción fluida + Markdown ejecutivo)` **TODO** ·
 `I-08` **✓ backend + UI** → (extensión demográfica, insumo Munir) → carga
 real del freeze. **Fuera de la ruta crítica del MVP (diferidas a Capa 3):** `I-09 → I-10`, `P-07`,
 panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables demográficas de Munir (I-08).**
@@ -227,6 +227,7 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | I-12 seed thoughts | `seedThoughts` (texto/lista, default vacío) | **vacío = la campaña no los tiene** (el ejemplo del usuario) |
 | I-06 multi-idea | `segmentacionIdeas` (bool, default `false`) — **por campaña** (implementado 2026-07-15; flag apagado hasta validación de staging) | `false` = modo 1-idea |
 | I-05 parafraseo | `parafraseo` (bool, default `false`) — **implementado 2026-07-20**; reunión 20-jul: además **solo dispara tras el umbral** (I-17) | `false` = retro clásica |
+| I-20 redacción conversacional | `promptRefs.conversacion` opcional por campaña/pregunta; pregunta prevalece — **TODO** | ausente = `retro` efectivo guía el tono; no cambia la lógica |
 | I-17 madurez (dos niveles) | Reutiliza `umbralCierreAnticipado` (`double?`, precedencia pregunta→campaña→global) — **DONE local** | la clasificación siempre se calcula; el cierre anticipado queda apagado mientras su kill-switch global esté OFF |
 | I-18 coaching secuencial | `coachingSecuencialIdeas` (bool, default `false`) + `minutosCoachingPorIdea` (`int?`, null = hereda global) — **DONE local** | `false` = confirmación multi-idea anterior; minutos `<=0` = sin timeout por idea |
 | P-21 número saliente de WhatsApp | `configConversacional.numeroWhatsAppSaliente` (alias `string?`, default null) — **DONE local 2026-07-25** | **null = usa el número predeterminado global** (`WhatsApp:AliasPredeterminado`); la respuesta conversacional NO usa este campo: sale siempre por el número entrante |
@@ -248,6 +249,7 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | `Conversacion:CuposHabilitados`, `MaxTurnosPorHilo` | Salvaguardas de terminación/costo (D2): kill-switch de operación; los *valores* sí son por campaña |
 | `Conversacion:CoachingSecuencialIdeas` (I-18) | Kill-switch global de operación; la activación funcional y el tiempo efectivo siguen siendo por campaña |
 | `Conversacion:ConsolidacionProgresivaHabilitada` (I-19) | Capacidad transversal acordada para todas las campañas; default `true`, sin flag por campaña. Solo kill-switch global de emergencia; apagado conserva aportes pendientes y no vuelve a evaluarlos aislados. |
+| `Conversacion:RedaccionConversacionalFluidaHabilitada` (I-20) | Kill-switch transversal para la voz dinámica; default `true`. Apagado usa respaldo seguro sin tocar estado, evaluación ni consolidación. |
 | `Seguridad:PermitirReinicioDatos` (P-03) | Protección de datos en producción; se apaga en el acta del freeze |
 | Rate por número / presupuesto-alerta de costo (P-10 restante) | Protección transversal de la plataforma |
 | `Conversacion:RecuperacionSemantica` (I-09 opción B) | Capacidad de infraestructura (embeddings), no comportamiento de campaña |
