@@ -4,7 +4,7 @@
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
 > Última actualización: 2026-07-27 (I-19: idea única, varias ideas en un mensaje, idea nueva a mitad de
-> camino y reapertura ya construidas en local; Resultados por idea pendiente).
+> camino, reapertura y **Resultados por idea** ya construidos en local).
 
 ## Antes de empezar (léelo una vez)
 
@@ -163,10 +163,8 @@ o el resumen aparece para una idea en incubación.
 ### 📝 I-19 — Construir y calificar una sola idea completa
 
 **Qué es:** cada respuesta del participante complementa la misma idea. El sistema devuelve lo que
-entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Los pasos 1 a 4 y
-los tres bloques de abajo (varias ideas en un mensaje, otra idea a mitad de camino y volver a una idea
-terminada) ya están construidos y probados en el equipo; los pasos 5 y 7 (pantalla de **Resultados** con
-una fila por idea y su historial) llegan en la siguiente entrega.
+entendió para confirmarlo y califica la versión completa, no solo el último mensaje. **Todos los pasos
+de abajo ya están construidos y probados en el equipo**, incluida la pantalla de Resultados.
 
 1. Responde una pregunta con una idea incompleta. **Deberías ver:** una paráfrasis de lo entendido y
    una petición de confirmación.
@@ -175,12 +173,16 @@ una fila por idea y su historial) llegan en la siguiente entrega.
 3. Confirma. Solo entonces debe llegar la evaluación o una pregunta para mejorar.
 4. Responde únicamente con el dato faltante. La siguiente paráfrasis debe contener la idea completa,
    no solo esa última frase.
-5. Termina la idea y abre **Resultados**. **Deberías ver:** una sola fila, marcada como madura,
-   pendiente o rechazada, con los aportes/versiones dentro del detalle.
+5. Termina la idea y abre **Resultados**. **Deberías ver:** una sola fila por idea (no una por
+   mensaje), marcada como **madura**, **pendiente** o **rechazada**; al abrirla, la idea completa, su
+   calificación y, desplegando *Historial de la idea*, tus mensajes originales y las versiones por las
+   que pasó. El selector de arriba permite ver solo maduras, pendientes o rechazadas.
 6. Escribe **“quiero complementar la anterior”**. Debe reabrir esa misma idea, volver a confirmar la
    nueva versión y recalificarla.
 7. Si queda madura, debe decir **Pendiente de curaduría**; no debe enviarse automáticamente a
    implementación, conocimiento o acta.
+8. Si la campaña tiene respuestas de antes de este cambio, aparecen aparte, en **Resultados
+   históricos**, marcadas como tales. No deben mezclarse con las ideas ni desaparecer.
 
 **Algo va mal si:** una frase complementaria aparece/califica como otra idea; el sistema olvida o
 inventa información; evalúa antes de confirmar; muestra una fila por revisión; conserva una nota de

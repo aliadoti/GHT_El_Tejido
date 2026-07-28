@@ -4,6 +4,23 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Frontend/SDET): **I-19 WIP — paso 7b
+  (pantalla de Resultados por idea) DONE local; paso 7 COMPLETO.** Resultados deja de listar un aporte
+  por fila y pasa a la unidad lógica: **una fila por idea**, con su estado
+  (`madura|pendiente|rechazada|en curso`), la marca `en revisión` / `pendiente de confirmación`,
+  `pendiente de curaduría` en las maduras y el extracto de la versión vigente. Filtro por estado de la
+  idea, resumen y leyenda coherentes. El **detalle** muestra la idea consolidada, un aviso cuando la
+  versión aún no fue confirmada, la evaluación de la versión vigente, el motivo de cierre, un historial
+  desplegable con aportes y versiones —incluidas las descartadas— y el Markdown canónico localizado por
+  `ideaRef`. Las respuestas sin `ideaId` se conservan visibles en un bloque aparte de **“resultados
+  históricos”**, con su detalle de siempre y sin migración. Backend: el DTO de respuesta expone
+  `ideaId`/`tipoAporte`, que `04 §5.8` ya especificaba y faltaban en el código; es lo que permite
+  distinguir un histórico. Preserva P-23, I-17 y P-18/P-19. **Verificado:** backend 520 pruebas y format
+  limpio; **portal 26/26 pruebas, prettier y build de producción verdes**. Commit `61258e4`, **sin
+  push**. **Desbloqueado el entorno frontend en WSL:** `ng test`/`ng build` fallaban por el esbuild
+  `win32-x64` del `node_modules` instalado desde Windows; se copiaron los binarios `@esbuild/linux-x64`
+  correspondientes (`0.28.1` para el paquete raíz y `0.27.7` para el anidado de vite) dentro de
+  `node_modules`, que está gitignoreado y no se toca en el repo. Próximo: paso 8 (seeds I-12).
 - Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-19 WIP — paso 7a
   (Markdown y API por idea) DONE local; falta 7b (pantalla de Resultados).** (1) **Markdown canónico por
   idea:** `tipoArtefacto=idea` (aditivo al final del enum), `SolicitudCompilacion.IdeaId` y una rama del
@@ -130,21 +147,24 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **CONTINUAR I-19 §15 — paso 7b: pantalla de Resultados por idea (§9.2, portal).** El backend ya
-  está (ver "Estado global"): `GET /api/admin/ideas` y `/ideas/{id}` devuelven todo lo necesario. Falta
-  el frontend en `src/ElTejido.Web/src/app/features/resultados/`: (1) tipos y método de servicio para
-  las dos rutas nuevas; (2) **una fila por idea** con su texto vigente, `Madura|Pendiente|Rechazada`, la
-  marca `En revisión`/`Pendiente de confirmación` cuando aplique, la calificación de la versión vigente
-  y `Pendiente de curaduría` en las maduras; (3) **detalle expandible** con aportes originales,
-  versiones propuestas/confirmadas, evaluación y motivo de cierre; (4) las respuestas legacy sin
-  `ideaId` siguen visibles con el adaptador actual, identificadas como “resultado histórico”, sin
-  migración. Preservar P-23 (maestro-detalle, precarga de campaña), I-17 (leyenda/conteos), P-18/P-19
-  (nombres accesibles y regiones vivas). **Recordar:** la madurez se lee de la idea, no de la respuesta.
-  Entorno frontend: Node 24 disponible; `npx ng test --watch=false` y `npx ng build`. Después: paso 8
-  (seeds I-12), paso 9 (observabilidad/cupos) y paso 10 (QA final + D5/UAT). Cerrar también los
+- [ ] **CONTINUAR I-19 §15 — paso 9: observabilidad y cupos (§12.2/§12.3).** El paso 8 (seeds I-12)
+  sigue **BLOCKED** por el insumo externo: el flujo ya degrada limpio con `seedThoughts` vacío y no hay
+  nada que implementar hasta que lleguen las semillas de Felipe, así que **el siguiente ítem ejecutable
+  es el 9**. Falta: (1) el evento `LogSeguridad.tipoEvento=consolidacionProgresivaIdeas` (aditivo al
+  final del enum, como los anteriores) con el detalle permitido
+  `accion:<propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback>;ideaIndice:<n>;version:<n>;estado:<enum>;motivo:<enum>`
+  —sin texto ni PII—, emitido en cada transición de `ProcesarRevisionIdeaConsolidadaAsync` y del hilo
+  simple; (2) **contar las llamadas de consolidación** en los cupos de P-10: hoy
+  `ContarEvaluacionesUsuarioAsync` solo cuenta evaluaciones, así que una corrección repetida consume LLM
+  sin tocar el cupo (I-19 §12.3 pide contar ambas clases). Decidir y registrar si se persiste el uso de
+  la consolidación (la `VersionIdeaConsolidada` ya guarda snapshot de config y podría guardar tokens) o
+  si basta un contador derivado. Después: paso 10 (QA final + D5/UAT/costo). Cerrar también los
   pendientes conocidos listados en "Estado global" (cierre por inactividad del documento de idea, ruta
-  I-06 sin coaching, `requiereAclaracion` y reapertura entre preguntas). No desplegar ni hacer push:
-  faltan D5/UAT/costo y el cierre integral de I-19.
+  I-06 sin coaching, `requiereAclaracion` y reapertura entre preguntas). No desplegar ni hacer push.
+- [x] **(HECHO 2026-07-27, Claude Opus 5 — backend 520 y portal 26/26; commit `61258e4`, sin push)
+  I-19 §15 paso 7b — Resultados con una fila por idea.** Estado, marcas de flujo, curaduría, historial
+  de aportes/versiones y Markdown por idea; los aportes sin `ideaId` quedan como “resultado histórico”.
+  Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 520; commits `7ef021c` y `a148ca5`, sin push)
   I-19 §15 paso 7a — Markdown canónico por idea y API `/api/admin/ideas`.** Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 512; commits `62240b9` y `401d9dd`, sin push)
@@ -294,7 +314,7 @@
 | P-22 | UX de Campañas | DONE local | pendiente | frontend 21/21, build producción y Prettier verdes | Creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos con id real, configuración agrupada y estados vacíos guiados. Próximo: P-23. |
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
-| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-7a locales | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a) | build + 520 pruebas no calibración verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) y **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`). Pendiente: pantalla de Resultados por idea, seeds, observabilidad y D5/UAT. |
+| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-7 locales | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a), `61258e4` (7b) | backend 520 + portal 26/26 verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) , **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`) y **Resultados con una fila por idea** (estado, marcas de flujo/curaduría, historial de aportes y versiones; los aportes sin `ideaId` quedan como “resultado histórico”). Pendiente: seeds (BLOCKED), observabilidad/cupos y D5/UAT. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -422,6 +442,8 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 7b: Resultados con una fila por idea — DONE local (commit `61258e4`, sin push). El paso 7 queda completo.** Rol: Arquitecto/Frontend/SDET; cubre `I-19` §9.2, REQ §27/§33 y ARQ §3. (1) **Modelos y servicio:** tipos `IdeaConsolidada`, `VersionIdea` y `DetalleIdea`; `AdminApiService.ideas(campaniaId, estadoResultado)` e `idea(campaniaId, id)`; `ArtefactoMarkdown` gana `ideaRef`/`versionIdeaRef` y sus refs de respuesta/evaluación pasan a opcionales, en línea con `03 §3.10`. (2) **Lista maestra por idea:** estado visible (`madura|pendiente|rechazada|en curso`) con color y `title` explicativo, marca `en revisión` / `pendiente de confirmación` según `estadoFlujo`, `pendiente de curaduría` en las maduras y extracto de la versión vigente; filtro por estado de la idea, resumen (`N ideas · maduras · pendientes · rechazadas`) y leyenda coherentes. (3) **Detalle:** idea consolidada con aviso explícito cuando la versión mostrada **todavía no fue confirmada** —para que nadie la lea como madura—, evaluación de la versión vigente (o el aviso de que aún no hay), estado, motivo de cierre y curaduría, historial desplegable con **aportes originales y todas las versiones, incluidas las descartadas** (§10), y el Markdown canónico localizado por `ideaRef` con sus acciones de regenerar/descargar. (4) **Compatibilidad:** las respuestas sin `ideaId` no desaparecen: quedan en un bloque `<details>` de **“resultados históricos”**, con su badge de madurez I-17 y su detalle de siempre, sin migración destructiva. Para distinguirlas hizo falta exponer `ideaId`/`tipoAporte` en el DTO de respuesta —`04 §5.8` ya los especificaba y faltaban en el código—. Se preservan P-23 (maestro-detalle y precarga de campaña), I-17 (leyenda y conteos), P-18/P-19 (nombre accesible y regiones vivas). **Verificado:** backend build Release `-warnaserror` 0/0, 520 pruebas y `dotnet format` limpio; portal **26/26 pruebas** (antes 24), prettier y `ng build` de producción verdes. **Entorno desbloqueado:** `ng test`/`ng build` fallaban en WSL porque `node_modules` traía solo el esbuild `win32-x64` de la instalación hecha desde Windows; se copiaron los binarios `@esbuild/linux-x64` equivalentes (`0.28.1` para el paquete raíz y `0.27.7` para el anidado de vite) dentro de `node_modules` —gitignoreado, sin tocar `package.json` ni el lockfile—, así que el portal vuelve a ser verificable desde el agente. **Próximo:** paso 9 (observabilidad/cupos); el paso 8 (seeds I-12) sigue BLOCKED por insumo externo.
 
 - 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 7a: Markdown canónico y API por idea — DONE local (commits `7ef021c` contrato + `a148ca5`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-19`, REQ §22/§27/§29.14 y ARQ §3/§7. (1) **Contrato aparte y previo:** `03 §3.10` deja `respuestaRef`/`evaluacionRef` opcionales, porque el artefacto canónico de una idea no apunta a un aporte único y puede no tener evaluación vigente (idea `rechazada` o `pendiente` sin evaluar, §10); `ideaRef`/`versionIdeaRef` ya estaban especificados. (2) **Dominio/persistencia:** `TipoArtefactoMarkdown.Idea` aditivo al final; `ArtefactoMarkdown` gana `IdeaRef`/`VersionIdeaRef` y valida por tipo —solo un artefacto de idea referencia una idea, y siempre lo hace; los demás siguen exigiendo `respuestaRef`—; el documento Cosmos serializa los campos nuevos con `NullValueHandling.Ignore` y mapea `"idea"`. (3) **Compilador:** `SolicitudCompilacion.IdeaId` y `CompilarIdeaAsync` renderizan desde la **versión confirmada vigente** —o la propuesta, marcada como no confirmada— más su evaluación, con metadatos de estado de resultado, flujo, madurez, curaduría, motivo de cierre y confirmación, la idea consolidada completa, los aportes originales, el historial de versiones (incluidas las descartadas, §10) y la trazabilidad de ids. Ruta canónica `campanias/{campaniaId}/idea/{ideaId}.md`, artefacto `md_{ideaId}` y versión incremental. Mientras la idea sigue abierta, `EvaluacionVigenteRef` aún no está sellado: se usa la evaluación **de la versión vigente exacta** (comparando `versionIdeaId`), nunca la de una versión anterior. (4) **Orquestador:** `ProcesadorResultadoEvaluacion.CompilarMarkdownIdeaAsync` (tolerante a fallo, REQ §22.4.6) se invoca al evaluar una versión confirmada y al cerrar la idea —por umbral, salida, techo, fallback o rechazo— en los dos caminos. Esto **repara un hueco introducido en el paso 5**: desde entonces la ruta I-19 no generaba ningún Markdown. (5) **API (`04 §5.8`):** `GET /api/admin/ideas` (obliga `campaniaId`, filtra por `usuarioId`, `preguntaId`, `estadoResultado`, `estadoFlujo`, `estadoCuraduria`, ordena por pregunta/índice y pagina como el resto) y `GET /api/admin/ideas/{id}` (versión confirmada, propuesta pendiente, evaluación vigente, versiones ordenadas y aportes). Los DTO de Markdown exponen `ideaRef`/`versionIdeaRef`. `/respuestas` queda intacto. **Decisión registrada:** la madurez de I-19 vive en `IdeaConsolidada` y los aportes **no** se sellan como maduros —no son la unidad evaluada—, así que Resultados debe leerla de `/ideas`; el filtro `nivelMadurez` de `/respuestas` queda para datos legacy. **Verificado:** build Release `-warnaserror` 0/0, **520 pruebas** no calibración (463 unit + 57 integración; +8), `dotnet format --verify-no-changes` limpio. **Próximo:** paso 7b, pantalla de Resultados con una fila por idea.
 

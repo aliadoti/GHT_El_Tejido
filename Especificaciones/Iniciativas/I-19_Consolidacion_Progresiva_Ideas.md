@@ -667,15 +667,15 @@ reabrirse conservando su historial. La última validación fue: `dotnet build -c
 integración**) y `dotnet format --verify-no-changes --no-restore`, todas verdes (commits `748870f`,
 `4e31f94`, `62240b9` y `401d9dd`, sin push).
 
-**Próximo corte ejecutable (paso 7b — pantalla de Resultados por idea, §9.2):** el backend ya está
-(`GET /api/admin/ideas` y `/ideas/{id}`). Falta el portal en
-`src/ElTejido.Web/src/app/features/resultados/`: tipos y servicio para las rutas nuevas, **una fila por
-idea** con su texto vigente, estado (`Madura|Pendiente|Rechazada`), marca `En revisión` /
-`Pendiente de confirmación`, calificación de la versión vigente y `Pendiente de curaduría` en las
-maduras, más un **detalle expandible** con aportes, versiones, evaluación y motivo de cierre. Las
-respuestas legacy sin `ideaId` siguen visibles como “resultado histórico”, sin migración. Preservar
-P-23, I-17 y P-18/P-19. **La madurez se lee de la idea, no de la respuesta.** No eliminar lectores
-legacy y no activar/desplegar el cambio.
+**Próximo corte ejecutable (paso 9 — observabilidad y cupos, §12.2/§12.3):** el paso 8 (seeds I-12)
+sigue **BLOCKED** por el insumo externo y el flujo ya degrada limpio con `seedThoughts` vacío, así que
+el siguiente ítem ejecutable es el 9. Falta (1) el evento
+`LogSeguridad.tipoEvento=consolidacionProgresivaIdeas` —aditivo al final del enum— con el detalle
+permitido de §12.2, sin texto ni PII, emitido en cada transición de la idea; y (2) **contar las llamadas
+de consolidación** en los cupos de P-10: hoy el contador deriva solo de las evaluaciones, así que una
+corrección repetida consume LLM sin tocar el cupo. Al hacerlo hay que **decidir y registrar** si se
+persiste el uso de tokens de la consolidación (la versión ya guarda snapshot de config) o si basta un
+contador derivado. No eliminar lectores legacy y no activar/desplegar el cambio.
 
 **Pendientes conocidos de los pasos 5/5b/6** (registrados, no bloquean el corte):
 
@@ -699,7 +699,7 @@ Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUE
 5. **[Hecho local] I-18/multi-idea:** propuesta, confirmación y evaluación por cada idea, con una sola activa y confirmación de la siguiente al cerrar la anterior.
 5b. **[Hecho local] Complemento + idea nueva (§4.6):** la idea nueva obtiene su propio `ideaId`, aporte y propuesta, se encola al final (tope/orden/idempotencia server-side) y espera turno sin mezclarse con la activa; sin cola I-18, el hilo la atiende por orden de llegada al cerrar la activa.
 6. **[Hecho local] Reapertura:** “la anterior” determinista, lista numerada al desambiguar, mismo `ideaId`, curaduría suspendida y ninguna versión sobrescrita; solo dentro del hilo actual y con la campaña activa.
-7. **[Parcial] Markdown/API/Resultados:** **7a hecho local** — artefacto canónico por idea (`tipoArtefacto=idea`, ruta `campanias/{campaniaId}/idea/{ideaId}.md`, regenerado al evaluar y al cerrar) y rutas `GET /api/admin/ideas` y `/ideas/{id}`. **7b pendiente** — pantalla de Resultados con una fila por idea y detalle auditable.
+7. **[Hecho local] Markdown/API/Resultados:** artefacto canónico por idea (`tipoArtefacto=idea`, ruta `campanias/{campaniaId}/idea/{ideaId}.md`, regenerado al evaluar y al cerrar), rutas `GET /api/admin/ideas` y `/ideas/{id}`, y pantalla de Resultados con **una fila por idea** —estado, marcas de flujo y curaduría, historial de aportes y versiones, Markdown por `ideaRef`— conservando los aportes sin `ideaId` como “resultado histórico”.
 8. **[Pendiente] Seeds:** consumir I-12 cuando estén configuradas; degradación vacía.
 9. **[Pendiente] Observabilidad/cupos:** métricas y conteo de llamadas de consolidación.
 10. **[Pendiente] QA final:** unitarias, integración, regresión, E2E simulado, D5 y UAT.
