@@ -66,6 +66,20 @@ public sealed class OpcionesConversacion
     public IList<string> FrasesRechazoGuardado { get; set; } = new List<string>();
 
     /// <summary>
+    /// I-19 §4.7 — frases con las que el participante pide volver a la <b>idea cerrada más reciente</b>
+    /// ("la anterior"). Vacio = usa
+    /// <see cref="DetectorIntencionContinuar.FrasesRevisitarAnteriorPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesRevisitarAnterior { get; set; } = new List<string>();
+
+    /// <summary>
+    /// I-19 §4.7 — frases con las que pide revisitar <b>alguna</b> idea previa sin señalar cuál; con
+    /// varias candidatas el servidor ofrece una lista numerada. Vacio = usa
+    /// <see cref="DetectorIntencionContinuar.FrasesRevisitarIdeaPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesRevisitarIdea { get; set; } = new List<string>();
+
+    /// <summary>
     /// Interruptor global de los <b>cupos por usuario/campania</b> (10 §2): cuando esta en <c>true</c>,
     /// el orquestador aplica <c>Campania.ConfigSeguridad.MaxMensajesPorUsuario</c> (al exceder, el
     /// entrante se descarta con rechazo neutral silencioso y se registra <c>RateLimit</c>) y
@@ -182,6 +196,15 @@ public sealed class OpcionesMensajesConversacion
     public const string AcuseRechazoGuardadoDefault =
         "Entendido, no la guardo como definitiva. ¡Gracias por decírmelo!";
 
+    public const string AcuseReaperturaIdeaDefault =
+        "Claro, volvamos a esa idea. Así quedó registrada:";
+
+    public const string InvitacionReaperturaIdeaDefault =
+        "¿Qué quieres cambiar o agregar?";
+
+    public const string PreguntaSeleccionIdeaDefault =
+        "¿Cuál de estas ideas quieres retomar? Respóndeme con el número.";
+
     /// <summary>
     /// Coletillas (variantes) que invitan al participante a quedarse o seguir, ensenando ademas la frase
     /// de salida del "no quiero mejorar". Se rotan por turno/hilo para que el flujo no repita siempre la
@@ -227,6 +250,21 @@ public sealed class OpcionesMensajesConversacion
     /// guarde (se degrada a incubación antes de cerrar).
     /// </summary>
     public string AcuseRechazoGuardado { get; set; } = AcuseRechazoGuardadoDefault;
+
+    /// <summary>
+    /// I-19 §4.7 — acuse con el que se retoma una idea cerrada; antecede al texto de la versión
+    /// confirmada, que sigue siendo la oficial mientras se prepara la nueva.
+    /// </summary>
+    public string AcuseReaperturaIdea { get; set; } = AcuseReaperturaIdeaDefault;
+
+    /// <summary>I-19 §4.7 — invitación breve que cierra el mensaje de reapertura.</summary>
+    public string InvitacionReaperturaIdea { get; set; } = InvitacionReaperturaIdeaDefault;
+
+    /// <summary>
+    /// I-19 §4.7 — encabezado de la lista breve numerada cuando hay varias ideas candidatas a reabrir.
+    /// La lista nunca muestra calificaciones.
+    /// </summary>
+    public string PreguntaSeleccionIdea { get; set; } = PreguntaSeleccionIdeaDefault;
 
     /// <summary>
     /// Variantes del acuse de continuar; se rotan por hilo para no repetir siempre la misma frase.

@@ -92,6 +92,7 @@ internal sealed class ConversacionCosmosDocument
             EstadoMaquinaConversacion.EsperandoRespuestaInicial => "esperandoRespuestaInicial",
             EstadoMaquinaConversacion.Evaluando => "evaluando",
             EstadoMaquinaConversacion.EsperandoRepregunta => "esperandoRepregunta",
+            EstadoMaquinaConversacion.EsperandoSeleccionIdea => "esperandoSeleccionIdea",
             EstadoMaquinaConversacion.Cerrada => "cerrada",
             _ => throw new InvalidOperationException($"Estado de maquina no soportado: {estado}."),
         };
@@ -102,6 +103,7 @@ internal sealed class ConversacionCosmosDocument
             "esperandoRespuestaInicial" => EstadoMaquinaConversacion.EsperandoRespuestaInicial,
             "evaluando" => EstadoMaquinaConversacion.Evaluando,
             "esperandoRepregunta" => EstadoMaquinaConversacion.EsperandoRepregunta,
+            "esperandoSeleccionIdea" => EstadoMaquinaConversacion.EsperandoSeleccionIdea,
             "cerrada" => EstadoMaquinaConversacion.Cerrada,
             _ => throw new InvalidOperationException($"Estado de maquina no soportado en Cosmos: {estado}."),
         };

@@ -118,6 +118,48 @@ public sealed class PoliticaColaCoachingIdeasTests
     }
 
     [Fact]
+    public void ReactivarIdea_DevuelveLaActivaALaColaYActivaLaSeleccionada()
+    {
+        var cola = _politica.Crear(
+            "wamid.raiz",
+            new[]
+            {
+                new RaizIdeaCoaching(1, "resp_1", null, "idea_1", "idea_1_v1"),
+                new RaizIdeaCoaching(2, "resp_2", null, "idea_2", "idea_2_v1"),
+            },
+            Ahora);
+        cola = _politica.RegistrarRepregunta(cola);
+        cola = _politica.FinalizarActiva(cola, MotivoFinalizacionIdea.Umbral, Ahora.AddMinutes(1));
+
+        cola = _politica.ReactivarIdea(cola, "idea_1", Ahora.AddMinutes(2));
+
+        cola.Estado.Should().Be(EstadoCoachingIdeas.Activo);
+        cola.IdeaActivaIndice.Should().Be(1);
+        cola.Ideas[0].Should().BeEquivalentTo(new
+        {
+            Estado = EstadoIdeaCoaching.Activa,
+            MotivoFinalizacion = (MotivoFinalizacionIdea?)null,
+            FinalizadaEn = (DateTimeOffset?)null,
+            RepreguntasUsadas = 1,
+        });
+        // La idea que estaba activa se conserva pendiente: no se cierra ni pierde su lugar.
+        cola.Ideas[1].Estado.Should().Be(EstadoIdeaCoaching.Pendiente);
+    }
+
+    [Fact]
+    public void ReactivarIdea_IdeaAjenaALaCola_Falla()
+    {
+        var cola = _politica.Crear(
+            "wamid.raiz",
+            new[] { new RaizIdeaCoaching(1, "resp_1", null, "idea_1", "idea_1_v1") },
+            Ahora);
+
+        var accion = () => _politica.ReactivarIdea(cola, "idea_de_otro_hilo", Ahora);
+
+        accion.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public void AgregarIdeaPendiente_ColaFinalizada_NoEncolaNada()
     {
         var cola = _politica.Crear(

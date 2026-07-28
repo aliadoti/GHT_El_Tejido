@@ -135,6 +135,34 @@ public sealed class PoliticaColaCoachingIdeas
         return CoachingIdeas.Crear(cola.Estado, cola.RespuestaPadreId, cola.IdeaActivaIndice, ideas);
     }
 
+    /// <summary>
+    /// I-19 §4.7: reactiva una idea ya finalizada de la cola conservando su posición y su contador de
+    /// revisiones. La idea activa anterior vuelve a <c>pendiente</c> —se conserva en su estado y espera
+    /// turno—, de modo que sigue habiendo una sola idea activa: la seleccionada.
+    /// </summary>
+    public CoachingIdeas ReactivarIdea(CoachingIdeas cola, string ideaId, DateTimeOffset ahora)
+    {
+        var objetivo = cola.Ideas.FirstOrDefault(idea =>
+            (idea.IdeaId is not null && string.Equals(idea.IdeaId, ideaId, StringComparison.Ordinal))
+            || string.Equals(idea.RespuestaRaizId, ideaId, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException("La idea a reabrir no pertenece a la cola.");
+
+        var ideas = cola.Ideas
+            .Select(idea => idea.IdeaIndice == objetivo.IdeaIndice
+                ? idea with
+                {
+                    Estado = EstadoIdeaCoaching.Activa,
+                    MotivoFinalizacion = null,
+                    IniciadaEn = ahora.ToUniversalTime(),
+                    FinalizadaEn = null,
+                }
+                : idea.Estado == EstadoIdeaCoaching.Activa
+                    ? idea with { Estado = EstadoIdeaCoaching.Pendiente }
+                    : idea)
+            .ToArray();
+        return CoachingIdeas.Crear(EstadoCoachingIdeas.Activo, cola.RespuestaPadreId, objetivo.IdeaIndice, ideas);
+    }
+
     public CoachingIdeas FinalizarActiva(
         CoachingIdeas cola,
         MotivoFinalizacionIdea motivo,

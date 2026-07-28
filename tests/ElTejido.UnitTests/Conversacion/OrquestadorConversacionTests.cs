@@ -356,6 +356,119 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I19_LaAnterior_ReabreLaIdeaCerradaMasRecienteConservandoSuHistorial()
+    {
+        const string nueva = "Ademas propongo un tablero semanal de seguimiento por equipo.";
+        var almacen = ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(nueva));
+
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(), Mensaje("En realidad seria con soporte"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("si"), CancellationToken.None);
+        var versionesAntes = almacen.Versiones.Count;
+        var confirmadaAntes = almacen.Ideas.Values.Single(idea => idea.IdeaIndice == 1).VersionConfirmadaRef;
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(), Mensaje("quiero volver a la anterior"), CancellationToken.None);
+
+        var reabierta = almacen.Ideas.Values.Single(idea => idea.IdeaIndice == 1);
+        reabierta.EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.EnRevision);
+        reabierta.EstadoResultado.Should().BeNull();
+        reabierta.EstadoCuraduria.Should().BeNull();
+        reabierta.NivelMadurez.Should().Be(NivelMadurez.Incubacion);
+        // El historial no se sobrescribe: misma idea, misma versión oficial y ninguna versión nueva.
+        reabierta.VersionConfirmadaRef.Should().Be(confirmadaAntes);
+        almacen.Versiones.Should().HaveCount(versionesAntes);
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("volvamos a esa idea", StringComparison.OrdinalIgnoreCase)
+                && texto.Contains("Aporte inicial", StringComparison.Ordinal)
+                && texto.Contains("¿Qué quieres cambiar o agregar?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_CampaniaCerrada_NoReabreNingunaIdea()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("si"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(estadoCampania: EstadoCampania.Cerrada),
+            Mensaje("quiero volver a la anterior"),
+            CancellationToken.None);
+
+        almacen.Ideas.Values.Should().OnlyContain(idea => idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada);
+    }
+
+    [Fact]
+    public async Task I19_VariasCandidatas_OfreceListaNumeradaYReabreLaElegida()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        await PrepararColaConIdeasCerradasAsync(almacen);
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(), Mensaje("quiero retomar una idea"), CancellationToken.None);
+
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoSeleccionIdea);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("1. Idea dos consolidada", StringComparison.Ordinal)
+                && texto.Contains("2. Idea uno consolidada", StringComparison.Ordinal)
+                && !texto.Contains("4", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(), Mensaje("2"), CancellationToken.None);
+
+        almacen.Ideas["idea_1"].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.EnRevision);
+        almacen.Ideas["idea_2"].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.Cerrada);
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.IdeaActivaIndice.Should().Be(1);
+        cola.Ideas[0].Estado.Should().Be(EstadoIdeaCoaching.Activa);
+        cola.Ideas[0].MotivoFinalizacion.Should().BeNull();
+        // La idea que estaba activa se conserva en la cola, no se pierde ni se cierra.
+        cola.Ideas[2].Estado.Should().Be(EstadoIdeaCoaching.Pendiente);
+        _conversaciones.Ultima.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+    }
+
+    [Fact]
+    public async Task I19_SeleccionInvalida_CancelaLaListaYSigueElTurnoNormal()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        await PrepararColaConIdeasCerradasAsync(almacen);
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(), Mensaje("quiero retomar una idea"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            Mensaje("agrego el detalle de costos por trimestre y el responsable"),
+            CancellationToken.None);
+
+        almacen.Ideas["idea_1"].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.Cerrada);
+        almacen.Ideas["idea_2"].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.Cerrada);
+        _conversaciones.Ultima!.EstadoMaquina.Should().NotBe(EstadoMaquinaConversacion.EsperandoSeleccionIdea);
+        // El mensaje no se pierde: alimenta la idea activa como un aporte más.
+        almacen.Respuestas.Should().Contain(respuesta =>
+            respuesta.Texto == "agrego el detalle de costos por trimestre y el responsable");
+        almacen.Versiones.Values.Count(version => version.IdeaId == "idea_3").Should().Be(2);
+    }
+
+    [Fact]
     public async Task I19_ColaReanudada_UsaLasReferenciasCanonicasPersistidas()
     {
         var almacen = ConfigurarAlmacenIdeas();
@@ -1706,6 +1819,49 @@ public sealed class OrquestadorConversacionTests
         return consolidador;
     }
 
+    /// <summary>
+    /// Hilo con cola I-18 de tres ideas: dos ya cerradas (candidatas a reabrir, la segunda cerrada más
+    /// tarde) y una activa esperando confirmación. Sirve para la desambiguación de I-19 §4.7.
+    /// </summary>
+    private async Task PrepararColaConIdeasCerradasAsync(AlmacenIdeas almacen)
+    {
+        const string conversacionId = "conv_c_1_u_1_p_1";
+        var politica = new PoliticaColaCoachingIdeas();
+        var raices = new List<RaizIdeaCoaching>();
+        var textos = new[] { "Idea uno consolidada y confirmada.", "Idea dos consolidada y confirmada.", "Idea tres propuesta." };
+        for (var indice = 1; indice <= 3; indice++)
+        {
+            var ideaId = $"idea_{indice}";
+            var respuestaId = $"resp_{indice}";
+            var version = VersionIdeaConsolidada.Crear(
+                $"{ideaId}_v1", "c_1", ideaId, 1, null, textos[indice - 1], new[] { respuestaId },
+                new[] { respuestaId }, TipoAporteIdea.Inicial,
+                indice == 3 ? EstadoConfirmacionVersionIdea.Propuesta : EstadoConfirmacionVersionIdea.Confirmada,
+                null, null, null, null, Epoca, indice == 3 ? null : Epoca);
+            almacen.Versiones[version.Id] = version;
+            almacen.Respuestas.Add(Respuesta.Crear(
+                respuestaId, "c_1", "u_1", "p_1", conversacionId, $"Aporte {indice}", "whatsapp", false,
+                EstadoRespuesta.Recibida, Epoca, null, ideaIndice: indice, respuestaPadreId: "wamid.raiz",
+                ideaRaizId: respuestaId, revisionIndice: 0, ideaId: ideaId, tipoAporte: TipoAporteIdea.Inicial));
+
+            var idea = IdeaConsolidada.Crear(ideaId, "c_1", "u_1", "p_1", conversacionId, respuestaId, indice, Epoca);
+            almacen.Ideas[ideaId] = indice == 3
+                ? idea.ConPropuesta(version.Id, Epoca)
+                : idea.ConfirmarVersion(version.Id, Epoca)
+                    .Cerrar(EstadoResultadoIdeaConsolidada.Madura, null, "umbral", Epoca.AddMinutes(indice));
+            raices.Add(new RaizIdeaCoaching(indice, respuestaId, null, ideaId, version.Id));
+        }
+
+        var cola = politica.Crear("wamid.raiz", raices, Epoca);
+        cola = politica.FinalizarActiva(cola, MotivoFinalizacionIdea.Umbral, Epoca.AddMinutes(1));
+        cola = politica.FinalizarActiva(cola, MotivoFinalizacionIdea.Umbral, Epoca.AddMinutes(2));
+        await _conversaciones.GuardarConversacionAsync(
+            DominioConversacion.Iniciar(conversacionId, "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+                .ConCoachingIdeas(cola)
+                .AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta),
+            CancellationToken.None);
+    }
+
     private void SegmentarEnDosIdeas()
         => _segmentadorIdeas.SegmentarAsync(Arg.Any<ContextoSegmentacionIdeas>(), Arg.Any<CancellationToken>())
             .Returns(new ResultadoSegmentacionIdeas.Exito(
@@ -1760,10 +1916,11 @@ public sealed class OrquestadorConversacionTests
                 Epoca),
             CancellationToken.None);
 
-    private static ParticipanteResuelto Participante(int maxRepreguntas = 1)
+    private static ParticipanteResuelto Participante(
+        int maxRepreguntas = 1, EstadoCampania estadoCampania = EstadoCampania.Activa)
     {
         var pregunta = CrearPregunta("p_1", 1, maxRepreguntas);
-        var campania = CrearCampania(new[] { pregunta });
+        var campania = CrearCampania(new[] { pregunta }, estado: estadoCampania);
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
@@ -1910,9 +2067,10 @@ public sealed class OrquestadorConversacionTests
         IEnumerable<Pregunta> preguntas,
         IEnumerable<MensajeInicial>? mensajesIniciales = null,
         LimitesSeguridad? limites = null,
-        ConfigConversacional? configConversacional = null)
+        ConfigConversacional? configConversacional = null,
+        EstadoCampania estado = EstadoCampania.Activa)
         => Campania.Crear(
-            "c_1", "Campania c_1", "Descripcion", "Objetivo", EstadoCampania.Activa,
+            "c_1", "Campania c_1", "Descripcion", "Objetivo", estado,
             mensajesIniciales, preguntas,
             "rub_1",
             new Dictionary<string, string> { ["evaluar"] = "pr_eval" },

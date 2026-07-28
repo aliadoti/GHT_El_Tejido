@@ -34,6 +34,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 {
     private const string Canal = "whatsapp";
 
+    /// <summary>Largo máximo de cada paráfrasis en la lista de selección de reapertura (I-19 §4.7).</summary>
+    private const int MaxCaracteresParafrasisSeleccion = 160;
+
     private readonly IRepositorioConversaciones _conversaciones;
     private readonly IRepositorioRespuestas _respuestas;
     private readonly IRepositorioParticipantes _participantes;
@@ -66,6 +69,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly PoliticaColaCoachingIdeas _colaCoaching = new();
     private readonly DetectorIntencionContinuar _intencionConfirmacion;
     private readonly DetectorIntencionContinuar _intencionRechazoIdea;
+    private readonly DetectorIntencionContinuar _intencionRevisitarAnterior;
+    private readonly DetectorIntencionContinuar _intencionRevisitarIdea;
+    private readonly int _maxCaracteresIntencion;
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -123,6 +129,17 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             frases.Concat(new[] { "si", "sí", "correcto", "eso es", "exacto", "confirmo" }),
             opciones.MaxCaracteresIntencionContinuar);
         _intencionRechazoIdea = intencionRechazoGuardado;
+        _maxCaracteresIntencion = opciones.MaxCaracteresIntencionContinuar;
+        _intencionRevisitarAnterior = new DetectorIntencionContinuar(
+            opciones.FrasesRevisitarAnterior is { Count: > 0 }
+                ? opciones.FrasesRevisitarAnterior
+                : DetectorIntencionContinuar.FrasesRevisitarAnteriorPorDefecto,
+            opciones.MaxCaracteresIntencionContinuar);
+        _intencionRevisitarIdea = new DetectorIntencionContinuar(
+            opciones.FrasesRevisitarIdea is { Count: > 0 }
+                ? opciones.FrasesRevisitarIdea
+                : DetectorIntencionContinuar.FrasesRevisitarIdeaPorDefecto,
+            opciones.MaxCaracteresIntencionContinuar);
         _tiempo = tiempo;
     }
 
@@ -486,10 +503,23 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
+        var estadoPrevio = conversacion.EstadoMaquina;
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
         await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
         conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+
+        // I-19 §4.7: la respuesta a una lista de selección ya ofrecida se resuelve antes que nada; si no
+        // es un número válido, la selección se cancela y el mensaje sigue como un turno normal.
+        var seleccion = await ResolverSeleccionIdeaPendienteAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, mensaje.Texto, estadoPrevio, ahora, cancellationToken);
+        conversacion = seleccion.Conversacion;
+        if (seleccion.Manejado
+            || await IntentarReaperturaIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, mensaje.Texto, ahora, cancellationToken))
+        {
+            return;
+        }
 
         // I-19 §4.6: una sola idea activa y en orden de llegada, para terminar la que está en curso
         // antes de empezar la siguiente aunque el mensaje anterior haya dejado ideas nuevas esperando.
@@ -509,6 +539,196 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         // En mejora, el texto entrante es un nuevo aporte; no se evalúa aislado.
         await CrearPropuestaComplementariaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, mensaje.Texto, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.7: intenta atender una petición de revisitar una idea cerrada. Con “la anterior” resuelve
+    /// determinísticamente la más reciente; con una petición vaga y una sola candidata reabre esa; con
+    /// varias ofrece una lista breve numerada. Devuelve <c>false</c> si el mensaje no es una petición de
+    /// revisitar o si no hay nada que reabrir, para que el turno siga su curso normal.
+    /// </summary>
+    private async Task<bool> IntentarReaperturaIdeaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string texto,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        // §4.7: una campaña cerrada no acepta cambios del participante.
+        if (!ConsolidacionIdeasActiva || campania.Estado != EstadoCampania.Activa)
+        {
+            return false;
+        }
+
+        var pideAnterior = _intencionRevisitarAnterior.Coincide(texto);
+        if (!pideAnterior && !_intencionRevisitarIdea.Coincide(texto))
+        {
+            return false;
+        }
+
+        var candidatas = await CandidatasReaperturaAsync(conversacion, campania.Id, cancellationToken);
+        if (candidatas.Count == 0)
+        {
+            return false;
+        }
+
+        if (pideAnterior || candidatas.Count == 1)
+        {
+            await ReabrirIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, candidatas[0], ahora, cancellationToken);
+            return true;
+        }
+
+        await OfrecerSeleccionIdeaAsync(conversacion, campania, numero, emisor, candidatas, ahora, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// I-19 §4.7: resuelve la lista numerada ya ofrecida. La lista se reconstruye con el mismo orden
+    /// determinista, así que no hace falta persistirla. Una respuesta que no es un número válido no se
+    /// adivina: cancela la selección y el mensaje sigue como un turno normal de la idea activa.
+    /// </summary>
+    private async Task<ResultadoSeleccionIdea> ResolverSeleccionIdeaPendienteAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string texto,
+        EstadoMaquinaConversacion estadoPrevio,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        // El estado se lee del turno anterior: al recibir el entrante el hilo ya pasó a `evaluando`.
+        if (estadoPrevio != EstadoMaquinaConversacion.EsperandoSeleccionIdea)
+        {
+            return new ResultadoSeleccionIdea(false, conversacion);
+        }
+
+        var candidatas = await CandidatasReaperturaAsync(conversacion, campania.Id, cancellationToken);
+        var elegida = NumeroSeleccionado(texto, candidatas.Count);
+        if (elegida is null)
+        {
+            return new ResultadoSeleccionIdea(
+                false, conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta));
+        }
+
+        await ReabrirIdeaAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, candidatas[elegida.Value - 1],
+            ahora, cancellationToken);
+        return new ResultadoSeleccionIdea(true, conversacion);
+    }
+
+    /// <summary>
+    /// Ideas cerradas que el participante puede reabrir en este hilo, de cierre más reciente a más
+    /// antiguo (“la anterior” = la primera). Con cola I-18 solo cuentan las que están en la cola.
+    /// </summary>
+    private async Task<IReadOnlyList<IdeaConsolidada>> CandidatasReaperturaAsync(
+        DominioConversacion conversacion, string campaniaId, CancellationToken cancellationToken)
+    {
+        var cola = conversacion.CoachingIdeas;
+        return (await _respuestas.ListarIdeasConsolidadasAsync(campaniaId, cancellationToken))
+            .Where(idea => idea.ConversacionId == conversacion.Id
+                && idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada
+                && (cola is null || cola.Ideas.Any(entrada => entrada.IdeaId == idea.Id)))
+            .OrderByDescending(idea => idea.ActualizadaEn)
+            .ThenByDescending(idea => idea.IdeaIndice)
+            .Take(_maxIdeasPorMensaje)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// I-19 §4.7: reabre la idea seleccionada conservando su <c>ideaId</c> y su historial. La versión
+    /// confirmada anterior sigue siendo la oficial mientras se prepara la nueva; la curaduría pendiente
+    /// queda suspendida y la idea que estaba activa vuelve a la cola en su estado.
+    /// </summary>
+    private async Task ReabrirIdeaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        IdeaConsolidada idea,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea.Reabrir(ahora), cancellationToken);
+        if (conversacion.CoachingIdeas is not null)
+        {
+            conversacion = conversacion.ConCoachingIdeas(
+                _colaCoaching.ReactivarIdea(conversacion.CoachingIdeas, idea.Id, ahora));
+            await RegistrarCoachingAsync(
+                usuario.Id, usuario.WhatsappNormalizado, "reabierta", conversacion.CoachingIdeas!, null,
+                ahora, cancellationToken);
+        }
+
+        var confirmada = await ObtenerVersionAsync(campania.Id, idea.VersionConfirmadaRef, cancellationToken);
+        var acuse = TextoConfigurado(_mensajes.AcuseReaperturaIdea, OpcionesMensajesConversacion.AcuseReaperturaIdeaDefault);
+        var invitacion = TextoConfigurado(
+            _mensajes.InvitacionReaperturaIdea, OpcionesMensajesConversacion.InvitacionReaperturaIdeaDefault);
+        var texto = Combinar(Combinar(acuse, confirmada?.Texto ?? string.Empty), invitacion);
+        await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        await _conversaciones.GuardarConversacionAsync(
+            conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.7: lista breve y numerada de paráfrasis —sin calificaciones— para que el participante
+    /// elija cuál idea retomar. El hilo queda en <c>esperandoSeleccionIdea</c> (03 §3.6).
+    /// </summary>
+    private async Task OfrecerSeleccionIdeaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        NumeroWhatsApp numero,
+        string? emisor,
+        IReadOnlyList<IdeaConsolidada> candidatas,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var lineas = new List<string>(candidatas.Count);
+        for (var indice = 0; indice < candidatas.Count; indice++)
+        {
+            var version = await ObtenerVersionAsync(
+                    campania.Id, candidatas[indice].VersionConfirmadaRef, cancellationToken)
+                ?? await ObtenerVersionAsync(campania.Id, candidatas[indice].VersionPropuestaRef, cancellationToken);
+            lineas.Add(FormattableString.Invariant(
+                $"{indice + 1}. {Acotar(version?.Texto ?? string.Empty, MaxCaracteresParafrasisSeleccion)}"));
+        }
+
+        var pregunta = TextoConfigurado(
+            _mensajes.PreguntaSeleccionIdea, OpcionesMensajesConversacion.PreguntaSeleccionIdeaDefault);
+        await EnviarAsync(
+            conversacion, numero, Combinar(pregunta, string.Join("\n", lineas)), TipoEnvioMensaje.Repregunta,
+            emisor, ahora, cancellationToken);
+        await _conversaciones.GuardarConversacionAsync(
+            conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoSeleccionIdea), cancellationToken);
+    }
+
+    /// <summary>
+    /// Número elegido de una lista de <paramref name="total"/> opciones. Solo cuenta en mensajes cortos
+    /// (misma guarda que las intenciones deterministas) y dentro del rango ofrecido.
+    /// </summary>
+    private int? NumeroSeleccionado(string? texto, int total)
+    {
+        var limpio = texto?.Trim();
+        if (string.IsNullOrEmpty(limpio) || (_maxCaracteresIntencion > 0 && limpio.Length > _maxCaracteresIntencion))
+        {
+            return null;
+        }
+
+        var digitos = new string(limpio.Where(char.IsAsciiDigit).ToArray());
+        return digitos.Length is > 0 and <= 2
+            && int.TryParse(digitos, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var numero)
+            && numero >= 1
+            && numero <= total
+                ? numero
+                : null;
     }
 
     /// <summary>
@@ -1261,12 +1481,23 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string texto,
         string respuestaId,
         int revisionIndice,
+        EstadoMaquinaConversacion estadoPrevio,
         bool turnosExcedidos,
         bool cupoLlamadasExcedido,
         bool presupuestoExcedido,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
+        // I-19 §4.7: la respuesta a una lista de selección ya ofrecida se resuelve antes que nada; si no
+        // es un número válido, la selección se cancela y el mensaje sigue como un turno normal.
+        var seleccion = await ResolverSeleccionIdeaPendienteAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, texto, estadoPrevio, ahora, cancellationToken);
+        if (seleccion.Manejado)
+        {
+            return;
+        }
+
+        conversacion = seleccion.Conversacion;
         var activa = conversacion.CoachingIdeas!.IdeaActiva!;
         var idea = await _respuestas.ObtenerIdeaConsolidadaAsync(campania.Id, activa.IdeaId!, cancellationToken);
         if (idea is null || idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada)
@@ -1290,6 +1521,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
                 ahora,
                 cancellationToken);
+            return;
+        }
+
+        // §8.2 (idea en mejora): la petición de revisitar va justo después del rechazo, antes de la
+        // salida "así está bien" y de tratar el mensaje como aporte.
+        if (idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.PendienteConfirmacion
+            && await IntentarReaperturaIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, texto, ahora, cancellationToken))
+        {
             return;
         }
 
@@ -1332,6 +1572,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, intencion.DeseaContinuar,
                 ahora, cancellationToken);
+            return;
+        }
+
+        // §8.2 (versión propuesta): con una propuesta pendiente, la petición de revisitar se atiende
+        // después de la confirmación y antes de tratar el mensaje como corrección.
+        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion
+            && await IntentarReaperturaIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, texto, ahora, cancellationToken))
+        {
             return;
         }
 
@@ -1606,6 +1855,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         var cola = conversacion.CoachingIdeas!;
         var activa = cola.IdeaActiva!;
+        var estadoPrevio = conversacion.EstadoMaquina;
         var turnosExcedidos = await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
         var cupoLlamadasExcedido = _cuposHabilitados
             && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
@@ -1721,6 +1971,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 mensaje.Texto,
                 respuestaId,
                 revisionIndice,
+                estadoPrevio,
                 turnosExcedidos,
                 cupoLlamadasExcedido,
                 presupuestoExcedido,
@@ -2870,6 +3121,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string CrearConversacionId(string campaniaId, string usuarioId, string preguntaId)
         => $"conv_{campaniaId}_{usuarioId}_{preguntaId}";
+
+    /// <summary>Resultado de intentar resolver una lista de selección ya ofrecida (I-19 §4.7).</summary>
+    private sealed record ResultadoSeleccionIdea(bool Manejado, DominioConversacion Conversacion);
 
     /// <summary>Versión propuesta para una idea más las ideas nuevas que el consolidador separó (I-19 §4.6).</summary>
     private sealed record PropuestaConsolidada(

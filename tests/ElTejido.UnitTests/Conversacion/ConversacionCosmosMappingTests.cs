@@ -43,4 +43,18 @@ public sealed class ConversacionCosmosMappingTests
         resultado.CoachingIdeas.IdeaActiva.VersionIdeaVigenteId.Should().Be("idea_1_v1");
         legacy.CoachingIdeas.Should().BeNull();
     }
+
+    [Fact]
+    public void Conversacion_RoundTrip_ConservaElEstadoDeSeleccionDeIdea()
+    {
+        var ahora = DateTimeOffset.UnixEpoch.AddHours(1);
+        var conversacion = DominioConversacion
+            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora)
+            .AvanzarA(EstadoMaquinaConversacion.EsperandoSeleccionIdea);
+
+        var documento = ConversacionCosmosDocument.FromDomain(conversacion);
+
+        documento.EstadoMaquina.Should().Be("esperandoSeleccionIdea");
+        documento.ToDomain().EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoSeleccionIdea);
+    }
 }

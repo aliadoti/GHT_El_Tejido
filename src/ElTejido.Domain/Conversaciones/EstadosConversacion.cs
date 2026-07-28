@@ -17,6 +17,12 @@ public enum EstadoMaquinaConversacion
     Evaluando,
     EsperandoRepregunta,
     Cerrada,
+
+    // I-19 §4.7 (03 §3.6, aditivo al final para preservar los valores existentes): el hilo ofrecio una
+    // lista numerada de ideas cerradas para reabrir y espera que el participante elija un numero. Es
+    // transitorio: al resolverse —o ante una respuesta que no es un numero valido— vuelve a
+    // esperandoRepregunta.
+    EsperandoSeleccionIdea,
 }
 
 /// <summary>Direccion de un mensaje del hilo (03 §3.7).</summary>

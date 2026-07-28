@@ -68,6 +68,43 @@ public sealed class DetectorIntencionContinuar
     };
 
     /// <summary>
+    /// I-19 §4.7 — frases con las que el participante pide volver a la <b>idea cerrada más reciente</b>.
+    /// Son inequívocas por sí mismas: aunque haya varias ideas cerradas, “la anterior” resuelve
+    /// determinísticamente la última. Se normalizan al construir el detector.
+    /// </summary>
+    public static readonly IReadOnlyList<string> FrasesRevisitarAnteriorPorDefecto = new[]
+    {
+        "la anterior",
+        "quiero complementar la anterior",
+        "complementar la anterior",
+        "quiero volver a la anterior",
+        "volver a la anterior",
+        "quiero retomar la anterior",
+        "retomar la anterior",
+        "quiero corregir la anterior",
+        "corregir la anterior",
+    };
+
+    /// <summary>
+    /// I-19 §4.7 — frases con las que el participante pide revisitar <b>alguna</b> idea previa sin
+    /// señalar cuál. Con una sola candidata se reabre esa; con varias, el servidor ofrece una lista
+    /// breve numerada y espera el número. Se normalizan al construir el detector.
+    /// </summary>
+    public static readonly IReadOnlyList<string> FrasesRevisitarIdeaPorDefecto = new[]
+    {
+        "quiero volver a una idea",
+        "volver a una idea",
+        "quiero volver a una idea anterior",
+        "quiero retomar una idea",
+        "retomar una idea",
+        "quiero revisar una idea",
+        "revisar una idea",
+        "quiero complementar una idea",
+        "complementar una idea",
+        "quiero corregir una idea",
+    };
+
+    /// <summary>
     /// Coincidencia deterministica de una intención por frases (match barato con guarda de longitud).
     /// Es el mecanismo generico que usan tanto la intención de continuar como (I-17) la de rechazo.
     /// </summary>
