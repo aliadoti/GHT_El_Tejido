@@ -643,3 +643,21 @@
     una versión anterior junto a un texto nuevo.
   - **El artefacto de idea no apunta a un aporte único.** `respuestaRef` queda nulo y la trazabilidad se
     da por `ideaRef`/`versionIdeaRef` más la lista de aportes dentro del contenido.
+- Ambigüedades resueltas al instrumentar el costo (§12.2/§12.3, 2026-07-27, Claude Opus 5):
+  - **Contar versiones = contar llamadas de consolidación.** Cada `VersionIdeaConsolidada` nace de
+    exactamente una llamada al consolidador, también cuando esa llamada degradó a fallback, así que el
+    cupo `MaxLlamadasLlmPorUsuario` suma evaluaciones + versiones **sin persistir contadores nuevos**
+    (mismo criterio que `ContarEvaluacionesUsuarioAsync`). Alternativa descartada: un campo contador o
+    denormalizar `usuarioId` en la versión; ambos añadían contrato para un dato ya derivable.
+  - **Los tokens de consolidación viajan en la telemetría, no en un documento.** §12.2 pide tokens
+    separados entre consolidación y evaluación; se emiten en el detalle del evento por transición, como
+    ya hacía I-06 con la segmentación. El **presupuesto de tokens por campaña** sigue derivándose solo
+    de las evaluaciones: cambiarlo exigiría persistir `usoTokens` en la versión (aditivo a `03 §3.x`) y
+    se deja registrado como opción si el corrido D5 muestra que la consolidación pesa lo suficiente.
+  - **El detalle del evento añade `resultado` y los tokens** a los campos mínimos de §12.2 (`accion`,
+    `ideaIndice`, `version`, `estado`, `motivo`). Son claves deterministas y sin PII; el formato es una
+    extensión compatible, no un cambio.
+  - **Los techos deterministas se evalúan antes de consolidar.** Se comprueban con el mismo orden del
+    flujo histórico (turnos → cupo de llamadas → presupuesto) y **antes** de gastar cualquier llamada;
+    al dispararse, el aporte se conserva y la idea queda `pendiente`. Prevalece D2/`10 §2` sobre la
+    regla de consolidar siempre, igual que ya ocurría en la cola I-18.

@@ -667,15 +667,14 @@ reabrirse conservando su historial. La última validación fue: `dotnet build -c
 integración**) y `dotnet format --verify-no-changes --no-restore`, todas verdes (commits `748870f`,
 `4e31f94`, `62240b9` y `401d9dd`, sin push).
 
-**Próximo corte ejecutable (paso 9 — observabilidad y cupos, §12.2/§12.3):** el paso 8 (seeds I-12)
-sigue **BLOCKED** por el insumo externo y el flujo ya degrada limpio con `seedThoughts` vacío, así que
-el siguiente ítem ejecutable es el 9. Falta (1) el evento
-`LogSeguridad.tipoEvento=consolidacionProgresivaIdeas` —aditivo al final del enum— con el detalle
-permitido de §12.2, sin texto ni PII, emitido en cada transición de la idea; y (2) **contar las llamadas
-de consolidación** en los cupos de P-10: hoy el contador deriva solo de las evaluaciones, así que una
-corrección repetida consume LLM sin tocar el cupo. Al hacerlo hay que **decidir y registrar** si se
-persiste el uso de tokens de la consolidación (la versión ya guarda snapshot de config) o si basta un
-contador derivado. No eliminar lectores legacy y no activar/desplegar el cambio.
+**Próximo corte ejecutable (paso 10 — QA final, §13):** es el último paso. (1) Cerrar los pendientes
+conocidos de abajo, que son los únicos huecos funcionales que quedan. (2) Repasar §13 criterio por
+criterio y cubrir lo que falte, incluida una **E2E simulada** del ciclo completo (aporte → propuesta →
+confirmación → evaluación → cierre → Resultados/Markdown). (3) Operativo y con humano: **D5 real**
+contra staging, **UAT** con GHT y medición de **costo/latencia** separando consolidación y evaluación
+—la telemetría del paso 9 ya emite los tokens por transición—. Solo con eso se decide la activación en
+el acta del día-D. El paso 8 (seeds I-12) sigue **BLOCKED** por el insumo externo y el flujo ya degrada
+limpio con `seedThoughts` vacío. No eliminar lectores legacy y no activar/desplegar el cambio.
 
 **Pendientes conocidos de los pasos 5/5b/6** (registrados, no bloquean el corte):
 
@@ -701,7 +700,7 @@ Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUE
 6. **[Hecho local] Reapertura:** “la anterior” determinista, lista numerada al desambiguar, mismo `ideaId`, curaduría suspendida y ninguna versión sobrescrita; solo dentro del hilo actual y con la campaña activa.
 7. **[Hecho local] Markdown/API/Resultados:** artefacto canónico por idea (`tipoArtefacto=idea`, ruta `campanias/{campaniaId}/idea/{ideaId}.md`, regenerado al evaluar y al cerrar), rutas `GET /api/admin/ideas` y `/ideas/{id}`, y pantalla de Resultados con **una fila por idea** —estado, marcas de flujo y curaduría, historial de aportes y versiones, Markdown por `ideaRef`— conservando los aportes sin `ideaId` como “resultado histórico”.
 8. **[Pendiente] Seeds:** consumir I-12 cuando estén configuradas; degradación vacía.
-9. **[Pendiente] Observabilidad/cupos:** métricas y conteo de llamadas de consolidación.
+9. **[Hecho local] Observabilidad/cupos:** evento `consolidacionProgresivaIdeas` por transición —acción, índice, versión, estados, motivo y tokens, sin texto ni PII— y `MaxLlamadasLlmPorUsuario` contando consolidaciones **y** evaluaciones; además, los techos deterministas pasan a aplicarse también en el hilo simple, conservando el aporte.
 10. **[Pendiente] QA final:** unitarias, integración, regresión, E2E simulado, D5 y UAT.
 
 No se activa ni despliega código como parte de la aprobación de esta especificación.

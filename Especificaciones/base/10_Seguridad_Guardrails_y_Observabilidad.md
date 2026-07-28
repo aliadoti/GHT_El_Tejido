@@ -103,6 +103,13 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - **`consolidacionProgresivaIdeas` (I-19):** transiciones
   `propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback`, con índice, versión, estado y
   motivo; nunca incluye el aporte ni la paráfrasis.
+  - **Implementado (2026-07-27):** detalle
+    `accion:<…>;ideaIndice:<n>;version:<n>;estado:<estadoFlujo>;resultado:<madura|pendiente|rechazada|ninguno>;motivo:<…>;promptTokens:<n>;completionTokens:<n>`.
+    `resultado` y los tokens extienden el mínimo de forma compatible y permiten separar el costo de
+    consolidación del de evaluación (I-19 §12.2) sin persistir documentos nuevos. Se emite en los dos
+    caminos (hilo simple y cola I-18). El **cupo** `MaxLlamadasLlmPorUsuario` (§2) cuenta desde ahora
+    **ambas clases de llamada**: evaluaciones + versiones consolidadas, ya que cada versión nace de una
+    llamada al consolidador (también las de fallback).
 
 ---
 

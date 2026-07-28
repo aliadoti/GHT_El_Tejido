@@ -4,6 +4,25 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Backend/AppSec/SDET): **I-19 WIP —
+  paso 9 (observabilidad y cupos) DONE local.** (1) **Telemetría §12.2:** evento
+  `consolidacionProgresivaIdeas` (aditivo al final del enum; `10 §6` ya lo especificaba) emitido en cada
+  transición de la idea en los dos caminos —`propuesta|corregida|confirmada|evaluada|reabierta|cerrada|
+  fallback`— con `ideaIndice`, `version`, `estado`, `resultado`, `motivo` y los tokens de la llamada,
+  **sin el aporte ni la paráfrasis**. (2) **Cupos §12.3:** `MaxLlamadasLlmPorUsuario` cuenta ahora
+  **ambas clases de llamada**; cada `VersionIdeaConsolidada` nace de exactamente una consolidación
+  —también las que degradaron a fallback—, así que contar versiones cuenta llamadas sin documentos
+  contadores nuevos, igual que las evaluaciones (`ContarConsolidacionesUsuarioAsync` en Cosmos y
+  memoria). (3) **Fix de seguridad operativa:** el hilo simple I-19 **no aplicaba ningún techo
+  determinista**, porque intercepta antes de la rama histórica que los evaluaba — tope de turnos, cupo
+  de llamadas y presupuesto de tokens quedaban sin efecto **para todas las campañas** (es la ruta
+  activa por defecto). Ahora se evalúan antes de consolidar o evaluar y, al alcanzarse, **el aporte se
+  conserva**, la idea en curso queda `pendiente`, se registra el `RateLimit` y el hilo cierra con
+  agradecimiento; solo el tope de turnos abre la siguiente pregunta. **Verificado:** build Release
+  `-warnaserror` 0/0, **524 pruebas** no calibración verdes (467 unitarias + 57 integración; +4:
+  transiciones telemetradas sin PII, fallback de consolidación con tokens, cupo que cuenta
+  consolidaciones y tope de turnos que conserva el aporte) y `dotnet format` limpio. Commit `aceb9f0`,
+  **sin push**. Próximo: paso 10 — QA final (E2E simulado, regresión, D5 real, UAT y costo).
 - Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Frontend/SDET): **I-19 WIP — paso 7b
   (pantalla de Resultados por idea) DONE local; paso 7 COMPLETO.** Resultados deja de listar un aporte
   por fila y pasa a la unidad lógica: **una fila por idea**, con su estado
@@ -147,20 +166,23 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **CONTINUAR I-19 §15 — paso 9: observabilidad y cupos (§12.2/§12.3).** El paso 8 (seeds I-12)
-  sigue **BLOCKED** por el insumo externo: el flujo ya degrada limpio con `seedThoughts` vacío y no hay
-  nada que implementar hasta que lleguen las semillas de Felipe, así que **el siguiente ítem ejecutable
-  es el 9**. Falta: (1) el evento `LogSeguridad.tipoEvento=consolidacionProgresivaIdeas` (aditivo al
-  final del enum, como los anteriores) con el detalle permitido
-  `accion:<propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback>;ideaIndice:<n>;version:<n>;estado:<enum>;motivo:<enum>`
-  —sin texto ni PII—, emitido en cada transición de `ProcesarRevisionIdeaConsolidadaAsync` y del hilo
-  simple; (2) **contar las llamadas de consolidación** en los cupos de P-10: hoy
-  `ContarEvaluacionesUsuarioAsync` solo cuenta evaluaciones, así que una corrección repetida consume LLM
-  sin tocar el cupo (I-19 §12.3 pide contar ambas clases). Decidir y registrar si se persiste el uso de
-  la consolidación (la `VersionIdeaConsolidada` ya guarda snapshot de config y podría guardar tokens) o
-  si basta un contador derivado. Después: paso 10 (QA final + D5/UAT/costo). Cerrar también los
-  pendientes conocidos listados en "Estado global" (cierre por inactividad del documento de idea, ruta
-  I-06 sin coaching, `requiereAclaracion` y reapertura entre preguntas). No desplegar ni hacer push.
+- [ ] **CERRAR I-19 §15 — paso 10: QA final y criterios de aceptación (§13).** Es el último paso de
+  código+operación. (1) **Cerrar los pendientes conocidos** listados abajo, que son los únicos huecos
+  funcionales que quedan: cierre por inactividad que marque la `IdeaConsolidada` como `pendiente`
+  (§4.8, en `ServicioExpiracionConversaciones`, que hoy finaliza el turno en la cola pero no toca el
+  documento de idea), ruta I-06 con coaching apagado, `requiereAclaracion` del consolidador (§4.2) y
+  reapertura de ideas de **otra pregunta** (§4.7). (2) **Repasar §13** criterio por criterio y cubrir
+  los que falten con pruebas, incluida una **E2E simulada** del ciclo completo (aporte → propuesta →
+  confirmación → evaluación → cierre → Resultados/Markdown) sobre `WebhookOrquestadorE2EIntegrationTests`.
+  (3) **Operativo, requiere humano y presupuesto:** corrido **D5 real** contra staging con el golden
+  set, **UAT** con GHT y medición de **costo/latencia** separando consolidación y evaluación —la
+  telemetría del paso 9 ya deja los tokens por transición—. Solo con eso se decide la activación en el
+  acta del día-D. **El paso 8 (seeds I-12) sigue BLOCKED** por el insumo externo; el flujo ya degrada
+  limpio con `seedThoughts` vacío. No desplegar ni hacer push sin esa decisión.
+- [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 524; commit `aceb9f0`, sin push) I-19 §15
+  paso 9 — observabilidad y cupos.** Evento `consolidacionProgresivaIdeas` por transición sin PII, cupo
+  que cuenta consolidaciones **y** evaluaciones, y el fix de los techos deterministas que el hilo simple
+  I-19 no estaba aplicando. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-27, Claude Opus 5 — backend 520 y portal 26/26; commit `61258e4`, sin push)
   I-19 §15 paso 7b — Resultados con una fila por idea.** Estado, marcas de flujo, curaduría, historial
   de aportes/versiones y Markdown por idea; los aportes sin `ideaId` quedan como “resultado histórico”.
@@ -314,7 +336,7 @@
 | P-22 | UX de Campañas | DONE local | pendiente | frontend 21/21, build producción y Prettier verdes | Creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos con id real, configuración agrupada y estados vacíos guiados. Próximo: P-23. |
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
-| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-7 locales | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a), `61258e4` (7b) | backend 520 + portal 26/26 verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) , **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`) y **Resultados con una fila por idea** (estado, marcas de flujo/curaduría, historial de aportes y versiones; los aportes sin `ideaId` quedan como “resultado histórico”). Pendiente: seeds (BLOCKED), observabilidad/cupos y D5/UAT. |
+| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-9 locales (falta 10 QA y 8 BLOCKED) | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a), `61258e4` (7b), `aceb9f0` (9) | backend 524 + portal 26/26 verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) , **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`) y **Resultados con una fila por idea** (estado, marcas de flujo/curaduría, historial de aportes y versiones; los aportes sin `ideaId` quedan como “resultado histórico”) y **observabilidad/cupos** (evento por transición sin PII, cupo que cuenta consolidaciones y techos deterministas ya aplicados en el hilo simple). Pendiente: seeds (BLOCKED) y QA final con D5/UAT/costo. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -442,6 +464,8 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 9: observabilidad y cupos — DONE local (commit `aceb9f0`, sin push).** Rol: Arquitecto/Backend/AppSec/SDET; cubre `I-19` §12.2/§12.3, REQ §25/§27 y ARQ §12/§13. (1) **Telemetría:** `TipoEventoSeguridad.ConsolidacionProgresivaIdeas` aditivo al final del enum (`10 §6` y `03 §3.15` ya lo especificaban; se completó también su mapeo en `LogSeguridadCosmosDocument`, donde faltaba). Se emite en **cada transición de la idea en los dos caminos**: `propuesta` y `corregida` al guardar una versión nueva, `confirmada` al sellar la versión, `evaluada` tras persistir la evaluación, `reabierta` al retomar una idea cerrada, `cerrada` en todos los cierres (umbral, participante, máximo de revisiones, rechazo, techo, configuración no disponible) y `fallback` cuando la consolidación o la evaluación degradan. Detalle: `accion;ideaIndice;version;estado;resultado;motivo;promptTokens;completionTokens` — **sin el aporte ni la paráfrasis**, con lo que §12.2 queda cubierto incluyendo la separación de tokens entre consolidación y evaluación. (2) **Cupos (§12.3):** `MaxLlamadasLlmPorUsuario` sumaba solo evaluaciones, así que una corrección repetida antes de confirmar consumía LLM sin tocar el cupo. Ahora suma también las consolidaciones: cada `VersionIdeaConsolidada` nace de exactamente una llamada al consolidador —también las que degradaron a fallback—, así que contarlas no exige documentos contadores nuevos (`ContarConsolidacionesUsuarioAsync`, con implementación Cosmos acotada a la partición de la campaña y su equivalente en memoria; el default de la interfaz devuelve 0, así que un repositorio sin ideas se comporta como antes). (3) **Fix encontrado al probar el cupo:** el hilo simple I-19 **no aplicaba ningún techo determinista**, porque intercepta el mensaje antes de la rama histórica que evaluaba tope de turnos, cupo de llamadas y presupuesto de tokens; como es la ruta activa por defecto en todas las campañas, D2/`10 §2` quedaban sin efecto. Se añadió `MotivoTechoAlcanzadoAsync` antes de consolidar o evaluar y `CerrarPorTechoDeterministaAsync`, que **conserva el aporte** (§12.3), cierra la idea en curso como `pendiente` con motivo `techoDeterminista`, regenera su Markdown, registra el `RateLimit` y cierra el hilo con agradecimiento; solo el tope de turnos abre la siguiente pregunta, porque sin cupo LLM tampoco podría evaluarse. **Verificado:** build Release `-warnaserror` 0/0, **524 pruebas** no calibración (467 unit + 57 integración; +4), `dotnet format --verify-no-changes` limpio. **Próximo:** paso 10 — cerrar los pendientes conocidos, repasar §13 con una E2E simulada y ejecutar D5 real, UAT y costo (operativo, requiere humano).
 
 - 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 7b: Resultados con una fila por idea — DONE local (commit `61258e4`, sin push). El paso 7 queda completo.** Rol: Arquitecto/Frontend/SDET; cubre `I-19` §9.2, REQ §27/§33 y ARQ §3. (1) **Modelos y servicio:** tipos `IdeaConsolidada`, `VersionIdea` y `DetalleIdea`; `AdminApiService.ideas(campaniaId, estadoResultado)` e `idea(campaniaId, id)`; `ArtefactoMarkdown` gana `ideaRef`/`versionIdeaRef` y sus refs de respuesta/evaluación pasan a opcionales, en línea con `03 §3.10`. (2) **Lista maestra por idea:** estado visible (`madura|pendiente|rechazada|en curso`) con color y `title` explicativo, marca `en revisión` / `pendiente de confirmación` según `estadoFlujo`, `pendiente de curaduría` en las maduras y extracto de la versión vigente; filtro por estado de la idea, resumen (`N ideas · maduras · pendientes · rechazadas`) y leyenda coherentes. (3) **Detalle:** idea consolidada con aviso explícito cuando la versión mostrada **todavía no fue confirmada** —para que nadie la lea como madura—, evaluación de la versión vigente (o el aviso de que aún no hay), estado, motivo de cierre y curaduría, historial desplegable con **aportes originales y todas las versiones, incluidas las descartadas** (§10), y el Markdown canónico localizado por `ideaRef` con sus acciones de regenerar/descargar. (4) **Compatibilidad:** las respuestas sin `ideaId` no desaparecen: quedan en un bloque `<details>` de **“resultados históricos”**, con su badge de madurez I-17 y su detalle de siempre, sin migración destructiva. Para distinguirlas hizo falta exponer `ideaId`/`tipoAporte` en el DTO de respuesta —`04 §5.8` ya los especificaba y faltaban en el código—. Se preservan P-23 (maestro-detalle y precarga de campaña), I-17 (leyenda y conteos), P-18/P-19 (nombre accesible y regiones vivas). **Verificado:** backend build Release `-warnaserror` 0/0, 520 pruebas y `dotnet format` limpio; portal **26/26 pruebas** (antes 24), prettier y `ng build` de producción verdes. **Entorno desbloqueado:** `ng test`/`ng build` fallaban en WSL porque `node_modules` traía solo el esbuild `win32-x64` de la instalación hecha desde Windows; se copiaron los binarios `@esbuild/linux-x64` equivalentes (`0.28.1` para el paquete raíz y `0.27.7` para el anidado de vite) dentro de `node_modules` —gitignoreado, sin tocar `package.json` ni el lockfile—, así que el portal vuelve a ser verificable desde el agente. **Próximo:** paso 9 (observabilidad/cupos); el paso 8 (seeds I-12) sigue BLOCKED por insumo externo.
 

@@ -9,26 +9,28 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **ESTADO VIGENTE 2026-07-27 — `I-19` WIP, pasos 1–7 locales (backend verde 520, portal 26/26; commits
-> `748870f`, `4e31f94`, `62240b9`, `401d9dd`, `7ef021c`, `a148ca5` y `61258e4`).** Dominio, persistencia
+> **ESTADO VIGENTE 2026-07-27 — `I-19` WIP, pasos 1–9 locales (backend verde 524, portal 26/26; commits
+> `748870f`, `4e31f94`, `62240b9`, `401d9dd`, `7ef021c`, `a148ca5`, `61258e4` y `aceb9f0`).** Dominio, persistencia
 > y consolidador están implementados; **tanto el hilo simple como la cola I-18/multi-idea** recorren
 > aporte → propuesta → confirmación → evaluación de la versión completa, con una sola idea activa a la
 > vez. Ninguna raíz segmentada se evalúa antes de que el participante confirme, una idea nueva explícita
 > se encola aparte, una idea cerrada del hilo puede reabrirse conservando su historial, cada idea tiene
 > **su Markdown canónico y su API** (`/api/admin/ideas`) y **Resultados muestra una fila por idea** con
-> su historial, conservando los aportes sin `ideaId` como “resultado histórico”.
-> **PRÓXIMO OBJETIVO = paso 9: observabilidad y cupos (§12.2/§12.3); el paso 8 (seeds I-12) sigue
-> BLOCKED por insumo externo. Después, QA final (D5/UAT/costo).** No desplegar ni hacer push: faltan
-> pruebas D5/UAT/costo y el cierre integral de I-19.
+> su historial, conservando los aportes sin `ideaId` como “resultado histórico”. La **observabilidad**
+> emite un evento por transición sin PII, el **cupo LLM cuenta también las consolidaciones** y los
+> techos deterministas ya se aplican en el hilo simple conservando el aporte.
+> **PRÓXIMO OBJETIVO = paso 10: QA final (cerrar los pendientes conocidos, repasar §13 con una E2E
+> simulada y ejecutar D5 real, UAT y costo); el paso 8 (seeds I-12) sigue BLOCKED por insumo externo.**
+> No desplegar ni hacer push: falta esa validación y el cierre integral de I-19.
 
 > **✅ `I-17` (BD de dos niveles: maduras vs. incubación) — COMPLETA local 2026-07-22 (6/6 slices).** Diseño §5/§7 **CONFIRMADO con el usuario** (spec RESUELTO; `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). (1-2) umbral único compartido con precedencia pregunta→campaña→global, sellado determinista de `nivelMadurez`, paráfrasis I-05 solo si `maduro`, telemetría; default global 0.6 y kill-switch de cierre `false` (comportamiento efectivo = como hoy). (3) filtro/DTO en `04 §5.8` + pantalla Resultados (selector/badge/conteos) + controles por campaña (umbral, inactividad, paráfrasis) y por pregunta (umbral). (4) metadato `nivelMadurez` en Markdown `09`. (5) reclasificación por **rechazo explícito** (degradar+cerrar con acuse). (6) cierre por inactividad **sub-hora y por campaña** (barrido per-campaña). Cerró con **420** pruebas; la suite actual tiene **423** verdes. Frontend prettier/tsc limpios (`ng build/test` bloqueado por esbuild/WSL, infra). **Pendiente operativo (no bloquea):** calibrar umbral 0.6 con D5 real y fijar flags globales en el acta del día-D. **Sin commit/push aún.** **⚠️ PRÓXIMO OBJETIVO = rotar al siguiente ítem de §4** (todos con insumo externo: `I-12` BLOCKED por seeds, `I-13` espera decisión GHT 25-jul, `I-14` BLOCKED por catálogo). Spec I-17: `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
 **Iniciativa objetivo vigente: `ID-INICIATIVA=I-19` — IMPLEMENTACIÓN WIP.** Los pasos 5 (transiciones
-I-18/multi-idea), 5b (complemento + idea nueva), 6 (reapertura y desambiguación) y 7 completo (Markdown
-canónico, API y pantalla de Resultados por idea) quedaron **DONE local**. Continúa con el paso 9
-(observabilidad y cupos); el 8 (seeds I-12) sigue bloqueado por su insumo. Conserva los contratos
+I-18/multi-idea), 5b (complemento + idea nueva), 6 (reapertura y desambiguación), 7 (Markdown canónico,
+API y pantalla de Resultados por idea) y 9 (observabilidad y cupos) quedaron **DONE local**. Continúa
+con el paso 10 (QA final); el 8 (seeds I-12) sigue bloqueado por su insumo. Conserva los contratos
 aditivos, las pruebas verdes y la activación solo local hasta completar D5/UAT/costo.
 
 ---
@@ -145,7 +147,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 25 | **`P-22` UX de Campañas** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Creación bajo demanda, pasos numerados con completitud y nombre accesible, enlace contextual a Envíos con id real, fieldsets con ayuda y estados vacíos. Preserva P-16/P-18/P-19/P-20 y no cambia contratos. Prettier, 21/21 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 26 | **`P-23` UX de Resultados** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Precarga de campaña en memoria, patrón maestro-detalle (respuesta → evaluación + Markdown), leyenda/conteos, extractos, estados guiados y actividad secundaria. Preserva I-17/P-18/P-19; sin contratos, rutas ni permisos nuevos. Prettier, 24/24 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 27 | **`I-18` coaching secuencial por idea** | Sprint 2 | **Codex** | **DONE local 2026-07-25.** Cola y contador por idea, revisiones enlazadas, prompt socrático, timeout/fallback acotados, DTOs/Markdown/telemetría aditivos y controles accesibles. Backend 484/484 y portal 24/24, formato y builds verdes. Gates por campaña OFF; D5/UAT/costo antes de activar. |
-| 28 | **`I-19` consolidación progresiva de ideas** | En curso | **Codex / Claude** | **Pasos 1–7 locales (2026-07-27, Claude Opus 5; commits `748870f`, `4e31f94`, `62240b9`, `401d9dd`, `7ef021c`, `a148ca5`, `61258e4`; backend verde 520, portal 26/26):** idea/versiones, persistencia, consolidador, ciclo canónico del hilo simple, **transiciones I-18/multi-idea** (una idea activa a la vez; rechazo, salida, techos y avance con confirmación de la siguiente), **complemento + idea nueva** encolada aparte con tope/orden/idempotencia server-side , **reapertura** (“la anterior” determinista, lista numerada sin calificaciones, mismo `ideaId`, curaduría suspendida) y **7 Markdown canónico + API + Resultados por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`, una fila por idea con historial y “resultados históricos” preservados). Siguiente: paso 9 observabilidad/cupos (el 8, seeds, sigue BLOCKED); después D5/UAT. |
+| 28 | **`I-19` consolidación progresiva de ideas** | En curso | **Codex / Claude** | **Pasos 1–9 locales (2026-07-27, Claude Opus 5; commits `748870f`, `4e31f94`, `62240b9`, `401d9dd`, `7ef021c`, `a148ca5`, `61258e4`, `aceb9f0`; backend verde 524, portal 26/26):** idea/versiones, persistencia, consolidador, ciclo canónico del hilo simple, **transiciones I-18/multi-idea** (una idea activa a la vez; rechazo, salida, techos y avance con confirmación de la siguiente), **complemento + idea nueva** encolada aparte con tope/orden/idempotencia server-side , **reapertura** (“la anterior” determinista, lista numerada sin calificaciones, mismo `ideaId`, curaduría suspendida) y **7 Markdown canónico + API + Resultados por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`, una fila por idea con historial y “resultados históricos” preservados). y **9 observabilidad/cupos** (evento por transición sin PII, cupo que cuenta consolidaciones y techos deterministas aplicados en el hilo simple). Siguiente: paso 10 QA final (el 8, seeds, sigue BLOCKED); después D5/UAT. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
@@ -198,26 +200,26 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Continuar I-19, paso 9 de §15: observabilidad y cupos (§12.2/§12.3).** Antes de editar, leer
-   `AVANCES.md`, `SUPUESTOS.md`, `00_Indice…`, I-19 §12/§15, `10 §6` y `03 §3.15`; revisar el árbol de
-   trabajo y no tocar `.obsidian/workspace.json`. **El paso 8 (seeds I-12) sigue BLOCKED** por el insumo
-   externo —el flujo ya degrada limpio con `seedThoughts` vacío—, así que este es el siguiente ítem
-   ejecutable. Hacer: (a) **evento nuevo** `TipoEventoSeguridad.ConsolidacionProgresivaIdeas`, aditivo
-   al final del enum como los anteriores, con el detalle permitido de §12.2
-   (`accion:<propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback>;ideaIndice:<n>;version:<n>;estado:<enum>;motivo:<enum>`),
-   **sin texto ni PII**, emitido en cada transición de la idea en los dos caminos (hilo simple y cola);
-   (b) **cupos P-10**: hoy el contador de llamadas LLM deriva solo de las evaluaciones
-   (`ContarEvaluacionesUsuarioAsync`), así que una corrección repetida consume consolidación sin tocar
-   el cupo; hay que contar ambas clases de llamada y **decidir y registrar en `SUPUESTOS.md`** si se
-   persiste el uso de tokens de la consolidación (la `VersionIdeaConsolidada` ya guarda snapshot de
-   config y podría guardar `usoTokens`) o si basta un contador derivado. Cubrir con pruebas: un evento
-   por transición con su detalle, ausencia de PII y el cupo que ahora sí cuenta las consolidaciones.
-   Después: paso 10 (QA final, D5 y UAT). **Pendientes ya registrados que también deben cerrarse antes
-   del final de I-19:** cierre por inactividad que marque la `IdeaConsolidada` como `pendiente` (§4.8),
-   ruta I-06 sin coaching, `requiereAclaracion` (§4.2) y reapertura de ideas de **otra pregunta**
-   (§4.7). **Entorno frontend desbloqueado:** si `ng test`/`ng build` fallan por el esbuild `win32-x64`
-   del `node_modules`, copiar los binarios `@esbuild/linux-x64` de la misma versión (paquete raíz y el
-   anidado de vite) dentro de `node_modules`, que está gitignoreado.
+1. **Cerrar I-19, paso 10 de §15: QA final y criterios de aceptación (§13).** Antes de editar, leer
+   `AVANCES.md`, `SUPUESTOS.md`, `00_Indice…`, I-19 §13/§15 y `13_Plan_de_Pruebas_y_Aceptacion.md`;
+   revisar el árbol de trabajo y no tocar `.obsidian/workspace.json`. Es el último paso de I-19; el 8
+   (seeds I-12) sigue **BLOCKED** por su insumo. Hacer, en cortes pequeños: (a) **cerrar los cuatro
+   pendientes conocidos**, que son los únicos huecos funcionales que quedan — (i) que el cierre por
+   inactividad de `ServicioExpiracionConversaciones` marque la `IdeaConsolidada` como `pendiente`
+   (§4.8): hoy finaliza el turno en la cola pero deja el documento de idea abierto, y el servicio no
+   tiene aún el repositorio de respuestas inyectado; (ii) la ruta I-06 con coaching apagado, que sigue
+   evaluando cada idea segmentada sin confirmación; (iii) `requiereAclaracion` del consolidador, que
+   hoy se ignora en vez de pedir la aclaración breve (§4.2); (iv) reapertura de ideas de **otra
+   pregunta** (§4.7), que exige reabrir una `Conversacion` cerrada. (b) **Repasar §13 criterio por
+   criterio** y cubrir lo que falte, incluida una **E2E simulada** del ciclo completo (aporte →
+   propuesta → confirmación → evaluación → cierre → Resultados/Markdown) en
+   `WebhookOrquestadorE2EIntegrationTests`. (c) **Operativo, requiere humano y presupuesto:** corrido
+   **D5 real** contra staging con el golden set, **UAT** con GHT y medición de **costo/latencia**
+   separando consolidación y evaluación —la telemetría del paso 9 ya emite los tokens por transición—;
+   con eso se decide la activación en el acta del día-D. **Entorno frontend desbloqueado:** si
+   `ng test`/`ng build` fallan por el esbuild `win32-x64` del `node_modules`, copiar los binarios
+   `@esbuild/linux-x64` de la misma versión (paquete raíz y el anidado de vite) dentro de
+   `node_modules`, que está gitignoreado.
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
 4. **La aprobación expresa de I-19 ya existe.** Implementa sus cortes en pasos pequeños: contratos/dominio
