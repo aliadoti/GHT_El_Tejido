@@ -462,6 +462,11 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   (`REQ §29.14`). I-19 usa `idea` como artefacto canónico por `ideaId`; `respuesta` permanece para
   históricos/compatibilidad.
 - `ideaRef`/`versionIdeaRef` son opcionales y obligatorios para `tipoArtefacto=idea`.
+- `respuestaRef` y `evaluacionRef` pasan a ser **opcionales** (aditivo, sin migración): un artefacto
+  `respuesta` los sigue trayendo siempre —el comportamiento histórico no cambia—, pero uno de
+  `tipoArtefacto=idea` puede no tener evaluación vigente (idea `rechazada` o `pendiente` que nunca
+  llegó a evaluarse, I-19 §10) y no apunta a un único aporte. Un lector antiguo que asuma valor solo
+  ve artefactos `respuesta`, que lo conservan.
 - El contenido se guarda en Blob **y** embebido aquí para consulta rápida (`ARQ §7.3`). El Blob/Cosmos es **caché materializada**; siempre regenerable desde datos operativos (`REQ §22.4.6`, `§23.3`).
 
 ### 3.11 `Rubrica` (contenedor `config`) — `REQ §29.8`, `§17`
