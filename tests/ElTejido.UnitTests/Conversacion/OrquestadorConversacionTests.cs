@@ -356,6 +356,107 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I19_Telemetria_RegistraCadaTransicionSinTextoNiParafrasis()
+    {
+        ConfigurarAlmacenIdeas();
+        var logs = new List<LogSeguridad>();
+        _logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(log => logs.Add(log)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(Participante(), Mensaje("si"), CancellationToken.None);
+
+        var consolidacion = logs
+            .Where(log => log.TipoEvento == TipoEventoSeguridad.ConsolidacionProgresivaIdeas)
+            .ToArray();
+        consolidacion.Select(log => log.Resultado).Should()
+            .Equal("propuesta", "confirmada", "evaluada", "cerrada");
+        consolidacion.Should().OnlyContain(log => log.Detalle!.Contains("ideaIndice:1", StringComparison.Ordinal));
+        consolidacion[3].Detalle.Should().Contain("motivo:umbral").And.Contain("resultado:madura");
+        // §12.1: la telemetría nunca lleva el aporte ni la paráfrasis.
+        consolidacion.Should().OnlyContain(log =>
+            !log.Detalle!.Contains("Aporte inicial", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task I19_TelemetriaFallback_DistingueLaConsolidacionDegradada()
+    {
+        ConfigurarAlmacenIdeas();
+        var logs = new List<LogSeguridad>();
+        _logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(log => logs.Add(log)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsolidacionIdeas.Fallback("Aporte inicial", "error_proveedor", UsoTokensLlm.Crear(12, 5)));
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: consolidador).ProcesarMensajeEntranteAsync(
+            Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        var evento = logs.Single(log => log.TipoEvento == TipoEventoSeguridad.ConsolidacionProgresivaIdeas);
+        evento.Resultado.Should().Be("fallback");
+        evento.Detalle.Should().Contain("motivo:consolidacionFallback")
+            .And.Contain("promptTokens:12")
+            .And.Contain("completionTokens:5");
+    }
+
+    [Fact]
+    public async Task I19_CupoLlamadasLlm_CuentaTambienLasConsolidaciones()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        _respuestas.ContarEvaluacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(0);
+        // Dos consolidaciones previas ya agotan el cupo aunque no haya ninguna evaluación (I-19 §12.3).
+        _respuestas.ContarConsolidacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(2);
+        await PrepararConversacionAsync();
+
+        await Construir(new OpcionesConversacion { CuposHabilitados = true }, ConsolidadorQueAcumula())
+            .ProcesarMensajeEntranteAsync(
+                ParticipanteConCupos(maxMensajesPorUsuario: 10, maxLlamadasLlm: 2),
+                Mensaje("Aporte inicial"),
+                CancellationToken.None);
+
+        almacen.Versiones.Should().BeEmpty();
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _logSeguridad.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.RateLimit
+                && log.Detalle == "cupo_llamadas_llm_usuario"),
+            Arg.Any<CancellationToken>());
+        // §12.3: agotar el cupo no puede perder el aporte del participante.
+        almacen.Respuestas.Should().ContainSingle(respuesta => respuesta.Texto == "Aporte inicial");
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    [Fact]
+    public async Task I19_TopeDeTurnosDelHilo_ConservaElAporteYCierraLaIdeaComoPendiente()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Y el costo?", calificacionTotal: 1m)));
+        await PrepararConversacionAsync();
+        // El tope de turnos del hilo se mide sobre los mensajes ya persistidos.
+        for (var turno = 0; turno < 3; turno++)
+        {
+            await SembrarEntranteAsync($"turno {turno}");
+        }
+
+        await Construir(new OpcionesConversacion { MaxTurnosPorHilo = 2 }, ConsolidadorQueAcumula())
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte que llega tarde"), CancellationToken.None);
+
+        almacen.Versiones.Should().BeEmpty();
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        almacen.Respuestas.Should().ContainSingle(respuesta => respuesta.Texto == "Aporte que llega tarde");
+        await _logSeguridad.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.RateLimit
+                && log.Detalle == "tope_turnos_hilo"),
+            Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    [Fact]
     public async Task I19_LaAnterior_ReabreLaIdeaCerradaMasRecienteConservandoSuHistorial()
     {
         const string nueva = "Ademas propongo un tablero semanal de seguimiento por equipo.";

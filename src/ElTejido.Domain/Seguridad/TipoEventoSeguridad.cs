@@ -41,4 +41,10 @@ public enum TipoEventoSeguridad
 
     // I-18: transiciones de la cola sin texto ni PII.
     CoachingSecuencialIdeas,
+
+    // I-19 (10 §6.2): transiciones de una idea consolidada
+    // (propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback) con indice, version, estado,
+    // motivo y tokens de consolidacion. Nunca incluye el aporte ni la parafrasis. Aditivo al final para
+    // preservar los valores existentes (03 §3.15).
+    ConsolidacionProgresivaIdeas,
 }

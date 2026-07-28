@@ -152,6 +152,37 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.Count;
     }
 
+    /// <inheritdoc />
+    public async Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(usuarioId);
+
+        // Las versiones no llevan usuarioId; se acotan por las ideas del usuario dentro de la misma
+        // particion (campaniaId), asi que son dos consultas acotadas y sin fan-out entre particiones.
+        var particion = campaniaId.Trim();
+        var ideas = new QueryDefinition("SELECT c.id FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId")
+            .WithParameter("@type", IdeaConsolidadaCosmosDocument.DocumentType)
+            .WithParameter("@usuarioId", usuarioId.Trim());
+        var documentosIdeas = await _container.QueryAsync<IdeaConsolidadaCosmosDocument>(ideas, particion, cancellationToken);
+        if (documentosIdeas.Count == 0)
+        {
+            return 0;
+        }
+
+        var idsIdeas = documentosIdeas.Select(documento => documento.Id).ToArray();
+        var versiones = new QueryDefinition(
+                "SELECT c.id FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@ideaIds, c.ideaId)")
+            .WithParameter("@type", VersionIdeaConsolidadaCosmosDocument.DocumentType)
+            .WithParameter("@ideaIds", idsIdeas);
+        var documentosVersiones = await _container.QueryAsync<VersionIdeaConsolidadaCosmosDocument>(
+            versiones, particion, cancellationToken);
+        return documentosVersiones.Count;
+    }
+
     public async Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);

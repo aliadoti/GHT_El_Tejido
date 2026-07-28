@@ -63,6 +63,19 @@ public interface IRepositorioRespuestas
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// I-19 §12.3 — llamadas de <b>consolidación</b> de un usuario en la campaña. Cada
+    /// <see cref="VersionIdeaConsolidada"/> nace de exactamente una llamada al consolidador (también
+    /// cuando esa llamada terminó en fallback), así que contar versiones cuenta llamadas sin documentos
+    /// contadores nuevos, igual que <see cref="ContarEvaluacionesUsuarioAsync"/>. Sumadas a las
+    /// evaluaciones dan el total que gobierna <c>MaxLlamadasLlmPorUsuario</c> (10 §2). Un repositorio
+    /// sin ideas I-19 devuelve 0 y el cupo se comporta como antes.
+    /// </summary>
+    Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        CancellationToken cancellationToken) => Task.FromResult(0);
+
+    /// <summary>
     /// P-10 — suma los tokens LLM (prompt + completion) de todas las evaluaciones de una campaña.
     /// Es el contador del presupuesto <c>PresupuestoTokensCampania</c> derivado de documentos
     /// existentes (sin documentos contadores nuevos, mismo criterio que

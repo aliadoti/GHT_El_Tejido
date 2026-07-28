@@ -504,10 +504,21 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         CancellationToken cancellationToken)
     {
         var estadoPrevio = conversacion.EstadoMaquina;
+        // Techos deterministas (10 §2 / D2) antes de consolidar o evaluar: el hilo simple I-19 los
+        // evalúa aquí porque ya no pasa por la rama histórica que los aplicaba.
+        var motivoTecho = await MotivoTechoAlcanzadoAsync(campania, conversacion, usuario.Id, cancellationToken);
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
         await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
         conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+
+        if (motivoTecho is not null)
+        {
+            await CerrarPorTechoDeterministaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, mensaje.Texto, motivoTecho,
+                ahora, cancellationToken);
+            return;
+        }
 
         // I-19 §4.7: la respuesta a una lista de selección ya ofrecida se resuelve antes que nada; si no
         // es un número válido, la selección se cancela y el mensaje sigue como un turno normal.
@@ -658,7 +669,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        await _respuestas.GuardarIdeaConsolidadaAsync(idea.Reabrir(ahora), cancellationToken);
+        var reabierta = idea.Reabrir(ahora);
+        await _respuestas.GuardarIdeaConsolidadaAsync(reabierta, cancellationToken);
+        await RegistrarConsolidacionAsync(
+            usuario, "reabierta", reabierta, null, "peticionParticipante", null, ahora, cancellationToken);
         if (conversacion.CoachingIdeas is not null)
         {
             conversacion = conversacion.ConCoachingIdeas(
@@ -732,6 +746,80 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     }
 
     /// <summary>
+    /// Techo determinista alcanzado (10 §2 / D2), o <c>null</c> si todavía hay margen: tope de turnos
+    /// del hilo, cupo de llamadas LLM del usuario —que con I-19 incluye las consolidaciones— y
+    /// presupuesto de tokens de la campaña. Los cupos siguen gateados por <c>CuposHabilitados</c>.
+    /// </summary>
+    private async Task<string?> MotivoTechoAlcanzadoAsync(
+        Campania campania,
+        DominioConversacion conversacion,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        if (await TurnosHiloExcedidosAsync(conversacion, cancellationToken))
+        {
+            return "tope_turnos_hilo";
+        }
+
+        if (!_cuposHabilitados)
+        {
+            return null;
+        }
+
+        if (await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, cancellationToken))
+        {
+            return "cupo_llamadas_llm_usuario";
+        }
+
+        return await PresupuestoTokensExcedidoAsync(campania, cancellationToken)
+            ? "presupuesto_tokens_campania"
+            : null;
+    }
+
+    /// <summary>
+    /// I-19 §12.3: al agotarse un techo no se consolida ni se evalúa, pero **el aporte se conserva**;
+    /// la idea en curso queda <c>pendiente</c> y el hilo cierra con agradecimiento. Solo el tope de
+    /// turnos abre la siguiente pregunta: sin cupo LLM tampoco podría evaluarse.
+    /// </summary>
+    private async Task CerrarPorTechoDeterministaAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string texto,
+        string motivoTecho,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var idea = await ObtenerIdeaActivaAsync(campania.Id, conversacion.Id, cancellationToken);
+        await _procesador.GuardarRespuestaAsync(
+            "resp_" + Guid.NewGuid().ToString("N"), campania.Id, usuario, pregunta, conversacion.Id, texto,
+            esRepregunta: idea is not null, EstadoRespuesta.Recibida, ahora, cancellationToken,
+            // Sin idea activa el aporte se conserva suelto, como en el flujo histórico: `ideaId` y
+            // `tipoAporte` solo se informan juntos y no hay idea a la que enlazarlo.
+            ideaId: idea?.Id,
+            tipoAporte: idea is null ? null : TipoAporteIdea.Complemento);
+
+        if (idea is not null)
+        {
+            var cerrada = idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "techoDeterminista", ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(cerrada, cancellationToken);
+            await RegistrarConsolidacionAsync(
+                usuario, "cerrada", cerrada, null, "techoDeterminista", null, ahora, cancellationToken);
+            await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
+        }
+
+        await RegistrarRateLimitAsync(usuario, motivoTecho, ahora, cancellationToken);
+        await CerrarConAgradecimientoAsync(conversacion, numero, campania, null, emisor, ahora, cancellationToken);
+        if (motivoTecho == "tope_turnos_hilo")
+        {
+            await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
+        }
+    }
+
+    /// <summary>
     /// Idea abierta que corresponde atender en un hilo sin cola I-18: la de menor índice/antigüedad,
     /// para que la activa se termine antes de pasar a una idea nueva encolada (I-19 §4.6).
     /// </summary>
@@ -798,7 +886,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea, versionVigente: null,
             respuestaId, texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
-        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(propuesta.Version.Id, ahora), cancellationToken);
+        idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await RegistrarPropuestaAsync(usuario, idea, propuesta, "propuesta", ahora, cancellationToken);
         await EnviarConfirmacionAsync(conversacion, numero, emisor, propuesta.Version.Texto, ahora, cancellationToken);
     }
 
@@ -809,7 +899,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         if (_intencionRechazoIdea.Coincide(texto))
         {
-            await _respuestas.GuardarIdeaConsolidadaAsync(idea.Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", ahora), cancellationToken);
+            var rechazada = idea.Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(rechazada, cancellationToken);
+            await RegistrarConsolidacionAsync(
+                usuario, "cerrada", rechazada, null, "rechazoParticipante", null, ahora, cancellationToken);
             await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
             var acuseRechazo = TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault);
             // §4.5: el rechazo cierra solo esta idea; si otra espera turno, se sigue con ella.
@@ -841,11 +934,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         idea = idea.ConfirmarVersion(version.Id, ahora);
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await RegistrarConsolidacionAsync(
+            usuario, "confirmada", idea, version.NumeroVersion, null, null, ahora, cancellationToken);
 
         var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacion.Id, idea.RespuestaRaizId, version.Texto, cancellationToken);
         if (contexto.Contexto is null)
         {
-            await _respuestas.GuardarIdeaConsolidadaAsync(idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "configuracionNoDisponible", ahora), cancellationToken);
+            var sinConfiguracion = idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "configuracionNoDisponible", ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(sinConfiguracion, cancellationToken);
+            await RegistrarConsolidacionAsync(
+                usuario, "cerrada", sinConfiguracion, null, "configuracionNoDisponible", null, ahora, cancellationToken);
             await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
             return;
         }
@@ -860,6 +958,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var resultado = ConProcedenciaIdea(
             await _evaluador.EvaluarAsync(contextoEvaluacion, cancellationToken), idea.Id, version.Id);
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
+        await RegistrarConsolidacionAsync(
+            usuario,
+            resultado is ResultadoEvaluacion.Fallback ? "fallback" : "evaluada",
+            idea,
+            version.NumeroVersion,
+            resultado is ResultadoEvaluacion.Fallback fallidaSimple ? fallidaSimple.Motivo : null,
+            resultado.Evaluacion.UsoTokens,
+            ahora,
+            cancellationToken);
 
         var madura = resultado is not ResultadoEvaluacion.Fallback
             && _limites.UmbralAlcanzado(resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
@@ -873,6 +980,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             var motivo = madura ? "umbral" : conforme ? "participante" : resultado is ResultadoEvaluacion.Fallback ? "fallbackEvaluacion" : "sinRepreguntas";
             idea = idea.Cerrar(estado, resultado.Evaluacion.Id, motivo, ahora);
             await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+            await RegistrarConsolidacionAsync(
+                usuario, "cerrada", idea, version.NumeroVersion, motivo, null, ahora, cancellationToken);
             await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
 
             // I-19 §4.6: si una idea nueva quedó esperando su turno, se atiende ahora en lugar de
@@ -920,7 +1029,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
             respuestaId, texto, TipoAporteIdea.Complemento, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
-        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(propuesta.Version.Id, ahora), cancellationToken);
+        idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await RegistrarPropuestaAsync(usuario, idea, propuesta, "corregida", ahora, cancellationToken);
 
         // I-19 §4.6: una idea nueva explícita en el mismo mensaje no se mezcla con la activa; queda
         // registrada aparte y se trabaja después (aquí no hay cola I-18: la resuelve el orden de espera).
@@ -1022,7 +1133,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             campania, pregunta, configLlm, idea, versionVigente: null, respuestaId, texto,
             TipoAporteIdea.NuevaIdea, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
-        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(propuesta.Version.Id, ahora), cancellationToken);
+        idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await RegistrarPropuestaAsync(usuario, idea, propuesta, "propuesta", ahora, cancellationToken);
         return propuesta.Version;
     }
 
@@ -1052,8 +1165,56 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var nuevas = propuesta is ResultadoConsolidacionIdeas.Exito exito
             ? exito.NuevasIdeas
             : Array.Empty<NuevaIdeaDetectada>();
-        return new PropuestaConsolidada(version, nuevas);
+        return new PropuestaConsolidada(
+            version, nuevas, propuesta is ResultadoConsolidacionIdeas.Fallback, propuesta.Uso);
     }
+
+    /// <summary>
+    /// I-19 §12.2: telemetría de una transición de idea. Nunca incluye el aporte ni la paráfrasis: solo
+    /// acción, índice de idea, número de versión, estados, motivo y tokens de la consolidación.
+    /// </summary>
+    private Task RegistrarConsolidacionAsync(
+        Usuario usuario,
+        string accion,
+        IdeaConsolidada idea,
+        int? numeroVersion,
+        string? motivo,
+        UsoTokensLlm? uso,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var detalle = FormattableString.Invariant(
+            $"accion:{accion};ideaIndice:{idea.IdeaIndice};version:{numeroVersion ?? 0};estado:{MinusculaInicial(idea.EstadoFlujo.ToString())};resultado:{(idea.EstadoResultado is null ? "ninguno" : MinusculaInicial(idea.EstadoResultado.Value.ToString()))};motivo:{motivo ?? "ninguno"};promptTokens:{uso?.PromptTokens ?? 0};completionTokens:{uso?.CompletionTokens ?? 0}");
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.ConsolidacionProgresivaIdeas,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                accion,
+                detalle,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+    }
+
+    /// <summary>Registra la propuesta recién guardada, distinguiendo la que degradó a fallback.</summary>
+    private Task RegistrarPropuestaAsync(
+        Usuario usuario,
+        IdeaConsolidada idea,
+        PropuestaConsolidada propuesta,
+        string accion,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => RegistrarConsolidacionAsync(
+            usuario,
+            propuesta.EsFallback ? "fallback" : accion,
+            idea,
+            propuesta.Version.NumeroVersion,
+            propuesta.EsFallback ? "consolidacionFallback" : null,
+            propuesta.Uso,
+            ahora,
+            cancellationToken);
 
     /// <summary>
     /// I-19 §4.6: filtra las ideas nuevas que el consolidador propone junto al complemento. El servidor
@@ -1358,7 +1519,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 campania, pregunta, contextoBase.ConfigLlmSnapshot, idea, versionVigente: null,
                 respuestaId, segmentada.Texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
             await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
-            await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(propuesta.Version.Id, ahora), cancellationToken);
+            idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+            await RegistrarPropuestaAsync(usuario, idea, propuesta, "propuesta", ahora, cancellationToken);
             raices.Add(new RaizIdeaCoaching(segmentada.Indice, respuestaId, null, ideaId, propuesta.Version.Id));
         }
 
@@ -1452,8 +1615,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         if (idea is not null && idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.Cerrada)
         {
-            await _respuestas.GuardarIdeaConsolidadaAsync(
-                idea.Cerrar(resultado, evaluacionId, motivoCierre, ahora), cancellationToken);
+            var cerrada = idea.Cerrar(resultado, evaluacionId, motivoCierre, ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(cerrada, cancellationToken);
+            await RegistrarConsolidacionAsync(
+                usuario, "cerrada", cerrada, null, motivoCierre, null, ahora, cancellationToken);
             // I-19 §10: el artefacto canónico refleja el estado final de la idea (madura/pendiente/rechazada).
             await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
         }
@@ -1626,6 +1791,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         idea = idea.ConfirmarVersion(version.Id, ahora);
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await RegistrarConsolidacionAsync(
+            usuario, "confirmada", idea, version.NumeroVersion, null, null, ahora, cancellationToken);
         // La respuesta vigente sigue siendo el último aporte; la versión confirmada es lo que se evalúa.
         conversacion = conversacion.ConCoachingIdeas(
             _colaCoaching.ActualizarVersionIdeaVigente(conversacion.CoachingIdeas!, idea.Id, version.Id));
@@ -1655,6 +1822,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var resultado = ConProcedenciaIdea(
             await _evaluador.EvaluarAsync(contexto, cancellationToken), idea.Id, version.Id);
         await _respuestas.GuardarEvaluacionAsync(resultado.Evaluacion, cancellationToken);
+        await RegistrarConsolidacionAsync(
+            usuario,
+            resultado is ResultadoEvaluacion.Fallback ? "fallback" : "evaluada",
+            idea,
+            version.NumeroVersion,
+            resultado is ResultadoEvaluacion.Fallback fallidaCola ? fallidaCola.Motivo : null,
+            resultado.Evaluacion.UsoTokens,
+            ahora,
+            cancellationToken);
 
         var esFallback = resultado is ResultadoEvaluacion.Fallback;
         var madura = !esFallback
@@ -1742,7 +1918,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
             respuestaId, texto, tipoAporte, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
-        await _respuestas.GuardarIdeaConsolidadaAsync(idea.ConPropuesta(propuesta.Version.Id, ahora), cancellationToken);
+        idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
+        await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        await RegistrarPropuestaAsync(usuario, idea, propuesta, "corregida", ahora, cancellationToken);
         conversacion = conversacion.ConCoachingIdeas(
             _colaCoaching.ActualizarVersionIdeaVigente(
                 _colaCoaching.ActualizarRespuestaVigente(conversacion.CoachingIdeas!, respuestaId),
@@ -2897,7 +3075,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var evaluaciones = await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken);
-        return evaluaciones >= maximo;
+        // I-19 §12.3: la consolidacion tambien gasta LLM. Una correccion repetida antes de confirmar
+        // consume llamadas sin producir evaluacion, asi que el cupo cuenta ambas clases.
+        var consolidaciones = ConsolidacionIdeasActiva
+            ? await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
+            : 0;
+        return evaluaciones + consolidaciones >= maximo;
     }
 
     /// <summary>
@@ -3133,10 +3316,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// <summary>Resultado de intentar resolver una lista de selección ya ofrecida (I-19 §4.7).</summary>
     private sealed record ResultadoSeleccionIdea(bool Manejado, DominioConversacion Conversacion);
 
-    /// <summary>Versión propuesta para una idea más las ideas nuevas que el consolidador separó (I-19 §4.6).</summary>
+    /// <summary>
+    /// Versión propuesta para una idea, más las ideas nuevas que el consolidador separó (I-19 §4.6) y la
+    /// telemetría de esa llamada: si degradó a fallback y qué tokens consumió (§12.2/§12.3).
+    /// </summary>
     private sealed record PropuestaConsolidada(
         VersionIdeaConsolidada Version,
-        IReadOnlyList<NuevaIdeaDetectada> NuevasIdeas);
+        IReadOnlyList<NuevaIdeaDetectada> NuevasIdeas,
+        bool EsFallback,
+        UsoTokensLlm? Uso);
 
     private sealed record HiloTrabajo(Pregunta Pregunta, string ConversacionId, DominioConversacion? Conversacion);
 
