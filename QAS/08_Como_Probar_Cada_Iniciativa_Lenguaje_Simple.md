@@ -3,8 +3,8 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-27 (I-19: idea única y varias ideas en un mensaje ya construidas en
-> local; Resultados por idea y reapertura pendientes).
+> Última actualización: 2026-07-27 (I-19: idea única, varias ideas en un mensaje, idea nueva a mitad de
+> camino y reapertura ya construidas en local; Resultados por idea pendiente).
 
 ## Antes de empezar (léelo una vez)
 
@@ -163,10 +163,10 @@ o el resumen aparece para una idea en incubación.
 ### 📝 I-19 — Construir y calificar una sola idea completa
 
 **Qué es:** cada respuesta del participante complementa la misma idea. El sistema devuelve lo que
-entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Los pasos 1 a 4,
-"varias ideas en un mensaje" y "se te ocurre otra idea a mitad de camino" ya están construidos y
-probados en el equipo; los pasos 5 a 7 (pantalla de Resultados y reapertura) llegan en las siguientes
-entregas.
+entendió para confirmarlo y califica la versión completa, no solo el último mensaje. Los pasos 1 a 4 y
+los tres bloques de abajo (varias ideas en un mensaje, otra idea a mitad de camino y volver a una idea
+terminada) ya están construidos y probados en el equipo; los pasos 5 y 7 (pantalla de **Resultados** con
+una fila por idea y su historial) llegan en la siguiente entrega.
 
 1. Responde una pregunta con una idea incompleta. **Deberías ver:** una paráfrasis de lo entendido y
    una petición de confirmación.
@@ -217,6 +217,24 @@ el acompañamiento idea por idea encendido:
 **Algo va mal si:** la idea nueva se mezcla dentro del resumen de la idea en curso, el sistema se pone
 a trabajar la idea nueva antes de terminar la anterior, la conversación se cierra y pierdes la idea
 nueva, o el sistema anota como "idea" un pedazo suelto de frase.
+
+**Quieres volver a una idea que ya terminaste (ya disponible en pruebas del equipo).** La campaña debe
+seguir abierta:
+
+1. Termina una idea (hasta que el sistema la dé por cerrada) y empieza otra.
+2. Escribe **"quiero volver a la anterior"**. **Deberías ver:** un mensaje que retoma **la última idea
+   que cerraste**, te recuerda cómo quedó registrada y te pregunta qué quieres cambiar o agregar.
+3. Escribe el cambio. **Deberías ver:** el resumen actualizado de **esa misma** idea, con su "¿Es
+   correcto?"; al confirmarlo se vuelve a calificar completa (puede mejorar o bajar).
+4. Si ya cerraste **varias** ideas y escribes algo más vago como **"quiero retomar una idea"**,
+   deberías ver una lista corta **numerada** con un resumen de cada una —**sin notas ni puntajes**— y la
+   pregunta de cuál retomar. Responde con el número.
+5. Si en vez del número escribes otra cosa, el sistema **no adivina**: sigue con la idea en la que
+   estabas y toma tu mensaje como un aporte más.
+
+**Algo va mal si:** retoma una idea distinta a la que pediste, pierde lo que ya habías registrado en
+ella, la lista muestra calificaciones, se queda "pegado" pidiendo un número, o permite cambios cuando la
+campaña ya está cerrada.
 
 ### ✅ I-03 — El coach repregunta sobre lo más flojo, sin "delatar" la rúbrica
 **Qué es:** cuando tu respuesta es floja en algún aspecto, el coach te invita a profundizar **en ese

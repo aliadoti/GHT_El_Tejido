@@ -606,3 +606,25 @@
     abierta de menor `ideaIndice`/antigüedad en vez de la más recientemente actualizada, para cumplir
     “trabaja primero la idea activa y luego la nueva” (§4.6.4). El hilo solo se cierra cuando no queda
     ninguna idea abierta; antes cerraba al terminar la idea en curso.
+- Ambigüedades resueltas al implementar la reapertura (§4.7, 2026-07-27, Claude Opus 5):
+  - **La oferta de selección no se persiste.** En vez de guardar la lista ofrecida, se añade el valor
+    aditivo `estadoMaquina=esperandoSeleccionIdea` (`03 §3.6`) y la lista se **reconstruye** con el mismo
+    orden determinista (cierre más reciente primero, desempate por `ideaIndice desc`). Entre las dos
+    interacciones no puede cerrarse otra idea, así que el número siempre apunta a lo mismo. Alternativa
+    descartada: un campo nuevo con los `ideaId` ofrecidos, que duplicaría estado sin aportar garantías.
+  - **Una respuesta que no es un número cancela la selección.** No se reintenta la lista (evita un bucle
+    infinito) ni se adivina la opción: el mensaje se procesa como un turno normal de la idea activa, con
+    lo que nunca se pierde contenido. El número solo cuenta en mensajes cortos (misma guarda que las
+    demás intenciones) y dentro del rango ofrecido.
+  - **“La anterior” manda incluso con varias candidatas.** Es una referencia inequívoca por definición
+    (§5: “resolver una referencia inequívoca es determinístico”), así que no dispara la lista; la lista
+    queda solo para las peticiones vagas.
+  - **La reapertura conserva el contador de revisiones de la idea.** Reabrir no regala un cupo nuevo de
+    preguntas socráticas: si la idea ya había agotado `maxRepreguntas`, su siguiente versión confirmada
+    se evalúa una vez y vuelve a cerrarse. Mantiene la garantía de terminación de D2.
+  - **Alcance del hilo actual.** Solo se ofrecen ideas cerradas de la conversación en curso (y, con cola
+    I-18, presentes en ella). Volver a la idea de otra pregunta exigiría reabrir una `Conversacion`
+    cerrada y cambiar la resolución de hilo; queda registrado como pendiente de I-19.
+  - **En el hilo sin cola la petición se evalúa antes que el estado de la idea.** Las listas de frases de
+    revisitar, confirmar y rechazar son disjuntas, así que el orden relativo no cambia ningún resultado;
+    en el camino con cola sí se respeta literalmente la precedencia de §8.2.

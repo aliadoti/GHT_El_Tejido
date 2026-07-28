@@ -192,8 +192,8 @@ conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza
 
 ### 2.4.3 Consolidación progresiva por idea (I-19, WIP local)
 
-I-19 aplica a todas las campañas. El recorrido está implementado localmente tanto para una idea única
-como para la cola I-18/multi-idea; falta la reapertura de una idea anterior. El comportamiento para
+I-19 aplica a todas las campañas. El recorrido está implementado localmente para una idea única, para la
+cola I-18/multi-idea y para la reapertura de una idea anterior del mismo hilo. El comportamiento para
 ideas únicas o múltiples es:
 
 1. cada mensaje significativo queda como aporte original enlazado a un `ideaId`;
@@ -225,6 +225,15 @@ reabre el mismo `ideaId`; si la referencia es ambigua, el sistema muestra una li
 nueva versión confirmada se reevalúa completa y puede subir o bajar de madurez. Una campaña cerrada no
 admite cambios del participante. Si estaba pendiente de curaduría, la reapertura suspende ese estado
 hasta reevaluar.
+
+Al reabrir, el mensaje recuerda cómo quedó registrada la idea y pide qué cambiar o agregar; la versión
+confirmada anterior sigue siendo la oficial y **no se sobrescribe ninguna versión**. La idea que estaba
+en curso se conserva en su estado y espera turno: sigue habiendo una sola idea activa. Cuando el sistema
+ofrece la lista numerada, solo cuenta como elección un número corto dentro de esa lista; cualquier otra
+respuesta cancela la selección y se procesa como un turno normal de la idea en curso, sin adivinar ni
+perder el mensaje. Las frases de estas dos intenciones son configurables
+(`Conversacion:FrasesRevisitarAnterior` y `Conversacion:FrasesRevisitarIdea`). **Alcance actual:** se
+reabren ideas del mismo hilo; volver a la idea de otra pregunta todavía no está implementado.
 
 No hay flag por campaña. `Conversacion:ConsolidacionProgresivaHabilitada=true` es solo un kill-switch
 global de emergencia y nace activo; al apagarlo, los aportes nuevos quedan pendientes y no se
@@ -314,6 +323,9 @@ lo que otros han dicho. Reglas duras de esta función:
 | `configConversacional.umbralCierreAnticipado` | Portal admin (campaña) | `null` (**hereda global**) | Override opcional por campaña; `<= 0` apaga solo esa campaña. |
 | `Conversacion:CierreAnticipadoHabilitado` | App config / env `Conversacion__CierreAnticipadoHabilitado` | `true` | Kill-switch global: `false` apaga el cierre anticipado para todas las campañas, incluidos sus overrides. |
 | `Conversacion:FrasesContinuar` | App config / env `Conversacion__FrasesContinuar__0`, `...__1` | (lista compilada) | Frases con las que el participante pide continuar a la siguiente pregunta. Vacío = usa la lista por defecto. |
+| `Conversacion:FrasesRevisitarAnterior` | App config / env `Conversacion__FrasesRevisitarAnterior__0`, `...__1` | (lista compilada) | **I-19 §4.7** — frases que piden volver a la **idea cerrada más reciente** ("la anterior"). Resuelven sin lista de opciones. Vacío = usa la lista por defecto. |
+| `Conversacion:FrasesRevisitarIdea` | App config / env `Conversacion__FrasesRevisitarIdea__0`, `...__1` | (lista compilada) | **I-19 §4.7** — frases que piden revisitar **alguna** idea previa sin señalar cuál; con varias candidatas se ofrece la lista numerada. Vacío = usa la lista por defecto. |
+| `Conversacion:Mensajes:AcuseReaperturaIdea` / `:InvitacionReaperturaIdea` / `:PreguntaSeleccionIdea` | App config / env `Conversacion__Mensajes__…` | (textos por defecto) | **I-19 §4.7** — acuse y invitación del mensaje de reapertura, y encabezado de la lista numerada. Nunca incluyen calificaciones. |
 | `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
 | `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
 | `Conversacion:Mensajes:AcuseContinuar` | App config / env `Conversacion__Mensajes__AcuseContinuar` | "¡Perfecto, sigamos!" | Acuse que antecede al cierre cuando el participante pide continuar. |

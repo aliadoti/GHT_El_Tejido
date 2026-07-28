@@ -9,24 +9,26 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **ESTADO VIGENTE 2026-07-27 — `I-19` WIP, pasos 1–5b locales (backend verde 505; commits `748870f` y
-> `4e31f94`).** Dominio, persistencia y consolidador están implementados; **tanto el hilo simple como la
-> cola I-18/multi-idea** recorren aporte → propuesta → confirmación → evaluación de la versión completa,
-> con una sola idea activa a la vez. Ninguna raíz segmentada se evalúa antes de que el participante
-> confirme, y una idea nueva explícita se encola aparte sin mezclarse con la activa.
-> **PRÓXIMO OBJETIVO = paso 6: reapertura “la anterior” y desambiguación (§4.7); después
-> Markdown/API/Resultados por idea.** No desplegar ni hacer push: faltan pruebas D5/UAT/costo y el
-> cierre integral de I-19.
+> **ESTADO VIGENTE 2026-07-27 — `I-19` WIP, pasos 1–6 locales (backend verde 512; commits `748870f`,
+> `4e31f94`, `62240b9` y `401d9dd`).** Dominio, persistencia y consolidador están implementados; **tanto
+> el hilo simple como la cola I-18/multi-idea** recorren aporte → propuesta → confirmación → evaluación
+> de la versión completa, con una sola idea activa a la vez. Ninguna raíz segmentada se evalúa antes de
+> que el participante confirme, una idea nueva explícita se encola aparte sin mezclarse con la activa y
+> una idea cerrada del hilo puede reabrirse conservando su historial.
+> **PRÓXIMO OBJETIVO = paso 7: Markdown, API y Resultados por idea (§9/§10); después seeds I-12,
+> observabilidad/cupos y QA final (D5/UAT).** No desplegar ni hacer push: faltan pruebas D5/UAT/costo y
+> el cierre integral de I-19.
 
 > **✅ `I-17` (BD de dos niveles: maduras vs. incubación) — COMPLETA local 2026-07-22 (6/6 slices).** Diseño §5/§7 **CONFIRMADO con el usuario** (spec RESUELTO; `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). (1-2) umbral único compartido con precedencia pregunta→campaña→global, sellado determinista de `nivelMadurez`, paráfrasis I-05 solo si `maduro`, telemetría; default global 0.6 y kill-switch de cierre `false` (comportamiento efectivo = como hoy). (3) filtro/DTO en `04 §5.8` + pantalla Resultados (selector/badge/conteos) + controles por campaña (umbral, inactividad, paráfrasis) y por pregunta (umbral). (4) metadato `nivelMadurez` en Markdown `09`. (5) reclasificación por **rechazo explícito** (degradar+cerrar con acuse). (6) cierre por inactividad **sub-hora y por campaña** (barrido per-campaña). Cerró con **420** pruebas; la suite actual tiene **423** verdes. Frontend prettier/tsc limpios (`ng build/test` bloqueado por esbuild/WSL, infra). **Pendiente operativo (no bloquea):** calibrar umbral 0.6 con D5 real y fijar flags globales en el acta del día-D. **Sin commit/push aún.** **⚠️ PRÓXIMO OBJETIVO = rotar al siguiente ítem de §4** (todos con insumo externo: `I-12` BLOCKED por seeds, `I-13` espera decisión GHT 25-jul, `I-14` BLOCKED por catálogo). Spec I-17: `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
 **Iniciativa objetivo vigente: `ID-INICIATIVA=I-19` — IMPLEMENTACIÓN WIP.** Los pasos 5 (transiciones
-I-18/multi-idea) y 5b (complemento + idea nueva) quedaron **DONE local**: una idea activa a la vez con
-propuesta, confirmación y evaluación de la versión consolidada, y las ideas nuevas encoladas aparte.
-Continúa con el paso 6 (reapertura “la anterior” y desambiguación). Conserva los contratos aditivos,
-las pruebas verdes y la activación solo local hasta completar D5/UAT/costo.
+I-18/multi-idea), 5b (complemento + idea nueva) y 6 (reapertura y desambiguación) quedaron **DONE
+local**: una idea activa a la vez con propuesta, confirmación y evaluación de la versión consolidada,
+ideas nuevas encoladas aparte y reapertura de una idea cerrada sin sobrescribir su historial. Continúa
+con el paso 7 (Markdown, API y Resultados por idea). Conserva los contratos aditivos, las pruebas
+verdes y la activación solo local hasta completar D5/UAT/costo.
 
 ---
 
@@ -142,7 +144,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 25 | **`P-22` UX de Campañas** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Creación bajo demanda, pasos numerados con completitud y nombre accesible, enlace contextual a Envíos con id real, fieldsets con ayuda y estados vacíos. Preserva P-16/P-18/P-19/P-20 y no cambia contratos. Prettier, 21/21 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 26 | **`P-23` UX de Resultados** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Precarga de campaña en memoria, patrón maestro-detalle (respuesta → evaluación + Markdown), leyenda/conteos, extractos, estados guiados y actividad secundaria. Preserva I-17/P-18/P-19; sin contratos, rutas ni permisos nuevos. Prettier, 24/24 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 27 | **`I-18` coaching secuencial por idea** | Sprint 2 | **Codex** | **DONE local 2026-07-25.** Cola y contador por idea, revisiones enlazadas, prompt socrático, timeout/fallback acotados, DTOs/Markdown/telemetría aditivos y controles accesibles. Backend 484/484 y portal 24/24, formato y builds verdes. Gates por campaña OFF; D5/UAT/costo antes de activar. |
-| 28 | **`I-19` consolidación progresiva de ideas** | En curso | **Codex / Claude** | **Pasos 1–5b locales (2026-07-27, Claude Opus 5; commits `748870f` y `4e31f94`, backend verde 505):** idea/versiones, persistencia, consolidador, ciclo canónico del hilo simple, **transiciones I-18/multi-idea** (una idea activa a la vez; rechazo, salida, techos y avance con confirmación de la siguiente) y **complemento + idea nueva** encolada aparte con tope/orden/idempotencia server-side. Siguiente: paso 6 reapertura (§4.7); después Markdown/API/Resultados, seeds, observabilidad y D5/UAT. |
+| 28 | **`I-19` consolidación progresiva de ideas** | En curso | **Codex / Claude** | **Pasos 1–6 locales (2026-07-27, Claude Opus 5; commits `748870f`, `4e31f94`, `62240b9`, `401d9dd`; backend verde 512):** idea/versiones, persistencia, consolidador, ciclo canónico del hilo simple, **transiciones I-18/multi-idea** (una idea activa a la vez; rechazo, salida, techos y avance con confirmación de la siguiente), **complemento + idea nueva** encolada aparte con tope/orden/idempotencia server-side y **reapertura** (“la anterior” determinista, lista numerada sin calificaciones, mismo `ideaId`, curaduría suspendida). Siguiente: paso 7 Markdown/API/Resultados por idea; después seeds, observabilidad y D5/UAT. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
@@ -195,23 +197,24 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Continuar I-19, paso 6 de §15: reapertura “la anterior” y desambiguación (§4.7).** Antes de
-   editar, leer `AVANCES.md`, `SUPUESTOS.md`, `00_Indice…`, I-19 §15/§4.7/§8.2, I-18 y Reglas; revisar
-   el árbol de trabajo y no tocar `.obsidian/workspace.json`. Hoy “quiero complementar la anterior” se
-   trata como un aporte más. Añadir (a) un **detector determinista** de la intención de revisitar, junto
-   a `_intencionConfirmacion`/`_intencionRechazoIdea`, con sus frases configurables; (b) su
-   **precedencia** en `ProcesarRevisionIdeaConsolidadaAsync` y en `ProcesarIdeaConsolidadaAsync` —
-   inmediatamente después del rechazo (§8.2); (c) la selección determinista de “la anterior” = idea
-   **cerrada más reciente** del participante en la campaña activa, reabriéndola con
-   `IdeaConsolidada.Reabrir` (mismo `ideaId`, `estadoFlujo=enRevision`, `estadoCuraduria` suspendido);
-   (d) la **lista breve numerada** de paráfrasis, sin calificaciones, cuando haya varias candidatas, y
-   la resolución del número elegido; (e) conservar la idea actual en su estado y devolverla a la cola
-   antes de activar la seleccionada (una sola activa); (f) reevaluar completa la nueva versión
-   confirmada, pudiendo subir o bajar de madurez. Una campaña `cerrada` no admite cambios del
-   participante. Cubrir con pruebas: reapertura inequívoca, desambiguación numerada, campaña cerrada y
-   no sobrescritura de versiones. Después: Markdown/API/Resultados por idea (paso 7). **Pendientes ya
-   registrados que también deben cerrarse antes del final de I-19:** cierre por inactividad que marque
-   la `IdeaConsolidada` como `pendiente` (§4.8), ruta I-06 sin coaching y `requiereAclaracion` (§4.2).
+1. **Continuar I-19, paso 7 de §15: Markdown, API y Resultados por idea (§9/§10).** Antes de editar,
+   leer `AVANCES.md`, `SUPUESTOS.md`, `00_Indice…`, I-19 §9/§10/§15, `04 §5.8`, `09` y `11`; revisar el
+   árbol de trabajo y no tocar `.obsidian/workspace.json`. Es el último corte de producto de I-19 y el
+   primero que toca portal. Hacer, en este orden y en cortes pequeños: (a) **contratos primero, commit
+   aparte** — DTO y filtro aditivos por idea en `04 §5.8`, preservando los DTOs legacy de `Respuesta`;
+   (b) **Markdown canónico por idea** (`09`) compilado desde la versión confirmada y su evaluación, con
+   el metadato de madurez/curaduría; **ojo:** desde el paso 5 la ruta I-19 **no compila Markdown**
+   porque dejó de usar `PersistirRespuestaEvaluadaAsync`, así que hay que reintroducir la compilación
+   por idea y **decidir y registrar en `SUPUESTOS.md`** si el sellado de madurez sobre `Respuesta`
+   (I-17) se conserva por compatibilidad o se deriva de `IdeaConsolidada`; (c) **API**: exponer las
+   ideas con su estado, paráfrasis vigente, versiones y aportes; (d) **Resultados**: una fila por idea
+   con su estado y su historial en el detalle, preservando P-23/I-17/P-18/P-19 y sin romper la vista
+   actual. Cubrir con pruebas backend (compilación por idea, DTO/filtro) y frontend (fila por idea y
+   detalle). Después: paso 8 (seeds I-12), paso 9 (observabilidad/cupos: evento
+   `consolidacionProgresivaIdeas` de §12.2 y conteo de llamadas de consolidación) y paso 10 (QA final,
+   D5 y UAT). **Pendientes ya registrados que también deben cerrarse antes del final de I-19:** cierre
+   por inactividad que marque la `IdeaConsolidada` como `pendiente` (§4.8), ruta I-06 sin coaching,
+   `requiereAclaracion` (§4.2) y reapertura de ideas de **otra pregunta** (§4.7).
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
 4. **La aprobación expresa de I-19 ya existe.** Implementa sus cortes en pasos pequeños: contratos/dominio
