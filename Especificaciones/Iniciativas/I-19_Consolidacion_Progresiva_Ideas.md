@@ -13,8 +13,9 @@
 > Cubre REQ §9/§20/§21/§22/§25/§26/§27, ARQ §4.2/§6/§7/§8.3/§12/§13; afecta `03 §3.6/§3.8/§3.9/§3.10`,
 > `04 §5.8`, `05 §4`, `08 §3–§6`, `09`, `10`, `11`, `13` y
 > `Reglas_Conversacion_y_Participacion.md`.
-> **Estado:** decisiones funcionales confirmadas con el usuario el **27-jul-2026**. Este documento y
-> los contratos asociados son diseño para revisión; **no hay código de I-19 implementado**.
+> **Estado (2026-07-28):** decisiones funcionales confirmadas con el usuario el **27-jul-2026** e
+> **implementación completa en local** (pasos 1–10 de §15, salvo el 8 —seeds I-12— BLOCKED por su
+> insumo). Falta la validación operativa D5/UAT/costo antes de activar; sin push.
 
 ## 1. Resultado que se busca
 
@@ -597,48 +598,55 @@ clases de llamadas y aplicar cupos sin saltarse la conservación del aporte.
 
 ## 13. Criterios de aceptación
 
+> **Estado 2026-07-28 (revisión del paso 10).** `[x]` = cubierto por la suite automatizada;
+> `[~]` = implementado y verificado a mano/parcialmente; `[ ]` = pendiente. La suite backend está en
+> **529 pruebas** verdes (471 unitarias + 58 integración) y el portal en 26/26.
+
 ### 13.1 Consolidación y confirmación
 
-- [ ] La respuesta inicial crea una idea estable y una propuesta parafraseada.
-- [ ] Ninguna propuesta se evalúa o declara madura antes de confirmación.
-- [ ] Una corrección reemplaza el dato contradictorio en la nueva versión sin borrar historial.
-- [ ] Cada evaluación referencia el `ideaId` y la versión consolidada exacta.
-- [ ] La calificación, retroalimentación y siguiente pregunta usan el texto consolidado completo.
-- [ ] El LLM no inventa contenido; una paráfrasis incorrecta puede corregirse.
+- [x] La respuesta inicial crea una idea estable y una propuesta parafraseada.
+- [x] Ninguna propuesta se evalúa o declara madura antes de confirmación. *(E2E `I19_CicloCompleto…` + unitarias de propuesta.)*
+- [x] Una corrección reemplaza el dato contradictorio en la nueva versión sin borrar historial. *(`I19_CorreccionAntesDeConfirmar…`.)*
+- [x] Cada evaluación referencia el `ideaId` y la versión consolidada exacta.
+- [x] La calificación, retroalimentación y siguiente pregunta usan el texto consolidado completo.
+- [~] El LLM no inventa contenido; una paráfrasis incorrecta puede corregirse. *(La corrección está probada; que el modelo no invente es exactamente lo que arbitra el corrido D5 real.)*
 
 ### 13.2 Estados
 
-- [ ] Superar el umbral produce `madura` + `estadoCuraduria=pendiente`.
-- [ ] No superar el umbral al terminar produce `pendiente`.
-- [ ] “No lo guardes” produce `rechazada`, conserva auditoría y no entra a curaduría.
-- [ ] Fallback/inactividad con propuesta sin confirmar nunca produce madurez.
-- [ ] No existe publicación, priorización o incorporación automática a conocimiento/acta.
+- [x] Superar el umbral produce `madura` + `estadoCuraduria=pendiente`.
+- [x] No superar el umbral al terminar produce `pendiente`.
+- [x] “No lo guardes” produce `rechazada`, conserva auditoría y no entra a curaduría.
+- [x] Fallback/inactividad con propuesta sin confirmar nunca produce madurez. *(`CerrarExpiradas_ConIdeaAbierta…` y el fallback de consolidación.)*
+- [x] No existe publicación, priorización o incorporación automática a conocimiento/acta.
 
 ### 13.3 Multi-idea y reapertura
 
-- [ ] Varias ideas conservan `ideaId` y consolidación separados y se trabajan una por una.
-- [ ] Un mensaje con complemento + idea nueva actualiza la activa y encola la nueva.
-- [ ] “La anterior” reabre la idea cerrada más reciente; si hay ambigüedad se pide elegir.
-- [ ] Una idea madura reabierta se vuelve a evaluar y puede quedar pendiente.
-- [ ] Una campaña cerrada no admite cambios del participante.
+- [x] Varias ideas conservan `ideaId` y consolidación separados y se trabajan una por una.
+- [x] Un mensaje con complemento + idea nueva actualiza la activa y encola la nueva.
+- [x] “La anterior” reabre la idea cerrada más reciente; si hay ambigüedad se pide elegir.
+- [x] Una idea madura reabierta se vuelve a evaluar y puede quedar pendiente.
+- [x] Una campaña cerrada no admite cambios del participante.
+- [ ] **Fuera del alcance implementado:** revisitar la idea de **otra pregunta** (“quiero volver a la
+  pregunta de productividad”). Ver "Pendiente diferido" en §15.
 
 ### 13.4 Datos, API, portal y Markdown
 
-- [ ] Aportes y versiones son auditables e inmutables.
-- [ ] Resultados muestra una fila por idea lógica y no duplica revisiones.
-- [ ] El detalle permite reconstruir aportes → versiones → confirmaciones → evaluaciones.
-- [ ] El Markdown canónico usa `ideaId`, la versión vigente y el estado correcto.
-- [ ] Lectores legacy y resultados históricos siguen funcionando.
-- [ ] Reinicio P-03 elimina también ideas/versiones/Markdown I-19 dentro del mismo alcance autorizado.
+- [x] Aportes y versiones son auditables e inmutables.
+- [x] Resultados muestra una fila por idea lógica y no duplica revisiones.
+- [x] El detalle permite reconstruir aportes → versiones → confirmaciones → evaluaciones.
+- [x] El Markdown canónico usa `ideaId`, la versión vigente y el estado correcto.
+- [x] Lectores legacy y resultados históricos siguen funcionando.
+- [x] Reinicio P-03 elimina también ideas/versiones/Markdown I-19 dentro del mismo alcance autorizado.
 
 ### 13.5 Calidad, seguridad y regresión
 
-- [ ] Idempotencia evita duplicar aportes, versiones o evaluaciones ante reintentos.
-- [ ] Logs no contienen texto ni PII.
-- [ ] Seeds vacías no cambian el flujo; configuradas se usan sin crear criterios ocultos.
-- [ ] Cupos, timeout, ventana WhatsApp y máximo de ideas/turnos permanecen efectivos.
-- [ ] La suite prueba explícitamente que el último mensaje aislado no es el texto evaluado.
-- [ ] D5/UAT comparan exactitud de consolidación, calidad del coaching y costo antes del despliegue.
+- [~] Idempotencia evita duplicar aportes, versiones o evaluaciones ante reintentos. *(Ids deterministas por turno y encolado idempotente probados; el dedupe de WhatsApp ya cubre el reintento del mismo `wamid`.)*
+- [x] Logs no contienen texto ni PII. *(`I19_Telemetria_RegistraCadaTransicionSinTextoNiParafrasis`.)*
+- [x] Seeds vacías no cambian el flujo. *(Con `seedThoughts` vacío el recorrido completo es verde; el uso real llega con I-12.)*
+- [x] Cupos, timeout, ventana WhatsApp y máximo de ideas/turnos permanecen efectivos.
+- [x] La suite prueba explícitamente que el último mensaje aislado no es el texto evaluado.
+- [ ] **D5/UAT** comparan exactitud de consolidación, calidad del coaching y costo antes del despliegue.
+  *(Operativo: requiere corrido pagado contra staging y sesión con GHT.)*
 
 ## 14. Cómo probarlo en lenguaje simple
 
@@ -667,25 +675,37 @@ reabrirse conservando su historial. La última validación fue: `dotnet build -c
 integración**) y `dotnet format --verify-no-changes --no-restore`, todas verdes (commits `748870f`,
 `4e31f94`, `62240b9` y `401d9dd`, sin push).
 
-**Próximo corte ejecutable (paso 10 — QA final, §13):** es el último paso. (1) Cerrar los pendientes
-conocidos de abajo, que son los únicos huecos funcionales que quedan. (2) Repasar §13 criterio por
-criterio y cubrir lo que falte, incluida una **E2E simulada** del ciclo completo (aporte → propuesta →
-confirmación → evaluación → cierre → Resultados/Markdown). (3) Operativo y con humano: **D5 real**
-contra staging, **UAT** con GHT y medición de **costo/latencia** separando consolidación y evaluación
-—la telemetría del paso 9 ya emite los tokens por transición—. Solo con eso se decide la activación en
-el acta del día-D. El paso 8 (seeds I-12) sigue **BLOCKED** por el insumo externo y el flujo ya degrada
-limpio con `seedThoughts` vacío. No eliminar lectores legacy y no activar/desplegar el cambio.
+**Estado del paso 10 (2026-07-28):** la parte de código está **cerrada**. Se resolvieron tres de los
+cuatro pendientes conocidos —inactividad que cierra la idea como `pendiente` (§4.8), `requiereAclaracion`
+que ahora pide la aclaración en vez de adivinar (§4.2) y la ruta I-06 con el gate de coaching apagado,
+que ya confirma antes de evaluar—, se añadió la **E2E simulada** del ciclo completo sobre el webhook
+real y se revisó §13 criterio por criterio (ver arriba).
 
-**Pendientes conocidos de los pasos 5/5b/6** (registrados, no bloquean el corte):
+**Lo único que falta para cerrar I-19 es operativo y requiere humano:** corrido **D5 real** contra
+staging con el golden set, **UAT** con GHT y medición de **costo/latencia** separando consolidación y
+evaluación —la telemetría del paso 9 emite los tokens por transición—. Con eso se decide la activación
+en el acta del día-D. El paso 8 (seeds I-12) sigue **BLOCKED** por el insumo externo y el flujo ya
+degrada limpio con `seedThoughts` vacío. No activar/desplegar sin esa decisión.
 
-- la reapertura opera sobre ideas del **hilo actual**; volver a la idea de **otra pregunta** (“la
-  pregunta de productividad”, §4.7) exige reabrir una `Conversacion` cerrada y queda fuera del corte;
+**Pendiente diferido (decisión de alcance, 2026-07-28):**
 
-- el cierre por inactividad (`ServicioExpiracionConversaciones`) finaliza el turno en la cola pero no
-  cierra todavía el documento `IdeaConsolidada` como `pendiente` (§4.8);
-- las campañas con I-06 activo y coaching I-18 apagado conservan su ruta histórica de evaluación por
-  idea segmentada, sin confirmación previa;
-- `requiereAclaracion` del consolidador aún no genera la pregunta breve de aclaración (§4.2).
+- **Revisitar la idea de otra pregunta** (“quiero volver a la pregunta de productividad”, §4.7). La
+  reapertura implementada cubre las ideas del **hilo actual**, que es el caso que el propio §4.7 define
+  como determinista (“la anterior”). Hacerlo entre preguntas exige reabrir una `Conversacion` ya
+  cerrada, cambiar la resolución de hilo, evaluar con la rúbrica/prompt de **otra** pregunta y
+  desambiguar entre hilos: es invasivo sobre la máquina de estados y de valor bajo antes del Hito,
+  porque el participante tendría que nombrar explícitamente otra pregunta mientras un hilo sigue
+  abierto. **Condición para retomarlo:** que UAT o el día-D muestren participantes intentándolo, o una
+  decisión explícita de GHT. Mientras tanto, ese mensaje se trata como un aporte normal de la idea en
+  curso, sin perder contenido.
+
+**Pendientes conocidos anteriores — todos cerrados en el paso 10:**
+
+- ✅ el cierre por inactividad deja la idea `pendiente` con motivo `inactividad`, y el timeout por idea
+  de la cola con motivo `tiempo` (§4.8);
+- ✅ las campañas con I-06 activo y coaching I-18 apagado también confirman antes de evaluar: la cola es
+  el estado de “una idea a la vez”, no la función de acompañamiento;
+- ✅ `requiereAclaracion` envía la pregunta breve, conserva el aporte y no crea versión ni evalúa (§4.2).
 
 Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUESTOS.md`, esta sección,
 `I-18_Coaching_Secuencial_Por_Idea.md` y `Reglas_Conversacion_y_Participacion.md`. Mantener
@@ -699,9 +719,9 @@ Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUE
 5b. **[Hecho local] Complemento + idea nueva (§4.6):** la idea nueva obtiene su propio `ideaId`, aporte y propuesta, se encola al final (tope/orden/idempotencia server-side) y espera turno sin mezclarse con la activa; sin cola I-18, el hilo la atiende por orden de llegada al cerrar la activa.
 6. **[Hecho local] Reapertura:** “la anterior” determinista, lista numerada al desambiguar, mismo `ideaId`, curaduría suspendida y ninguna versión sobrescrita; solo dentro del hilo actual y con la campaña activa.
 7. **[Hecho local] Markdown/API/Resultados:** artefacto canónico por idea (`tipoArtefacto=idea`, ruta `campanias/{campaniaId}/idea/{ideaId}.md`, regenerado al evaluar y al cerrar), rutas `GET /api/admin/ideas` y `/ideas/{id}`, y pantalla de Resultados con **una fila por idea** —estado, marcas de flujo y curaduría, historial de aportes y versiones, Markdown por `ideaRef`— conservando los aportes sin `ideaId` como “resultado histórico”.
-8. **[Pendiente] Seeds:** consumir I-12 cuando estén configuradas; degradación vacía.
+8. **[BLOCKED por insumo externo] Seeds:** consumir I-12 cuando estén configuradas; la degradación con `seedThoughts` vacío ya está probada.
 9. **[Hecho local] Observabilidad/cupos:** evento `consolidacionProgresivaIdeas` por transición —acción, índice, versión, estados, motivo y tokens, sin texto ni PII— y `MaxLlamadasLlmPorUsuario` contando consolidaciones **y** evaluaciones; además, los techos deterministas pasan a aplicarse también en el hilo simple, conservando el aporte.
-10. **[Pendiente] QA final:** unitarias, integración, regresión, E2E simulado, D5 y UAT.
+10. **[Hecho local, salvo lo operativo] QA final:** cerrados los pendientes de estado, aclaración e I-06 sin coaching; E2E simulada del ciclo completo sobre el webhook real; §13 revisado criterio por criterio. **Falta D5 real, UAT y costo** (requieren humano y presupuesto).
 
 No se activa ni despliega código como parte de la aprobación de esta especificación.
 

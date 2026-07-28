@@ -661,3 +661,23 @@
     flujo histórico (turnos → cupo de llamadas → presupuesto) y **antes** de gastar cualquier llamada;
     al dispararse, el aporte se conserva y la idea queda `pendiente`. Prevalece D2/`10 §2` sobre la
     regla de consolidar siempre, igual que ya ocurría en la cola I-18.
+- Decisiones del cierre de I-19 (QA final, 2026-07-28, Claude Opus 5):
+  - **La cola I-18 se usa siempre que la consolidación está activa y hay segmentación**, aunque el gate
+    de coaching esté apagado. La cola es el estado server-side de “una idea a la vez”, no la función de
+    acompañamiento; sin el gate, la idea se evalúa una vez y cierra, sin pregunta socrática ni prompt
+    socrático. Apagar el gate en caliente sigue finalizando las colas **legacy** (sin `ideaId`), que
+    solo existían por I-18. Alternativa descartada: dejar la ruta I-06 evaluando sin confirmación, que
+    contradice §8.1 en la única ruta que quedaba.
+  - **Motivos de cierre por tiempo diferenciados:** `inactividad` cuando expira el hilo completo y
+    `tiempo` cuando vence la ventana por idea de la cola. Permite distinguir en Resultados y en la
+    telemetría por qué quedó pendiente sin abrir un enum nuevo.
+  - **Ante `requiereAclaracion` no se crea versión.** El aporte ya está guardado y la idea conserva su
+    estado y su versión vigente: el ciclo sigue en el próximo mensaje. Alternativa descartada: guardar
+    la propuesta “por si acaso”, que dejaría en el historial una paráfrasis que el propio consolidador
+    declaró no confiable.
+  - **Diferida con condición: revisitar la idea de otra pregunta (§4.7).** Exige reabrir una
+    `Conversacion` cerrada, cambiar la resolución de hilo y evaluar con la rúbrica/prompt de otra
+    pregunta. Valor bajo antes del Hito —el caso determinista “la anterior” ya está cubierto dentro del
+    hilo— y riesgo alto sobre la máquina de estados. **Se retoma si UAT o el día-D muestran
+    participantes intentándolo, o por decisión explícita de GHT.** Mientras tanto ese mensaje se trata
+    como un aporte normal de la idea en curso, sin perder contenido.

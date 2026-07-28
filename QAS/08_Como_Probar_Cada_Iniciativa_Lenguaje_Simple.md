@@ -3,8 +3,9 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-27 (I-19: idea única, varias ideas en un mensaje, idea nueva a mitad de
-> camino, reapertura y **Resultados por idea** ya construidos en local).
+> Última actualización: 2026-07-28 (I-19 **completa en local**: idea única, varias ideas en un mensaje,
+> idea nueva a mitad de camino, reapertura, Resultados por idea y cierres por inactividad/aclaración.
+> Pendiente solo la validación con GHT antes de activarla).
 
 ## Antes de empezar (léelo una vez)
 
@@ -187,6 +188,14 @@ de abajo ya están construidos y probados en el equipo**, incluida la pantalla d
 **Algo va mal si:** una frase complementaria aparece/califica como otra idea; el sistema olvida o
 inventa información; evalúa antes de confirmar; muestra una fila por revisión; conserva una nota de
 otra versión; o publica sin curaduría.
+
+**Dos casos más que conviene probar:**
+
+- **Mensaje confuso.** Responde algo muy ambiguo (por ejemplo, solo "eso"). El sistema debe **pedirte
+  una aclaración corta** en vez de inventar un resumen, y tu mensaje no debe perderse.
+- **Te vas a mitad de camino.** Deja una idea sin terminar y no respondas más. Pasado el tiempo de
+  inactividad configurado, esa idea debe quedar como **pendiente** en Resultados —nunca como madura— y
+  conservar lo que ya habías dicho.
 
 **Varias ideas en un mensaje (ya disponible en pruebas del equipo).** Requiere una campaña con el
 acompañamiento idea por idea encendido:
