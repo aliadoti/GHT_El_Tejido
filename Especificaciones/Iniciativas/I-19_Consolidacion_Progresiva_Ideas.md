@@ -667,15 +667,15 @@ reabrirse conservando su historial. La última validación fue: `dotnet build -c
 integración**) y `dotnet format --verify-no-changes --no-restore`, todas verdes (commits `748870f`,
 `4e31f94`, `62240b9` y `401d9dd`, sin push).
 
-**Próximo corte ejecutable (paso 7 — Markdown, API y Resultados por idea, §9/§10):** es el último corte
-de producto antes de observabilidad y QA. Falta (1) una **fila por idea** en Resultados con su estado y
-su paráfrasis vigente, y el historial de versiones/aportes en el detalle; (2) el **DTO y filtro**
-aditivos de `04 §5.8`, preservando los DTOs legacy; (3) **un Markdown canónico por idea** (`09`)
-construido desde la versión confirmada y su evaluación —hoy la ruta I-19 **no compila Markdown**, porque
-desde el paso 5 dejó de usar `PersistirRespuestaEvaluadaAsync`—; y (4) el metadato de madurez/curaduría
-en ese artefacto. Al hacerlo hay que **decidir y registrar** si el sellado de madurez sobre `Respuesta`
-(I-17) se conserva por compatibilidad o se deriva de `IdeaConsolidada`, que es donde ahora vive la
-madurez. No eliminar lectores legacy y no activar/desplegar el cambio.
+**Próximo corte ejecutable (paso 7b — pantalla de Resultados por idea, §9.2):** el backend ya está
+(`GET /api/admin/ideas` y `/ideas/{id}`). Falta el portal en
+`src/ElTejido.Web/src/app/features/resultados/`: tipos y servicio para las rutas nuevas, **una fila por
+idea** con su texto vigente, estado (`Madura|Pendiente|Rechazada`), marca `En revisión` /
+`Pendiente de confirmación`, calificación de la versión vigente y `Pendiente de curaduría` en las
+maduras, más un **detalle expandible** con aportes, versiones, evaluación y motivo de cierre. Las
+respuestas legacy sin `ideaId` siguen visibles como “resultado histórico”, sin migración. Preservar
+P-23, I-17 y P-18/P-19. **La madurez se lee de la idea, no de la respuesta.** No eliminar lectores
+legacy y no activar/desplegar el cambio.
 
 **Pendientes conocidos de los pasos 5/5b/6** (registrados, no bloquean el corte):
 
@@ -699,7 +699,7 @@ Antes de cambiar código, quien retome debe leer `AVANCES.md`, `TODO.md`, `SUPUE
 5. **[Hecho local] I-18/multi-idea:** propuesta, confirmación y evaluación por cada idea, con una sola activa y confirmación de la siguiente al cerrar la anterior.
 5b. **[Hecho local] Complemento + idea nueva (§4.6):** la idea nueva obtiene su propio `ideaId`, aporte y propuesta, se encola al final (tope/orden/idempotencia server-side) y espera turno sin mezclarse con la activa; sin cola I-18, el hilo la atiende por orden de llegada al cerrar la activa.
 6. **[Hecho local] Reapertura:** “la anterior” determinista, lista numerada al desambiguar, mismo `ideaId`, curaduría suspendida y ninguna versión sobrescrita; solo dentro del hilo actual y con la campaña activa.
-7. **[Pendiente] Markdown/API/Resultados:** una fila/artefacto por idea y detalle auditable.
+7. **[Parcial] Markdown/API/Resultados:** **7a hecho local** — artefacto canónico por idea (`tipoArtefacto=idea`, ruta `campanias/{campaniaId}/idea/{ideaId}.md`, regenerado al evaluar y al cerrar) y rutas `GET /api/admin/ideas` y `/ideas/{id}`. **7b pendiente** — pantalla de Resultados con una fila por idea y detalle auditable.
 8. **[Pendiente] Seeds:** consumir I-12 cuando estén configuradas; degradación vacía.
 9. **[Pendiente] Observabilidad/cupos:** métricas y conteo de llamadas de consolidación.
 10. **[Pendiente] QA final:** unitarias, integración, regresión, E2E simulado, D5 y UAT.

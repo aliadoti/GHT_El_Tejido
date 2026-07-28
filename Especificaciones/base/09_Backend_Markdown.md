@@ -34,6 +34,13 @@ public interface ICompiladorMarkdown
 - I-19 actualiza un artefacto canónico por `ideaId` cada vez que cambia la versión confirmada o el
   estado final; una propuesta no confirmada puede materializarse marcada como tal al cerrar por
   inactividad/fallback, pero nunca aparece como madura.
+  - **Implementado (2026-07-27):** el orquestador regenera el artefacto de la idea **al evaluar** una
+    versión confirmada y **al cerrarla** (umbral, salida, techo determinista, fallback o rechazo). No se
+    regenera en cada propuesta sin confirmar: esas versiones ya quedan en el historial del artefacto.
+    Mientras la idea sigue abierta, `evaluacionVigenteRef` aún no está sellado y el artefacto usa la
+    evaluación **de la versión vigente exacta**; si no coincide, omite la sección de evaluación en vez
+    de mostrar la calificación de una versión anterior. El fallo de compilación nunca rompe el hilo
+    (`REQ §22.4.6`).
 
 ---
 

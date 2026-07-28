@@ -628,3 +628,18 @@
   - **En el hilo sin cola la petición se evalúa antes que el estado de la idea.** Las listas de frases de
     revisitar, confirmar y rechazar son disjuntas, así que el orden relativo no cambia ningún resultado;
     en el camino con cola sí se respeta literalmente la precedencia de §8.2.
+- Ambigüedades resueltas al publicar la idea (Markdown/API, 2026-07-27, Claude Opus 5):
+  - **La madurez no se sella sobre el aporte.** En I-19 la unidad evaluada es la versión consolidada, así
+    que `Respuesta.nivelMadurez` **no** se promueve a `maduro` en esta ruta: la madurez vive en
+    `IdeaConsolidada` y Resultados debe leerla de `/api/admin/ideas`. El filtro `nivelMadurez` de
+    `/api/admin/respuestas` (I-17) se conserva sin cambios para datos legacy. Alternativa descartada:
+    replicar el sello en cada aporte, que crearía dos fuentes de verdad para el mismo estado.
+  - **Cuándo se regenera el artefacto de la idea.** Al evaluar una versión confirmada y al cerrar la
+    idea (umbral, salida, techo, fallback o rechazo). No se regenera en cada propuesta sin confirmar:
+    esas versiones ya quedan en el historial del artefacto y evitarlo ahorra escrituras por turno.
+  - **Evaluación mostrada mientras la idea sigue abierta.** `evaluacionVigenteRef` solo se sella al
+    cerrar, así que el artefacto usa la evaluación **de la versión vigente exacta** (comparando
+    `versionIdeaId`) y omite la sección de evaluación si no coincide; nunca muestra la calificación de
+    una versión anterior junto a un texto nuevo.
+  - **El artefacto de idea no apunta a un aporte único.** `respuestaRef` queda nulo y la trazabilidad se
+    da por `ideaRef`/`versionIdeaRef` más la lista de aportes dentro del contenido.

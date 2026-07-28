@@ -4,6 +4,27 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-19 WIP — paso 7a
+  (Markdown y API por idea) DONE local; falta 7b (pantalla de Resultados).** (1) **Markdown canónico por
+  idea:** `tipoArtefacto=idea` (aditivo al final del enum), `SolicitudCompilacion.IdeaId` y una rama del
+  compilador que renderiza desde la **versión confirmada vigente** —o la propuesta, marcada como no
+  confirmada— y su evaluación, con estado de resultado, madurez, curaduría, motivo de cierre, aportes
+  originales e historial de versiones. Ruta canónica `campanias/{campaniaId}/idea/{ideaId}.md`; cada
+  regeneración incrementa la versión sobre el mismo artefacto. **Repara un hueco real:** desde el paso 5
+  la ruta I-19 no compilaba ningún Markdown; ahora se regenera al evaluar y al cerrar la idea y el fallo
+  nunca rompe el hilo. (2) **Artefacto:** `respuestaRef`/`evaluacionRef` pasan a opcionales y se añaden
+  `ideaRef`/`versionIdeaRef` (`03 §3.10`, commit de contrato `7ef021c`); un artefacto que no es de idea
+  conserva su invariante histórica y uno de idea exige `ideaRef` y admite no tener evaluación (rechazada
+  o pendiente sin evaluar). (3) **API (`04 §5.8`):** `GET /api/admin/ideas` con filtros por usuario,
+  pregunta, `estadoResultado`, `estadoFlujo` y `estadoCuraduria`, y `GET /api/admin/ideas/{id}` con
+  versión confirmada, propuesta pendiente, evaluación vigente, aportes y versiones; `/respuestas` se
+  conserva intacto para auditoría. **Decisión registrada (madurez):** en I-19 la madurez vive en
+  `IdeaConsolidada`; los aportes **no** se sellan como maduros porque no son la unidad evaluada, así que
+  Resultados debe leer la madurez de `/ideas` y el filtro `nivelMadurez` de `/respuestas` queda solo
+  para datos legacy. **Verificado:** build Release `-warnaserror` 0/0, **520 pruebas** no calibración
+  verdes (463 unitarias + 57 integración; +8: artefacto de idea, idea rechazada sin evaluación,
+  regeneración, idea inexistente y 4 de la API) y `dotnet format` limpio. Commits `7ef021c` (contrato) y
+  `a148ca5`, **sin push**. Próximo: **paso 7b — pantalla de Resultados con una fila por idea** (portal).
 - Ultima actualizacion: 2026-07-27 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-19 WIP — paso 6
   (reapertura y desambiguación, §4.7) DONE local.** Mientras la campaña esté `activa`, el participante
   puede volver a una idea ya cerrada: **“la anterior”** resuelve determinísticamente la cerrada más
@@ -109,20 +130,23 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **CONTINUAR I-19 §15 — paso 7: Markdown, API y Resultados por idea (§9/§10).** Es el último corte
-  de producto antes de observabilidad y QA. Falta: (1) **una fila por idea** en Resultados con su estado
-  (`madura|pendiente|rechazada`), su paráfrasis vigente y su historial de versiones/aportes en el
-  detalle —hoy la pantalla sigue listando `Respuesta`—; (2) el **DTO y filtro** correspondientes en
-  `04 §5.8` (aditivos, DTOs legacy preservados); (3) **un Markdown canónico por idea** (`09`) construido
-  desde la versión confirmada y su evaluación, no desde cada aporte —hoy la ruta I-19 **no compila
-  Markdown** porque el corte 5 dejó de usar `PersistirRespuestaEvaluadaAsync`—; y (4) el metadato de
-  madurez/curaduría en ese artefacto. Ojo: `ProcesadorResultadoEvaluacion.PersistirRespuestaEvaluadaAsync`
-  sella madurez sobre `Respuesta`; en I-19 la madurez vive en `IdeaConsolidada`, así que hay que decidir
-  (y registrar) si el sellado por respuesta se conserva por compatibilidad o se deriva de la idea.
-  Después: paso 8 (seeds I-12), paso 9 (observabilidad/cupos) y paso 10 (QA final + D5/UAT). Cerrar
-  también los pendientes conocidos listados en "Estado global" (cierre por inactividad del documento de
-  idea, ruta I-06 sin coaching y `requiereAclaracion`). No desplegar ni hacer push: faltan D5/UAT/costo
-  y el cierre integral de I-19.
+- [ ] **CONTINUAR I-19 §15 — paso 7b: pantalla de Resultados por idea (§9.2, portal).** El backend ya
+  está (ver "Estado global"): `GET /api/admin/ideas` y `/ideas/{id}` devuelven todo lo necesario. Falta
+  el frontend en `src/ElTejido.Web/src/app/features/resultados/`: (1) tipos y método de servicio para
+  las dos rutas nuevas; (2) **una fila por idea** con su texto vigente, `Madura|Pendiente|Rechazada`, la
+  marca `En revisión`/`Pendiente de confirmación` cuando aplique, la calificación de la versión vigente
+  y `Pendiente de curaduría` en las maduras; (3) **detalle expandible** con aportes originales,
+  versiones propuestas/confirmadas, evaluación y motivo de cierre; (4) las respuestas legacy sin
+  `ideaId` siguen visibles con el adaptador actual, identificadas como “resultado histórico”, sin
+  migración. Preservar P-23 (maestro-detalle, precarga de campaña), I-17 (leyenda/conteos), P-18/P-19
+  (nombres accesibles y regiones vivas). **Recordar:** la madurez se lee de la idea, no de la respuesta.
+  Entorno frontend: Node 24 disponible; `npx ng test --watch=false` y `npx ng build`. Después: paso 8
+  (seeds I-12), paso 9 (observabilidad/cupos) y paso 10 (QA final + D5/UAT). Cerrar también los
+  pendientes conocidos listados en "Estado global" (cierre por inactividad del documento de idea, ruta
+  I-06 sin coaching, `requiereAclaracion` y reapertura entre preguntas). No desplegar ni hacer push:
+  faltan D5/UAT/costo y el cierre integral de I-19.
+- [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 520; commits `7ef021c` y `a148ca5`, sin push)
+  I-19 §15 paso 7a — Markdown canónico por idea y API `/api/admin/ideas`.** Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-27, Claude Opus 5 — backend verde 512; commits `62240b9` y `401d9dd`, sin push)
   I-19 §15 paso 6 — reapertura “la anterior” y desambiguación (§4.7).** Reabre con el mismo `ideaId`,
   ofrece lista numerada cuando hay varias candidatas y no sobrescribe versiones. Ver "Estado global".
@@ -270,7 +294,7 @@
 | P-22 | UX de Campañas | DONE local | pendiente | frontend 21/21, build producción y Prettier verdes | Creación bajo demanda, pasos de preparación con completitud accesible, enlace a Envíos con id real, configuración agrupada y estados vacíos guiados. Próximo: P-23. |
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
-| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-6 locales | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6) | build + 512 pruebas no calibración verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos y **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones). Pendiente: Markdown/API/Resultados por idea, seeds, observabilidad y D5/UAT. |
+| I-19 | Consolidación progresiva de ideas | WIP — pasos 1-7a locales | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a) | build + 520 pruebas no calibración verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) y **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`). Pendiente: pantalla de Resultados por idea, seeds, observabilidad y D5/UAT. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -398,6 +422,8 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 7a: Markdown canónico y API por idea — DONE local (commits `7ef021c` contrato + `a148ca5`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-19`, REQ §22/§27/§29.14 y ARQ §3/§7. (1) **Contrato aparte y previo:** `03 §3.10` deja `respuestaRef`/`evaluacionRef` opcionales, porque el artefacto canónico de una idea no apunta a un aporte único y puede no tener evaluación vigente (idea `rechazada` o `pendiente` sin evaluar, §10); `ideaRef`/`versionIdeaRef` ya estaban especificados. (2) **Dominio/persistencia:** `TipoArtefactoMarkdown.Idea` aditivo al final; `ArtefactoMarkdown` gana `IdeaRef`/`VersionIdeaRef` y valida por tipo —solo un artefacto de idea referencia una idea, y siempre lo hace; los demás siguen exigiendo `respuestaRef`—; el documento Cosmos serializa los campos nuevos con `NullValueHandling.Ignore` y mapea `"idea"`. (3) **Compilador:** `SolicitudCompilacion.IdeaId` y `CompilarIdeaAsync` renderizan desde la **versión confirmada vigente** —o la propuesta, marcada como no confirmada— más su evaluación, con metadatos de estado de resultado, flujo, madurez, curaduría, motivo de cierre y confirmación, la idea consolidada completa, los aportes originales, el historial de versiones (incluidas las descartadas, §10) y la trazabilidad de ids. Ruta canónica `campanias/{campaniaId}/idea/{ideaId}.md`, artefacto `md_{ideaId}` y versión incremental. Mientras la idea sigue abierta, `EvaluacionVigenteRef` aún no está sellado: se usa la evaluación **de la versión vigente exacta** (comparando `versionIdeaId`), nunca la de una versión anterior. (4) **Orquestador:** `ProcesadorResultadoEvaluacion.CompilarMarkdownIdeaAsync` (tolerante a fallo, REQ §22.4.6) se invoca al evaluar una versión confirmada y al cerrar la idea —por umbral, salida, techo, fallback o rechazo— en los dos caminos. Esto **repara un hueco introducido en el paso 5**: desde entonces la ruta I-19 no generaba ningún Markdown. (5) **API (`04 §5.8`):** `GET /api/admin/ideas` (obliga `campaniaId`, filtra por `usuarioId`, `preguntaId`, `estadoResultado`, `estadoFlujo`, `estadoCuraduria`, ordena por pregunta/índice y pagina como el resto) y `GET /api/admin/ideas/{id}` (versión confirmada, propuesta pendiente, evaluación vigente, versiones ordenadas y aportes). Los DTO de Markdown exponen `ideaRef`/`versionIdeaRef`. `/respuestas` queda intacto. **Decisión registrada:** la madurez de I-19 vive en `IdeaConsolidada` y los aportes **no** se sellan como maduros —no son la unidad evaluada—, así que Resultados debe leerla de `/ideas`; el filtro `nivelMadurez` de `/respuestas` queda para datos legacy. **Verificado:** build Release `-warnaserror` 0/0, **520 pruebas** no calibración (463 unit + 57 integración; +8), `dotnet format --verify-no-changes` limpio. **Próximo:** paso 7b, pantalla de Resultados con una fila por idea.
 
 - 2026-07-27 - Claude (Opus 5) - **I-19 §15 paso 6: reapertura y desambiguación (§4.7) — DONE local (commits `62240b9` contrato + `401d9dd`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-19`, REQ §9/§21/§22/§27 y ARQ §4/§6/§7/§12/§13. (1) **Contrato aparte y previo:** `03 §3.6` admite el valor aditivo `estadoMaquina=esperandoSeleccionIdea` (transitorio; ningún documento anterior lo trae) y `05 §4.4.2` documenta que la lista no se persiste. (2) **Detección determinista:** dos listas configurables — `Conversacion:FrasesRevisitarAnterior` (“la anterior”, “quiero complementar la anterior”…) y `Conversacion:FrasesRevisitarIdea` (“quiero retomar una idea”…) — con la misma guarda de longitud (`MaxCaracteresIntencionContinuar`) que las intenciones existentes, para no secuestrar un aporte largo. (3) **Precedencia §8.2:** con una idea en mejora, la petición se atiende justo **después del rechazo**; con una propuesta pendiente, **después de la confirmación** y antes de tratar el mensaje como corrección. (4) **Resolución:** “la anterior” toma la idea **cerrada más reciente** (orden `actualizadaEn desc`, desempate por `ideaIndice desc`); una petición vaga con una sola candidata reabre esa; con varias se envía una lista breve **numerada** de paráfrasis acotadas a 160 caracteres, **sin calificaciones**, y el hilo queda en `esperandoSeleccionIdea`. La lista se reconstruye con el mismo orden determinista en el turno siguiente, así que **no se persiste ninguna oferta**; el número solo cuenta en mensajes cortos y dentro del rango, y cualquier otra respuesta **cancela** la selección y sigue como turno normal (no se adivina ni se pierde el mensaje). (5) **Reapertura:** `IdeaConsolidada.Reabrir` conserva el `ideaId` y la versión confirmada —que sigue siendo la oficial—, suspende `estadoCuraduria`, vuelve a `incubacion` y **no crea ni sobrescribe versiones**; el siguiente aporte reanuda consolidar → confirmar → evaluar sobre esa misma idea. Con cola I-18, `PoliticaColaCoachingIdeas.ReactivarIdea` devuelve la idea activa a `pendiente` (se conserva en su estado y espera turno) y activa la seleccionada conservando su contador de revisiones; sin cola, `ObtenerIdeaActivaAsync` prioriza la idea `enRevision`. Solo se ofrecen ideas del hilo actual y, con cola, presentes en ella. (6) **Campaña cerrada:** no reabre nada (§4.7). Textos nuevos en `Conversacion:Mensajes:*` (`AcuseReaperturaIdea`, `InvitacionReaperturaIdea`, `PreguntaSeleccionIdea`) con default seguro; nada hardcodeado. **Verificado:** build Release `-warnaserror` 0/0, **512 pruebas** no calibración (459 unit + 53 integración; +7: “la anterior” conserva historial, campaña cerrada, lista numerada + elección con la activa devuelta a la cola, selección inválida que sigue el turno, round-trip Cosmos del estado nuevo y 2 unitarias de `ReactivarIdea`), `dotnet format --verify-no-changes` limpio. **Limitación registrada:** la reapertura opera sobre ideas del **hilo actual**; volver a la idea de **otra pregunta** (“la pregunta de productividad”, §4.7) exige reabrir una `Conversacion` cerrada y queda fuera de este corte. **Próximo:** paso 7 — Markdown/API/Resultados por idea.
 
