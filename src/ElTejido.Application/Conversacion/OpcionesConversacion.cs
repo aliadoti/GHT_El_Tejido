@@ -159,6 +159,19 @@ public sealed class OpcionesConversacion
     /// </summary>
     public bool ConsolidacionProgresivaHabilitada { get; set; } = true;
 
+    /// <summary>
+    /// I-20 (§5): kill-switch global de la redacción conversacional fluida. Nace activo y **no** tiene
+    /// opt-in por campaña. Al apagarlo se usan los respaldos deterministas de cada acto, sin alterar
+    /// consolidación, evaluación, cola, estados ni Markdown.
+    /// </summary>
+    public bool RedaccionConversacionalFluidaHabilitada { get; set; } = true;
+
+    /// <summary>
+    /// I-20 (§4.1): largo máximo de cada pieza redactada (puente y pregunta). Una salida más larga se
+    /// considera inválida y degrada al respaldo del acto. 0 o negativo se normaliza al default.
+    /// </summary>
+    public int MaxCaracteresRedaccionTurno { get; set; } = 320;
+
     /// <summary>I-19: límite de la versión acumulada; evita truncar silenciosamente hechos confirmados.</summary>
     public int MaxCaracteresIdeaConsolidada { get; set; } = 4000;
 
