@@ -885,6 +885,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var propuesta = await ProponerVersionAsync(
             campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea, versionVigente: null,
             respuestaId, texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
+        if (propuesta.PreguntaAclaracion is not null)
+        {
+            await PedirAclaracionAsync(conversacion, usuario, numero, emisor, idea, propuesta, ahora, cancellationToken);
+            return;
+        }
+
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
         idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
@@ -1028,6 +1034,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea,
             await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
             respuestaId, texto, TipoAporteIdea.Complemento, ahora, cancellationToken);
+        if (propuesta.PreguntaAclaracion is not null)
+        {
+            await PedirAclaracionAsync(conversacion, usuario, numero, emisor, idea, propuesta, ahora, cancellationToken);
+            return;
+        }
+
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
         idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
@@ -1165,8 +1177,36 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var nuevas = propuesta is ResultadoConsolidacionIdeas.Exito exito
             ? exito.NuevasIdeas
             : Array.Empty<NuevaIdeaDetectada>();
+        // §4.2: una salida que se declara ambigua no se usa para adivinar; el llamador pide la
+        // aclaración breve y no crea versión nueva.
+        var aclaracion = propuesta is ResultadoConsolidacionIdeas.Exito { RequiereAclaracion: true } ambigua
+            ? ambigua.PreguntaAclaracion
+            : null;
         return new PropuestaConsolidada(
-            version, nuevas, propuesta is ResultadoConsolidacionIdeas.Fallback, propuesta.Uso);
+            version, nuevas, propuesta is ResultadoConsolidacionIdeas.Fallback, propuesta.Uso, aclaracion);
+    }
+
+    /// <summary>
+    /// I-19 §4.2: pide una aclaración breve en vez de adivinar. El aporte ya quedó guardado; la idea
+    /// conserva su estado y su versión vigente, así que el ciclo sigue en el próximo mensaje.
+    /// </summary>
+    private async Task PedirAclaracionAsync(
+        DominioConversacion conversacion,
+        Usuario usuario,
+        NumeroWhatsApp numero,
+        string? emisor,
+        IdeaConsolidada idea,
+        PropuestaConsolidada propuesta,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        await EnviarAsync(
+            conversacion, numero, propuesta.PreguntaAclaracion!, TipoEnvioMensaje.Repregunta, emisor, ahora,
+            cancellationToken);
+        await _conversaciones.GuardarConversacionAsync(
+            conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+        await RegistrarConsolidacionAsync(
+            usuario, "aclaracion", idea, null, "ambiguedad", propuesta.Uso, ahora, cancellationToken);
     }
 
     /// <summary>
@@ -1283,9 +1323,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var resolucion = await ResolverIdeasAsync(contextoBase, textoOriginal, cancellationToken);
         await RegistrarSegmentacionAsync(usuario, resolucion, ahora, cancellationToken);
 
-        // I-19 §15 paso 5: con la cola I-18 activa, ninguna raiz segmentada se evalua antes de que el
-        // participante confirme lo entendido. Cada idea recibe su propuesta y la cola atiende una a la vez.
-        if (ConsolidacionIdeasActiva && CoachingEfectivo(campania))
+        // I-19: ninguna raiz segmentada se evalua antes de que el participante confirme lo entendido.
+        // La cola es el estado server-side de "una idea a la vez", no la funcion de coaching: con I-06
+        // activo se usa aunque el gate de I-18 este apagado, y en ese caso no hay pregunta socratica.
+        if (ConsolidacionIdeasActiva)
         {
             await IniciarColaConsolidadaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, contextoBase, resolucion,
@@ -1816,7 +1857,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             VersionIdeaId = version.Id,
             RespuestaTexto = version.Texto,
             HistorialReciente = await ConstruirHistorialIdeaAsync(campania.Id, idea.RespuestaRaizId, cancellationToken),
-            CoachingSecuencialIdeas = true,
+            // El prompt socrático de I-18 solo se pide si su gate está activo; sin él, la idea se evalúa
+            // una vez y se cierra.
+            CoachingSecuencialIdeas = CoachingEfectivo(campania),
             SolicitarParafraseo = false,
         };
         var resultado = ConProcedenciaIdea(
@@ -1844,7 +1887,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ? MotivoFinalizacionIdea.Fallback
                 : conforme
                     ? MotivoFinalizacionIdea.Participante
-                    : activa.RepreguntasUsadas >= pregunta.MaxRepreguntas
+                    // Sin el acompañamiento I-18 no hay pregunta socrática que ofrecer: la idea se
+                    // evalúa una vez y queda pendiente.
+                    : activa.RepreguntasUsadas >= pregunta.MaxRepreguntas || !CoachingEfectivo(campania)
                         ? MotivoFinalizacionIdea.MaxRevisiones
                         : null;
 
@@ -1917,6 +1962,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             campania, pregunta, contextoDisponible.Contexto.ConfigLlmSnapshot, idea,
             await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
             respuestaId, texto, tipoAporte, ahora, cancellationToken);
+        if (propuesta.PreguntaAclaracion is not null)
+        {
+            await PedirAclaracionAsync(conversacion, usuario, numero, emisor, idea, propuesta, ahora, cancellationToken);
+            return;
+        }
+
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
         idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
@@ -2100,8 +2151,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var revisionIndice = (anterior.RevisionIndice ?? 0) + 1;
         var respuestaId = $"{activa.RespuestaRaizId}_rev_{revisionIndice}";
+        // Apagar el gate I-18 desactiva el acompañamiento, no la cola de ideas: una cola con referencias
+        // canónicas (I-19) sigue su ciclo aunque el coaching esté apagado. El apagado en caliente solo
+        // finaliza las colas legacy, que sí existían únicamente por I-18.
+        var colaConsolidada = ConsolidacionIdeasActiva && !string.IsNullOrWhiteSpace(activa.IdeaId);
         var gatesActivos = CoachingEfectivo(campania);
-        if (!gatesActivos)
+        if (!gatesActivos && !colaConsolidada)
         {
             await _procesador.GuardarRespuestaAsync(
                 respuestaId,
@@ -3324,7 +3379,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         VersionIdeaConsolidada Version,
         IReadOnlyList<NuevaIdeaDetectada> NuevasIdeas,
         bool EsFallback,
-        UsoTokensLlm? Uso);
+        UsoTokensLlm? Uso,
+        /// <summary>§4.2: si el aporte fue ambiguo, la pregunta breve que hay que hacer en vez de adivinar.</summary>
+        string? PreguntaAclaracion);
 
     private sealed record HiloTrabajo(Pregunta Pregunta, string ConversacionId, DominioConversacion? Conversacion);
 

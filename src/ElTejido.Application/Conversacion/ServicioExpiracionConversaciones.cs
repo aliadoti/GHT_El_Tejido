@@ -1,8 +1,10 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
+using ElTejido.Application.Respuestas;
 using ElTejido.Application.Seguridad;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Conversaciones;
+using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Seguridad;
 
 namespace ElTejido.Application.Conversacion;
@@ -25,6 +27,7 @@ namespace ElTejido.Application.Conversacion;
 public sealed class ServicioExpiracionConversaciones
 {
     private readonly IRepositorioConversaciones _conversaciones;
+    private readonly IRepositorioRespuestas _respuestas;
     private readonly IRepositorioCampanias _campanias;
     private readonly OpcionesConversacion _opciones;
     private readonly TimeProvider _tiempo;
@@ -35,6 +38,7 @@ public sealed class ServicioExpiracionConversaciones
 
     public ServicioExpiracionConversaciones(
         IRepositorioConversaciones conversaciones,
+        IRepositorioRespuestas respuestas,
         IRepositorioCampanias campanias,
         IRepositorioLogSeguridad logSeguridad,
         IProveedorCorrelacion correlacion,
@@ -43,6 +47,7 @@ public sealed class ServicioExpiracionConversaciones
         TimeProvider tiempo)
     {
         _conversaciones = conversaciones;
+        _respuestas = respuestas;
         _campanias = campanias;
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
@@ -88,6 +93,14 @@ public sealed class ServicioExpiracionConversaciones
                              conversacion.Estado == EstadoConversacion.Abierta
                              && conversacion.CoachingIdeas?.IdeaActiva?.IniciadaEn <= ahora.AddMinutes(-minutosCoaching)))
                 {
+                    // I-19 §4.8: el timeout por idea también cierra su documento como `pendiente`; el
+                    // turno en la cola y el estado de la idea no pueden divergir.
+                    var ideaActiva = conversacion.CoachingIdeas!.IdeaActiva!;
+                    if (!string.IsNullOrWhiteSpace(ideaActiva.IdeaId))
+                    {
+                        await CerrarIdeaPorTiempoAsync(campania.Id, ideaActiva.IdeaId, ahora, cancellationToken);
+                    }
+
                     var cola = _colaCoaching.FinalizarActiva(
                         conversacion.CoachingIdeas!,
                         MotivoFinalizacionIdea.Tiempo,
@@ -138,12 +151,53 @@ public sealed class ServicioExpiracionConversaciones
                     continue;
                 }
 
+                // I-19 §4.8: la inactividad finaliza como `pendiente` la idea abierta del hilo, con su
+                // última versión confirmada; una propuesta sin confirmar nunca puede madurar.
+                await CerrarIdeasAbiertasAsync(campania.Id, conversacion.Id, ahora, cancellationToken);
                 await _conversaciones.GuardarConversacionAsync(conversacion.Cerrar(ahora), cancellationToken);
                 cerradas++;
             }
         }
 
         return cerradas;
+    }
+
+    /// <summary>I-19 §4.8: cierra una idea concreta como `pendiente` al vencer su tiempo de coaching.</summary>
+    private async Task CerrarIdeaPorTiempoAsync(
+        string campaniaId,
+        string ideaId,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var idea = await _respuestas.ObtenerIdeaConsolidadaAsync(campaniaId, ideaId, cancellationToken);
+        if (idea is null || idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada)
+        {
+            return;
+        }
+
+        await _respuestas.GuardarIdeaConsolidadaAsync(
+            idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "tiempo", ahora), cancellationToken);
+    }
+
+    /// <summary>
+    /// I-19 §4.8: cierra como `pendiente` las ideas que seguían abiertas en un hilo que expira. Conserva
+    /// aportes y versiones; no promueve nada a madura y es idempotente (una idea ya cerrada se ignora).
+    /// </summary>
+    private async Task CerrarIdeasAbiertasAsync(
+        string campaniaId,
+        string conversacionId,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var ideas = await _respuestas.ListarIdeasConsolidadasAsync(campaniaId, cancellationToken);
+        foreach (var idea in ideas.Where(candidata =>
+                     candidata.ConversacionId == conversacionId
+                     && candidata.EstadoFlujo != EstadoFlujoIdeaConsolidada.Cerrada))
+        {
+            await _respuestas.GuardarIdeaConsolidadaAsync(
+                idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "inactividad", ahora),
+                cancellationToken);
+        }
     }
 
     private int MinutosCoachingEfectivos(Campania campania)

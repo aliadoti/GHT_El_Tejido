@@ -356,6 +356,77 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I19_SegmentacionSinCoaching_ConfirmaCadaIdeaYNoRepregunta()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        var contextos = new List<ContextoEvaluacion>();
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextos.Add(contexto)), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Y el costo?", calificacionTotal: 1m)));
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        // Campaña con I-06 activo pero el acompañamiento I-18 apagado.
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConSegmentacion(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.sincoach", Epoca),
+            CancellationToken.None);
+
+        // Ninguna raíz se evalúa: primero se pide confirmar la idea activa (I-19 §8.1).
+        contextos.Should().BeEmpty();
+        almacen.Ideas.Should().HaveCount(2);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Es correcto?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConSegmentacion(), Mensaje("si"), CancellationToken.None);
+
+        // Se evalúa la versión confirmada y, sin coaching, la idea cierra sin pregunta socrática.
+        contextos.Should().ContainSingle().Which.CoachingSecuencialIdeas.Should().BeFalse();
+        almacen.Ideas.Values.Should().ContainSingle(idea =>
+            idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada
+            && idea.EstadoResultado == EstadoResultadoIdeaConsolidada.Pendiente);
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Y el costo?", StringComparison.Ordinal)),
+            Arg.Any<TipoEnvioMensaje>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I19_AporteAmbiguo_PideAclaracionSinCrearVersionNiEvaluar()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsolidacionIdeas.Exito(
+                "Texto que no se debe usar.", TipoAporteIdea.Inicial, [], true,
+                "¿Te refieres al proceso de compras o al de pagos?", false, null));
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: consolidador).ProcesarMensajeEntranteAsync(
+            Participante(), Mensaje("Eso"), CancellationToken.None);
+
+        // §4.2: no se adivina; no hay versión ni evaluación, pero el aporte sí se conserva.
+        almacen.Versiones.Should().BeEmpty();
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        almacen.Respuestas.Should().ContainSingle(respuesta => respuesta.Texto == "Eso");
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            "¿Te refieres al proceso de compras o al de pagos?",
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+        await _logSeguridad.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ConsolidacionProgresivaIdeas
+                && log.Resultado == "aclaracion"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task I19_Telemetria_RegistraCadaTransicionSinTextoNiParafrasis()
     {
         ConfigurarAlmacenIdeas();

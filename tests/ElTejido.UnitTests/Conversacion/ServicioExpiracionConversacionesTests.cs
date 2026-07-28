@@ -1,10 +1,12 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
+using ElTejido.Application.Respuestas;
 using ElTejido.Application.Seguridad;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Conversaciones;
+using ElTejido.Domain.Respuestas;
 using ElTejido.UnitTests.Soporte;
 using FluentAssertions;
 using NSubstitute;
@@ -17,10 +19,70 @@ public sealed class ServicioExpiracionConversacionesTests
     private static readonly DateTimeOffset Ahora = DateTimeOffset.UnixEpoch.AddDays(10);
 
     private readonly IRepositorioConversaciones _conversaciones = Substitute.For<IRepositorioConversaciones>();
+    private readonly IRepositorioRespuestas _respuestas = Substitute.For<IRepositorioRespuestas>();
     private readonly IRepositorioCampanias _campanias = Substitute.For<IRepositorioCampanias>();
     private readonly IRepositorioLogSeguridad _logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
     private readonly IProveedorCorrelacion _correlacion = Substitute.For<IProveedorCorrelacion>();
     private readonly IOrquestadorConversacion _orquestador = Substitute.For<IOrquestadorConversacion>();
+
+    [Fact]
+    public async Task CerrarExpiradas_ConIdeaAbierta_LaCierraComoPendienteSinPromoverla()
+    {
+        SembrarCampanias(Campania("c_1"));
+        var conversacion = DominioConversacion.Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch);
+        _conversaciones.ListarAbiertasInactivasAsync("c_1", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { conversacion });
+        var abierta = IdeaConsolidada.Crear("idea_1", "c_1", "u_1", "p_1", "conv_1", "resp_1", 1, DateTimeOffset.UnixEpoch)
+            .ConPropuesta("idea_1_v1", DateTimeOffset.UnixEpoch);
+        var ajena = IdeaConsolidada.Crear("idea_2", "c_1", "u_2", "p_1", "conv_2", "resp_2", 1, DateTimeOffset.UnixEpoch)
+            .ConPropuesta("idea_2_v1", DateTimeOffset.UnixEpoch);
+        _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>()).Returns(new[] { abierta, ajena });
+        var guardadas = new List<IdeaConsolidada>();
+        _respuestas.GuardarIdeaConsolidadaAsync(Arg.Do<IdeaConsolidada>(idea => guardadas.Add(idea)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await Construir(horas: 48).CerrarExpiradasAsync(CancellationToken.None);
+
+        // Solo la idea del hilo expirado se cierra, y nunca como madura (I-19 §4.8).
+        guardadas.Should().ContainSingle();
+        guardadas[0].Id.Should().Be("idea_1");
+        guardadas[0].EstadoResultado.Should().Be(EstadoResultadoIdeaConsolidada.Pendiente);
+        guardadas[0].NivelMadurez.Should().Be(NivelMadurez.Incubacion);
+        guardadas[0].EstadoCuraduria.Should().BeNull();
+        guardadas[0].MotivoCierre.Should().Be("inactividad");
+    }
+
+    [Fact]
+    public async Task CerrarExpiradas_TimeoutDeCoaching_CierraLaIdeaActivaComoPendiente()
+    {
+        SembrarCampanias(Campania("c_1", coachingSecuencialIdeas: true, minutosCoachingPorIdea: 5));
+        var politica = new PoliticaColaCoachingIdeas();
+        var cola = politica.Crear(
+            "wamid.raiz",
+            new[]
+            {
+                new RaizIdeaCoaching(1, "resp_1", null, "idea_1", "idea_1_v1"),
+                new RaizIdeaCoaching(2, "resp_2", null, "idea_2", "idea_2_v1"),
+            },
+            Ahora.AddMinutes(-30));
+        var conversacion = DominioConversacion
+            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch)
+            .ConCoachingIdeas(cola);
+        _conversaciones.ListarConversacionesAsync("c_1", Arg.Any<CancellationToken>()).Returns(new[] { conversacion });
+        var activa = IdeaConsolidada.Crear("idea_1", "c_1", "u_1", "p_1", "conv_1", "resp_1", 1, DateTimeOffset.UnixEpoch)
+            .ConPropuesta("idea_1_v1", DateTimeOffset.UnixEpoch);
+        _respuestas.ObtenerIdeaConsolidadaAsync("c_1", "idea_1", Arg.Any<CancellationToken>()).Returns(activa);
+        var guardadas = new List<IdeaConsolidada>();
+        _respuestas.GuardarIdeaConsolidadaAsync(Arg.Do<IdeaConsolidada>(idea => guardadas.Add(idea)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await Construir(minutos: 0).CerrarExpiradasAsync(CancellationToken.None);
+
+        guardadas.Should().ContainSingle(idea =>
+            idea.Id == "idea_1"
+            && idea.EstadoResultado == EstadoResultadoIdeaConsolidada.Pendiente
+            && idea.MotivoCierre == "tiempo");
+    }
 
     [Fact]
     public async Task CerrarExpiradas_Habilitada_CierraLosHilosAbiertosDeCadaCampania()
@@ -191,6 +253,7 @@ public sealed class ServicioExpiracionConversacionesTests
         bool coachingHabilitado = true)
         => new(
             _conversaciones,
+            _respuestas,
             _campanias,
             _logSeguridad,
             _correlacion,
