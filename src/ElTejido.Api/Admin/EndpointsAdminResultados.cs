@@ -345,6 +345,10 @@ internal static class EndpointsAdminResultados
             r.RespuestaAnteriorId,
             r.RevisionIndice,
             nivelMadurez = MinusculaInicial(r.NivelMadurez.ToString()),
+            // I-19 (04 §5.8): enlazan el aporte con su idea logica. Ausentes en datos legacy, que es
+            // justo lo que permite a Resultados distinguir un "resultado historico".
+            r.IdeaId,
+            tipoAporte = r.TipoAporte is null ? null : MinusculaInicial(r.TipoAporte.Value.ToString()),
         };
 
     private static object MapearEvaluacion(DominioEvaluacion e)

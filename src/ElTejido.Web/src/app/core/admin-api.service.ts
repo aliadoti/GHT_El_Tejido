@@ -6,8 +6,10 @@ import {
   Campania,
   ConfigLlm,
   Conversacion,
+  DetalleIdea,
   EnvioEstado,
   Evaluacion,
+  IdeaConsolidada,
   JobEnvio,
   PagedResult,
   ParticipanteCampania,
@@ -226,6 +228,20 @@ export class AdminApiService {
 
   conversaciones(campaniaId: string) {
     return this.api.get<PagedResult<Conversacion>>('/api/admin/conversaciones', { campaniaId });
+  }
+
+  /** I-19 (04 §5.8): una fila por idea lógica; es la unidad principal de Resultados. */
+  ideas(campaniaId: string, estadoResultado?: string) {
+    return this.api.get<PagedResult<IdeaConsolidada>>('/api/admin/ideas', {
+      campaniaId,
+      estadoResultado: estadoResultado || undefined,
+      pageSize: 100,
+    });
+  }
+
+  /** I-19: detalle auditable con versiones, aportes y evaluación vigente. */
+  idea(campaniaId: string, id: string) {
+    return this.api.get<DetalleIdea>(`/api/admin/ideas/${id}`, { campaniaId });
   }
 
   respuestas(campaniaId: string, nivelMadurez?: string) {

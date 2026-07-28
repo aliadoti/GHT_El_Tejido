@@ -246,6 +246,60 @@ export interface Respuesta {
   respuestaPadreId?: string | null;
   // I-17 (aditivo): nivel de madurez sellado al evaluar. Ausente en datos históricos = incubación.
   nivelMadurez?: 'maduro' | 'incubacion' | string;
+  // I-19 (aditivo): enlaza el aporte con su idea lógica. Ausente = resultado histórico.
+  ideaId?: string | null;
+  tipoAporte?: 'inicial' | 'complemento' | 'correccion' | 'nuevaIdea' | string | null;
+}
+
+/** I-19 (04 §5.8): unidad principal de Resultados; una fila por idea, no por aporte. */
+export interface IdeaConsolidada {
+  id: string;
+  campaniaId: string;
+  usuarioId: string;
+  preguntaId: string;
+  conversacionId: string;
+  ideaIndice: number;
+  respuestaRaizId: string;
+  /** Texto de la versión vigente: la confirmada o, si aún no hay, la propuesta. */
+  texto?: string | null;
+  /** `false` cuando el texto mostrado todavía no fue confirmado por el participante. */
+  confirmada: boolean;
+  estadoFlujo: 'pendienteConfirmacion' | 'enMejora' | 'enRevision' | 'cerrada' | string;
+  estadoResultado?: 'madura' | 'pendiente' | 'rechazada' | string | null;
+  nivelMadurez: 'maduro' | 'incubacion' | string;
+  estadoCuraduria?: 'pendiente' | string | null;
+  motivoCierre?: string | null;
+  versionConfirmadaRef?: string | null;
+  versionPropuestaRef?: string | null;
+  evaluacionVigenteRef?: string | null;
+  creadaEn: string;
+  actualizadaEn: string;
+}
+
+/** I-19: versión inmutable de una idea; el historial nunca se sobrescribe. */
+export interface VersionIdea {
+  id: string;
+  ideaId: string;
+  numeroVersion: number;
+  versionAnteriorId?: string | null;
+  texto: string;
+  estadoConfirmacion: 'propuesta' | 'confirmada' | 'descartada' | 'expirada' | string;
+  origen: string;
+  aporteIdsAcumulados: string[];
+  aporteNuevoIds: string[];
+  evaluacionRef?: string | null;
+  generadaEn: string;
+  confirmadaEn?: string | null;
+}
+
+/** I-19: detalle auditable de una idea (04 §5.8). */
+export interface DetalleIdea {
+  idea: IdeaConsolidada;
+  versionConfirmada: VersionIdea | null;
+  versionPropuesta: VersionIdea | null;
+  evaluacion: Evaluacion | null;
+  versiones: VersionIdea[];
+  aportes: Respuesta[];
 }
 
 export interface Evaluacion {
@@ -271,8 +325,11 @@ export interface ArtefactoMarkdown {
   tipoArtefacto: string;
   usuarioId: string;
   preguntaId: string;
-  respuestaRef: string;
-  evaluacionRef: string;
+  respuestaRef?: string | null;
+  evaluacionRef?: string | null;
+  // I-19 (03 §3.10): referencias del artefacto canónico por idea.
+  ideaRef?: string | null;
+  versionIdeaRef?: string | null;
   contenidoMarkdown?: string;
   blobPath: string;
   estado: string;
