@@ -17,6 +17,7 @@ using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Participantes;
+using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
@@ -80,6 +81,138 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         await EsperarAsync(() => conversaciones.Ultima is { EstadoMaquina: EstadoMaquinaConversacion.EsperandoRepregunta });
         conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
         conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+    }
+
+    /// <summary>
+    /// I-19 §13: recorrido completo de una idea por el webhook real — aporte → propuesta →
+    /// confirmación → evaluación de la versión consolidada → cierre madura con curaduría pendiente y su
+    /// Markdown canónico. Comprueba explícitamente que **el último mensaje aislado no es el texto
+    /// evaluado** (§13.5) y que nada se evalúa antes de confirmar (§13.1).
+    /// </summary>
+    [Fact]
+    public async Task I19_CicloCompleto_ConfirmaAntesDeEvaluarYCierraLaIdeaMadura()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+
+        using var fabrica = Construir(gateway, conversaciones, respuestas, contextos, compilaciones);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.I19.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+
+        await EnviarEntranteAsync(client, "wamid.I19.2", "Mi idea es reducir el desperdicio en bodega");
+        await EsperarAsync(() => gateway.Enviados.Any(e => e.Texto.Contains("¿Es correcto?", StringComparison.Ordinal)));
+
+        // §13.1: la propuesta se pide confirmar y nada se evaluó todavía.
+        contextos.Should().BeEmpty();
+        respuestas.Ideas.Values.Should().ContainSingle()
+            .Which.EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+
+        await EnviarEntranteAsync(client, "wamid.I19.3", "si");
+        await EsperarAsync(() => respuestas.Ideas.Values.Any(idea => idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada));
+
+        // §13.5: lo evaluado es la versión consolidada, no el "si" suelto.
+        contextos.Should().ContainSingle();
+        contextos.Single().RespuestaTexto.Should().Contain("desperdicio en bodega").And.NotBe("si");
+        contextos.Single().IdeaId.Should().NotBeNull();
+
+        // §13.2: superar el umbral deja la idea madura y pendiente de curaduría.
+        var idea = respuestas.Ideas.Values.Single();
+        idea.EstadoResultado.Should().Be(EstadoResultadoIdeaConsolidada.Madura);
+        idea.EstadoCuraduria.Should().Be(EstadoCuraduriaIdea.Pendiente);
+        idea.NivelMadurez.Should().Be(NivelMadurez.Maduro);
+
+        // §13.1: la evaluación referencia la idea y la versión exacta.
+        var evaluacion = respuestas.Evaluaciones.Single();
+        evaluacion.IdeaId.Should().Be(idea.Id);
+        evaluacion.VersionIdeaId.Should().Be(idea.VersionConfirmadaRef);
+
+        // §13.4: el Markdown canónico se compila por idea, no por aporte.
+        compilaciones.Should().Contain(solicitud =>
+            solicitud.Tipo == TipoArtefactoMarkdown.Idea && solicitud.IdeaId == idea.Id);
+        gateway.Enviados.Should().Contain(enviado => enviado.Tipo == TipoEnvioMensaje.Cierre);
+    }
+
+    private static async Task EnviarEntranteAsync(HttpClient client, string wamid, string texto)
+    {
+        var cuerpo =
+            $"{{\"entry\":[{{\"changes\":[{{\"value\":{{\"messages\":[{{\"from\":\"{Numero}\",\"id\":\"{wamid}\",\"timestamp\":\"1700000000\",\"type\":\"text\",\"text\":{{\"body\":\"{texto}\"}}}}]}}}}]}}]}}";
+        using var contenido = new StringContent(cuerpo, System.Text.Encoding.UTF8, "application/json");
+        contenido.Headers.Add("X-Hub-Signature-256", "sha256=ignorada-en-prueba");
+        using var respuesta = await client.PostAsync("/webhook/whatsapp", contenido);
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private static WebApplicationFactory<Program> Construir(
+        GatewayDePrueba gateway,
+        ConversacionesFake conversaciones,
+        RespuestasFake respuestas,
+        System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion> contextos,
+        System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion> compilaciones)
+    {
+        var dedupe = Substitute.For<IRegistroWebhookDedupe>();
+        dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var resolutor = new ResolutorFake(CrearParticipante());
+
+        var configuracion = Substitute.For<IRepositorioConfiguracion>();
+        configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
+        configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
+        configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
+
+        var evaluador = Substitute.For<IEvaluadorLlm>();
+        evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contextos.Enqueue), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion()));
+
+        // Consolidador determinista: acumula sin inventar, como haría el LLM en el camino feliz.
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(llamada =>
+            {
+                var contexto = llamada.Arg<ContextoConsolidacionIdeas>();
+                var texto = string.IsNullOrWhiteSpace(contexto.TextoConfirmadoAnterior)
+                    ? contexto.NuevoAporte
+                    : $"{contexto.TextoConfirmadoAnterior} {contexto.NuevoAporte}";
+                return new ResultadoConsolidacionIdeas.Exito(texto, TipoAporteIdea.Inicial, [], false, null, false, null);
+            });
+
+        // El compilador solo se observa: el artefacto real se prueba en CompiladorMarkdownTests.
+        var compilador = Substitute.For<ICompiladorMarkdown>();
+        compilador
+            .CompilarAsync(Arg.Do<SolicitudCompilacion>(compilaciones.Enqueue), Arg.Any<CancellationToken>())
+            .ReturnsForAnyArgs(Task.FromException<ArtefactoMarkdown>(new ErrorNoEncontrado("sin blob en la prueba")));
+
+        return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.ConfigureAppConfiguration(config =>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Secretos:wa-appsec"] = AppSecret,
+                }));
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddSingleton<IWhatsAppGateway>(gateway);
+                services.AddSingleton(dedupe);
+                services.AddSingleton<IResolutorParticipante>(resolutor);
+                services.AddSingleton<IRepositorioConversaciones>(conversaciones);
+                services.AddSingleton(configuracion);
+                services.AddSingleton(evaluador);
+                services.AddSingleton(consolidador);
+                services.AddSingleton<IRepositorioRespuestas>(respuestas);
+                services.AddSingleton(Substitute.For<IRepositorioParticipantes>());
+                services.AddSingleton(compilador);
+                services.AddSingleton(Substitute.For<IRepositorioLogSeguridad>());
+                services.AddSingleton(Substitute.For<IProveedorCorrelacion>());
+                services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();
+                services.AddScoped<ProcesadorWebhookEntrante>();
+            });
+        });
     }
 
     private static WebApplicationFactory<Program> Construir(GatewayDePrueba gateway, ConversacionesFake conversaciones)
@@ -183,6 +316,84 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
             4m, "explica", "Buena idea", RecomendacionEvaluacion.Cerrar, null,
             new[] { "tema" }, new[] { "ent" }, false, Epoca);
+
+    /// <summary>Repositorio en memoria mínimo para el recorrido I-19 (ideas, versiones y evaluaciones).</summary>
+    private sealed class RespuestasFake : IRepositorioRespuestas
+    {
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Respuesta> _respuestas = new(StringComparer.Ordinal);
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, VersionIdeaConsolidada> _versiones = new(StringComparer.Ordinal);
+
+        public System.Collections.Concurrent.ConcurrentDictionary<string, IdeaConsolidada> Ideas { get; } = new(StringComparer.Ordinal);
+
+        public System.Collections.Concurrent.ConcurrentBag<DominioEvaluacion> Evaluaciones { get; } = new();
+
+        public Task GuardarRespuestaAsync(Respuesta respuesta, CancellationToken cancellationToken)
+        {
+            _respuestas[respuesta.Id] = respuesta;
+            return Task.CompletedTask;
+        }
+
+        public Task<Respuesta?> ObtenerRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
+            => Task.FromResult(_respuestas.GetValueOrDefault(respuestaId));
+
+        public Task GuardarIdeaConsolidadaAsync(IdeaConsolidada idea, CancellationToken cancellationToken)
+        {
+            Ideas[idea.Id] = idea;
+            return Task.CompletedTask;
+        }
+
+        public Task<IdeaConsolidada?> ObtenerIdeaConsolidadaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+            => Task.FromResult(Ideas.GetValueOrDefault(ideaId));
+
+        public Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasConsolidadasAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<IdeaConsolidada>>(Ideas.Values.ToArray());
+
+        public Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
+        {
+            _versiones[version.Id] = version;
+            return Task.CompletedTask;
+        }
+
+        public Task<VersionIdeaConsolidada?> ObtenerVersionIdeaAsync(string campaniaId, string versionId, CancellationToken cancellationToken)
+            => Task.FromResult(_versiones.GetValueOrDefault(versionId));
+
+        public Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesIdeaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<VersionIdeaConsolidada>>(
+                _versiones.Values.Where(version => version.IdeaId == ideaId).ToArray());
+
+        public Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken)
+        {
+            Evaluaciones.Add(evaluacion);
+            return Task.CompletedTask;
+        }
+
+        public Task<DominioEvaluacion?> ObtenerEvaluacionPorRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
+            => Task.FromResult(Evaluaciones.LastOrDefault(evaluacion => evaluacion.RespuestaId == respuestaId));
+
+        public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
+            => Task.FromResult(Evaluaciones.FirstOrDefault(evaluacion => evaluacion.Id == evaluacionId));
+
+        public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.ToArray());
+
+        public Task<int> ContarEvaluacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
+            => Task.FromResult(Evaluaciones.Count);
+
+        public Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult(0L);
+
+        public Task GuardarArtefactoAsync(ArtefactoMarkdown artefacto, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
+        public Task<ArtefactoMarkdown?> ObtenerArtefactoAsync(string campaniaId, string artefactoId, CancellationToken cancellationToken)
+            => Task.FromResult<ArtefactoMarkdown?>(null);
+
+        public Task<IReadOnlyCollection<ArtefactoMarkdown>> ListarArtefactosAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<ArtefactoMarkdown>>(Array.Empty<ArtefactoMarkdown>());
+
+        public Task<ConteoBorradoRespuestas> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
+            => Task.FromResult(new ConteoBorradoRespuestas(0, 0, 0, Array.Empty<string>()));
+    }
 
     private sealed class GatewayDePrueba : IWhatsAppGateway
     {
