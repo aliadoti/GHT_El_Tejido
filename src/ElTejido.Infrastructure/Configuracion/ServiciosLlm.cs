@@ -1,3 +1,4 @@
+using ElTejido.Application.Conversacion;
 using ElTejido.Application.Evaluacion;
 using ElTejido.Infrastructure.Llm;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,9 @@ public static class ServiciosLlm
         services.AddHttpClient<ILlmClient, LlmClientHttp>();
         services.AddScoped<ISegmentadorIdeas, SegmentadorIdeas>();
         services.AddScoped<IConsolidadorIdeas, ConsolidadorIdeas>();
+        // I-20: el redactor solo da voz al acto que el servidor ya decidió; se registra siempre porque
+        // su kill-switch y su respaldo viven en el llamador, no en la disponibilidad del servicio.
+        services.AddScoped<IRedactorTurnoConversacional, RedactorTurnoConversacional>();
 
         if (OpcionesPersistencia.HayAlmacen(configuration))
         {

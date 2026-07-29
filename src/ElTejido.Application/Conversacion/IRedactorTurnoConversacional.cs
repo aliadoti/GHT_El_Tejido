@@ -78,6 +78,13 @@ public sealed record ContextoRedaccionTurno(
     /// instrucciones de seguridad del redactor, sin romper campañas ya configuradas.
     /// </summary>
     public Prompt? PromptSnapshot { get; init; }
+
+    /// <summary>
+    /// Rúbrica activa, solo para la <b>salvaguarda anti-fuga</b> de I-03 (`FiltroSalidaRubrica`): sus
+    /// criterios no viajan al modelo, se usan para rechazar una redacción que los nombre. Ausente
+    /// mantiene el resto de guardas (longitud, pregunta única, léxico y patrones de puntaje).
+    /// </summary>
+    public Rubrica? RubricaSnapshot { get; init; }
 }
 
 /// <summary>Salida del redactor. El servidor decide qué hacer con ella; nunca la ejecuta a ciegas.</summary>
