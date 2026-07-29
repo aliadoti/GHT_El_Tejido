@@ -4,6 +4,24 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-28 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-20 corte 1
+  (contratos internos y configuración) DONE local.** No cambia ningún mensaje, estado ni evaluación:
+  **nada consume todavía el redactor**, así que el comportamiento observable es idéntico. (1) Puerto
+  interno `IRedactorTurnoConversacional` —sin endpoint ni DTO público— que recibe el acto **ya resuelto
+  por el servidor** y devuelve solo `puente`/`pregunta`; el contrato deja explícito que la versión
+  consolidada la inserta el servidor y que un acto que venga del modelo se ignora (§4). (2) Enum
+  `ActoConversacional` (`confirmar|mejorar|transicionar|aclarar|reabrir|cerrar`). (3)
+  `PoliticaRedaccionConversacional`, pura y sin E/S (patrón P-15): kill-switch global **sin opt-in por
+  campaña**, largo máximo normalizado y **prompt efectivo** con la precedencia de `03 §3.3`
+  (`conversacion` de pregunta → de campaña → `retro` de pregunta → de campaña); una campaña configurada
+  hoy solo con `retro` sigue funcionando y, sin ninguna referencia, el redactor operará solo con sus
+  instrucciones de seguridad. (4) Opciones `Conversacion:RedaccionConversacionalFluidaHabilitada`
+  (default `true`) y `Conversacion:MaxCaracteresRedaccionTurno` (default 320). **Hallazgo útil:**
+  `promptRefs` ya es un diccionario libre, así que la clave `conversacion` **no exigió cambio de dominio
+  ni de persistencia** — es aditiva por construcción y no hubo que tocar Cosmos. **Verificado:** build
+  Release `-warnaserror` 0/0, **543 pruebas** no calibración verdes (485 unitarias + 58 integración;
+  +14) y `dotnet format` limpio. Commit `242b0f4`, **sin push**. Próximo: corte 2 (redactor real,
+  JSON/guardrails/fallback/cupos).
 - Ultima actualizacion: 2026-07-28 por Codex (Arquitecto/Backend/AppSec/SDET): **I-20 especificada y
   lista para implementación.** Redactor LLM contextual por acto, con el servidor como autoridad de
   estado/umbral/cola; `promptRefs.conversacion` aditivo, fallback y kill-switch. I-19 sigue evaluando
@@ -191,9 +209,20 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Implementar I-20 §8.1.** Leer I-20, `SUPUESTOS.md#redaccion-fluida-i20`, I-19 y `03`/`05`/
-  `08`/`09`/`13`; implementar primero contratos/configuración interna, puerto, kill-switch y pruebas
-  base, sin alterar evaluación ni API pública. Verificar build/test/formato antes del corte 2.
+- [ ] **Implementar I-20 corte 2 (§8.2): el redactor real.** El corte 1 ya dejó el puerto, el enum de
+  actos, la política determinista (kill-switch + prompt efectivo) y sus 14 pruebas. Falta la
+  implementación `RedactorTurnoConversacional` en `Infrastructure/Llm/` —junto a `ConsolidadorIdeas` y
+  `SegmentadorIdeas`, mismo patrón—: (a) construir el mensaje con el prompt efectivo que ya resuelve
+  `PoliticaRedaccionConversacional.ResolverPromptRef` más las instrucciones de seguridad, delimitando
+  campaña/pregunta/versión/retro como **dato no confiable** (08 §5); (b) pedir JSON estricto
+  `{"puente","pregunta"}` y validarlo: largo máximo (`MaxCaracteresRedaccionTurno`), **una sola
+  pregunta** y solo si `AdmitePregunta(acto)`, prohibidas rúbrica/criterio/calificación/umbral,
+  patrones `N/M` y promesas de implementación; (c) degradar a `Fallback` ante salida inválida, timeout,
+  fuga o kill-switch apagado, **sin registrar el texto rechazado**; (d) registrarlo en
+  `ServiciosLlm.AgregarLlm` como los otros puertos LLM; (e) telemetría con tokens/latencia distinguibles
+  de consolidación y evaluación (decidir si evento propio o clave en el existente, y **registrarlo en
+  `SUPUESTOS.md`**) y contar la llamada en los cupos vigentes. Pruebas unitarias del contrato JSON, de
+  cada guardrail y del fallback. **Todavía sin conectar al orquestador:** eso es el corte 3.
 - [ ] **VALIDAR I-19/I-20 antes de activar (operativo, requiere humano y presupuesto).** El código de I-19
   está completo en local y verde; **no queda trabajo de implementación pendiente** salvo lo diferido y
   lo bloqueado. Falta: (1) **corrido D5 real** contra staging con el golden set, comparando exactitud
@@ -366,7 +395,7 @@
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
 | I-19 | Consolidación progresiva de ideas | **DONE local** (código; falta D5/UAT/costo. Paso 8 seeds BLOCKED) | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a), `61258e4` (7b), `aceb9f0` (9), `1792c4f`+`0d52e6c` (10) | backend 529 + portal 26/26 verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) , **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`) y **Resultados con una fila por idea** (estado, marcas de flujo/curaduría, historial de aportes y versiones; los aportes sin `ideaId` quedan como “resultado histórico”) y **observabilidad/cupos** (evento por transición sin PII, cupo que cuenta consolidaciones y techos deterministas ya aplicados en el hilo simple). **QA final** (inactividad que cierra la idea, aclaración ante ambigüedad, I-06 sin coaching que confirma antes de evaluar y E2E simulada del ciclo completo). Pendiente: seeds (BLOCKED), la reapertura entre preguntas (diferida) y la validación D5/UAT/costo. |
-| I-20 | Redacción conversacional fluida y Markdown ejecutivo | TODO | — | especificación revisada | Redactor LLM por acto, guardrails/fallback/cupos y Markdown con umbral/origen/escala. Inicio: I-20 §8.1. |
+| I-20 | Redacción conversacional fluida y Markdown ejecutivo | WIP — corte 1/5 local | `6a6d0b8` (spec), `242b0f4` (corte 1) | backend 543 verdes (+14) | Corte 1: puerto interno `IRedactorTurnoConversacional`, enum de actos y `PoliticaRedaccionConversacional` (kill-switch sin opt-in por campaña, largo máximo normalizado y prompt efectivo `conversacion`→`retro`). Sin cambio observable: nada lo consume aún. `promptRefs` ya era diccionario libre, así que la clave nueva no tocó dominio ni Cosmos. Siguiente: corte 2 (redactor real con JSON/guardrails/fallback/cupos). |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -494,6 +523,9 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-28 - Claude (Opus 5) - **I-20 §8 corte 1: contratos internos y configuración — DONE local (commit `242b0f4`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-20` §4/§5, REQ §9/§21/§26 y ARQ §4/§6. Corte deliberadamente **sin cambio observable**: define el andamiaje y nadie lo consume todavía, así que ningún mensaje, estado, evaluación ni Markdown cambia. (1) **Puerto** `IRedactorTurnoConversacional` en `Application/Conversacion/`: interno, sin endpoint ni DTO administrativo; recibe el acto **ya resuelto por el servidor**, los datos delimitados (versión completa, retroalimentación validada, única pregunta aprobada, historial mínimo y snapshots) y devuelve `ResultadoRedaccionTurno.Exito(puente, pregunta)` o `Fallback(motivo)`. El XML-doc fija las dos invariantes de §2/§4: la versión consolidada la inserta el servidor entre ambas piezas —para que el modelo no pueda ocultarla ni convertirla en evaluación— y un `acto` que venga en la salida se ignora. (2) **`ActoConversacional`**: `Confirmar|Mejorar|Transicionar|Aclarar|Reabrir|Cerrar`. (3) **`PoliticaRedaccionConversacional`**, pura y sin E/S siguiendo el patrón de `PoliticaLimitesConversacion` (P-15): expone `Habilitada` (kill-switch global, **sin opt-in por campaña**, §5), `MaxCaracteres` normalizado, `ResolverPromptRef` con la precedencia de `03 §3.3` (`conversacion` de pregunta → `conversacion` de campaña → `retro` de pregunta → `retro` de campaña), `UsaPromptDeVoz` para distinguir en telemetría una campaña ya configurada de una que hereda el tono, y `AdmitePregunta(acto)` —los actos `transicionar` y `cerrar` no llevan pregunta, base del guardrail "máximo una pregunta y solo donde corresponde" (§4.1)—. (4) **Opciones**: `Conversacion:RedaccionConversacionalFluidaHabilitada` (default `true`) y `Conversacion:MaxCaracteresRedaccionTurno` (default 320, con normalización defensiva). **Hallazgo que ahorró trabajo:** `Campania.PromptRefs`/`Pregunta.PromptRefs` ya son `IReadOnlyDictionary<string,string>` libres, así que la clave `conversacion` de `03 §3.3` **es aditiva por construcción**: no hizo falta tocar dominio, `CampaniaCosmosDocument` ni migrar nada. **Verificado:** build Release `-warnaserror` 0/0, **543 pruebas** no calibración (485 unit + 58 integración; **+14** de la política: precedencia completa, referencia en blanco ignorada, ausencia total de prompt, kill-switch y normalización del límite), `dotnet format --verify-no-changes` limpio. **Próximo:** corte 2 — implementar el redactor en `Infrastructure/Llm/`, con JSON estricto, guardrails de longitud/pregunta única/fuga de rúbrica, fallback silencioso, registro en DI, telemetría separada y conteo en cupos; sigue sin conectarse al orquestador (corte 3).
+
 - 2026-07-28 - Codex - **I-20 especificada y continuidad actualizada; sin código.** Redactor LLM
   estructurado por acto, con estado/umbral/cola server-side; `promptRefs.conversacion`, guardrails,
   fallback, cupos y Markdown con umbral/origen/escala. Próximo: I-20 §8.1. Cambios ajenos preservados:

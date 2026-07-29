@@ -7,8 +7,9 @@
 > **Tipo:** Desarrollo + prompt versionado + Markdown determinístico. **Prioridad:** alta.
 > **Dependencias:** I-03, I-17, I-18, I-19 y P-23. Cubre REQ §9/§20/§21/§22/§25/§26/§27 y ARQ §4/§6/
 > §7/§12/§13; afecta `03 §3.3`, `05 §4.4–§4.5`, `08`, `09`, `13` y Reglas.
-> **Estado (2026-07-28):** especificación aprobada para iniciar implementación. I-19 continúa siendo
-> la fuente de la versión canónica; I-20 aún no tiene código.
+> **Estado (2026-07-28):** implementación WIP local — **corte 1/5 hecho** (contratos internos,
+> configuración y política determinista; sin cambio observable, commit `242b0f4`). I-19 continúa siendo
+> la fuente de la versión canónica.
 
 ## 1. Resultado esperado
 
@@ -131,8 +132,15 @@ entre preguntas.
 
 ## 8. Cortes de implementación
 
-1. Actualizar contratos/documentos internos: `03`, `05`, `08`, `09`, `13`, Reglas, prompt efectivo,
-   kill-switch y métricas; sin API pública.
+1. **[Hecho local 2026-07-28, commit `242b0f4`]** Contratos/documentos internos: `03`, `05`, `08`,
+   `09`, `13` y Reglas ya especificados (commit `6a6d0b8`); en código, puerto interno
+   `IRedactorTurnoConversacional`, enum `ActoConversacional`, `PoliticaRedaccionConversacional` (pura:
+   kill-switch global sin opt-in por campaña, largo máximo normalizado, prompt efectivo
+   `conversacion` → `retro` y actos que admiten pregunta) y las opciones
+   `Conversacion:RedaccionConversacionalFluidaHabilitada` (default `true`) y
+   `Conversacion:MaxCaracteresRedaccionTurno` (320). Sin API pública y **sin cambio observable**: nada
+   lo consume todavía. `promptRefs` ya era un diccionario libre, así que la clave `conversacion` resultó
+   aditiva por construcción, sin tocar dominio ni Cosmos. Verde: 543 pruebas (+14).
 2. Implementar redactor, JSON/guardrails/fallback/cupos y pruebas unitarias.
 3. Sustituir `TextoConfirmacion` y concatenaciones por composición por acto en confirmación, mejora,
    transición, aclaración, reapertura y cierre; preservar toda decisión actual.
