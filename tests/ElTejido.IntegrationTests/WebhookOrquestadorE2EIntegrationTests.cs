@@ -137,6 +137,51 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         gateway.Enviados.Should().Contain(enviado => enviado.Tipo == TipoEnvioMensaje.Cierre);
     }
 
+    /// <summary>
+    /// I-20 §8.5: el recorrido real webhook → worker → orquestador usa al redactor inyectado, conserva
+    /// la propuesta completa en el medio y no concatena el respaldo histórico de confirmación.
+    /// </summary>
+    [Fact]
+    public async Task I20_CicloCompleto_UsaRedactorEnConfirmacionSinCambiarLaVersionEvaluada()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+        var redactor = Substitute.For<IRedactorTurnoConversacional>();
+        redactor.RedactarAsync(Arg.Any<ContextoRedaccionTurno>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoRedaccionTurno.Exito(
+                "Recojo esta propuesta sobre la bodega.",
+                "¿Refleja lo que quieres plantear?",
+                UsoTokensLlm.Crear(7, 5)));
+
+        using var fabrica = Construir(gateway, conversaciones, respuestas, contextos, compilaciones, redactor);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.I20.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(client, "wamid.I20.2", "Mi idea es reducir el desperdicio en bodega");
+        await EsperarAsync(() => gateway.Enviados.Any(e => e.Texto.Contains("Recojo esta propuesta", StringComparison.Ordinal)));
+
+        var confirmacion = gateway.Enviados.Single(e => e.Texto.Contains("Recojo esta propuesta", StringComparison.Ordinal));
+        confirmacion.Texto.Should().Contain("Recojo esta propuesta sobre la bodega.")
+            .And.Contain("Mi idea es reducir el desperdicio en bodega")
+            .And.Contain("¿Refleja lo que quieres plantear?")
+            .And.NotContain("Entendí que propones")
+            .And.NotContain("¿Es correcto?");
+
+        await EnviarEntranteAsync(client, "wamid.I20.3", "sí");
+        await EsperarAsync(() => respuestas.Ideas.Values.Any(idea => idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada));
+
+        // La voz cambia; la decisión y el texto evaluado siguen siendo los de I-19.
+        contextos.Should().ContainSingle();
+        contextos.Single().RespuestaTexto.Should().Contain("desperdicio en bodega").And.NotBe("sí");
+        await redactor.Received().RedactarAsync(
+            Arg.Is<ContextoRedaccionTurno>(contexto => contexto.Acto == ActoConversacional.Confirmar),
+            Arg.Any<CancellationToken>());
+    }
+
     private static async Task EnviarEntranteAsync(HttpClient client, string wamid, string texto)
     {
         var cuerpo =
@@ -152,7 +197,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         ConversacionesFake conversaciones,
         RespuestasFake respuestas,
         System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion> contextos,
-        System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion> compilaciones)
+        System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion> compilaciones,
+        IRedactorTurnoConversacional? redactor = null)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
         dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
@@ -209,6 +255,10 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                 services.AddSingleton(compilador);
                 services.AddSingleton(Substitute.For<IRepositorioLogSeguridad>());
                 services.AddSingleton(Substitute.For<IProveedorCorrelacion>());
+                if (redactor is not null)
+                {
+                    services.AddSingleton(redactor);
+                }
                 services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();
                 services.AddScoped<ProcesadorWebhookEntrante>();
             });

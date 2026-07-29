@@ -9,8 +9,8 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **ESTADO VIGENTE 2026-07-28 — `I-20` WIP, cortes 1-4/5 locales.** Backend verde **572** (514 unit +
-> 58 integración), portal **26/26**, `dotnet format` limpio. Commits `6a6d0b8` (spec), `242b0f4` (1),
+> **ESTADO VIGENTE 2026-07-28 — `I-20` COMPLETA localmente en código; falta validación operativa.** Backend verde **573** (514 unit +
+> 59 integración), portal **26/26**, `dotnet format` limpio. Commits `6a6d0b8` (spec), `242b0f4` (1),
 > `4697de3` (2), `afcceaf`+`045b199` (3) y `c813cda` (4). Puerto, política y redactor con guardas que
 > reutilizan `FiltroSalidaRubrica` (I-03); **composición por acto** en el orquestador —`Confirmar`,
 > `Mejorar`, `Aclarar`, `Reabrir`, `Cerrar`— con el cuerpo insertado por el servidor, **respaldo
@@ -18,8 +18,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > escala (`3,4 de 5 puntos (60 %; global)`) y `pendiente de evaluación` cuando no hay nota.
 > Ya desapareció la frase fija “Entendí que propones…”.
 > I-19 sigue COMPLETA en local y conserva D5/UAT/costo como pendiente operativo.
-> **PRÓXIMO OBJETIVO = I-20 corte 5 (§8.5), el cierre:** regresión completa —falta una E2E **con**
-> redactor inyectado— y luego D5 real, UAT y costo con temas distintos. No desplegar ni hacer push.
+> **PRÓXIMO OBJETIVO = validación operativa:** D5 real, UAT y costo con temas distintos. No desplegar ni hacer push.
 
 > **✅ `I-17` (BD de dos niveles: maduras vs. incubación) — COMPLETA local 2026-07-22 (6/6 slices).** Diseño §5/§7 **CONFIRMADO con el usuario** (spec RESUELTO; `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). (1-2) umbral único compartido con precedencia pregunta→campaña→global, sellado determinista de `nivelMadurez`, paráfrasis I-05 solo si `maduro`, telemetría; default global 0.6 y kill-switch de cierre `false` (comportamiento efectivo = como hoy). (3) filtro/DTO en `04 §5.8` + pantalla Resultados (selector/badge/conteos) + controles por campaña (umbral, inactividad, paráfrasis) y por pregunta (umbral). (4) metadato `nivelMadurez` en Markdown `09`. (5) reclasificación por **rechazo explícito** (degradar+cerrar con acuse). (6) cierre por inactividad **sub-hora y por campaña** (barrido per-campaña). Cerró con **420** pruebas; la suite actual tiene **423** verdes. Frontend prettier/tsc limpios (`ng build/test` bloqueado por esbuild/WSL, infra). **Pendiente operativo (no bloquea):** calibrar umbral 0.6 con D5 real y fijar flags globales en el acta del día-D. **Sin commit/push aún.** **⚠️ PRÓXIMO OBJETIVO = rotar al siguiente ítem de §4** (todos con insumo externo: `I-12` BLOCKED por seeds, `I-13` espera decisión GHT 25-jul, `I-14` BLOCKED por catálogo). Spec I-17: `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 >

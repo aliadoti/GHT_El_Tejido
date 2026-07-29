@@ -11,7 +11,8 @@
 > política, `4697de3` redactor con guardas, `afcceaf`+`045b199` composición por acto, `c813cda`
 > Markdown ejecutivo). La confirmación, la mejora, la aclaración, la reapertura y el cierre se
 > redactan, con respaldo idéntico al texto anterior, y el artefacto ya explica umbral, origen y escala.
-> Falta solo el corte 5: regresión y validación. I-19 continúa siendo la fuente de la versión canónica.
+> Corte 5 de código cerrado: regresión completa y E2E con redactor inyectado. Solo quedan D5/UAT/costo
+> operativos antes de desplegar. I-19 continúa siendo la fuente de la versión canónica.
 
 ## 1. Resultado esperado
 
@@ -166,7 +167,11 @@ entre preguntas.
    madurez—, cultura `es-CO` sin ceros sobrantes, `pendiente de evaluación` cuando no hay nota (y sin
    imprimir umbral), y la escala tomada de la **versión exacta** de rúbrica que registró la evaluación.
    Se aplica al artefacto de idea **y** al legacy por respuesta. Verde: 572 pruebas (+4).
-5. Ejecutar regresión completa y D5/UAT/costo con temas distintos antes de desplegar.
+5. **[Hecho local 2026-07-28]** Nueva E2E simulada
+   `I20_CicloCompleto_UsaRedactorEnConfirmacionSinCambiarLaVersionEvaluada`: atraviesa webhook real,
+   redactor inyectado, propuesta íntegra y evaluación canónica. Build Release, 573 pruebas no
+   calibración (514 unitarias + 59 integración), formato y diff limpios. Pendiente: D5/UAT/costo con
+   temas distintos antes de desplegar.
 
 ## 9. Criterios de aceptación
 
@@ -179,7 +184,7 @@ entre preguntas.
 - [ ] El fallback no revela rúbrica ni convierte una propuesta en madura.
 - [ ] El Markdown muestra campaña, pregunta, umbral con origen y `X de Y puntos`; nunca nota de otra
   versión.
-- [ ] Build, pruebas no-calibración, formato, frontend afectado y `git diff --check` quedan verdes.
+- [x] Build, pruebas no-calibración, formato, frontend afectado y `git diff --check` quedan verdes.
 
 ## 10. Cómo probarlo en lenguaje simple
 

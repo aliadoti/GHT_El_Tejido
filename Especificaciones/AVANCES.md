@@ -4,6 +4,10 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-28 por Codex (Arquitecto/Backend/AppSec/SDET): **I-20 corte 5 de
+  código DONE local.** Nueva E2E con redactor inyectado verifica webhook → redactor → versión íntegra
+  → evaluación canónica, sin frase fija. Build Release, 573 pruebas no-calibración (514+59), formato y
+  diff verdes. Pendiente solo D5/UAT/costo operativos antes de desplegar; sin push.
 - Ultima actualizacion: 2026-07-28 por Claude (Opus 5, Arquitecto/Backend/SDET): **I-20 corte 4
   (Markdown ejecutivo) DONE local. Con esto I-20 queda a un solo corte del cierre.** El artefacto deja
   de mostrar una nota suelta y explica **en qué escala está y contra qué umbral se midió**:
