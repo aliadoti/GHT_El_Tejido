@@ -9,26 +9,28 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **ESTADO VIGENTE 2026-07-28 — `I-20` WIP, corte 1/5 local.** Backend verde **543** (485 unit + 58
-> integración), portal **26/26**, `dotnet format` limpio. Commits `6a6d0b8` (spec) y `242b0f4`
-> (corte 1). El corte 1 dejó el andamiaje **sin cambio observable**: puerto interno
-> `IRedactorTurnoConversacional`, enum `ActoConversacional`, `PoliticaRedaccionConversacional` (pura:
-> kill-switch global sin opt-in por campaña, largo máximo normalizado y prompt efectivo
-> `conversacion` → `retro`) y las opciones `Conversacion:RedaccionConversacionalFluidaHabilitada`
-> (default `true`) y `Conversacion:MaxCaracteresRedaccionTurno` (320). Nadie lo consume todavía.
+> **ESTADO VIGENTE 2026-07-28 — `I-20` WIP, cortes 1-2/5 locales.** Backend verde **563** (505 unit +
+> 58 integración), portal **26/26**, `dotnet format` limpio. Commits `6a6d0b8` (spec), `242b0f4`
+> (corte 1) y `4697de3` (corte 2). Corte 1: puerto interno `IRedactorTurnoConversacional`, enum
+> `ActoConversacional` y `PoliticaRedaccionConversacional` (kill-switch global sin opt-in por campaña,
+> largo máximo normalizado, prompt efectivo `conversacion` → `retro`, actos que admiten pregunta).
+> Corte 2: `RedactorTurnoConversacional` con JSON estricto y `GuardasRedaccionTurno`, que **reutiliza
+> `FiltroSalidaRubrica` de I-03** y añade umbral/nota/puntos y promesas de implementación; una salida
+> sospechosa se rechaza entera, sin registrar el texto. **Sin cambio observable todavía:** nada de esto
+> lo consume el orquestador, así que el bot sigue diciendo “Entendí que propones…”.
 > I-19 sigue COMPLETA en local y conserva D5/UAT/costo como pendiente operativo; no bloquea a I-20.
-> **PRÓXIMO OBJETIVO = I-20 corte 2 (§8.2):** implementar el redactor en `Infrastructure/Llm/` con JSON
-> estricto, guardrails, fallback silencioso, DI, telemetría separada y conteo en cupos. Sin conectarlo
-> al orquestador (eso es el corte 3). No desplegar ni hacer push.
+> **PRÓXIMO OBJETIVO = I-20 corte 3 (§8.3):** componer el turno por acto en el orquestador —primer
+> corte con cambio visible—, con respaldo determinista igual al texto de hoy, más telemetría y cupos.
+> No desplegar ni hacer push.
 
 > **✅ `I-17` (BD de dos niveles: maduras vs. incubación) — COMPLETA local 2026-07-22 (6/6 slices).** Diseño §5/§7 **CONFIRMADO con el usuario** (spec RESUELTO; `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). (1-2) umbral único compartido con precedencia pregunta→campaña→global, sellado determinista de `nivelMadurez`, paráfrasis I-05 solo si `maduro`, telemetría; default global 0.6 y kill-switch de cierre `false` (comportamiento efectivo = como hoy). (3) filtro/DTO en `04 §5.8` + pantalla Resultados (selector/badge/conteos) + controles por campaña (umbral, inactividad, paráfrasis) y por pregunta (umbral). (4) metadato `nivelMadurez` en Markdown `09`. (5) reclasificación por **rechazo explícito** (degradar+cerrar con acuse). (6) cierre por inactividad **sub-hora y por campaña** (barrido per-campaña). Cerró con **420** pruebas; la suite actual tiene **423** verdes. Frontend prettier/tsc limpios (`ng build/test` bloqueado por esbuild/WSL, infra). **Pendiente operativo (no bloquea):** calibrar umbral 0.6 con D5 real y fijar flags globales en el acta del día-D. **Sin commit/push aún.** **⚠️ PRÓXIMO OBJETIVO = rotar al siguiente ítem de §4** (todos con insumo externo: `I-12` BLOCKED por seeds, `I-13` espera decisión GHT 25-jul, `I-14` BLOCKED por catálogo). Spec I-17: `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: `ID-INICIATIVA=I-20` — IMPLEMENTACIÓN WIP (corte 1/5 local).** I-19
-está completa local en código; I-20 implementa voz contextual y Markdown ejecutivo sin cambiar la
-evaluación canónica. El siguiente agente continúa por `I-20 §8.2` (redactor real); no reabre I-19 ni
-el corte 1 salvo una regresión demostrada.
+**Iniciativa objetivo vigente: `ID-INICIATIVA=I-20` — IMPLEMENTACIÓN WIP (cortes 1-2/5 locales).**
+I-19 está completa local en código; I-20 implementa voz contextual y Markdown ejecutivo sin cambiar la
+evaluación canónica. El siguiente agente continúa por `I-20 §8.3` (composición por acto en el
+orquestador); no reabre I-19 ni los cortes 1-2 salvo una regresión demostrada.
 
 ---
 
@@ -145,7 +147,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 26 | **`P-23` UX de Resultados** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Precarga de campaña en memoria, patrón maestro-detalle (respuesta → evaluación + Markdown), leyenda/conteos, extractos, estados guiados y actividad secundaria. Preserva I-17/P-18/P-19; sin contratos, rutas ni permisos nuevos. Prettier, 24/24 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 27 | **`I-18` coaching secuencial por idea** | Sprint 2 | **Codex** | **DONE local 2026-07-25.** Cola y contador por idea, revisiones enlazadas, prompt socrático, timeout/fallback acotados, DTOs/Markdown/telemetría aditivos y controles accesibles. Backend 484/484 y portal 24/24, formato y builds verdes. Gates por campaña OFF; D5/UAT/costo antes de activar. |
 | 28 | **`I-19` consolidación progresiva de ideas** | **DONE local** (código) | **Codex / Claude** | **Pasos 1–10 locales (2026-07-28, Claude Opus 5; commits `748870f`, `4e31f94`, `62240b9`, `401d9dd`, `7ef021c`, `a148ca5`, `61258e4`, `aceb9f0`, `1792c4f`, `0d52e6c`; backend verde 529, portal 26/26):** idea/versiones, consolidador, ciclo canónico en hilo simple y cola multi-idea, complemento + idea nueva, reapertura, Markdown/API/Resultados por idea, observabilidad y cupos, y QA final con E2E simulada. **Falta solo lo operativo:** D5 real, UAT, costo y acta de flags. Paso 8 (seeds I-12) BLOCKED; reapertura entre preguntas (§4.7) diferida con condición. |
-| 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **WIP — corte 1/5** | **Codex / Claude** | **Corte 1 DONE local 2026-07-28 (Claude Opus 5; commits `6a6d0b8` spec y `242b0f4`; backend verde 543, +14):** puerto interno `IRedactorTurnoConversacional`, enum `ActoConversacional` y `PoliticaRedaccionConversacional` (kill-switch sin opt-in por campaña, largo máximo normalizado, prompt efectivo `conversacion`→`retro` y actos que admiten pregunta). Sin cambio observable: nada lo consume aún; `promptRefs` ya era diccionario libre, así que la clave nueva no tocó dominio ni Cosmos. Siguiente: corte 2 (redactor real con JSON/guardrails/fallback/DI/telemetría/cupos). |
+| 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **WIP — cortes 1-2/5** | **Codex / Claude** | **Cortes 1-2 DONE local 2026-07-28 (Claude Opus 5; commits `6a6d0b8` spec, `242b0f4`, `4697de3`; backend verde 563, +34):** puerto interno, enum de actos y política determinista (kill-switch sin opt-in, prompt efectivo `conversacion`→`retro`); redactor con JSON estricto y guardas que reutilizan `FiltroSalidaRubrica` (I-03) más umbral/nota/promesas, una sola pregunta y solo donde corresponde, rechazo entero sin registrar texto y registro en DI. **Sin cambio observable:** aún no lo consume el orquestador. Siguiente: corte 3 (composición por acto + telemetría/cupos). |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
@@ -197,24 +199,25 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Continuar I-20 por el corte 2 de §8: implementar el redactor.** Leer `AVANCES.md`, `I-20` §4/§4.1,
-   `SUPUESTOS.md#redaccion-fluida-i20` y `08 §5`; no tocar `.obsidian/workspace.json` ni `Semillas/`.
-   El corte 1 ya dejó el puerto `IRedactorTurnoConversacional`, el enum `ActoConversacional`, la
-   política determinista (`Habilitada`, `MaxCaracteres`, `ResolverPromptRef`, `UsaPromptDeVoz`,
-   `AdmitePregunta`) y sus 14 pruebas. Falta `RedactorTurnoConversacional` en `Infrastructure/Llm/`,
-   junto a `ConsolidadorIdeas`/`SegmentadorIdeas` y con su mismo patrón: (a) armar el mensaje con el
-   prompt efectivo + instrucciones de seguridad, delimitando campaña, pregunta, versión y
-   retroalimentación como **dato no confiable** (`08 §5`); (b) exigir JSON estricto
-   `{"puente","pregunta"}` y validarlo — largo máximo, **una sola pregunta** y solo si
-   `AdmitePregunta(acto)`, prohibidas rúbrica/criterio/calificación/umbral, patrones `N/M` y promesas de
-   implementación, y sin añadir hechos ni mezclar ideas; (c) degradar a `Fallback` ante salida
-   inválida, timeout, fuga o kill-switch apagado, **sin registrar el texto rechazado**; (d) registrarlo
-   en `ServiciosLlm.AgregarLlm`; (e) telemetría con tokens/latencia distinguibles de consolidación y
-   evaluación —decidir si evento propio o clave del existente y **registrar la decisión en
-   `SUPUESTOS.md`**— y contar la llamada en los cupos vigentes. Pruebas del contrato JSON, de cada
-   guardrail y del fallback. **No conectarlo al orquestador todavía:** sustituir `TextoConfirmacion` y
-   las concatenaciones por composición por acto es el corte 3. I-19 conserva D5/UAT/costo como
-   requisito operativo; no lo reimplementes.
+1. **Continuar I-20 por el corte 3 de §8: componer el turno por acto en el orquestador.** Es el primer
+   corte con **cambio visible** para el participante. Leer `AVANCES.md`, `I-20` §3/§4,
+   `SUPUESTOS.md#redaccion-fluida-i20` y `05 §4.4–§4.5`; no tocar `.obsidian/workspace.json` ni
+   `Semillas/`. Los cortes 1-2 ya dejaron el puerto, la política, el redactor con sus guardas y 34
+   pruebas. Falta: (a) inyectar `IRedactorTurnoConversacional` en `OrquestadorConversacion` como
+   **opcional**, igual que `IConsolidadorIdeas`, y construir `PoliticaRedaccionConversacional` desde
+   las opciones; (b) **sustituir `TextoConfirmacion`** —la frase fija “Entendí que propones: …\n\n¿Es
+   correcto?”— por la composición del acto `Confirmar`: puente + **versión íntegra insertada por el
+   servidor** + pregunta; (c) hacer lo mismo con `Mejorar` (hoy `ConstruirInvitacionMejora` concatena
+   retro + invitación + coletilla), `Transicionar`, `Aclarar` (hoy manda la pregunta cruda del
+   consolidador), `Reabrir` (hoy acuse + texto + invitación) y `Cerrar`; (d) **respaldo determinista
+   por acto** = exactamente los textos configurables de hoy, para que kill-switch apagado o `Fallback`
+   reproduzcan el comportamiento actual sin tocar estados; (e) **telemetría y cupos** (movidos desde el
+   corte 2, porque viven en el llamador): decidir evento propio vs. clave del existente —**contrato en
+   commit aparte** si es enum nuevo— y contar la llamada del redactor en `CupoLlamadasLlmExcedidoAsync`,
+   registrando la decisión en `SUPUESTOS.md`. Pruebas: un solo acto por turno, versión íntegra presente,
+   fallback que reproduce el texto de hoy y kill-switch apagado sin cambio observable. Después: corte 4
+   (umbral/origen/escala en Markdown) y corte 5 (regresión + D5/UAT/costo).
+
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
 4. **La aprobación expresa de I-20 ya existe.** Implementa sus cortes en pasos pequeños según §8.

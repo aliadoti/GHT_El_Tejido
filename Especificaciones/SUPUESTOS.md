@@ -706,3 +706,23 @@
 - Impacto / reversibilidad: contrato aditivo de `promptRefs`, puerto interno y configuración global;
   sin endpoint público, migración de datos ni cambio de la máquina de estados. La activación se revierte
   con kill-switch. Spec: `Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md`.
+- Ambigüedades resueltas al implementar los cortes 1-2 (2026-07-28, Claude Opus 5):
+  - **La clave `conversacion` no exigió cambio de contrato en código.** `Campania.PromptRefs` y
+    `Pregunta.PromptRefs` ya son diccionarios libres, así que la referencia nueva de `03 §3.3` es
+    aditiva por construcción: no se tocó dominio, `CampaniaCosmosDocument` ni hubo migración.
+  - **Precedencia del prompt efectivo con respaldo explícito:** `conversacion` de la pregunta → de la
+    campaña → `retro` de la pregunta → de la campaña. Sin ninguna referencia, el redactor opera solo con
+    sus reglas duras. Así ninguna campaña configurada hoy se rompe y la voz se puede afinar por pregunta.
+  - **La guarda anti-fuga reutiliza `FiltroSalidaRubrica` (I-03) en vez de duplicarla.** Se añadió al
+    contexto del redactor un `RubricaSnapshot` **opcional** cuyos criterios **no viajan al modelo**:
+    solo sirven para rechazar una redacción que los nombre. I-20 suma su propio léxico
+    (`umbral|puntaje|puntos|nota|escala|madura|madurez`) y un patrón de promesas de implementación,
+    coherente con I-19 §16 (ninguna idea pasa automáticamente a implementación).
+  - **Una salida sospechosa se rechaza entera, no se recorta.** Recortar dejaría texto de origen dudoso
+    frente al participante; el respaldo determinista del acto es preferible y auditable. El motivo del
+    rechazo se conserva, pero **nunca el texto rechazado** (§4.1).
+  - **Telemetría y cupos del redactor viven en el llamador, no en el redactor.** El orquestador ya es
+    quien emite `LogSeguridad` y cuenta llamadas para consolidación y segmentación; mantener ahí la
+    responsabilidad evita dos fuentes de verdad del cupo. Por eso se movieron al corte 3, donde también
+    se decidirá —con su commit de contrato aparte si hace falta un enum nuevo— si el evento es propio o
+    una acción del existente. El redactor ya devuelve `Uso` para que sus tokens sean distinguibles.

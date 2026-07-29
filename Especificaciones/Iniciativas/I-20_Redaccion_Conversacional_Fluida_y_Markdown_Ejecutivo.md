@@ -7,9 +7,10 @@
 > **Tipo:** Desarrollo + prompt versionado + Markdown determinístico. **Prioridad:** alta.
 > **Dependencias:** I-03, I-17, I-18, I-19 y P-23. Cubre REQ §9/§20/§21/§22/§25/§26/§27 y ARQ §4/§6/
 > §7/§12/§13; afecta `03 §3.3`, `05 §4.4–§4.5`, `08`, `09`, `13` y Reglas.
-> **Estado (2026-07-28):** implementación WIP local — **corte 1/5 hecho** (contratos internos,
-> configuración y política determinista; sin cambio observable, commit `242b0f4`). I-19 continúa siendo
-> la fuente de la versión canónica.
+> **Estado (2026-07-28):** implementación WIP local — **cortes 1-2/5 hechos** (contratos internos y
+> política determinista en `242b0f4`; redactor con guardas y fallback en `4697de3`). Sin cambio
+> observable todavía: nada lo consume hasta el corte 3. I-19 continúa siendo la fuente de la versión
+> canónica.
 
 ## 1. Resultado esperado
 
@@ -141,7 +142,15 @@ entre preguntas.
    `Conversacion:MaxCaracteresRedaccionTurno` (320). Sin API pública y **sin cambio observable**: nada
    lo consume todavía. `promptRefs` ya era un diccionario libre, así que la clave `conversacion` resultó
    aditiva por construcción, sin tocar dominio ni Cosmos. Verde: 543 pruebas (+14).
-2. Implementar redactor, JSON/guardrails/fallback/cupos y pruebas unitarias.
+2. **[Hecho local 2026-07-28, commit `4697de3`]** Redactor implementado: `RedactorTurnoConversacional`
+   con prompt efectivo + reglas duras y datos delimitados (`08 §5`), JSON estricto
+   `{"puente","pregunta"}`, y `GuardasRedaccionTurno` que **reutiliza `FiltroSalidaRubrica` de I-03**
+   —criterios, léxico del mecanismo y patrones `N/M`— más el léxico propio de I-20
+   (`umbral|puntaje|puntos|nota|escala|madura|madurez`) y las promesas de implementación. Exige salida
+   no vacía, longitud por pieza, **una sola pregunta** y solo en los actos que la admiten, y ninguna
+   pregunta escondida en el puente. Una salida sospechosa se **rechaza entera** y degrada a `Fallback`
+   sin registrar el texto; el `acto` que venga del modelo se ignora. Registrado en DI. Verde: 563
+   pruebas (+20). **Cupos y telemetría se movieron al corte 3**, porque viven en el llamador.
 3. Sustituir `TextoConfirmacion` y concatenaciones por composición por acto en confirmación, mejora,
    transición, aclaración, reapertura y cierre; preservar toda decisión actual.
 4. Renderizar umbral/origen/escala en Markdown con regresiones para precedencia pregunta/campaña/global.
