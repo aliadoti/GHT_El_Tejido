@@ -398,6 +398,110 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task I20_Confirmar_UsaLaVozRedactadaEInsertaLaVersionIntegra()
+    {
+        ConfigurarAlmacenIdeas();
+        var redactor = RedactorQueDevuelve("Recojo lo que me contaste.", "¿Va bien así?");
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: ConsolidadorQueAcumula(), redactor: redactor)
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto =>
+                texto.Contains("Recojo lo que me contaste.", StringComparison.Ordinal)
+                // §4: la versión propuesta la inserta el servidor, íntegra y entre las dos piezas.
+                && texto.Contains("Aporte inicial", StringComparison.Ordinal)
+                && texto.Contains("¿Va bien así?", StringComparison.Ordinal)
+                // Ya no aparece la frase fija que originó I-20.
+                && !texto.Contains("Entendí que propones", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I20_RedactorEnFallback_ConservaExactamenteElTextoDeHoy()
+    {
+        ConfigurarAlmacenIdeas();
+        var redactor = Substitute.For<IRedactorTurnoConversacional>();
+        redactor.RedactarAsync(Arg.Any<ContextoRedaccionTurno>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoRedaccionTurno.Fallback("salida_invalida:contrato", null));
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: ConsolidadorQueAcumula(), redactor: redactor)
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            "Entendí que propones: Aporte inicial\n\n¿Es correcto?",
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I20_KillSwitchApagado_NoLlamaAlRedactorNiCambiaElTexto()
+    {
+        ConfigurarAlmacenIdeas();
+        var redactor = RedactorQueDevuelve("No debería usarse.", "¿Ni esto?");
+        await PrepararConversacionAsync();
+
+        await Construir(
+                new OpcionesConversacion { RedaccionConversacionalFluidaHabilitada = false },
+                ConsolidadorQueAcumula(),
+                redactor)
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        await redactor.DidNotReceiveWithAnyArgs().RedactarAsync(default!, default);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            "Entendí que propones: Aporte inicial\n\n¿Es correcto?",
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task I20_Redaccion_RegistraTelemetriaSinElTextoRedactado()
+    {
+        ConfigurarAlmacenIdeas();
+        var logs = new List<LogSeguridad>();
+        _logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(log => logs.Add(log)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var redactor = RedactorQueDevuelve("Puente redactado.", "¿Confirmas?");
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: ConsolidadorQueAcumula(), redactor: redactor)
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        var evento = logs.Single(log => log.TipoEvento == TipoEventoSeguridad.RedaccionConversacional);
+        evento.Resultado.Should().Be("redactado");
+        evento.Detalle.Should().Contain("accion:confirmar").And.Contain("promptTokens:11");
+        // 10 §6.2: nunca viaja el texto redactado ni el aporte del participante.
+        evento.Detalle.Should().NotContain("Puente redactado").And.NotContain("Aporte inicial");
+    }
+
+    [Fact]
+    public async Task I20_CupoLlmAgotado_NoLlamaAlRedactorYUsaElRespaldo()
+    {
+        ConfigurarAlmacenIdeas();
+        _respuestas.ContarEvaluacionesUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>()).Returns(5);
+        var redactor = RedactorQueDevuelve("No debería usarse.", "¿Ni esto?");
+        await PrepararConversacionAsync();
+
+        await Construir(
+                new OpcionesConversacion { CuposHabilitados = true },
+                ConsolidadorQueAcumula(),
+                redactor)
+            .ProcesarMensajeEntranteAsync(
+                ParticipanteConCupos(maxMensajesPorUsuario: 10, maxLlamadasLlm: 2),
+                Mensaje("Aporte inicial"),
+                CancellationToken.None);
+
+        // §4.1: con el cupo agotado no se gasta LLM en redactar; el turno sale con su respaldo.
+        await redactor.DidNotReceiveWithAnyArgs().RedactarAsync(default!, default);
+    }
+
+    [Fact]
     public async Task I19_AporteAmbiguo_PideAclaracionSinCrearVersionNiEvaluar()
     {
         var almacen = ConfigurarAlmacenIdeas();
@@ -2053,7 +2157,10 @@ public sealed class OrquestadorConversacionTests
         public Dictionary<string, VersionIdeaConsolidada> Versiones { get; } = new(StringComparer.Ordinal);
     }
 
-    private OrquestadorConversacion Construir(OpcionesConversacion? opciones = null, IConsolidadorIdeas? consolidador = null)
+    private OrquestadorConversacion Construir(
+        OpcionesConversacion? opciones = null,
+        IConsolidadorIdeas? consolidador = null,
+        IRedactorTurnoConversacional? redactor = null)
         => new(
             _conversaciones,
             _respuestas,
@@ -2068,7 +2175,17 @@ public sealed class OrquestadorConversacionTests
             _correlacion,
             opciones ?? new OpcionesConversacion(),
             _reloj,
-            consolidador);
+            consolidador,
+            redactor);
+
+    /// <summary>I-20: redactor que siempre devuelve la misma voz, para verificar la composición.</summary>
+    private static IRedactorTurnoConversacional RedactorQueDevuelve(string puente, string? pregunta)
+    {
+        var redactor = Substitute.For<IRedactorTurnoConversacional>();
+        redactor.RedactarAsync(Arg.Any<ContextoRedaccionTurno>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoRedaccionTurno.Exito(puente, pregunta, UsoTokensLlm.Crear(11, 4)));
+        return redactor;
+    }
 
     private Task PrepararConversacionAsync()
         => _conversaciones.GuardarConversacionAsync(

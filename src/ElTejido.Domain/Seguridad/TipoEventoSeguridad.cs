@@ -47,4 +47,9 @@ public enum TipoEventoSeguridad
     // motivo y tokens de consolidacion. Nunca incluye el aporte ni la parafrasis. Aditivo al final para
     // preservar los valores existentes (03 §3.15).
     ConsolidacionProgresivaIdeas,
+
+    // I-20 (10 §6.2): una entrada por llamada al redactor de turnos, con el acto, si se redacto o se
+    // uso el respaldo, el motivo tecnico al degradar y los tokens de esa llamada. Nunca incluye el
+    // texto redactado ni el rechazado. Aditivo al final para preservar los valores existentes.
+    RedaccionConversacional,
 }

@@ -43,6 +43,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IRepositorioConfiguracion _configuracion;
     private readonly IEvaluadorLlm _evaluador;
     private readonly IConsolidadorIdeas? _consolidadorIdeas;
+    private readonly IRedactorTurnoConversacional? _redactorTurno;
     private readonly ISegmentadorIdeas _segmentadorIdeas;
     private readonly IBaseConocimientoCampania _baseConocimiento;
     private readonly IWhatsAppGateway _gateway;
@@ -67,6 +68,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly int _maxCaracteresParafraseo;
     private readonly TimeProvider _tiempo;
     private readonly PoliticaColaCoachingIdeas _colaCoaching = new();
+    private readonly PoliticaRedaccionConversacional _redaccion;
     private readonly DetectorIntencionContinuar _intencionConfirmacion;
     private readonly DetectorIntencionContinuar _intencionRechazoIdea;
     private readonly DetectorIntencionContinuar _intencionRevisitarAnterior;
@@ -87,7 +89,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IProveedorCorrelacion correlacion,
         OpcionesConversacion opciones,
         TimeProvider tiempo,
-        IConsolidadorIdeas? consolidadorIdeas = null)
+        IConsolidadorIdeas? consolidadorIdeas = null,
+        IRedactorTurnoConversacional? redactorTurno = null)
     {
         _conversaciones = conversaciones;
         _respuestas = respuestas;
@@ -95,6 +98,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _configuracion = configuracion;
         _evaluador = evaluador;
         _consolidadorIdeas = consolidadorIdeas;
+        _redactorTurno = redactorTurno;
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
@@ -114,6 +118,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _presupuestoTokensTejido = opciones.PresupuestoTokensTejido;
         _parafraseoHabilitado = opciones.Parafraseo;
         _consolidacionProgresivaHabilitada = opciones.ConsolidacionProgresivaHabilitada;
+        _redaccion = new PoliticaRedaccionConversacional(
+            opciones.RedaccionConversacionalFluidaHabilitada, opciones.MaxCaracteresRedaccionTurno);
         _maxCaracteresIdeaConsolidada = Math.Max(1, opciones.MaxCaracteresIdeaConsolidada);
         _maxCaracteresParafraseo = Math.Max(0, opciones.MaxCaracteresParafraseo);
         IEnumerable<string> frases = opciones.FrasesContinuar is { Count: > 0 }
@@ -686,7 +692,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var acuse = TextoConfigurado(_mensajes.AcuseReaperturaIdea, OpcionesMensajesConversacion.AcuseReaperturaIdeaDefault);
         var invitacion = TextoConfigurado(
             _mensajes.InvitacionReaperturaIdea, OpcionesMensajesConversacion.InvitacionReaperturaIdeaDefault);
-        var texto = Combinar(Combinar(acuse, confirmada?.Texto ?? string.Empty), invitacion);
+        // I-20: el acuse y la invitación se redactan; la versión oficial se muestra íntegra en el medio.
+        var texto = await ComponerTurnoAsync(
+            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Reabrir,
+            respaldo: Combinar(Combinar(acuse, confirmada?.Texto ?? string.Empty), invitacion),
+            ahora, cancellationToken,
+            cuerpo: confirmada?.Texto,
+            versionCompleta: confirmada?.Texto);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(
             conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
@@ -887,7 +899,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             respuestaId, texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
         if (propuesta.PreguntaAclaracion is not null)
         {
-            await PedirAclaracionAsync(conversacion, usuario, numero, emisor, idea, propuesta, ahora, cancellationToken);
+            await PedirAclaracionAsync(
+                conversacion, campania, pregunta, usuario, numero, emisor, idea, propuesta, ahora,
+                cancellationToken);
             return;
         }
 
@@ -895,7 +909,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
         await RegistrarPropuestaAsync(usuario, idea, propuesta, "propuesta", ahora, cancellationToken);
-        await EnviarConfirmacionAsync(conversacion, numero, emisor, propuesta.Version.Texto, ahora, cancellationToken);
+        await EnviarConfirmacionAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, propuesta.Version.Texto, ahora,
+            cancellationToken);
     }
 
     private async Task ConfirmarOCorregirIdeaAsync(
@@ -1036,7 +1052,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             respuestaId, texto, TipoAporteIdea.Complemento, ahora, cancellationToken);
         if (propuesta.PreguntaAclaracion is not null)
         {
-            await PedirAclaracionAsync(conversacion, usuario, numero, emisor, idea, propuesta, ahora, cancellationToken);
+            await PedirAclaracionAsync(
+                conversacion, campania, pregunta, usuario, numero, emisor, idea, propuesta, ahora,
+                cancellationToken);
             return;
         }
 
@@ -1051,7 +1069,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             conversacion, campania, usuario, pregunta, contexto.Contexto.ConfigLlmSnapshot,
             IdeasNuevasAdmisibles(propuesta.NuevasIdeas, texto, propuesta.Version.Texto), respuestaId,
             ahora, cancellationToken);
-        await EnviarConfirmacionAsync(conversacion, numero, emisor, propuesta.Version.Texto, ahora, cancellationToken);
+        await EnviarConfirmacionAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, propuesta.Version.Texto, ahora,
+            cancellationToken);
     }
 
     /// <summary>
@@ -1192,6 +1212,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// </summary>
     private async Task PedirAclaracionAsync(
         DominioConversacion conversacion,
+        Campania campania,
+        Pregunta pregunta,
         Usuario usuario,
         NumeroWhatsApp numero,
         string? emisor,
@@ -1200,9 +1222,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
+        // I-20: la aclaración también se redacta; el respaldo es la pregunta cruda del consolidador.
+        var texto = await ComponerTurnoAsync(
+            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Aclarar,
+            respaldo: propuesta.PreguntaAclaracion!, ahora, cancellationToken);
         await EnviarAsync(
-            conversacion, numero, propuesta.PreguntaAclaracion!, TipoEnvioMensaje.Repregunta, emisor, ahora,
-            cancellationToken);
+            conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(
             conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
         await RegistrarConsolidacionAsync(
@@ -1286,10 +1311,132 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             ? null
             : await _respuestas.ObtenerVersionIdeaAsync(campaniaId, versionId, cancellationToken);
 
+    /// <summary>
+    /// I-20 §3.1: el acto <c>Confirmar</c> se redacta —puente y pregunta contextuales— pero la versión
+    /// propuesta la inserta el servidor entre ambos, íntegra. El respaldo es la frase de siempre.
+    /// </summary>
     private async Task EnviarConfirmacionAsync(
-        DominioConversacion conversacion, NumeroWhatsApp numero, string? emisor, string textoPropuesto,
-        DateTimeOffset ahora, CancellationToken cancellationToken)
-        => await EnviarAsync(conversacion, numero, TextoConfirmacion(textoPropuesto), TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,
+        NumeroWhatsApp numero, string? emisor, string textoPropuesto, DateTimeOffset ahora,
+        CancellationToken cancellationToken,
+        string? prefijo = null)
+    {
+        var texto = await ComponerTurnoAsync(
+            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Confirmar,
+            respaldo: TextoConfirmacion(textoPropuesto),
+            ahora, cancellationToken,
+            cuerpo: textoPropuesto,
+            versionCompleta: textoPropuesto);
+        await EnviarAsync(
+            conversacion, numero, Combinar(prefijo, texto), TipoEnvioMensaje.Repregunta, emisor, ahora,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// I-20 §3/§4: compone el texto visible de un acto que el servidor **ya decidió**. Pide al redactor
+    /// un puente y, si el acto la admite, una pregunta; el <b>cuerpo</b> (la versión consolidada, la
+    /// retroalimentación validada) lo inserta este método, no el modelo.
+    /// <para>
+    /// Con el kill-switch apagado, sin redactor inyectado o ante cualquier <c>Fallback</c>, devuelve
+    /// <paramref name="respaldo"/>, que es exactamente el texto determinista de siempre: el
+    /// comportamiento actual se conserva sin tocar estados ni evaluación.
+    /// </para>
+    /// </summary>
+    private async Task<string> ComponerTurnoAsync(
+        Campania campania,
+        Pregunta? pregunta,
+        string usuarioId,
+        NumeroWhatsApp numeroUsuario,
+        ActoConversacional acto,
+        string respaldo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken,
+        string? cuerpo = null,
+        string? versionCompleta = null,
+        string? retroalimentacionValidada = null,
+        string? preguntaAprobada = null,
+        Rubrica? rubrica = null)
+    {
+        if (_redactorTurno is null || !_redaccion.Habilitada || pregunta is null)
+        {
+            return respaldo;
+        }
+
+        // I-20 §4.1 / P-10: redactar también gasta LLM. Con el cupo agotado no se llama al modelo y el
+        // turno sale con su respaldo determinista: el aporte y el estado no se tocan.
+        if (_cuposHabilitados && await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, cancellationToken))
+        {
+            return respaldo;
+        }
+
+        var promptRef = _redaccion.ResolverPromptRef(campania, pregunta);
+        var prompt = string.IsNullOrWhiteSpace(promptRef)
+            ? null
+            : await _configuracion.ObtenerUltimoPromptAsync(promptRef, cancellationToken);
+        var configLlm = string.IsNullOrWhiteSpace(campania.ConfigLlmRef)
+            ? null
+            : await _configuracion.ObtenerConfigLlmAsync(campania.ConfigLlmRef, cancellationToken);
+        if (configLlm is null || configLlm.Estado != EstadoRegistro.Activo)
+        {
+            // Sin LLM utilizable no se degrada la conversación: se usa el texto de siempre.
+            return respaldo;
+        }
+
+        var contexto = new ContextoRedaccionTurno(campania, pregunta, acto, configLlm, _redaccion.MaxCaracteres)
+        {
+            VersionCompleta = versionCompleta,
+            RetroalimentacionValidada = retroalimentacionValidada,
+            PreguntaAprobada = preguntaAprobada,
+            PromptSnapshot = prompt is { Estado: EstadoPrompt.Activo } ? prompt : null,
+            RubricaSnapshot = rubrica,
+        };
+
+        var resultado = await _redactorTurno.RedactarAsync(contexto, cancellationToken);
+        await RegistrarRedaccionAsync(
+            usuarioId, numeroUsuario, acto, resultado, _redaccion.UsaPromptDeVoz(campania, pregunta),
+            ahora, cancellationToken);
+
+        if (resultado is not ResultadoRedaccionTurno.Exito redactado)
+        {
+            return respaldo;
+        }
+
+        // El orden es siempre puente → cuerpo → pregunta: así la versión consolidada queda íntegra y
+        // visible, y el modelo no puede sustituirla ni esconderla (§4).
+        var texto = Combinar(redactado.Puente, cuerpo ?? string.Empty);
+        return string.IsNullOrWhiteSpace(redactado.Pregunta)
+            ? (string.IsNullOrWhiteSpace(texto) ? respaldo : texto)
+            : Combinar(texto, redactado.Pregunta);
+    }
+
+    /// <summary>
+    /// I-20 (10 §6.2): una entrada por llamada al redactor. Sin el texto redactado ni el rechazado:
+    /// solo acto, si se redactó o se usó el respaldo, el motivo técnico y los tokens de esa llamada.
+    /// </summary>
+    private Task RegistrarRedaccionAsync(
+        string usuarioId,
+        NumeroWhatsApp numeroUsuario,
+        ActoConversacional acto,
+        ResultadoRedaccionTurno resultado,
+        bool promptDeVoz,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var motivo = resultado is ResultadoRedaccionTurno.Fallback fallback ? fallback.Motivo : "ninguno";
+        var detalle = FormattableString.Invariant(
+            $"accion:{MinusculaInicial(acto.ToString())};motivo:{motivo};promptVoz:{promptDeVoz};promptTokens:{resultado.Uso?.PromptTokens ?? 0};completionTokens:{resultado.Uso?.CompletionTokens ?? 0}");
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.RedaccionConversacional,
+                usuarioId,
+                numeroUsuario.Valor,
+                resultado is ResultadoRedaccionTurno.Exito ? "redactado" : "respaldo",
+                detalle,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+    }
 
     private static string TextoConfirmacion(string textoPropuesto)
         => $"Entendí que propones: {textoPropuesto}\n\n¿Es correcto?";
@@ -1601,9 +1748,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        await EnviarAsync(
-            conversacion, numero, Combinar(prefijo, TextoConfirmacion(version.Texto)),
-            TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        await EnviarConfirmacionAsync(
+            conversacion, campania, usuario, pregunta, numero, emisor, version.Texto, ahora,
+            cancellationToken, prefijo);
         await _conversaciones.GuardarConversacionAsync(
             conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
     }
@@ -1964,7 +2111,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             respuestaId, texto, tipoAporte, ahora, cancellationToken);
         if (propuesta.PreguntaAclaracion is not null)
         {
-            await PedirAclaracionAsync(conversacion, usuario, numero, emisor, idea, propuesta, ahora, cancellationToken);
+            await PedirAclaracionAsync(
+                conversacion, campania, pregunta, usuario, numero, emisor, idea, propuesta, ahora,
+                cancellationToken);
             return;
         }
 
@@ -2486,7 +2635,17 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var preguntaCoaching = string.IsNullOrWhiteSpace(evaluacion.RepreguntaSugerida)
             ? EvaluadorLlm.RepreguntaNeutra
             : evaluacion.RepreguntaSugerida.Trim();
-        var turno = Combinar(Combinar(prefijo, evaluacion.RetroalimentacionEnviada), preguntaCoaching);
+        // I-20 §3.2: una sola intervención — reconoce el avance y hace la pregunta de foco **ya
+        // aprobada** por I-03. La retro validada es el cuerpo; el respaldo es la concatenación de hoy.
+        var preguntaHilo = campania.Preguntas.FirstOrDefault(p => p.Id == conversacion.PreguntaId);
+        var redactado = await ComponerTurnoAsync(
+            campania, preguntaHilo, usuarioId, numero, ActoConversacional.Mejorar,
+            respaldo: Combinar(evaluacion.RetroalimentacionEnviada, preguntaCoaching),
+            ahora, cancellationToken,
+            cuerpo: evaluacion.RetroalimentacionEnviada,
+            retroalimentacionValidada: evaluacion.RetroalimentacionEnviada,
+            preguntaAprobada: preguntaCoaching);
+        var turno = Combinar(prefijo, redactado);
         await EnviarAsync(conversacion, numero, turno, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
 
         cola = _colaCoaching.RegistrarRepregunta(cola);
@@ -2508,7 +2667,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        var texto = Combinar(prefijo, campania.ConfigConversacional.MensajeCierre);
+        // I-20: el cierre se redacta sobre el mensaje configurado de la campaña, que sigue siendo el
+        // respaldo exacto. Es un acto sin pregunta (§4.1).
+        var cierre = await ComponerTurnoAsync(
+            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Cerrar,
+            respaldo: campania.ConfigConversacional.MensajeCierre, ahora, cancellationToken);
+        var texto = Combinar(prefijo, cierre);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
         conversacion = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);

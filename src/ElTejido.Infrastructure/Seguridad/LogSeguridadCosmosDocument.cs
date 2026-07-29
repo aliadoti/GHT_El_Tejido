@@ -78,6 +78,7 @@ internal sealed class LogSeguridadCosmosDocument
             TipoEventoSeguridad.ClasificacionMadurez => "clasificacionMadurez",
             TipoEventoSeguridad.CoachingSecuencialIdeas => "coachingSecuencialIdeas",
             TipoEventoSeguridad.ConsolidacionProgresivaIdeas => "consolidacionProgresivaIdeas",
+            TipoEventoSeguridad.RedaccionConversacional => "redaccionConversacional",
             _ => throw new InvalidOperationException($"Tipo de evento de seguridad no soportado: {tipo}."),
         };
     }
