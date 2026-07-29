@@ -3,9 +3,10 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-28 (I-19 **completa en local**: idea única, varias ideas en un mensaje,
-> idea nueva a mitad de camino, reapertura, Resultados por idea y cierres por inactividad/aclaración.
-> Pendiente solo la validación con GHT antes de activarla).
+> Última actualización: 2026-07-28 (I-19 **completa en local** y **I-20 casi completa**: además de la
+> idea única, varias ideas, reapertura y Resultados por idea, el coach ya redacta cada mensaje de forma
+> natural y el documento explica el listón y la escala de la nota. Pendiente solo la validación con
+> GHT antes de activarlas).
 
 ## Antes de empezar (léelo una vez)
 
@@ -177,7 +178,8 @@ de abajo ya están construidos y probados en el equipo**, incluida la pantalla d
 5. Termina la idea y abre **Resultados**. **Deberías ver:** una sola fila por idea (no una por
    mensaje), marcada como **madura**, **pendiente** o **rechazada**; al abrirla, la idea completa, su
    calificación y, desplegando *Historial de la idea*, tus mensajes originales y las versiones por las
-   que pasó. El selector de arriba permite ver solo maduras, pendientes o rechazadas.
+   que pasó. El selector de arriba permite ver solo maduras, pendientes o rechazadas. (El detalle de la
+   nota y del listón en el documento se prueba en **I-20**, más abajo.)
 6. Escribe **“quiero complementar la anterior”**. Debe reabrir esa misma idea, volver a confirmar la
    nueva versión y recalificarla.
 7. Si queda madura, debe decir **Pendiente de curaduría**; no debe enviarse automáticamente a
@@ -246,6 +248,45 @@ seguir abierta:
 **Algo va mal si:** retoma una idea distinta a la que pediste, pierde lo que ya habías registrado en
 ella, la lista muestra calificaciones, se queda "pegado" pidiendo un número, o permite cambios cuando la
 campaña ya está cerrada.
+
+### ✅ I-20 — Que el coach hable natural y que el documento explique la nota
+
+**Qué es:** dos mejoras que van juntas. (1) El coach deja de repetir siempre la misma frase: cada
+mensaje se redacta según la campaña, la pregunta y lo que acabas de decir. (2) El documento de cada
+idea deja de mostrar un número suelto y explica **sobre cuánto** es esa nota y **qué tan alto estaba
+el listón**. Está construido y probado en el equipo; falta la validación con ustedes.
+
+**Parte 1 — la conversación (por WhatsApp o simulación):**
+
+1. Responde una pregunta con una idea corta. **Deberías ver:** una frase natural que introduce lo que
+   el sistema entendió, **tu idea completa tal cual**, y **una sola** pregunta para confirmar.
+2. Repite el ejercicio con otra persona o en otra campaña. **Deberías ver:** que las frases **no son
+   calcadas**; cambian según el tema, aunque la idea completa siempre aparezca íntegra.
+3. Confirma y sigue hasta que te hagan una pregunta para mejorar. **Deberías ver:** **una sola**
+   pregunta, sin números, sin "criterios" y sin mencionar la rúbrica.
+4. Fíjate en que ningún mensaje mezcle dos cosas a la vez (por ejemplo, pedirte confirmar y a la vez
+   preguntarte otra cosa distinta).
+
+**Parte 2 — el documento (portal):**
+
+5. Abre **Resultados**, elige una idea ya cerrada y mira su documento.
+6. **Deberías ver** dos líneas claras, por ejemplo: `Umbral de madurez: 3,4 de 5 puntos (60 %; global)`
+   y `Calificación total: 4 de 5 puntos`. Lo del paréntesis dice **de dónde salió el listón**: de la
+   pregunta, de la campaña o del valor general.
+7. Si una campaña o una pregunta tiene su propio listón configurado, ese número y esa palabra deben
+   cambiar en consecuencia.
+8. Abre una idea **rechazada** o que quedó sin evaluar: debe decir **"pendiente de evaluación"** y
+   **no** mostrar ninguna línea de listón.
+
+**Algo va mal si:** vuelve a aparecer siempre la misma frase de confirmación; llegan dos preguntas
+juntas; el coach menciona rúbrica, criterios, puntajes, "umbral" o promete que la idea **se va a
+implementar**; la idea completa deja de mostrarse antes de pedirte confirmar; el documento muestra una
+nota sin decir sobre cuánto es; el listón no coincide con el configurado; o una idea sin evaluar
+aparece como si hubiera alcanzado el listón.
+
+> **Si algo se ve raro en producción:** esta mejora se puede **apagar sin desplegar nada**. Al apagarla,
+> el coach vuelve exactamente a los textos anteriores y **no se pierde ninguna idea ni ninguna nota**;
+> solo cambia la forma de redactar. Pídeselo al equipo técnico.
 
 ### ✅ I-03 — El coach repregunta sobre lo más flojo, sin "delatar" la rúbrica
 **Qué es:** cuando tu respuesta es floja en algún aspecto, el coach te invita a profundizar **en ese
