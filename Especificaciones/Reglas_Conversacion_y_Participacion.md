@@ -90,11 +90,15 @@ campañas y no depende de I-05. Si I-05 está activo, no se muestra un segundo r
 crea otra versión propuesta; solo una confirmación inequívoca permite evaluar. Las ideas semilla I-12
 se usan cuando existan, pero no crean criterios de calificación fuera de la rúbrica.
 
-**Redacción fluida I-20:** la forma de confirmar, acompañar, aclarar, transicionar o cerrar se redacta
-con LLM según campaña, pregunta, idea consolidada y contexto reciente. El servidor decide el acto; el
-LLM solo redacta. Cada mensaje tiene una sola intención y como máximo una pregunta. La versión propuesta
-completa se muestra sin que el redactor pueda sustituirla. Si falla o la salida es insegura, se usa un
-respaldo breve sin cambiar evaluación ni estado.
+**Redacción fluida I-20 (implementada localmente):** la forma de confirmar, acompañar, aclarar,
+reabrir o cerrar se redacta con LLM según campaña, pregunta, idea consolidada y contexto reciente. El
+servidor decide el acto; el LLM solo redacta. Cada mensaje tiene una sola intención y como máximo una
+pregunta. **El cuerpo —la versión propuesta completa, la retroalimentación validada— lo inserta el
+servidor** entre el puente y la pregunta, así que el redactor no puede sustituirlo ni esconderlo. Si la
+salida es inválida, larga, con dos preguntas o con cualquier rastro de rúbrica, puntaje, umbral o
+promesa de implementación, se **descarta entera** y el turno sale con su **respaldo, que es exactamente
+el texto anterior a I-20**; lo mismo si se apaga el kill-switch o si el cupo de llamadas está agotado.
+Nunca cambia evaluación, estados ni límites.
 
 ### 2.3 Revision determinista (revisiones como oportunidades)
 > **Flujo legado/single-idea:** las reglas de contador único, coletilla siempre visible y cierre de la

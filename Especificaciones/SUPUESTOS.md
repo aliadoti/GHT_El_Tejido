@@ -721,6 +721,22 @@
   - **Una salida sospechosa se rechaza entera, no se recorta.** Recortar dejaría texto de origen dudoso
     frente al participante; el respaldo determinista del acto es preferible y auditable. El motivo del
     rechazo se conserva, pero **nunca el texto rechazado** (§4.1).
+  - **Un evento propio `redaccionConversacional`, no una acción del de I-19** (decisión del corte 3).
+    El redactor es una llamada LLM distinta, con su propio costo y sus propios modos de fallo; colgarla
+    de `consolidacionProgresivaIdeas` mezclaría dos presupuestos y dificultaría leer el gasto por turno.
+    Contrato añadido en `03 §3.15` y `10 §6` en commit aparte (`afcceaf`).
+  - **El cuerpo del mensaje lo inserta el servidor, siempre entre puente y pregunta.** El redactor no
+    recibe permiso para reproducir la versión consolidada ni la retroalimentación: se le pasan como
+    contexto y el orquestador las coloca. Así una redacción que las omita o las resuma no puede ocultar
+    lo que el participante debe confirmar (§4).
+  - **El respaldo por acto es literalmente el texto anterior**, no una variante nueva. Eso hace que el
+    kill-switch sea un rollback real y que las pruebas previas a I-20 sigan siendo válidas sin tocarse:
+    ninguna inyecta redactor, así que todas recorren el respaldo.
+  - **La transición no necesitó acto propio.** El paso a la siguiente idea o pregunta ya se emite hoy
+    como acuse del cierre anterior o como la confirmación de la idea siguiente; no existía un texto fijo
+    de transición que sustituir. El acto queda definido en el enum para cuando haga falta.
+  - **Redactar consume cupo (P-10).** Se consulta el cupo de llamadas antes de invocar al modelo; con el
+    cupo agotado el turno usa su respaldo sin perder el aporte ni alterar el estado.
   - **Telemetría y cupos del redactor viven en el llamador, no en el redactor.** El orquestador ya es
     quien emite `LogSeguridad` y cuenta llamadas para consolidación y segmentación; mantener ahí la
     responsabilidad evita dos fuentes de verdad del cupo. Por eso se movieron al corte 3, donde también

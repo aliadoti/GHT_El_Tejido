@@ -7,10 +7,10 @@
 > **Tipo:** Desarrollo + prompt versionado + Markdown determinístico. **Prioridad:** alta.
 > **Dependencias:** I-03, I-17, I-18, I-19 y P-23. Cubre REQ §9/§20/§21/§22/§25/§26/§27 y ARQ §4/§6/
 > §7/§12/§13; afecta `03 §3.3`, `05 §4.4–§4.5`, `08`, `09`, `13` y Reglas.
-> **Estado (2026-07-28):** implementación WIP local — **cortes 1-2/5 hechos** (contratos internos y
-> política determinista en `242b0f4`; redactor con guardas y fallback en `4697de3`). Sin cambio
-> observable todavía: nada lo consume hasta el corte 3. I-19 continúa siendo la fuente de la versión
-> canónica.
+> **Estado (2026-07-28):** implementación WIP local — **cortes 1-3/5 hechos** (`242b0f4` contratos y
+> política, `4697de3` redactor con guardas, `afcceaf`+`045b199` composición por acto). Ya hay cambio
+> visible: la confirmación, la mejora, la aclaración, la reapertura y el cierre se redactan, con
+> respaldo idéntico al texto anterior. I-19 continúa siendo la fuente de la versión canónica.
 
 ## 1. Resultado esperado
 
@@ -151,8 +151,14 @@ entre preguntas.
    pregunta escondida en el puente. Una salida sospechosa se **rechaza entera** y degrada a `Fallback`
    sin registrar el texto; el `acto` que venga del modelo se ignora. Registrado en DI. Verde: 563
    pruebas (+20). **Cupos y telemetría se movieron al corte 3**, porque viven en el llamador.
-3. Sustituir `TextoConfirmacion` y concatenaciones por composición por acto en confirmación, mejora,
-   transición, aclaración, reapertura y cierre; preservar toda decisión actual.
+3. **[Hecho local 2026-07-28, commits `afcceaf` contrato + `045b199`]** Composición por acto en el
+   orquestador: `ComponerTurnoAsync` sustituye `TextoConfirmacion` (sus dos rutas) y las
+   concatenaciones de `Mejorar`, `Aclarar`, `Reabrir` y `Cerrar`. El orden es **puente → cuerpo →
+   pregunta**, con el cuerpo insertado por el servidor. Respaldo determinista idéntico al texto previo
+   ante kill-switch apagado, redactor ausente, `ConfigLLM` inactiva o `Fallback`; cupos P-10 aplicados
+   antes de gastar LLM; telemetría `redaccionConversacional` sin texto. Verde: 568 pruebas (+5). La
+   **transición** no requirió cambio: hoy el paso a la siguiente idea/pregunta ya se envía como acuse o
+   confirmación del acto siguiente, sin texto fijo propio.
 4. Renderizar umbral/origen/escala en Markdown con regresiones para precedencia pregunta/campaña/global.
 5. Ejecutar regresión completa y D5/UAT/costo con temas distintos antes de desplegar.
 
