@@ -6,10 +6,11 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-07-28 — **`I-20` redacción conversacional fluida y Markdown ejecutivo,
-> especificada y lista para implementar.** I-19 está completa localmente: una idea acumula aportes, se
-> confirma y solo su versión completa se evalúa. I-20 elimina confirmaciones repetitivas mediante un
-> redactor LLM controlado por el servidor y hace visible umbral/escala en Markdown. Revisión anterior:
+> Última revisión: 2026-07-29 — **`P-24` corrige la transición entre una propuesta y la solicitud de
+> mejorarla.** I-19 conserva la idea completa como unidad de evaluación; P-24 convierte una petición
+> breve de mejora en confirmación implícita para evaluar y abrir coaching, sin guardarla como contenido.
+> I-20 elimina confirmaciones repetitivas mediante un redactor LLM controlado por el servidor y hace
+> visible umbral/escala en Markdown. Revisión anterior:
 > **`I-18` coaching secuencial DONE local.**
 > Cola por idea, revisiones enlazadas y coach socrático; gates aún apagados y sin activación.
 > "Priorización iniciativas MVP"): **I-09/I-10 (tejido colectivo) → DIFERIDAS a "Capa 3" post-convención;
@@ -37,6 +38,7 @@
 | P-21 | [P-21_Multi_Numero_WhatsApp.md](P-21_Multi_Numero_WhatsApp.md) | A coordinar (fuera de ruta crítica) | **DONE local 2026-07-25.** Multi-número de WhatsApp (misma WABA/App): captura `metadata.phone_number_id` para **responder por el número entrante**, `IWhatsAppGateway` con emisor opcional y número saliente **por campaña** (`configConversacional.numeroWhatsAppSaliente`). Sin secretos nuevos; configuración ausente conserva el único número legado/predeterminado. Backend 473/473 verde. |
 | P-22 | [P-22_UX_Campanias.md](P-22_UX_Campanias.md) | A coordinar (mejoras de portal) | **DONE local 2026-07-25.** UX de Campañas frontend-only: creación bajo demanda, pasos numerados con completitud y nombre accesible, enlace a Envíos con id real, fieldsets con ayuda y estados vacíos. Preserva P-16/P-18/P-19/P-20; 21/21 pruebas Angular y build de producción verdes. |
 | P-23 | [P-23_UX_Resultados.md](P-23_UX_Resultados.md) | A coordinar (mejoras de portal) | **DONE local 2026-07-25.** UX de Resultados frontend-only: precarga de campaña en sesión, patrón **maestro-detalle** (lista de respuestas → evaluación + Markdown), leyenda/conteos, lectura fácil y estados guiados. Sin contratos, rutas ni permisos nuevos; 24/24 pruebas Angular, Prettier y build verdes. |
+| P-24 | [P-24_Evaluacion_Implicita_Al_Solicitar_Mejora.md](P-24_Evaluacion_Implicita_Al_Solicitar_Mejora.md) | Inmediata | **DONE local 2026-07-29.** Corrige el bug confirmado en hilo simple y cola multi-idea: una petición corta de mejorar confirma implícitamente la versión completa, la evalúa contra la rúbrica y abre coaching; no se persiste como corrección ni reduce `MaxRepreguntas`. Backend 579/579, formato y diff verdes. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |

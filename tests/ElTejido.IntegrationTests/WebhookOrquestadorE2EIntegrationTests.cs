@@ -182,6 +182,36 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// P-24: el recorrido real de webhook no convierte una petición breve de ayuda en un aporte. Confirma
+    /// implícitamente la propuesta, evalúa la versión completa y conserva la trazabilidad canónica.
+    /// </summary>
+    [Fact]
+    public async Task P24_SolicitarMejora_EvaluaLaPropuestaCompletaSinPersistirLaFraseComoRespuesta()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+
+        using var fabrica = Construir(gateway, conversaciones, respuestas, contextos, compilaciones);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.P24.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(client, "wamid.P24.2", "Mi idea es reducir el desperdicio en bodega");
+        await EsperarAsync(() => gateway.Enviados.Any(e => e.Texto.Contains("¿Es correcto?", StringComparison.Ordinal)));
+
+        await EnviarEntranteAsync(client, "wamid.P24.3", "Vamos a mejorarla");
+        await EsperarAsync(() => respuestas.Ideas.Values.Any(idea => idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada));
+
+        contextos.Should().ContainSingle();
+        contextos.Single().RespuestaTexto.Should().Contain("desperdicio en bodega").And.NotBe("Vamos a mejorarla");
+        (await respuestas.ListarRespuestasAsync("c_1", CancellationToken.None))
+            .Should().ContainSingle(respuesta => respuesta.Texto.Contains("desperdicio en bodega", StringComparison.Ordinal));
+    }
+
     private static async Task EnviarEntranteAsync(HttpClient client, string wamid, string texto)
     {
         var cuerpo =

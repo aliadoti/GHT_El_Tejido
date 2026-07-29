@@ -70,6 +70,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly PoliticaColaCoachingIdeas _colaCoaching = new();
     private readonly PoliticaRedaccionConversacional _redaccion;
     private readonly DetectorIntencionContinuar _intencionConfirmacion;
+    private readonly DetectorIntencionContinuar _intencionSolicitarMejora;
     private readonly DetectorIntencionContinuar _intencionRechazoIdea;
     private readonly DetectorIntencionContinuar _intencionRevisitarAnterior;
     private readonly DetectorIntencionContinuar _intencionRevisitarIdea;
@@ -133,6 +134,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _transicion = new ResolvedorTransicionConversacion(intencionContinuar, intencionRechazoGuardado);
         _intencionConfirmacion = new DetectorIntencionContinuar(
             frases.Concat(new[] { "si", "sí", "correcto", "eso es", "exacto", "confirmo" }),
+            opciones.MaxCaracteresIntencionContinuar);
+        _intencionSolicitarMejora = new DetectorIntencionContinuar(
+            opciones.FrasesSolicitarMejora is { Count: > 0 }
+                ? opciones.FrasesSolicitarMejora
+                : DetectorIntencionContinuar.FrasesSolicitarMejoraPorDefecto,
             opciones.MaxCaracteresIntencionContinuar);
         _intencionRechazoIdea = intencionRechazoGuardado;
         _maxCaracteresIntencion = opciones.MaxCaracteresIntencionContinuar;
@@ -939,7 +945,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        if (!_intencionConfirmacion.Coincide(texto))
+        var confirmacionExplicita = _intencionConfirmacion.Coincide(texto);
+        var confirmacionImplicitaMejora = _intencionSolicitarMejora.Coincide(texto);
+        if (!confirmacionExplicita && !confirmacionImplicitaMejora)
         {
             await CrearPropuestaComplementariaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, texto, ahora, cancellationToken);
             return;
@@ -957,7 +965,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
         await RegistrarConsolidacionAsync(
-            usuario, "confirmada", idea, version.NumeroVersion, null, null, ahora, cancellationToken);
+            usuario, confirmacionImplicitaMejora ? "confirmadaImplicitaMejora" : "confirmada", idea,
+            version.NumeroVersion, null, null, ahora, cancellationToken);
 
         var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacion.Id, idea.RespuestaRaizId, version.Texto, cancellationToken);
         if (contexto.Contexto is null)
@@ -993,7 +1002,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var madura = resultado is not ResultadoEvaluacion.Fallback
             && _limites.UmbralAlcanzado(resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
                 _limites.ResolverUmbralBase(campania, pregunta));
-        var conforme = _intencionConfirmacion.Coincide(texto) && _transicion.Interpretar(
+        var conforme = confirmacionExplicita && _transicion.Interpretar(
             EstadoMaquinaConversacion.EsperandoRepregunta, 0, pregunta.MaxRepreguntas, texto).DeseaContinuar;
 
         if (madura || conforme || resultado is ResultadoEvaluacion.Fallback || pregunta.MaxRepreguntas <= 0)
@@ -1930,7 +1939,19 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, intencion.DeseaContinuar,
-                ahora, cancellationToken);
+                confirmacionImplicitaMejora: false, ahora: ahora, cancellationToken: cancellationToken);
+            return;
+        }
+
+        // P-24: una petición corta de ayuda no aporta hechos nuevos. Confirma implícitamente la propuesta
+        // completa para diagnosticarla contra la rúbrica y abrir una sola pregunta socrática si hace falta.
+        // El Mensaje entrante queda auditado por el pipeline, pero no se guarda como Respuesta ni versión.
+        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion
+            && _intencionSolicitarMejora.Coincide(texto))
+        {
+            await ConfirmarYEvaluarIdeaActivaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea, conforme: false,
+                confirmacionImplicitaMejora: true, ahora: ahora, cancellationToken: cancellationToken);
             return;
         }
 
@@ -1961,6 +1982,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string? emisor,
         IdeaConsolidada idea,
         bool conforme,
+        bool confirmacionImplicitaMejora,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
@@ -1980,7 +2002,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
         await RegistrarConsolidacionAsync(
-            usuario, "confirmada", idea, version.NumeroVersion, null, null, ahora, cancellationToken);
+            usuario, confirmacionImplicitaMejora ? "confirmadaImplicitaMejora" : "confirmada", idea,
+            version.NumeroVersion, null, null, ahora, cancellationToken);
         // La respuesta vigente sigue siendo el último aporte; la versión confirmada es lo que se evalúa.
         conversacion = conversacion.ConCoachingIdeas(
             _colaCoaching.ActualizarVersionIdeaVigente(conversacion.CoachingIdeas!, idea.Id, version.Id));

@@ -58,6 +58,13 @@ public sealed class OpcionesConversacion
     public IList<string> FrasesContinuar { get; set; } = new List<string>();
 
     /// <summary>
+    /// P-24 — frases cortas con las que el participante pide trabajar una propuesta ya mostrada (por
+    /// ejemplo, "vamos a mejorarla"). Solo en <c>pendienteConfirmacion</c> confirman implícitamente la
+    /// versión vigente para evaluarla; no se guardan como aporte. Vacío = lista compilada.
+    /// </summary>
+    public IList<string> FrasesSolicitarMejora { get; set; } = new List<string>();
+
+    /// <summary>
     /// I-17 §5.4 — frases con las que el participante <b>rechaza explícitamente</b> que su idea madura se
     /// guarde. Al coincidir en <c>esperandoRepregunta</c>, se degrada la respuesta madura a incubación y
     /// se cierra con un acuse ("guardar salvo que diga no"). Vacio = usa

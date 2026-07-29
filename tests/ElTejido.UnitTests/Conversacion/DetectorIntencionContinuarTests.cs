@@ -48,4 +48,29 @@ public sealed class DetectorIntencionContinuarTests
         detector.DeseaContinuar("No quiero mejorar").Should().BeTrue();
         detector.DeseaContinuar("la verdad no quiero mejorar mi respuesta").Should().BeFalse();
     }
+
+    [Theory]
+    [InlineData("Vamos a mejorarla")]
+    [InlineData("ayúdame a mejorar!")]
+    [InlineData("ME GUSTARÍA MEJORAR")]
+    public void P24_SolicitarMejora_FraseBreveNormalizada_DetectaIntencion(string texto)
+    {
+        var detector = new DetectorIntencionContinuar(
+            DetectorIntencionContinuar.FrasesSolicitarMejoraPorDefecto,
+            maxCaracteres: 40);
+
+        detector.Coincide(texto).Should().BeTrue();
+    }
+
+    [Fact]
+    public void P24_SolicitarMejora_MensajeLargoConContenido_NoLoConfundeConLaIntencion()
+    {
+        var detector = new DetectorIntencionContinuar(
+            DetectorIntencionContinuar.FrasesSolicitarMejoraPorDefecto,
+            maxCaracteres: 40);
+
+        detector.Coincide(
+            "Vamos a mejorarla agregando responsables, presupuesto, fechas y una prueba piloto para cada área.")
+            .Should().BeFalse();
+    }
 }

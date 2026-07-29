@@ -50,6 +50,23 @@ public sealed class DetectorIntencionContinuar
     };
 
     /// <summary>
+    /// P-24 — frases breves que piden acompañamiento sobre la propuesta vigente. El orquestador solo
+    /// las interpreta en <c>pendienteConfirmacion</c>, por lo que no convierten una mejora con contenido
+    /// en confirmación ni cambian la intención de una idea ya evaluada.
+    /// </summary>
+    public static readonly IReadOnlyList<string> FrasesSolicitarMejoraPorDefecto = new[]
+    {
+        "vamos a mejorarla",
+        "vamos a mejorar",
+        "quiero mejorarla",
+        "quiero mejorar",
+        "ayudame a mejorarla",
+        "ayudame a mejorar",
+        "me gustaria mejorarla",
+        "me gustaria mejorar",
+    };
+
+    /// <summary>
     /// I-17 §5.4 — frases con las que el participante <b>rechaza explícitamente</b> que su idea madura
     /// se guarde ("guardar salvo que diga no"). Se usan con este mismo matcher (lista distinta): al
     /// coincidir en <c>esperandoRepregunta</c> el orquestador degrada la respuesta madura a incubación y

@@ -85,10 +85,12 @@ devuelve, viene vacío o no cabe una frase completa en `Conversacion:MaxCaracter
 defecto), el participante recibe exactamente la retroalimentación de siempre. Operación puede apagarlo
 por campaña o globalmente sin redeploy.
 
-**Confirmación I-19 (obligatoria al implementarse):** la paráfrasis acumulada se muestra en todas las
-campañas y no depende de I-05. Si I-05 está activo, no se muestra un segundo resumen. Una corrección
-crea otra versión propuesta; solo una confirmación inequívoca permite evaluar. Las ideas semilla I-12
-se usan cuando existan, pero no crean criterios de calificación fuera de la rúbrica.
+**Confirmación I-19/P-24:** la paráfrasis acumulada se muestra en todas las campañas y no depende de
+I-05. Si I-05 está activo, no se muestra un segundo resumen. Una corrección con contenido crea otra
+versión propuesta. Una confirmación inequívoca, o una petición corta de **mejorar la propuesta**, permite
+evaluar: esta última confirma implícitamente la versión vigente para abrir coaching y no se guarda como
+contenido de la idea. Las ideas semilla I-12 se usan cuando existan, pero no crean criterios de
+calificación fuera de la rúbrica.
 
 **Redacción fluida I-20 (implementada localmente):** la forma de confirmar, acompañar, aclarar,
 reabrir o cerrar se redacta con LLM según campaña, pregunta, idea consolidada y contexto reciente. El
@@ -233,8 +235,10 @@ llamadas o presupuesto de la campaña) durante el acompañamiento, el aporte se 
 la idea activa queda `pendiente` antes de pasar a la siguiente.
 
 En confirmación, “así está bien” confirma y termina la mejora: se evalúa esa versión; madura si alcanza
-el umbral y, si no, queda pendiente. Una idea nueva explícita durante el coaching se encola aunque la
-segmentación automática inicial I-06 esté apagada.
+el umbral y, si no, queda pendiente. “Vamos a mejorarla” (o frase configurada equivalente) confirma
+implícitamente la versión vigente, la evalúa completa y, bajo umbral, abre una pregunta socrática sobre
+esa misma idea; la frase no se agrega a la versión. Una idea nueva explícita durante el coaching se
+encola aunque la segmentación automática inicial I-06 esté apagada.
 
 Mientras la campaña esté activa, el participante puede pedir “quiero complementar la anterior”. Se
 reabre el mismo `ideaId`; si la referencia es ambigua, el sistema muestra una lista breve numerada. La
@@ -334,11 +338,12 @@ lo que otros han dicho. Reglas duras de esta función:
 
 | Parámetro | Dónde se configura | Default | Efecto |
 |---|---|---|---|
-| `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Cuántas revisiones/mejoras se ofrecen antes de cerrar (0 = ninguna). |
+| `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Techo técnico de preguntas socráticas por idea (0 = ninguna). Puede configurarse alto para acompañar hasta madurez; no es la salida normal de una idea. |
 | `Conversacion:UmbralCierreAnticipado` | App config / env `Conversacion__UmbralCierreAnticipado` | 0 (**desactivado**) | Default numérico heredable para campañas sin override; fracción de la escala `[0,1]`. |
 | `configConversacional.umbralCierreAnticipado` | Portal admin (campaña) | `null` (**hereda global**) | Override opcional por campaña; `<= 0` apaga solo esa campaña. |
 | `Conversacion:CierreAnticipadoHabilitado` | App config / env `Conversacion__CierreAnticipadoHabilitado` | `true` | Kill-switch global: `false` apaga el cierre anticipado para todas las campañas, incluidos sus overrides. |
 | `Conversacion:FrasesContinuar` | App config / env `Conversacion__FrasesContinuar__0`, `...__1` | (lista compilada) | Frases con las que el participante pide continuar a la siguiente pregunta. Vacío = usa la lista por defecto. |
+| `Conversacion:FrasesSolicitarMejora` | App config / env `Conversacion__FrasesSolicitarMejora__0`, `...__1` | (lista compilada) | **P-24** — frases cortas como “vamos a mejorarla”. Solo con propuesta pendiente: confirman implícitamente su versión completa para evaluarla y abrir coaching; no crean un aporte. Vacío = usa la lista por defecto. |
 | `Conversacion:FrasesRevisitarAnterior` | App config / env `Conversacion__FrasesRevisitarAnterior__0`, `...__1` | (lista compilada) | **I-19 §4.7** — frases que piden volver a la **idea cerrada más reciente** ("la anterior"). Resuelven sin lista de opciones. Vacío = usa la lista por defecto. |
 | `Conversacion:FrasesRevisitarIdea` | App config / env `Conversacion__FrasesRevisitarIdea__0`, `...__1` | (lista compilada) | **I-19 §4.7** — frases que piden revisitar **alguna** idea previa sin señalar cuál; con varias candidatas se ofrece la lista numerada. Vacío = usa la lista por defecto. |
 | `Conversacion:Mensajes:AcuseReaperturaIdea` / `:InvitacionReaperturaIdea` / `:PreguntaSeleccionIdea` | App config / env `Conversacion__Mensajes__…` | (textos por defecto) | **I-19 §4.7** — acuse y invitación del mensaje de reapertura, y encabezado de la lista numerada. Nunca incluyen calificaciones. |

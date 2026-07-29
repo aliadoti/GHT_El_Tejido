@@ -229,6 +229,44 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P24_SolicitarMejora_ConfirmaYEvaluaLaVersionSinCrearAporteOVersionNueva()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        var contextos = new List<ContextoEvaluacion>();
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextos.Add(contexto)), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Qué resultado esperas?", calificacionTotal: 1m)));
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(),
+            new MensajeEntrante(Numero, "Dos ideas", "wamid.p24.1", Epoca),
+            CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            ParticipanteConCoaching(), Mensaje("Vamos a mejorarla", "wamid.p24.2"), CancellationToken.None);
+
+        contextos.Should().ContainSingle();
+        contextos.Single().RespuestaTexto.Should().Be("Primera idea suficientemente larga para ser procesada.");
+        almacen.Respuestas.Should().HaveCount(2).And.NotContain(respuesta => respuesta.Texto == "Vamos a mejorarla");
+        almacen.Versiones.Should().HaveCount(2);
+        var ideas = almacen.Ideas.Values.OrderBy(idea => idea.IdeaIndice).ToArray();
+        ideas[0].VersionConfirmadaRef.Should().NotBeNull();
+        ideas[1].EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+
+        var cola = _conversaciones.Ultima!.CoachingIdeas!;
+        cola.IdeaActivaIndice.Should().Be(1);
+        cola.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Qué resultado esperas?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+    }
+
+    [Fact]
     public async Task I19_ColaMultiIdea_RechazoExplicito_CierraSoloEsaIdeaYSigueConLaSiguiente()
     {
         var almacen = ConfigurarAlmacenIdeas();

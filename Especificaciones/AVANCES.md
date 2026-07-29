@@ -4,6 +4,17 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-29 por Codex (Arquitecto/Backend/SDET): **P-24 evaluación implícita al
+  solicitar mejora — DONE local.** Se corrigió el bug confirmado en las dos rutas de I-19: hilo simple
+  y cola multi-idea. Con una propuesta pendiente, “vamos a mejorarla” confirma implícitamente la
+  versión vigente, la evalúa completa contra rúbrica/prompt y, bajo umbral, mantiene esa idea activa con
+  una pregunta socrática. La frase queda como mensaje auditable, pero no crea `Respuesta` ni versión;
+  una corrección con contenido conserva el ciclo aporte → propuesta → confirmación. Se añadió la lista
+  configurable `Conversacion:FrasesSolicitarMejora` (vacía = valores seguros compilados) y la auditoría
+  `confirmadaImplicitaMejora`. `MaxRepreguntas` no cambia ni se reduce: sigue siendo un techo técnico,
+  no el cierre normal. **Verificado:** build Release `-warnaserror` 0/0, **579** pruebas no calibración
+  (519 unitarias + 60 integración; +6), `dotnet format --verify-no-changes` y `git diff --check`
+  verdes. Sin push ni cambio de configuración remota. Próximo: D5/UAT/costo de I-19/I-20/P-24.
 - Ultima actualizacion: 2026-07-28 por Codex (Arquitecto/Backend/AppSec/SDET): **I-20 corte 5 de
   código DONE local.** Nueva E2E con redactor inyectado verifica webhook → redactor → versión íntegra
   → evaluación canónica, sin frase fija. Build Release, 573 pruebas no-calibración (514+59), formato y
@@ -271,17 +282,15 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Cerrar I-20 con el corte 5 (§8.5): regresión completa y validación.** Es el último paso y
-  **buena parte es operativa**. (1) **Regresión de código:** repasar §9 criterio por criterio y cubrir
-  lo que falte con pruebas —en particular una **E2E simulada con el redactor inyectado**, que hoy no
-  existe: la E2E de I-19 recorre el respaldo porque no inyecta redactor—; verificar además que no se
-  concatenan actos en ningún turno y que el Markdown nunca muestra la nota de otra versión. (2)
-  **Operativo, requiere humano y presupuesto:** corrido **D5 real** con el golden set **y temas
-  distintos** (§8.5 lo pide explícitamente: la voz debe cambiar con la campaña sin inventar datos),
-  **UAT** con GHT sobre `QAS/08`, y **costo/latencia** separando ya tres clases de llamada
-  —consolidación, evaluación y **redacción**—, que la telemetría emite por separado. (3) Fijar en el
-  **acta de flags del día-D** `Conversacion:RedaccionConversacionalFluidaHabilitada` junto con el
-  kill-switch de I-19 y los de I-17/I-01. Sin push hasta esa decisión.
+- [ ] **Validar operativamente I-19/I-20/P-24 antes de activar.** Requiere humano y presupuesto:
+  corrido D5 real contra staging con el golden set, UAT de idea única y varias ideas, y revisión de
+  costo/latencia para consolidación, evaluación y redacción. Comprobar especialmente que “vamos a
+  mejorarla” recibe una pregunta útil sobre la misma idea, sin volver a una confirmación vacía ni
+  almacenar la frase dentro de la idea. Mantener alto `MaxRepreguntas` donde la campaña requiera
+  acompañamiento; no modificar configuración desplegada sin decisión operativa.
+- [x] **(HECHO 2026-07-28) I-20 corte 5: regresión de código.** La E2E con redactor inyectado ya
+  recorre webhook → redactor → versión íntegra → evaluación canónica. La validación pendiente de I-20
+  es únicamente operativa y está consolidada en el punto anterior junto con I-19/P-24.
 - [ ] **VALIDAR I-19/I-20 antes de activar (operativo, requiere humano y presupuesto).** El código de I-19
   está completo en local y verde; **no queda trabajo de implementación pendiente** salvo lo diferido y
   lo bloqueado. Falta: (1) **corrido D5 real** contra staging con el golden set, comparando exactitud
@@ -454,7 +463,8 @@
 | P-23 | UX de Resultados | DONE local | pendiente | frontend 24/24, build producción y Prettier verdes | Precarga de campaña en sesión, lista maestra y detalle asociado, leyenda/conteos, extractos, estados guiados y actividad secundaria. |
 | I-18 | Coaching secuencial por idea | DONE local | commit de cierre | backend 484/484; frontend 24/24; builds/formato verdes | Cola y revisiones por idea, prompt socrático, timeout seguro, linaje/API/Markdown/portal/telemetría aditivos. Gates OFF; D5/UAT/costo antes de activar. |
 | I-19 | Consolidación progresiva de ideas | **DONE local** (código; falta D5/UAT/costo. Paso 8 seeds BLOCKED) | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a), `61258e4` (7b), `aceb9f0` (9), `1792c4f`+`0d52e6c` (10) | backend 529 + portal 26/26 verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) , **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`) y **Resultados con una fila por idea** (estado, marcas de flujo/curaduría, historial de aportes y versiones; los aportes sin `ideaId` quedan como “resultado histórico”) y **observabilidad/cupos** (evento por transición sin PII, cupo que cuenta consolidaciones y techos deterministas ya aplicados en el hilo simple). **QA final** (inactividad que cierra la idea, aclaración ante ambigüedad, I-06 sin coaching que confirma antes de evaluar y E2E simulada del ciclo completo). Pendiente: seeds (BLOCKED), la reapertura entre preguntas (diferida) y la validación D5/UAT/costo. |
-| I-20 | Redacción conversacional fluida y Markdown ejecutivo | WIP — cortes 1-4/5 locales | `6a6d0b8` (spec), `242b0f4` (1), `4697de3` (2), `afcceaf`+`045b199` (3), `c813cda` (4) | backend 572 verdes (+43) | Puerto, política y redactor con guardas que reutilizan `FiltroSalidaRubrica` (I-03); **composición por acto** en el orquestador (cuerpo insertado por el servidor, respaldo idéntico al texto previo, cupos y telemetría propia), y **Markdown ejecutivo** con umbral/origen/escala en cultura es-CO y `pendiente de evaluación` cuando no hay nota. Siguiente: corte 5 (regresión + D5/UAT/costo). |
+| I-20 | Redacción conversacional fluida y Markdown ejecutivo | DONE local; D5/UAT/costo pendiente | `6a6d0b8` (spec), `242b0f4` (1), `4697de3` (2), `afcceaf`+`045b199` (3), `c813cda` (4) | backend 573 verdes | Puerto, política y redactor con guardas, composición por acto, respaldo determinista, cupos/telemetría y Markdown con umbral/origen/escala. Corte 5 con E2E de redactor inyectado completo; queda validación operativa. |
+| P-24 | Evaluación implícita al solicitar mejora | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 579/579 verde | Una petición corta de mejorar una propuesta confirma implícitamente la versión completa, la evalúa y abre coaching bajo umbral en hilo simple y cola multi-idea. No crea aporte/version nueva ni reduce `MaxRepreguntas`; lista configurable y auditoría diferenciada. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -582,6 +592,18 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-29 - Codex - **P-24 evaluación implícita al solicitar mejora — DONE local, sin push.** Rol:
+  Arquitecto/Backend/SDET. Bug confirmado: “vamos a mejorarla” sobre una versión propuesta se guardaba
+  como corrección, generaba otra confirmación y evitaba la evaluación de rúbrica. Se añadieron frases
+  configurables `Conversacion:FrasesSolicitarMejora` (lista vacía usa valores seguros compilados) y una
+  transición determinista en las **dos** rutas I-19: hilo simple y cola multi-idea. La petición corta
+  confirma implícitamente la versión vigente, registra `confirmadaImplicitaMejora`, evalúa la versión
+  completa y, bajo umbral, sigue con coaching sobre la misma idea; no se crea aporte ni versión nueva.
+  Una corrección con contenido conserva el ciclo normal. `MaxRepreguntas` no cambia ni se reduce. Se
+  añadieron regresiones de normalización/guarda de longitud, cola bajo umbral y webhook E2E. Verificado:
+  build Release `-warnaserror`, **579** pruebas no calibración (519 unitarias + 60 integración), formato
+  y diff verdes. Próximo: D5/UAT/costo de I-19/I-20/P-24; no cambiar configuración remota sin decisión.
 
 - 2026-07-28 - Claude (Opus 5) - **I-20 §8 corte 4: Markdown ejecutivo — DONE local (commit `c813cda`, sin push).** Rol: Arquitecto/Backend/SDET; cubre `I-20` §6.2, REQ §22/§27 y ARQ §7/§8.3. El artefacto dejaba una nota suelta (`Calificación total: 4`) que no dice nada a curaduría: ni en qué escala está ni contra qué corte se midió. Ahora renderiza `- Umbral de madurez: {corte} de {escala.max} puntos ({porcentaje} %; {origen})` y `- Calificación total: {nota} de {escala.max} puntos`, con `corte = escala.min + umbralEfectivo × (escala.max − escala.min)`. (1) **Umbral y origen reutilizan `PoliticaLimitesConversacion`** (`ResolverUmbralBase`, `ValorUmbral`, `OrigenUmbral`), la misma pieza I-17 que gobierna la madurez: la precedencia **pregunta → campaña → global** no se reimplementa, así que el Markdown no puede divergir del criterio real de clasificación. (2) **Formato** en cultura `es-CO` con `0.##`: `2,6 de 5 puntos`, nunca `2,60`, y `3` en vez de `3,00`. (3) **Sin evaluación vigente** —idea rechazada o pendiente que nunca se evaluó— escribe `Calificación total: pendiente de evaluación` y **omite** la línea de umbral: no se insinúa un corte alcanzado sobre algo que no se midió. (4) **La escala sale de la versión exacta de rúbrica que la evaluación registró** (`ListarVersionesRubricaAsync` + `VersionRubrica`, ARQ §8.3), con degradación a la última versión y, si tampoco, a omitir la escala mostrando solo la nota; el artefacto es caché regenerable (REQ §22.4.6), así que degradar es preferible a fallar. (5) **Decisión registrada:** se aplica a los **dos** artefactos, el canónico por idea (I-19) y el legacy por respuesta, porque `09 §4` define una plantilla común y curaduría consulta ambos. (6) `IRepositorioConfiguracion` y `OpcionesConversacion` entran como **parámetros opcionales** del compilador: DI los resuelve —ambos están registrados— y los llamadores/pruebas existentes siguen compilando sin tocarse. **Verificado:** build Release `-warnaserror` 0/0, **572 pruebas** no calibración (514 unit + 58 integración; **+4**: umbral con origen y escala, precedencia por pregunta con su origen, formato decimal es-CO y el caso sin evaluación), `dotnet format --verify-no-changes` limpio. **Próximo:** corte 5 — regresión completa (incluida una E2E **con** redactor inyectado, que aún no existe) y D5/UAT/costo con temas distintos.
 

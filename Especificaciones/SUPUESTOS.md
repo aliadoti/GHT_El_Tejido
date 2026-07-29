@@ -682,6 +682,36 @@
     participantes intentándolo, o por decisión explícita de GHT.** Mientras tanto ese mensaje se trata
     como un aporte normal de la idea en curso, sin perder contenido.
 
+### evaluacion-implicita-solicitud-mejora-p24 - Solicitar ayuda no es un aporte nuevo
+
+- Fecha: 2026-07-29 - Agente/Rol: Codex - Arquitecto/Backend/SDET - decisión confirmada por el usuario
+  a partir de una conversación real revisada.
+- Contexto: I-19 guarda una versión propuesta y espera confirmación antes de evaluar. Una respuesta
+  corta como “Vamos a mejorarla” no añadía hechos a la idea, pero el orquestador la clasificaba como
+  `correccion`, creaba otra versión y volvía a confirmar. Por eso no había evaluación ni
+  retroalimentación de rúbrica para guiar al participante.
+- Decisión:
+  - Solo con la idea activa en `pendienteConfirmacion`, una frase corta configurada de solicitud de
+    mejora confirma implícitamente la propuesta vigente. La evaluación usa siempre el texto completo de
+    esa versión, junto con rúbrica, prompt y semillas disponibles.
+  - El mensaje se conserva como mensaje conversacional auditable, pero no se persiste como `Respuesta`,
+    aporte ni versión. Una respuesta con contenido sigue creando una corrección/complemento y una nueva
+    propuesta explícita.
+  - Bajo umbral, el servidor conserva la idea activa y abre una pregunta socrática; al alcanzar el
+    umbral guarda la idea madura con curaduría pendiente y continúa la cola. La voz es I-20; las
+    decisiones y transiciones siguen siendo deterministas del servidor.
+  - `MaxRepreguntas` puede ser alto por campaña/pregunta para permitir acompañamiento prolongado. No se
+    cambia ni se usa como salida normal: permanece un techo técnico junto con cupos, inactividad y
+    fallback.
+  - Lista aditiva `Conversacion:FrasesSolicitarMejora`; vacía usa frases compiladas. No se modifica
+    contrato público, Cosmos, portal ni configuración remota automáticamente.
+- Alternativas descartadas: tratar todo mensaje corto como corrección; exigir otra confirmación antes de
+  evaluar; bajar `MaxRepreguntas`; delegar la intención o la transición al LLM; concatenar la frase a la
+  idea consolidada.
+- Impacto / reversibilidad: cambio acotado a la detección y al orquestador, con auditoría diferenciada
+  `confirmadaImplicitaMejora`; revertirlo restituye el comportamiento anterior sin migración. Spec:
+  `Iniciativas/P-24_Evaluacion_Implicita_Al_Solicitar_Mejora.md`.
+
 ### redaccion-fluida-i20 - Voz contextual sin delegar decisiones al LLM
 
 - Fecha: 2026-07-28 - Agente/Rol: Codex - Arquitecto/Backend/AppSec/SDET - decisión derivada de la
