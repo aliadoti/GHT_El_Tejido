@@ -2,9 +2,12 @@ using System.Globalization;
 using System.Text;
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
+using ElTejido.Application.Configuracion;
+using ElTejido.Application.Conversacion;
 using ElTejido.Application.Respuestas;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Campanas;
+using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Usuarios;
 using DominioEvaluacion = ElTejido.Domain.Evaluacion.Evaluacion;
@@ -25,20 +28,92 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
     private readonly IRepositorioCampanias _campanias;
     private readonly IAlmacenBlob _blob;
     private readonly TimeProvider _tiempo;
+    private readonly IRepositorioConfiguracion? _configuracion;
+    private readonly PoliticaLimitesConversacion _limites;
 
     public CompiladorMarkdown(
         IRepositorioRespuestas respuestas,
         IRepositorioUsuarios usuarios,
         IRepositorioCampanias campanias,
         IAlmacenBlob blob,
-        TimeProvider tiempo)
+        TimeProvider tiempo,
+        IRepositorioConfiguracion? configuracion = null,
+        OpcionesConversacion? opciones = null)
     {
         _respuestas = respuestas;
         _usuarios = usuarios;
         _campanias = campanias;
         _blob = blob;
         _tiempo = tiempo;
+        _configuracion = configuracion;
+        // I-20 §6.2: el umbral y su origen se calculan igual que en el orquestador (I-17), de forma
+        // determinista. Sin opciones inyectadas se usan los defaults documentados.
+        var efectivas = opciones ?? new OpcionesConversacion();
+        _limites = new PoliticaLimitesConversacion(
+            efectivas.UmbralCierreAnticipado, efectivas.CierreAnticipadoHabilitado);
     }
+
+    /// <summary>
+    /// I-20 §6.2: metadatos ejecutivos deterministas — umbral efectivo con su origen y la nota en la
+    /// escala real de la rúbrica. Sin evaluación vigente no se inventa nota ni umbral alcanzado.
+    /// </summary>
+    private async Task<string> RenderizarMetadatosEjecutivosAsync(
+        Campania campania,
+        Pregunta pregunta,
+        DominioEvaluacion? evaluacion,
+        CancellationToken cancellationToken)
+    {
+        var sb = new StringBuilder();
+        var escala = evaluacion is null ? null : await ObtenerEscalaAsync(evaluacion, cancellationToken);
+        if (escala is not null)
+        {
+            var umbral = _limites.ResolverUmbralBase(campania, pregunta);
+            var corte = _limites.ValorUmbral(escala, umbral);
+            sb.Append("- Umbral de madurez: ").Append(Numero(corte))
+                .Append(" de ").Append(Numero(escala.Max)).Append(" puntos (")
+                .Append(Numero((decimal)umbral * 100)).Append(" %; ")
+                .Append(_limites.OrigenUmbral(campania, pregunta)).AppendLine(")");
+        }
+
+        sb.Append("- Calificación total: ");
+        if (evaluacion is null)
+        {
+            sb.AppendLine("pendiente de evaluación");
+        }
+        else if (escala is null)
+        {
+            sb.AppendLine(Numero(evaluacion.CalificacionTotal));
+        }
+        else
+        {
+            sb.Append(Numero(evaluacion.CalificacionTotal)).Append(" de ")
+                .Append(Numero(escala.Max)).AppendLine(" puntos");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Escala de la <b>versión exacta</b> que evaluó (ARQ §8.3). Si no se puede resolver, se degrada a
+    /// la última versión y, en último caso, a no mostrar la escala: el artefacto es regenerable.
+    /// </summary>
+    private async Task<EscalaRubrica?> ObtenerEscalaAsync(
+        DominioEvaluacion evaluacion, CancellationToken cancellationToken)
+    {
+        if (_configuracion is null || string.IsNullOrWhiteSpace(evaluacion.RubricaRef))
+        {
+            return null;
+        }
+
+        var versiones = await _configuracion.ListarVersionesRubricaAsync(evaluacion.RubricaRef, cancellationToken);
+        var exacta = versiones.FirstOrDefault(rubrica => rubrica.Version == evaluacion.VersionRubrica);
+        return exacta?.Escala
+            ?? (await _configuracion.ObtenerUltimaRubricaAsync(evaluacion.RubricaRef, cancellationToken))?.Escala;
+    }
+
+    /// <summary>Cultura es-CO y sin ceros decimales innecesarios: `2,6` y `5`, no `2,60` ni `5,00`.</summary>
+    private static string Numero(decimal valor)
+        => valor.ToString("0.##", CultureInfo.GetCultureInfo("es-CO"));
 
     public async Task<ArtefactoMarkdown> CompilarAsync(SolicitudCompilacion solicitud, CancellationToken cancellationToken)
     {
@@ -65,7 +140,8 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
         var pregunta = campania.Preguntas.FirstOrDefault(p => p.Id == respuesta.PreguntaId)
             ?? throw new ErrorNoEncontrado("La pregunta de la respuesta no existe.");
 
-        var contenido = Renderizar(campania, usuario, pregunta, respuesta, evaluacion);
+        var ejecutivos = await RenderizarMetadatosEjecutivosAsync(campania, pregunta, evaluacion, cancellationToken);
+        var contenido = Renderizar(campania, usuario, pregunta, respuesta, evaluacion, ejecutivos);
 
         var tipoTexto = solicitud.Tipo.ToString().ToLowerInvariant();
         var blobPath = $"campanias/{campaniaId}/{tipoTexto}/{respuestaId}.md";
@@ -133,7 +209,9 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
             .OrderBy(respuesta => respuesta.Fecha)
             .ToArray();
 
-        var contenido = RenderizarIdea(campania, usuario, pregunta, idea, versionVigente, evaluacion, versiones, aportes);
+        var ejecutivos = await RenderizarMetadatosEjecutivosAsync(campania, pregunta, evaluacion, cancellationToken);
+        var contenido = RenderizarIdea(
+            campania, usuario, pregunta, idea, versionVigente, evaluacion, versiones, aportes, ejecutivos);
         var blobPath = $"campanias/{campaniaId}/idea/{ideaId}.md";
         var artefactoId = "md_" + ideaId;
         var existente = await _respuestas.ObtenerArtefactoAsync(campaniaId, artefactoId, cancellationToken);
@@ -191,7 +269,8 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
         VersionIdeaConsolidada? versionVigente,
         DominioEvaluacion? evaluacion,
         IReadOnlyList<VersionIdeaConsolidada> versiones,
-        IReadOnlyList<Respuesta> aportes)
+        IReadOnlyList<Respuesta> aportes,
+        string metadatosEjecutivos)
     {
         var sb = new StringBuilder();
         sb.Append("# Idea de ").AppendLine(usuario.Nombre);
@@ -219,9 +298,11 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
                 .Append(evaluacion.VersionRubrica.ToString(CultureInfo.InvariantCulture)).AppendLine();
             sb.Append("- Prompt / Versión: ").Append(evaluacion.PromptRef).Append(" / v")
                 .Append(evaluacion.VersionPrompt.ToString(CultureInfo.InvariantCulture)).AppendLine();
-            sb.Append("- Calificación total: ").AppendLine(
-                evaluacion.CalificacionTotal.ToString(CultureInfo.InvariantCulture));
         }
+
+        // I-20 §6.2: se muestra siempre —con o sin evaluación vigente— para que curaduría vea el
+        // umbral aplicado y la nota en su escala, o el estado "pendiente de evaluación".
+        sb.Append(metadatosEjecutivos);
 
         sb.AppendLine();
         sb.AppendLine("## Idea consolidada");
@@ -295,7 +376,8 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
         Usuario usuario,
         Pregunta pregunta,
         Respuesta respuesta,
-        DominioEvaluacion evaluacion)
+        DominioEvaluacion evaluacion,
+        string metadatosEjecutivos)
     {
         var sb = new StringBuilder();
         sb.Append("# Aporte de ").AppendLine(usuario.Nombre);
@@ -310,7 +392,8 @@ public sealed class CompiladorMarkdown : ICompiladorMarkdown
         sb.Append("- Tags: ").AppendLine(string.Join(", ", respuesta.TagsSnapshot));
         sb.Append("- Rúbrica / Versión: ").Append(evaluacion.RubricaRef).Append(" / v").Append(evaluacion.VersionRubrica.ToString(CultureInfo.InvariantCulture)).AppendLine();
         sb.Append("- Prompt / Versión: ").Append(evaluacion.PromptRef).Append(" / v").Append(evaluacion.VersionPrompt.ToString(CultureInfo.InvariantCulture)).AppendLine();
-        sb.Append("- Calificación total: ").AppendLine(evaluacion.CalificacionTotal.ToString(CultureInfo.InvariantCulture));
+        // I-20 §6.2: umbral efectivo con su origen y la nota en la escala real de la rúbrica.
+        sb.Append(metadatosEjecutivos);
         // I-17 (09): nivel de madurez sellado al evaluar; metadato determinista, sin secretos. Regenerable.
         sb.Append("- Nivel de madurez: ").AppendLine(TextoNivelMadurez(respuesta.NivelMadurez));
         if (respuesta.IdeaRaizId is not null)

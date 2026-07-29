@@ -1,9 +1,12 @@
 using ElTejido.Application.Campanas;
+using ElTejido.Application.Configuracion;
+using ElTejido.Application.Conversacion;
 using ElTejido.Application.Markdown;
 using ElTejido.Application.Respuestas;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Usuarios;
@@ -24,6 +27,7 @@ public sealed class CompiladorMarkdownTests
     private readonly IRepositorioCampanias _campanias = Substitute.For<IRepositorioCampanias>();
     private readonly AlmacenBlobMemoria _blob = new();
     private readonly RelojFijo _reloj = new(Epoca);
+    private readonly IRepositorioConfiguracion _configuracion = Substitute.For<IRepositorioConfiguracion>();
 
     public CompiladorMarkdownTests()
     {
@@ -84,6 +88,63 @@ public sealed class CompiladorMarkdownTests
         var artefacto = await Construir().CompilarAsync(Solicitud(), CancellationToken.None);
 
         artefacto.ContenidoMarkdown.Should().Contain("- Nivel de madurez: maduro");
+    }
+
+    [Fact]
+    public async Task Compilar_MuestraUmbralConOrigenYNotaEnLaEscalaDeLaRubrica()
+    {
+        Sembrar();
+        SembrarRubrica();
+
+        var artefacto = await Construir().CompilarAsync(Solicitud(), CancellationToken.None);
+
+        // I-20 §6.2: corte = min + umbral × (max − min) = 1 + 0,6 × 4 = 3,4 sobre una escala 1-5.
+        artefacto.ContenidoMarkdown.Should().Contain("- Umbral de madurez: 3,4 de 5 puntos (60 %; global)");
+        artefacto.ContenidoMarkdown.Should().Contain("- Calificación total: 4 de 5 puntos");
+    }
+
+    [Fact]
+    public async Task Compilar_UmbralDeLaPregunta_PrevaleceYSeIndicaSuOrigen()
+    {
+        var pregunta = Pregunta.Crear(
+            "p_1", "Pregunta 1", "Instruccion", "categoria", 1, EstadoRegistro.Activo,
+            rubricaRef: null, versionRubrica: null, promptRefs: null, maxRepreguntas: 1,
+            LimitesSeguridad.ParaPregunta(1500, 2), ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            umbralCierreAnticipado: 0.5);
+        _campanias.ObtenerCampaniaPorIdAsync("c_1", Arg.Any<CancellationToken>())
+            .Returns(FabricasDominio.CrearCampania("c_1", EstadoCampania.Activa, new[] { pregunta }));
+        Sembrar();
+        SembrarRubrica();
+
+        var artefacto = await Construir().CompilarAsync(Solicitud(), CancellationToken.None);
+
+        // 1 + 0,5 × 4 = 3, sin decimales sobrantes, y el origen deja auditable de dónde salió.
+        artefacto.ContenidoMarkdown.Should().Contain("- Umbral de madurez: 3 de 5 puntos (50 %; pregunta)");
+    }
+
+    [Fact]
+    public async Task Compilar_NotaDecimal_UsaCulturaEsCoSinCerosSobrantes()
+    {
+        SembrarRespuesta();
+        await _respuestas.GuardarEvaluacionAsync(CrearEvaluacion("eval_1", 2.60m, Epoca), CancellationToken.None);
+        SembrarRubrica();
+
+        var artefacto = await Construir().CompilarAsync(Solicitud(), CancellationToken.None);
+
+        artefacto.ContenidoMarkdown.Should().Contain("- Calificación total: 2,6 de 5 puntos");
+        artefacto.ContenidoMarkdown.Should().NotContain("2,60");
+    }
+
+    [Fact]
+    public async Task Compilar_IdeaSinEvaluacion_DicePendienteYNoInventaUmbral()
+    {
+        SembrarIdea(EstadoResultadoIdeaConsolidada.Rechazada, evaluacionId: null);
+        SembrarRubrica();
+
+        var artefacto = await Construir().CompilarAsync(SolicitudIdea(), CancellationToken.None);
+
+        artefacto.ContenidoMarkdown.Should().Contain("- Calificación total: pendiente de evaluación");
+        artefacto.ContenidoMarkdown.Should().NotContain("- Umbral de madurez:");
     }
 
     [Fact]
@@ -193,8 +254,18 @@ public sealed class CompiladorMarkdownTests
         await accion.Should().ThrowAsync<ElTejido.Application.Common.ErrorNoEncontrado>();
     }
 
-    private CompiladorMarkdown Construir()
-        => new(_respuestas, _usuarios, _campanias, _blob, _reloj);
+    private CompiladorMarkdown Construir(OpcionesConversacion? opciones = null)
+        => new(_respuestas, _usuarios, _campanias, _blob, _reloj, _configuracion, opciones);
+
+    /// <summary>Rúbrica 1-5 en la versión exacta que la evaluación dice haber usado (ARQ §8.3).</summary>
+    private void SembrarRubrica(int version = 3)
+        => _configuracion.ListarVersionesRubricaAsync("r_general", Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                Rubrica.Crear(
+                    "r_general", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
+                    new[] { CriterioRubrica.Crear("claridad", 1m) }, version, EstadoRubrica.Activa, Epoca, Epoca),
+            });
 
     private static SolicitudCompilacion Solicitud()
         => new("c_1", TipoArtefactoMarkdown.Respuesta, "resp_1", "u_1", "p_1");
