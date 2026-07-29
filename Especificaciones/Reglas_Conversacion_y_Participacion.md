@@ -165,8 +165,10 @@ automáticamente. Una conversación cerrada no acepta contenido nuevo como otra 
 pero puede reabrir la misma idea ante una petición explícita mientras la campaña siga activa.
 
 El Markdown de la idea muestra para curaduría campaña, pregunta, umbral de madurez efectivo con origen
-y calificación total como `X de Y puntos`. Es información administrativa: no se envían puntajes ni
-rúbrica al participante durante el acompañamiento.
+y calificación total como `X de Y puntos` —por ejemplo `Umbral de madurez: 3,4 de 5 puntos (60 %;
+global)` y `Calificación total: 4 de 5 puntos`—; si esa versión aún no tiene evaluación, dice
+`pendiente de evaluación` y no muestra umbral. Es información **administrativa**: no se envían puntajes
+ni rúbrica al participante durante el acompañamiento.
 
 ### 2.4.1 Multi-idea por mensaje (I-06, implementado; flags apagados)
 Si la campaña tiene `configConversacional.segmentacionIdeas=true` y el kill-switch global

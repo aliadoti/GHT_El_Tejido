@@ -9,26 +9,26 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **ESTADO VIGENTE 2026-07-28 — `I-20` WIP, cortes 1-3/5 locales.** Backend verde **568** (510 unit +
+> **ESTADO VIGENTE 2026-07-28 — `I-20` WIP, cortes 1-4/5 locales.** Backend verde **572** (514 unit +
 > 58 integración), portal **26/26**, `dotnet format` limpio. Commits `6a6d0b8` (spec), `242b0f4` (1),
-> `4697de3` (2), `afcceaf` (contrato del evento) y `045b199` (3). Cortes 1-2: puerto interno, política
-> determinista (kill-switch sin opt-in, prompt efectivo `conversacion` → `retro`) y redactor con JSON
-> estricto y guardas que reutilizan `FiltroSalidaRubrica` (I-03). **Corte 3 — primer cambio visible:**
-> el orquestador compone por acto (`Confirmar`, `Mejorar`, `Aclarar`, `Reabrir`, `Cerrar`) insertando
-> el cuerpo por su cuenta —puente → cuerpo → pregunta—, con **respaldo idéntico al texto de hoy**,
-> cupos y telemetría `redaccionConversacional`. Desaparece la frase fija “Entendí que propones…”.
+> `4697de3` (2), `afcceaf`+`045b199` (3) y `c813cda` (4). Puerto, política y redactor con guardas que
+> reutilizan `FiltroSalidaRubrica` (I-03); **composición por acto** en el orquestador —`Confirmar`,
+> `Mejorar`, `Aclarar`, `Reabrir`, `Cerrar`— con el cuerpo insertado por el servidor, **respaldo
+> idéntico al texto previo**, cupos y telemetría propia; y **Markdown ejecutivo** con umbral, origen y
+> escala (`3,4 de 5 puntos (60 %; global)`) y `pendiente de evaluación` cuando no hay nota.
+> Ya desapareció la frase fija “Entendí que propones…”.
 > I-19 sigue COMPLETA en local y conserva D5/UAT/costo como pendiente operativo.
-> **PRÓXIMO OBJETIVO = I-20 corte 4 (§8.4):** umbral, origen y escala en el Markdown ejecutivo.
-> No desplegar ni hacer push.
+> **PRÓXIMO OBJETIVO = I-20 corte 5 (§8.5), el cierre:** regresión completa —falta una E2E **con**
+> redactor inyectado— y luego D5 real, UAT y costo con temas distintos. No desplegar ni hacer push.
 
 > **✅ `I-17` (BD de dos niveles: maduras vs. incubación) — COMPLETA local 2026-07-22 (6/6 slices).** Diseño §5/§7 **CONFIRMADO con el usuario** (spec RESUELTO; `SUPUESTOS.md#bd-dos-niveles-madurez-i17`). (1-2) umbral único compartido con precedencia pregunta→campaña→global, sellado determinista de `nivelMadurez`, paráfrasis I-05 solo si `maduro`, telemetría; default global 0.6 y kill-switch de cierre `false` (comportamiento efectivo = como hoy). (3) filtro/DTO en `04 §5.8` + pantalla Resultados (selector/badge/conteos) + controles por campaña (umbral, inactividad, paráfrasis) y por pregunta (umbral). (4) metadato `nivelMadurez` en Markdown `09`. (5) reclasificación por **rechazo explícito** (degradar+cerrar con acuse). (6) cierre por inactividad **sub-hora y por campaña** (barrido per-campaña). Cerró con **420** pruebas; la suite actual tiene **423** verdes. Frontend prettier/tsc limpios (`ng build/test` bloqueado por esbuild/WSL, infra). **Pendiente operativo (no bloquea):** calibrar umbral 0.6 con D5 real y fijar flags globales en el acta del día-D. **Sin commit/push aún.** **⚠️ PRÓXIMO OBJETIVO = rotar al siguiente ítem de §4** (todos con insumo externo: `I-12` BLOCKED por seeds, `I-13` espera decisión GHT 25-jul, `I-14` BLOCKED por catálogo). Spec I-17: `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md`.
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: `ID-INICIATIVA=I-20` — IMPLEMENTACIÓN WIP (cortes 1-3/5 locales).**
-I-19 está completa local en código; I-20 ya da voz contextual a cada turno sin cambiar la evaluación
-canónica. El siguiente agente continúa por `I-20 §8.4` (Markdown ejecutivo); no reabre I-19 ni los
-cortes 1-3 salvo una regresión demostrada.
+**Iniciativa objetivo vigente: `ID-INICIATIVA=I-20` — IMPLEMENTACIÓN WIP (cortes 1-4/5 locales).**
+I-19 está completa local en código; I-20 ya da voz contextual a cada turno y explica el umbral en el
+Markdown, sin cambiar la evaluación canónica. El siguiente agente cierra por `I-20 §8.5` (regresión y
+validación); no reabre I-19 ni los cortes 1-4 salvo una regresión demostrada.
 
 ---
 
@@ -145,7 +145,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 26 | **`P-23` UX de Resultados** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Precarga de campaña en memoria, patrón maestro-detalle (respuesta → evaluación + Markdown), leyenda/conteos, extractos, estados guiados y actividad secundaria. Preserva I-17/P-18/P-19; sin contratos, rutas ni permisos nuevos. Prettier, 24/24 pruebas Angular y build de producción verdes con Node 24.15.0. |
 | 27 | **`I-18` coaching secuencial por idea** | Sprint 2 | **Codex** | **DONE local 2026-07-25.** Cola y contador por idea, revisiones enlazadas, prompt socrático, timeout/fallback acotados, DTOs/Markdown/telemetría aditivos y controles accesibles. Backend 484/484 y portal 24/24, formato y builds verdes. Gates por campaña OFF; D5/UAT/costo antes de activar. |
 | 28 | **`I-19` consolidación progresiva de ideas** | **DONE local** (código) | **Codex / Claude** | **Pasos 1–10 locales (2026-07-28, Claude Opus 5; commits `748870f`, `4e31f94`, `62240b9`, `401d9dd`, `7ef021c`, `a148ca5`, `61258e4`, `aceb9f0`, `1792c4f`, `0d52e6c`; backend verde 529, portal 26/26):** idea/versiones, consolidador, ciclo canónico en hilo simple y cola multi-idea, complemento + idea nueva, reapertura, Markdown/API/Resultados por idea, observabilidad y cupos, y QA final con E2E simulada. **Falta solo lo operativo:** D5 real, UAT, costo y acta de flags. Paso 8 (seeds I-12) BLOCKED; reapertura entre preguntas (§4.7) diferida con condición. |
-| 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **WIP — cortes 1-3/5** | **Codex / Claude** | **Cortes 1-3 DONE local 2026-07-28 (Claude Opus 5; commits `6a6d0b8`, `242b0f4`, `4697de3`, `afcceaf`, `045b199`; backend verde 568, +39):** puerto y política determinista; redactor con JSON estricto y guardas que reutilizan `FiltroSalidaRubrica` (I-03) más umbral/nota/promesas; y **composición por acto en el orquestador** —`Confirmar`, `Mejorar`, `Aclarar`, `Reabrir`, `Cerrar`— con el cuerpo insertado por el servidor, respaldo idéntico al texto de hoy, cupos y telemetría propia. Siguiente: corte 4 (umbral/origen/escala en Markdown), luego corte 5 (regresión + D5/UAT). |
+| 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **WIP — cortes 1-4/5** | **Codex / Claude** | **Cortes 1-4 DONE local 2026-07-28 (Claude Opus 5; commits `6a6d0b8`, `242b0f4`, `4697de3`, `afcceaf`, `045b199`, `c813cda`; backend verde 572, +43):** puerto y política; redactor con JSON estricto y guardas que reutilizan `FiltroSalidaRubrica` (I-03); composición por acto en el orquestador con el cuerpo insertado por el servidor, respaldo idéntico al texto previo, cupos y telemetría propia; y Markdown con umbral/origen/escala en cultura es-CO. Siguiente: corte 5 (regresión con E2E del redactor + D5/UAT/costo). |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
@@ -197,21 +197,19 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Continuar I-20 por el corte 4 de §8: umbral, origen y escala en el Markdown ejecutivo.** Es el
-   último corte de producto; el 5 ya es solo regresión y validación. Leer `AVANCES.md`, `I-20` §6.2,
-   `09 §4` y `SUPUESTOS.md#redaccion-fluida-i20`; no tocar `.obsidian/workspace.json` ni `Semillas/`.
-   Falta, en `CompiladorMarkdown`: (a) renderizar
-   `- Umbral de madurez: {corte} de {escala.max} puntos ({porcentaje} %; {origen})` y
-   `- Calificación total: {nota} de {escala.max} puntos`, con
-   `corte = escala.min + umbralEfectivo × (escala.max − escala.min)`; (b) resolver umbral y **origen**
-   (`pregunta|campaña|global`) reutilizando `PoliticaLimitesConversacion.ResolverUmbralBase` y
-   `OrigenUmbral`, que ya existen —el compilador hoy no las usa, así que habrá que inyectarle esa
-   política o pasarle los valores ya resueltos—; (c) cultura `es-CO` y **sin ceros decimales
-   innecesarios** (`2,6 de 5 puntos`, no `2,60`); (d) sin evaluación de esa versión, escribir
-   `Calificación total: pendiente de evaluación` y **no** inventar un umbral alcanzado. Aplica al
-   artefacto de idea (I-19); **decidir y registrar** si el artefacto legacy por respuesta también lo
-   muestra. Regresiones: precedencia pregunta/campaña/global, formato numérico y el caso sin
-   evaluación. Después: corte 5 (regresión completa + D5/UAT/costo con temas distintos).
+1. **Cerrar I-20 con el corte 5 de §8: regresión completa y validación.** Leer `AVANCES.md`, `I-20`
+   §9 y `13`; no tocar `.obsidian/workspace.json` ni `Semillas/`. Dos bloques: **(A) código —** repasar
+   los criterios de `I-20 §9` uno a uno y cubrir lo que falte; en concreto falta una **E2E simulada con
+   el redactor inyectado** (la E2E de I-19 recorre el respaldo porque no inyecta ninguno), y conviene
+   una regresión explícita de que ningún turno concatena dos actos y de que el Markdown nunca muestra
+   la nota de otra versión. **(B) operativo, requiere humano y presupuesto —** corrido **D5 real** con
+   el golden set **y temas distintos** (§8.5 lo pide: la voz debe cambiar con la campaña sin inventar
+   datos), **UAT** con GHT sobre `QAS/08`, y **costo/latencia** separando ya tres clases de llamada
+   —consolidación, evaluación y redacción—, que la telemetría emite por separado; luego fijar
+   `Conversacion:RedaccionConversacionalFluidaHabilitada` en el **acta de flags del día-D** junto con
+   los kill-switches de I-19/I-17/I-01. Con eso I-20 queda cerrada y el backlog vuelve a §4, donde
+   `I-12` sigue BLOCKED por las seeds —revisar `Semillas/Semilla.md`, que llegó sin procesar—, `I-13`
+   espera decisión de GHT, `I-14` el catálogo de tags y el ítem 22 el insumo de Munir.
 
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.

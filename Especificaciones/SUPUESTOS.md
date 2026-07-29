@@ -735,6 +735,16 @@
   - **La transición no necesitó acto propio.** El paso a la siguiente idea o pregunta ya se emite hoy
     como acuse del cierre anterior o como la confirmación de la idea siguiente; no existía un texto fijo
     de transición que sustituir. El acto queda definido en el enum para cuando haga falta.
+  - **El Markdown ejecutivo reutiliza la política de umbral, no la reimplementa** (corte 4). El
+    compilador resuelve corte y origen con `PoliticaLimitesConversacion` (I-17), de modo que el
+    artefacto no puede divergir del criterio real de madurez. La escala se toma de la **versión exacta**
+    de rúbrica que registró la evaluación (ARQ §8.3); si no se puede resolver, degrada a la última
+    versión y, en último caso, omite la escala: el artefacto es caché regenerable (REQ §22.4.6) y
+    degradar es preferible a fallar la compilación.
+  - **Se muestra también en el artefacto legacy por respuesta**, no solo en el de idea: `09 §4` define
+    una plantilla común y curaduría consulta ambos. Sin evaluación vigente se escribe `pendiente de
+    evaluación` y **se omite** la línea de umbral, para no insinuar un corte alcanzado sobre algo que
+    nunca se midió.
   - **Redactar consume cupo (P-10).** Se consulta el cupo de llamadas antes de invocar al modelo; con el
     cupo agotado el turno usa su respaldo sin perder el aporte ni alterar el estado.
   - **Telemetría y cupos del redactor viven en el llamador, no en el redactor.** El orquestador ya es

@@ -7,10 +7,11 @@
 > **Tipo:** Desarrollo + prompt versionado + Markdown determinístico. **Prioridad:** alta.
 > **Dependencias:** I-03, I-17, I-18, I-19 y P-23. Cubre REQ §9/§20/§21/§22/§25/§26/§27 y ARQ §4/§6/
 > §7/§12/§13; afecta `03 §3.3`, `05 §4.4–§4.5`, `08`, `09`, `13` y Reglas.
-> **Estado (2026-07-28):** implementación WIP local — **cortes 1-3/5 hechos** (`242b0f4` contratos y
-> política, `4697de3` redactor con guardas, `afcceaf`+`045b199` composición por acto). Ya hay cambio
-> visible: la confirmación, la mejora, la aclaración, la reapertura y el cierre se redactan, con
-> respaldo idéntico al texto anterior. I-19 continúa siendo la fuente de la versión canónica.
+> **Estado (2026-07-28):** implementación WIP local — **cortes 1-4/5 hechos** (`242b0f4` contratos y
+> política, `4697de3` redactor con guardas, `afcceaf`+`045b199` composición por acto, `c813cda`
+> Markdown ejecutivo). La confirmación, la mejora, la aclaración, la reapertura y el cierre se
+> redactan, con respaldo idéntico al texto anterior, y el artefacto ya explica umbral, origen y escala.
+> Falta solo el corte 5: regresión y validación. I-19 continúa siendo la fuente de la versión canónica.
 
 ## 1. Resultado esperado
 
@@ -159,7 +160,12 @@ entre preguntas.
    antes de gastar LLM; telemetría `redaccionConversacional` sin texto. Verde: 568 pruebas (+5). La
    **transición** no requirió cambio: hoy el paso a la siguiente idea/pregunta ya se envía como acuse o
    confirmación del acto siguiente, sin texto fijo propio.
-4. Renderizar umbral/origen/escala en Markdown con regresiones para precedencia pregunta/campaña/global.
+4. **[Hecho local 2026-07-28, commit `c813cda`]** Markdown ejecutivo: `- Umbral de madurez: {corte} de
+   {max} puntos ({porcentaje} %; {origen})` y `- Calificación total: {nota} de {max} puntos`, con
+   umbral y origen resueltos por `PoliticaLimitesConversacion` (I-17) —misma precedencia que la
+   madurez—, cultura `es-CO` sin ceros sobrantes, `pendiente de evaluación` cuando no hay nota (y sin
+   imprimir umbral), y la escala tomada de la **versión exacta** de rúbrica que registró la evaluación.
+   Se aplica al artefacto de idea **y** al legacy por respuesta. Verde: 572 pruebas (+4).
 5. Ejecutar regresión completa y D5/UAT/costo con temas distintos antes de desplegar.
 
 ## 9. Criterios de aceptación
