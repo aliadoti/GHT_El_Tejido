@@ -64,6 +64,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly int _presupuestoTokensTejido;
     private readonly bool _parafraseoHabilitado;
     private readonly bool _consolidacionProgresivaHabilitada;
+    private readonly bool _confirmacionExplicitaIdeasHabilitada;
     private readonly int _maxCaracteresIdeaConsolidada;
     private readonly int _maxCaracteresParafraseo;
     private readonly TimeProvider _tiempo;
@@ -119,6 +120,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _presupuestoTokensTejido = opciones.PresupuestoTokensTejido;
         _parafraseoHabilitado = opciones.Parafraseo;
         _consolidacionProgresivaHabilitada = opciones.ConsolidacionProgresivaHabilitada;
+        _confirmacionExplicitaIdeasHabilitada = opciones.ConfirmacionExplicitaIdeasHabilitada;
         _redaccion = new PoliticaRedaccionConversacional(
             opciones.RedaccionConversacionalFluidaHabilitada, opciones.MaxCaracteresRedaccionTurno);
         _maxCaracteresIdeaConsolidada = Math.Max(1, opciones.MaxCaracteresIdeaConsolidada);
@@ -858,6 +860,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private async Task<bool> ContinuarConIdeaEnEsperaAsync(
         DominioConversacion conversacion,
         Campania campania,
+        Usuario usuario,
+        Pregunta pregunta,
         NumeroWhatsApp numero,
         string? emisor,
         string? prefijo,
@@ -871,6 +875,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (propuesta is null)
         {
             return false;
+        }
+
+        if (!_confirmacionExplicitaIdeasHabilitada)
+        {
+            await ConfirmarOCorregirIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, siguiente!,
+                texto: string.Empty, ahora, cancellationToken, confirmacionAutomatica: true);
+            return true;
         }
 
         await EnviarAsync(
@@ -915,6 +927,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
         await RegistrarPropuestaAsync(usuario, idea, propuesta, "propuesta", ahora, cancellationToken);
+        if (!_confirmacionExplicitaIdeasHabilitada)
+        {
+            await ConfirmarOCorregirIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                texto: string.Empty, ahora, cancellationToken, confirmacionAutomatica: true);
+            return;
+        }
+
         await EnviarConfirmacionAsync(
             conversacion, campania, usuario, pregunta, numero, emisor, propuesta.Version.Texto, ahora,
             cancellationToken);
@@ -923,9 +943,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private async Task ConfirmarOCorregirIdeaAsync(
         DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,
         NumeroWhatsApp numero, string? emisor, IdeaConsolidada idea, string texto, DateTimeOffset ahora,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool confirmacionAutomatica = false)
     {
-        if (_intencionRechazoIdea.Coincide(texto))
+        if (!confirmacionAutomatica && _intencionRechazoIdea.Coincide(texto))
         {
             var rechazada = idea.Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", ahora);
             await _respuestas.GuardarIdeaConsolidadaAsync(rechazada, cancellationToken);
@@ -935,7 +955,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             var acuseRechazo = TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault);
             // §4.5: el rechazo cierra solo esta idea; si otra espera turno, se sigue con ella.
             if (await ContinuarConIdeaEnEsperaAsync(
-                    conversacion, campania, numero, emisor, acuseRechazo, ahora, cancellationToken))
+                    conversacion, campania, usuario, pregunta, numero, emisor, acuseRechazo, ahora,
+                    cancellationToken))
             {
                 return;
             }
@@ -945,8 +966,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var confirmacionExplicita = _intencionConfirmacion.Coincide(texto);
-        var confirmacionImplicitaMejora = _intencionSolicitarMejora.Coincide(texto);
+        var confirmacionExplicita = confirmacionAutomatica || _intencionConfirmacion.Coincide(texto);
+        var confirmacionImplicitaMejora = !confirmacionAutomatica && _intencionSolicitarMejora.Coincide(texto);
         if (!confirmacionExplicita && !confirmacionImplicitaMejora)
         {
             await CrearPropuestaComplementariaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, texto, ahora, cancellationToken);
@@ -965,7 +986,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
         await RegistrarConsolidacionAsync(
-            usuario, confirmacionImplicitaMejora ? "confirmadaImplicitaMejora" : "confirmada", idea,
+            usuario,
+            confirmacionAutomatica
+                ? "confirmadaAutomatica"
+                : confirmacionImplicitaMejora
+                    ? "confirmadaImplicitaMejora"
+                    : "confirmada",
+            idea,
             version.NumeroVersion, null, null, ahora, cancellationToken);
 
         var contexto = await ConstruirContextoAsync(campania, pregunta, usuario, conversacion.Id, idea.RespuestaRaizId, version.Texto, cancellationToken);
@@ -1002,7 +1029,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var madura = resultado is not ResultadoEvaluacion.Fallback
             && _limites.UmbralAlcanzado(resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
                 _limites.ResolverUmbralBase(campania, pregunta));
-        var conforme = confirmacionExplicita && _transicion.Interpretar(
+        var conforme = !confirmacionAutomatica && confirmacionExplicita && _transicion.Interpretar(
             EstadoMaquinaConversacion.EsperandoRepregunta, 0, pregunta.MaxRepreguntas, texto).DeseaContinuar;
 
         if (madura || conforme || resultado is ResultadoEvaluacion.Fallback || pregunta.MaxRepreguntas <= 0)
@@ -1018,8 +1045,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             // I-19 §4.6: si una idea nueva quedó esperando su turno, se atiende ahora en lugar de
             // cerrar el hilo; el cierre solo llega cuando no queda ninguna idea abierta.
             if (await ContinuarConIdeaEnEsperaAsync(
-                    conversacion, campania, numero, emisor, resultado.Evaluacion.RetroalimentacionEnviada,
-                    ahora, cancellationToken))
+                    conversacion, campania, usuario, pregunta, numero, emisor,
+                    resultado.Evaluacion.RetroalimentacionEnviada, ahora, cancellationToken))
             {
                 return;
             }
@@ -1034,7 +1061,19 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // La idea sigue abierta pero su versión confirmada ya fue evaluada: el artefacto se regenera.
         await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
         var invitacion = ConstruirInvitacionMejora(conversacion, resultado.Evaluacion.RepreguntaSugerida);
-        await EnviarAsync(conversacion, numero, Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion), TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        var preguntaCoaching = string.IsNullOrWhiteSpace(resultado.Evaluacion.RepreguntaSugerida)
+            ? EvaluadorLlm.RepreguntaNeutra
+            : resultado.Evaluacion.RepreguntaSugerida.Trim();
+        var turnoCoaching = await ComponerTurnoAsync(
+            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Mejorar,
+            respaldo: Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion),
+            ahora, cancellationToken,
+            cuerpo: resultado.Evaluacion.RetroalimentacionEnviada,
+            retroalimentacionValidada: resultado.Evaluacion.RetroalimentacionEnviada,
+            preguntaAprobada: preguntaCoaching);
+        await EnviarAsync(
+            conversacion, numero, turnoCoaching, TipoEnvioMensaje.Repregunta, emisor, ahora,
+            cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion.RegistrarRepregunta(), cancellationToken);
     }
 
@@ -1078,6 +1117,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             conversacion, campania, usuario, pregunta, contexto.Contexto.ConfigLlmSnapshot,
             IdeasNuevasAdmisibles(propuesta.NuevasIdeas, texto, propuesta.Version.Texto), respuestaId,
             ahora, cancellationToken);
+        if (!_confirmacionExplicitaIdeasHabilitada)
+        {
+            await ConfirmarOCorregirIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea,
+                texto: string.Empty, ahora, cancellationToken, confirmacionAutomatica: true);
+            return;
+        }
+
         await EnviarConfirmacionAsync(
             conversacion, campania, usuario, pregunta, numero, emisor, propuesta.Version.Texto, ahora,
             cancellationToken);
@@ -1757,6 +1804,28 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        if (!_confirmacionExplicitaIdeasHabilitada)
+        {
+            var idea = activa.IdeaId is null
+                ? null
+                : await _respuestas.ObtenerIdeaConsolidadaAsync(campania.Id, activa.IdeaId, cancellationToken);
+            if (idea is null)
+            {
+                await CerrarIdeaActivaYContinuarAsync(
+                    conversacion, campania, usuario, pregunta, numero, emisor, idea: null,
+                    EstadoResultadoIdeaConsolidada.Pendiente, null, "ideaNoDisponible",
+                    MotivoFinalizacionIdea.Fallback, Combinar(prefijo, EvaluadorLlm.RetroNeutra), ahora,
+                    cancellationToken);
+                return;
+            }
+
+            await ConfirmarYEvaluarIdeaActivaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea, conforme: false,
+                confirmacionImplicitaMejora: false, confirmacionAutomatica: true, ahora,
+                cancellationToken);
+            return;
+        }
+
         await EnviarConfirmacionAsync(
             conversacion, campania, usuario, pregunta, numero, emisor, version.Texto, ahora,
             cancellationToken, prefijo);
@@ -1939,7 +2008,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, intencion.DeseaContinuar,
-                confirmacionImplicitaMejora: false, ahora: ahora, cancellationToken: cancellationToken);
+                confirmacionImplicitaMejora: false, confirmacionAutomatica: false, ahora: ahora,
+                cancellationToken: cancellationToken);
             return;
         }
 
@@ -1951,7 +2021,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, conforme: false,
-                confirmacionImplicitaMejora: true, ahora: ahora, cancellationToken: cancellationToken);
+                confirmacionImplicitaMejora: true, confirmacionAutomatica: false, ahora: ahora,
+                cancellationToken: cancellationToken);
             return;
         }
 
@@ -1983,6 +2054,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IdeaConsolidada idea,
         bool conforme,
         bool confirmacionImplicitaMejora,
+        bool confirmacionAutomatica,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
@@ -2002,7 +2074,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await _respuestas.GuardarVersionIdeaAsync(version, cancellationToken);
         await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
         await RegistrarConsolidacionAsync(
-            usuario, confirmacionImplicitaMejora ? "confirmadaImplicitaMejora" : "confirmada", idea,
+            usuario,
+            confirmacionAutomatica
+                ? "confirmadaAutomatica"
+                : confirmacionImplicitaMejora
+                    ? "confirmadaImplicitaMejora"
+                    : "confirmada",
+            idea,
             version.NumeroVersion, null, null, ahora, cancellationToken);
         // La respuesta vigente sigue siendo el último aporte; la versión confirmada es lo que se evalúa.
         conversacion = conversacion.ConCoachingIdeas(

@@ -4,6 +4,15 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-29 por Codex (Arquitecto/Backend/SDET): **P-25 coaching directo sin
+  confirmación repetitiva — DONE local.** Un aporte sustantivo ya no genera el turno obligatorio
+  “Entendí que propones… ¿Es correcto?”: se conserva, consolida, confirma internamente y evalúa completo
+  en el mismo turno. Bajo umbral, I-20 redacta la retroalimentación validada y una sola pregunta de
+  coaching; solo `requiereAclaracion` detiene la evaluación. Aplica a hilo simple y cola multi-idea,
+  conserva `MaxRepreguntas`, versiones, auditoría (`confirmadaAutomatica`) y curaduría. Rollback global
+  `Conversacion:ConfirmacionExplicitaIdeasHabilitada=true`; aplicación distribuida en `false`.
+  **Verificado:** build Release 0/0, **583** pruebas no calibración (522 unitarias + 61 integración),
+  formato y diff verdes. Sin push, despliegue ni cambio remoto. Próximo: D5/UAT/costo.
 - Ultima actualizacion: 2026-07-29 por Codex (Arquitecto/Backend/SDET): **P-24 evaluación implícita al
   solicitar mejora — DONE local.** Se corrigió el bug confirmado en las dos rutas de I-19: hilo simple
   y cola multi-idea. Con una propuesta pendiente, “vamos a mejorarla” confirma implícitamente la
@@ -282,11 +291,12 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Validar operativamente I-19/I-20/P-24 antes de activar.** Requiere humano y presupuesto:
+- [ ] **Validar operativamente I-19/I-20/P-24/P-25 antes de desplegar.** Requiere humano y presupuesto:
   corrido D5 real contra staging con el golden set, UAT de idea única y varias ideas, y revisión de
   costo/latencia para consolidación, evaluación y redacción. Comprobar especialmente que “vamos a
-  mejorarla” recibe una pregunta útil sobre la misma idea, sin volver a una confirmación vacía ni
-  almacenar la frase dentro de la idea. Mantener alto `MaxRepreguntas` donde la campaña requiera
+  mejorarla” y cualquier aporte sustantivo reciben una pregunta útil sobre la misma idea, sin volver a
+  una confirmación vacía ni almacenar frases de intención dentro de la idea. Mantener alto
+  `MaxRepreguntas` donde la campaña requiera
   acompañamiento; no modificar configuración desplegada sin decisión operativa.
 - [x] **(HECHO 2026-07-28) I-20 corte 5: regresión de código.** La E2E con redactor inyectado ya
   recorre webhook → redactor → versión íntegra → evaluación canónica. La validación pendiente de I-20
@@ -465,6 +475,7 @@
 | I-19 | Consolidación progresiva de ideas | **DONE local** (código; falta D5/UAT/costo. Paso 8 seeds BLOCKED) | `748870f` (5), `4e31f94` (5b), `62240b9`+`401d9dd` (6), `7ef021c`+`a148ca5` (7a), `61258e4` (7b), `aceb9f0` (9), `1792c4f`+`0d52e6c` (10) | backend 529 + portal 26/26 verdes | Dominio/persistencia/consolidador, flujo canónico de una idea, **transiciones I-18/multi-idea migradas** (una idea activa a la vez con aporte → propuesta → confirmación → evaluación de la versión completa, rechazo/salida/techos por idea y confirmación de la siguiente al avanzar) , **complemento + idea nueva** encolada aparte sin mezclar contenidos , **reapertura** de una idea cerrada (“la anterior” determinista, lista numerada al desambiguar, sin sobrescribir versiones) , **Markdown canónico + API por idea** (`tipoArtefacto=idea`, `/api/admin/ideas`) y **Resultados con una fila por idea** (estado, marcas de flujo/curaduría, historial de aportes y versiones; los aportes sin `ideaId` quedan como “resultado histórico”) y **observabilidad/cupos** (evento por transición sin PII, cupo que cuenta consolidaciones y techos deterministas ya aplicados en el hilo simple). **QA final** (inactividad que cierra la idea, aclaración ante ambigüedad, I-06 sin coaching que confirma antes de evaluar y E2E simulada del ciclo completo). Pendiente: seeds (BLOCKED), la reapertura entre preguntas (diferida) y la validación D5/UAT/costo. |
 | I-20 | Redacción conversacional fluida y Markdown ejecutivo | DONE local; D5/UAT/costo pendiente | `6a6d0b8` (spec), `242b0f4` (1), `4697de3` (2), `afcceaf`+`045b199` (3), `c813cda` (4) | backend 573 verdes | Puerto, política y redactor con guardas, composición por acto, respaldo determinista, cupos/telemetría y Markdown con umbral/origen/escala. Corte 5 con E2E de redactor inyectado completo; queda validación operativa. |
 | P-24 | Evaluación implícita al solicitar mejora | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 579/579 verde | Una petición corta de mejorar una propuesta confirma implícitamente la versión completa, la evalúa y abre coaching bajo umbral en hilo simple y cola multi-idea. No crea aporte/version nueva ni reduce `MaxRepreguntas`; lista configurable y auditoría diferenciada. |
+| P-25 | Coaching directo sin confirmación repetitiva | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 583/583 verde | Cada aporte sustantivo se consolida y evalúa completo en el mismo turno; solo una ambigüedad real pide aclaración. Hilo simple y cola multi-idea cubiertos; rollback global disponible. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -592,6 +603,18 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-07-29 - Codex - **P-25 coaching directo sin confirmación repetitiva — DONE local, sin push.**
+  Rol: Arquitecto/Backend/SDET. La causa era de flujo, no solo de texto: I-19 obligaba a confirmar cada
+  versión antes de evaluar. Ahora el primer aporte y cada complemento válido se confirman internamente,
+  se evalúan completos contra rúbrica/prompt/semillas y, bajo umbral, se responden mediante el acto
+  `Mejorar` de I-20 con una sola pregunta. Solo una ambigüedad real pide aclaración. La corrección cubre
+  hilo simple, cola multi-idea y avance a ideas en espera; conserva una idea activa, `MaxRepreguntas`,
+  historial, Markdown, umbral y curaduría. Se añadió el rollback global
+  `Conversacion:ConfirmacionExplicitaIdeasHabilitada` (config distribuida `false`, `true` restaura
+  I-19/P-24) y auditoría `confirmadaAutomatica`. Regresiones: primer aporte, complemento acumulado, cola
+  y webhook simulado. Verificado: build 0/0, **583** pruebas (522 unit + 61 integración), formato y diff
+  verdes. Próximo: D5/UAT/costo; no desplegar ni cambiar remoto sin decisión.
 
 - 2026-07-29 - Codex - **P-24 evaluación implícita al solicitar mejora — DONE local, sin push.** Rol:
   Arquitecto/Backend/SDET. Bug confirmado: “vamos a mejorarla” sobre una versión propuesta se guardaba

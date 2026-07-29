@@ -3,7 +3,7 @@
 > **Para quién es esto:** cualquier persona del equipo, **sin necesidad de saber de programación**,
 > que quiera comprobar que cada mejora funciona. Cada punto dice **qué abrir, qué hacer y qué deberías
 > ver**. Si algo no se comporta así, es señal de que hay un problema y hay que avisar al equipo técnico.
-> Última actualización: 2026-07-28 (I-19 **completa en local** y **I-20 casi completa**: además de la
+> Última actualización: 2026-07-29 (P-25 **completa en local**: coaching directo sin confirmación repetitiva;
 > idea única, varias ideas, reapertura y Resultados por idea, el coach ya redacta cada mensaje de forma
 > natural y el documento explica el listón y la escala de la nota. Pendiente solo la validación con
 > GHT antes de activarlas).
@@ -162,33 +162,30 @@ o el resumen aparece para una idea en incubación.
 
 ## B. Lo que se prueba conversando (simulación o WhatsApp real)
 
-### 📝 I-19 — Construir y calificar una sola idea completa
+### ✅ I-19/P-25 — Construir, calificar y mejorar una sola idea completa
 
-**Qué es:** cada respuesta del participante complementa la misma idea. El sistema devuelve lo que
-entendió para confirmarlo y califica la versión completa, no solo el último mensaje. **Todos los pasos
+**Qué es:** cada respuesta del participante complementa la misma idea. El sistema la consolida y
+califica completa en el mismo turno, sin repetir “¿entendí bien?”. **Todos los pasos
 de abajo ya están construidos y probados en el equipo**, incluida la pantalla de Resultados.
 
-1. Responde una pregunta con una idea incompleta. **Deberías ver:** una paráfrasis de lo entendido y
-   una petición de confirmación.
-2. Corrige un dato. **Deberías ver:** una nueva paráfrasis completa, con la corrección y sin perder lo
-   anterior.
-3. Confirma. Solo entonces debe llegar la evaluación o una pregunta para mejorar.
-4. Responde únicamente con el dato faltante. La siguiente paráfrasis debe contener la idea completa,
-   no solo esa última frase.
+1. Responde una pregunta con una idea incompleta. **Deberías ver:** un reconocimiento breve y una sola
+   pregunta útil para concretar la idea; no debe pedirte confirmar lo mismo.
+2. Responde únicamente con el dato faltante. **Deberías ver:** una nueva retroalimentación basada en la
+   idea inicial más el detalle nuevo, no solo en esa última frase.
 5. Termina la idea y abre **Resultados**. **Deberías ver:** una sola fila por idea (no una por
    mensaje), marcada como **madura**, **pendiente** o **rechazada**; al abrirla, la idea completa, su
    calificación y, desplegando *Historial de la idea*, tus mensajes originales y las versiones por las
    que pasó. El selector de arriba permite ver solo maduras, pendientes o rechazadas. (El detalle de la
    nota y del listón en el documento se prueba en **I-20**, más abajo.)
-6. Escribe **“quiero complementar la anterior”**. Debe reabrir esa misma idea, volver a confirmar la
-   nueva versión y recalificarla.
+6. Escribe **“quiero complementar la anterior”**. Debe reabrir esa misma idea, incorporar el cambio y
+   recalificarla sin insertar una confirmación mecánica.
 7. Si queda madura, debe decir **Pendiente de curaduría**; no debe enviarse automáticamente a
    implementación, conocimiento o acta.
 8. Si la campaña tiene respuestas de antes de este cambio, aparecen aparte, en **Resultados
    históricos**, marcadas como tales. No deben mezclarse con las ideas ni desaparecer.
 
 **Algo va mal si:** una frase complementaria aparece/califica como otra idea; el sistema olvida o
-inventa información; evalúa antes de confirmar; muestra una fila por revisión; conserva una nota de
+inventa información; repite “¿Es correcto?” después de cada aporte; muestra una fila por revisión; conserva una nota de
 otra versión; o publica sin curaduría.
 
 **Dos casos más que conviene probar:**
@@ -203,17 +200,17 @@ otra versión; o publica sin curaduría.
 acompañamiento idea por idea encendido:
 
 1. Responde la pregunta con **dos ideas distintas en un solo mensaje**.
-2. **Deberías ver:** un único mensaje que devuelve **solo la primera idea** y pregunta si es correcta.
-   La segunda queda esperando su turno, en silencio.
-3. Responde **"sí"**. **Deberías ver:** la retroalimentación de esa primera idea y, si ya está
-   completa, enseguida la petición de confirmar **la segunda**.
+2. **Deberías ver:** retroalimentación y una sola pregunta sobre **la primera idea**. La segunda queda
+   esperando su turno, en silencio.
+3. Si la primera ya está completa, el sistema la cierra naturalmente y empieza a trabajar la segunda,
+   también sin pedir una confirmación mecánica.
 4. Si la primera todavía necesita trabajo, el sistema hace **una sola pregunta** sobre ella y no pasa a
    la segunda hasta terminarla.
 5. Escribe **"no lo guardes"** mientras trabajas una idea. **Deberías ver:** un acuse breve, esa idea
    descartada y el paso a la siguiente; las demás no se pierden.
 
-**Algo va mal si:** el sistema mezcla las dos ideas en un mismo resumen, califica alguna antes de que
-la confirmes, trabaja las dos a la vez, o descarta todo cuando solo pediste descartar una.
+**Algo va mal si:** el sistema mezcla las dos ideas, vuelve a preguntar “¿Es correcto?”, trabaja las dos
+a la vez, o descarta todo cuando solo pediste descartar una.
 
 **Se te ocurre otra idea a mitad de camino (ya disponible en pruebas del equipo).** Funciona con o sin
 el acompañamiento idea por idea encendido:
@@ -221,11 +218,11 @@ el acompañamiento idea por idea encendido:
 1. Mientras trabajas una idea, escribe un mensaje que **corrija o complete la idea en curso y, además,
    proponga una idea distinta** (por ejemplo: "en realidad sería con soporte; además propongo un
    tablero semanal de seguimiento").
-2. **Deberías ver:** un solo mensaje que te devuelve **la idea en curso** con tu corrección incluida y
-   te pregunta si es correcta. La idea nueva **no** aparece ahí: quedó anotada esperando turno.
-3. Termina la idea en curso (confirma y sigue hasta que el sistema la dé por cerrada).
-4. **Deberías ver:** enseguida el resumen de **la idea nueva** con su "¿Es correcto?", sin que tengas
-   que repetirla y sin que la conversación se cierre.
+2. **Deberías ver:** retroalimentación sobre **la idea en curso** con tu corrección incluida. La idea
+   nueva queda anotada esperando turno.
+3. Termina la idea en curso siguiendo las preguntas de coaching.
+4. **Deberías ver:** enseguida coaching sobre **la idea nueva**, sin que tengas que repetirla y sin una
+   confirmación mecánica.
 
 **Algo va mal si:** la idea nueva se mezcla dentro del resumen de la idea en curso, el sistema se pone
 a trabajar la idea nueva antes de terminar la anterior, la conversación se cierra y pierdes la idea
@@ -237,8 +234,8 @@ seguir abierta:
 1. Termina una idea (hasta que el sistema la dé por cerrada) y empieza otra.
 2. Escribe **"quiero volver a la anterior"**. **Deberías ver:** un mensaje que retoma **la última idea
    que cerraste**, te recuerda cómo quedó registrada y te pregunta qué quieres cambiar o agregar.
-3. Escribe el cambio. **Deberías ver:** el resumen actualizado de **esa misma** idea, con su "¿Es
-   correcto?"; al confirmarlo se vuelve a calificar completa (puede mejorar o bajar).
+3. Escribe el cambio. **Deberías ver:** retroalimentación sobre **esa misma** idea ya actualizada y
+   recalificada completa (puede mejorar o bajar), sin “¿Es correcto?”.
 4. Si ya cerraste **varias** ideas y escribes algo más vago como **"quiero retomar una idea"**,
    deberías ver una lista corta **numerada** con un resumen de cada una —**sin notas ni puntajes**— y la
    pregunta de cuál retomar. Responde con el número.
@@ -258,12 +255,12 @@ el listón**. Está construido y probado en el equipo; falta la validación con 
 
 **Parte 1 — la conversación (por WhatsApp o simulación):**
 
-1. Responde una pregunta con una idea corta. **Deberías ver:** una frase natural que introduce lo que
-   el sistema entendió, **tu idea completa tal cual**, y **una sola** pregunta para confirmar.
+1. Responde una pregunta con una idea corta. **Deberías ver:** una frase natural que reconoce el punto
+   de partida y **una sola pregunta de coaching** basada en lo que todavía falta.
 2. Repite el ejercicio con otra persona o en otra campaña. **Deberías ver:** que las frases **no son
    calcadas**; cambian según el tema, aunque la idea completa siempre aparezca íntegra.
-3. Confirma y sigue hasta que te hagan una pregunta para mejorar. **Deberías ver:** **una sola**
-   pregunta, sin números, sin "criterios" y sin mencionar la rúbrica.
+3. Sigue respondiendo a las preguntas para mejorar. **Deberías ver:** **una sola** pregunta por turno,
+   sin números, sin "criterios" y sin mencionar la rúbrica.
 4. Fíjate en que ningún mensaje mezcle dos cosas a la vez (por ejemplo, pedirte confirmar y a la vez
    preguntarte otra cosa distinta).
 
@@ -278,9 +275,9 @@ el listón**. Está construido y probado en el equipo; falta la validación con 
 8. Abre una idea **rechazada** o que quedó sin evaluar: debe decir **"pendiente de evaluación"** y
    **no** mostrar ninguna línea de listón.
 
-**Algo va mal si:** vuelve a aparecer siempre la misma frase de confirmación; llegan dos preguntas
+**Algo va mal si:** aparece “Entendí que propones… ¿Es correcto?”; llegan dos preguntas
 juntas; el coach menciona rúbrica, criterios, puntajes, "umbral" o promete que la idea **se va a
-implementar**; la idea completa deja de mostrarse antes de pedirte confirmar; el documento muestra una
+implementar**; el documento muestra una
 nota sin decir sobre cuánto es; el listón no coincide con el configurado; o una idea sin evaluar
 aparece como si hubiera alcanzado el listón.
 

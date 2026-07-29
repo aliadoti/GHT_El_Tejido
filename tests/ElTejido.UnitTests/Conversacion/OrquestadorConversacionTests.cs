@@ -77,6 +77,93 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P25_PrimerAporteSustantivo_SeEvaluaYRecibeCoachingSinConfirmacionRepetitiva()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        ContextoEvaluacion? contextoEvaluado = null;
+        _evaluador.EvaluarAsync(
+                Arg.Do<ContextoEvaluacion>(contexto => contextoEvaluado = contexto),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(
+                    RecomendacionEvaluacion.Repreguntar,
+                    "¿Qué debe contener la presentación?",
+                    "Hacer una presentación en PowerPoint es válido; vamos a detallarla.",
+                    calificacionTotal: 1m)));
+        var redactor = RedactorQueDevuelve(
+            "La presentación es un punto de partida válido.",
+            "¿Qué debería contener para que el mensaje sea memorable?");
+        await PrepararConversacionAsync();
+
+        await Construir(
+                new OpcionesConversacion { ConfirmacionExplicitaIdeasHabilitada = false },
+                ConsolidadorQueAcumula(),
+                redactor)
+            .ProcesarMensajeEntranteAsync(
+                Participante(maxRepreguntas: 10),
+                Mensaje("Hagamos una presentación en PowerPoint y la mostramos"),
+                CancellationToken.None);
+
+        contextoEvaluado.Should().NotBeNull();
+        contextoEvaluado!.RespuestaTexto.Should().Be("Hagamos una presentación en PowerPoint y la mostramos");
+        almacen.Ideas.Values.Should().ContainSingle().Which.VersionConfirmadaRef.Should().NotBeNull();
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto =>
+                texto.Contains("La presentación es un punto de partida válido", StringComparison.Ordinal)
+                && texto.Contains("Hacer una presentación en PowerPoint es válido", StringComparison.Ordinal)
+                && texto.Contains("¿Qué debería contener para que el mensaje sea memorable?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+        await redactor.Received(1).RedactarAsync(
+            Arg.Is<ContextoRedaccionTurno>(contexto => contexto.Acto == ActoConversacional.Mejorar),
+            Arg.Any<CancellationToken>());
+        await redactor.DidNotReceive().RedactarAsync(
+            Arg.Is<ContextoRedaccionTurno>(contexto => contexto.Acto == ActoConversacional.Confirmar),
+            Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto =>
+                texto.Contains("¿Es correcto?", StringComparison.Ordinal)
+                || texto.Contains("Entendí que propones", StringComparison.OrdinalIgnoreCase)),
+            Arg.Any<TipoEnvioMensaje>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P25_Complemento_SeEvaluaComoVersionCompletaEnElMismoTurno()
+    {
+        ConfigurarAlmacenIdeas();
+        var contextos = new List<ContextoEvaluacion>();
+        _evaluador.EvaluarAsync(
+                Arg.Do<ContextoEvaluacion>(contexto => contextos.Add(contexto)),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(
+                    RecomendacionEvaluacion.Repreguntar,
+                    "¿Qué resultado esperas?",
+                    calificacionTotal: 1m)));
+        await PrepararConversacionAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion { ConfirmacionExplicitaIdeasHabilitada = false },
+            ConsolidadorQueAcumula());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxRepreguntas: 10), Mensaje("Aporte inicial"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxRepreguntas: 10), Mensaje("Incluye casos reales y una demostración"), CancellationToken.None);
+
+        contextos.Select(contexto => contexto.RespuestaTexto).Should().Equal(
+            "Aporte inicial",
+            "Aporte inicial + Incluye casos reales y una demostración");
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Es correcto?", StringComparison.Ordinal)),
+            Arg.Any<TipoEnvioMensaje>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task I19_Confirmacion_EvaluaVersionCompletaEnLugarDelUltimoMensaje()
     {
         var consolidador = Substitute.For<IConsolidadorIdeas>();
@@ -162,6 +249,48 @@ public sealed class OrquestadorConversacionTests
                 && texto.Contains("¿Es correcto?", StringComparison.Ordinal)
                 && !texto.Contains("Segunda idea", StringComparison.Ordinal)),
             TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P25_ColaMultiIdea_EvaluaLaPrimeraSinPedirConfirmacion()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        var contextos = new List<ContextoEvaluacion>();
+        _evaluador.EvaluarAsync(
+                Arg.Do<ContextoEvaluacion>(contexto => contextos.Add(contexto)),
+                Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(
+                    RecomendacionEvaluacion.Repreguntar,
+                    "¿Qué resultado concreto buscas?",
+                    calificacionTotal: 1m)));
+        SegmentarEnDosIdeas();
+        await PrepararConversacionAsync();
+
+        await Construir(
+                new OpcionesConversacion { ConfirmacionExplicitaIdeasHabilitada = false },
+                ConsolidadorQueAcumula())
+            .ProcesarMensajeEntranteAsync(
+                ParticipanteConCoaching(),
+                new MensajeEntrante(Numero, "Dos ideas", "wamid.p25", Epoca),
+                CancellationToken.None);
+
+        contextos.Should().ContainSingle();
+        contextos.Single().RespuestaTexto.Should().Be("Primera idea suficientemente larga para ser procesada.");
+        almacen.Ideas["idea_resp_wamid_p25_1"].VersionConfirmadaRef.Should().NotBeNull();
+        almacen.Ideas["idea_resp_wamid_p25_2"].EstadoFlujo.Should()
+            .Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+        _conversaciones.Ultima!.CoachingIdeas!.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Qué resultado concreto buscas?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("¿Es correcto?", StringComparison.Ordinal)),
+            Arg.Any<TipoEnvioMensaje>(),
             Arg.Any<CancellationToken>());
     }
 

@@ -65,6 +65,15 @@ public sealed class OpcionesConversacion
     public IList<string> FrasesSolicitarMejora { get; set; } = new List<string>();
 
     /// <summary>
+    /// P-25 — rollback temporal al flujo I-19 que pide confirmar cada versión con
+    /// "¿Es correcto?". En <c>false</c>, una respuesta sustantiva se consolida, confirma
+    /// internamente y evalúa en el mismo turno; solo una ambigüedad real pide aclaración.
+    /// El POCO conserva <c>true</c> por compatibilidad de consumidores que lo construyen sin
+    /// configuración, mientras la aplicación distribuida fija explícitamente <c>false</c>.
+    /// </summary>
+    public bool ConfirmacionExplicitaIdeasHabilitada { get; set; } = true;
+
+    /// <summary>
     /// I-17 §5.4 — frases con las que el participante <b>rechaza explícitamente</b> que su idea madura se
     /// guarde. Al coincidir en <c>esperandoRepregunta</c>, se degrada la respuesta madura a incubación y
     /// se cierra con un acuse ("guardar salvo que diga no"). Vacio = usa

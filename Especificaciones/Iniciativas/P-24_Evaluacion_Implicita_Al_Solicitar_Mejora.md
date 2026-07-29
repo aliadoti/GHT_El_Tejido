@@ -1,5 +1,10 @@
 # P-24 — Evaluación implícita al solicitar mejora
 
+> **Actualización P-25 (2026-07-29):** el flujo normal ya evalúa cualquier aporte sustantivo en el
+> mismo turno, sin pedir confirmación. P-24 se conserva como compatibilidad para conversaciones
+> históricas pendientes y para el rollback
+> `Conversacion:ConfirmacionExplicitaIdeasHabilitada=true`.
+
 > Estado: **DONE local el 2026-07-29.**
 >
 > Origen: observación en una campaña activa. Después de recibir una propuesta consolidada y pedir

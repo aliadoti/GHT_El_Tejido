@@ -782,3 +782,29 @@
     responsabilidad evita dos fuentes de verdad del cupo. Por eso se movieron al corte 3, donde también
     se decidirá —con su commit de contrato aparte si hace falta un enum nuevo— si el evento es propio o
     una acción del existente. El redactor ya devuelve `Uso` para que sus tokens sean distinguibles.
+
+### coaching-directo-p25 - Evaluar cada aporte sin confirmación mecánica
+
+- Fecha: 2026-07-29 - Agente/Rol: Codex - Arquitecto/Backend/SDET - corrección solicitada y autorizada
+  por el usuario.
+- Contexto: I-19 convirtió la transparencia de la versión consolidada en una confirmación obligatoria
+  después de cada aporte. Aunque la trazabilidad era correcta, el participante recibía repetidamente
+  “Entendí que propones… ¿Es correcto?” antes de cualquier evaluación o coaching de rúbrica.
+- Decisión:
+  - Todo aporte sustantivo se conserva, se consolida, se confirma internamente y se evalúa como versión
+    completa en el mismo turno.
+  - Bajo umbral, I-20 redacta una respuesta natural a partir de la retroalimentación validada y una
+    única pregunta socrática aprobada. El LLM no decide estado, madurez ni transición.
+  - Solo `requiereAclaracion` del consolidador interrumpe la evaluación para preguntar qué quiso decir.
+  - La cola multi-idea mantiene una única activa; cada idea se evalúa al llegar su turno.
+  - `MaxRepreguntas` no se reduce: sigue siendo un techo técnico, no la salida normal.
+  - `Conversacion:ConfirmacionExplicitaIdeasHabilitada=true` restaura el flujo anterior como rollback.
+    La aplicación distribuida fija `false`; no hay opt-in por campaña ni migración.
+  - La auditoría distingue `confirmadaAutomatica`; aportes, versiones, evaluaciones y Markdown continúan
+    con los contratos I-19 existentes.
+- Esta decisión **reemplaza para el flujo normal** la “confirmación obligatoria” documentada
+  históricamente en `consolidacion-progresiva-i19` y el caso normal de P-24. Esos caminos se conservan
+  únicamente para rollback y conversaciones históricas pendientes.
+- Alternativas descartadas: mejorar solo el texto de “¿Es correcto?”; bajar `MaxRepreguntas`; evaluar
+  únicamente el último mensaje; permitir al redactor decidir si confirma o avanza.
+- Spec: `Iniciativas/P-25_Coaching_Directo_Sin_Confirmacion_Repetitiva.md`.

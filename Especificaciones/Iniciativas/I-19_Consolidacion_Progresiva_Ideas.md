@@ -1,5 +1,12 @@
 # I-19 — Consolidación progresiva y versión canónica de ideas
 
+> **Actualización normativa P-25 (2026-07-29):** la versión canónica y su historial se conservan, pero
+> la confirmación explícita obligatoria de este documento ya no es el flujo normal. Cada aporte
+> sustantivo se confirma internamente y se evalúa en el mismo turno; solo una ambigüedad real pide
+> aclaración. Este comportamiento puede revertirse temporalmente con
+> `Conversacion:ConfirmacionExplicitaIdeasHabilitada=true`. Ver
+> `P-25_Coaching_Directo_Sin_Confirmacion_Repetitiva.md`.
+
 > **Origen:** problema identificado por el usuario el **27-jul-2026**: el hilo conversacional sí se
 > conserva por participante/campaña/pregunta, pero cada respuesta inicial y cada respuesta a la
 > retroalimentación se persisten y califican como versiones independientes. Esto impide que la

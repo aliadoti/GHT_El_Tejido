@@ -3,8 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-07-28 (I-20 especificada: redacción fluida por acto y
-> Markdown ejecutivo; implementación pendiente).
+> y `09` (Markdown). Última revisión: 2026-07-29 (P-25: coaching directo sin confirmación repetitiva).
 
 ## 1. Visión general del flujo
 
@@ -14,13 +13,10 @@ Participante                         El Tejido
      │ ────────────────────────────────► │  (no evalúa el saludo)
      │  ◄──────── Saludo + PREGUNTA ───── │
      │  Su respuesta                      │
-     │ ────────────────────────────────► │  Consolida lo entendido
-     │  ◄──── Paráfrasis + CONFIRMACIÓN ─ │
-     │  Confirma o corrige                │
-     │ ────────────────────────────────► │  Evalúa la idea completa confirmada
+     │ ────────────────────────────────► │  Consolida + evalúa la idea completa
      │  ◄──── Retro + pregunta de mejora ─│
      │  Aporta un complemento             │
-     │ ────────────────────────────────► │  Consolida + confirma + reevalúa
+     │ ────────────────────────────────► │  Consolida + reevalúa la versión completa
      │  ◄──── Retro + CIERRE ──────────── │  (Markdown canónico por idea)
 ```
 
@@ -62,8 +58,8 @@ El avance entre preguntas no exige siempre agotar las revisiones: una pregunta p
 **calificacion alta** o porque el **participante pide continuar** (ver §2.3, "Dos salidas anticipadas").
 
 ### 2.2 Evaluación con LLM
-Con I-19, cada aporte primero se integra en una paráfrasis acumulada y el participante la confirma o
-corrige. Solo la **versión consolidada confirmada completa** se evalúa con el LLM usando la
+Con I-19/P-25, cada aporte se integra en una versión acumulada que el servidor confirma internamente y
+evalúa en el mismo turno. Solo la **versión consolidada confirmada completa** se evalúa con el LLM usando la
 **rúbrica**, el **prompt** aprobado y la **ConfigLLM** activos de la pregunta/campaña. El último
 complemento nunca sustituye la idea completa. El modelo debe devolver un JSON con el esquema acordado
 (el sistema le incrusta el esquema y la escala). El historial acotado ayuda a evitar repeticiones,
@@ -85,12 +81,12 @@ devuelve, viene vacío o no cabe una frase completa en `Conversacion:MaxCaracter
 defecto), el participante recibe exactamente la retroalimentación de siempre. Operación puede apagarlo
 por campaña o globalmente sin redeploy.
 
-**Confirmación I-19/P-24:** la paráfrasis acumulada se muestra en todas las campañas y no depende de
-I-05. Si I-05 está activo, no se muestra un segundo resumen. Una corrección con contenido crea otra
-versión propuesta. Una confirmación inequívoca, o una petición corta de **mejorar la propuesta**, permite
-evaluar: esta última confirma implícitamente la versión vigente para abrir coaching y no se guarda como
-contenido de la idea. Las ideas semilla I-12 se usan cuando existan, pero no crean criterios de
-calificación fuera de la rúbrica.
+**Coaching directo P-25:** la paráfrasis acumulada ya no se muestra para preguntar “¿Es correcto?” en
+cada turno. Un aporte sustantivo crea una versión, el servidor la confirma automáticamente y la evalúa
+de inmediato. Solo si el consolidador detecta una ambigüedad real se pide una aclaración antes de
+evaluar. El flujo anterior de I-19/P-24 queda disponible mediante
+`Conversacion:ConfirmacionExplicitaIdeasHabilitada=true` como rollback. Las ideas semilla I-12 se usan
+cuando existan, pero no crean criterios de calificación fuera de la rúbrica.
 
 **Redacción fluida I-20 (implementada localmente):** la forma de confirmar, acompañar, aclarar,
 reabrir o cerrar se redacta con LLM según campaña, pregunta, idea consolidada y contexto reciente. El
@@ -208,15 +204,15 @@ ventana no envía texto libre y espera un nuevo entrante. Ver
 Si un gate se apaga con una cola activa, no se envía otra repregunta: el siguiente entrante se
 conserva sin evaluación, la cola finaliza por `desactivacion` y el flujo avanza de forma segura.
 
-### 2.4.3 Consolidación progresiva por idea (I-19, WIP local)
+### 2.4.3 Consolidación progresiva y coaching directo por idea (I-19/P-25)
 
 I-19 aplica a todas las campañas. El recorrido está implementado localmente para una idea única, para la
 cola I-18/multi-idea y para la reapertura de una idea anterior del mismo hilo. El comportamiento para
 ideas únicas o múltiples es:
 
 1. cada mensaje significativo queda como aporte original enlazado a un `ideaId`;
-2. el sistema propone una paráfrasis que acumula la versión confirmada anterior y el aporte nuevo;
-3. el participante confirma o corrige; una corrección crea otra versión sin borrar la anterior;
+2. el sistema crea una versión que acumula la versión confirmada anterior y el aporte nuevo;
+3. si no hay ambigüedad, el servidor confirma esa versión automáticamente y la evalúa en el mismo turno;
 4. solo la versión completa confirmada se evalúa y gobierna retroalimentación, umbral, madurez y
    Markdown;
 5. bajo umbral, la idea continúa con una pregunta socrática; al terminar queda `pendiente`;
@@ -224,21 +220,21 @@ ideas únicas o múltiples es:
 7. “no lo guardes” deja la idea `rechazada`, conservada solo para auditoría;
 8. complemento + idea nueva actualiza la activa y añade la nueva al final de la cola.
 
-Con varias ideas en un mismo mensaje, el sistema propone la versión de cada una pero **solo pide
-confirmar la idea activa**; las demás esperan su turno en silencio y se trabajan al cerrarse la
+Con varias ideas en un mismo mensaje, el sistema propone la versión de cada una pero **solo trabaja y
+evalúa la idea activa**; las demás esperan su turno en silencio y se trabajan al cerrarse la
 anterior. Lo mismo ocurre con una idea nueva que aparece durante el acompañamiento: se registra aparte,
 no se mezcla con la idea en curso y no se anuncia hasta que llega su turno. El servidor limita cuántas
 ideas caben (`Conversacion:MaxIdeasPorMensaje`), descarta fragmentos y repeticiones, y mantiene una sola
-idea activa. Pedir la confirmación no consume una revisión: el tope de repreguntas sigue contando solo las
-preguntas socráticas posteriores a una evaluación. Si se agota un techo determinista (turnos, cupo de
+idea activa. La confirmación automática no consume una revisión: el tope de repreguntas sigue contando
+solo las preguntas socráticas posteriores a una evaluación. Si se agota un techo determinista (turnos, cupo de
 llamadas o presupuesto de la campaña) durante el acompañamiento, el aporte se conserva, no se evalúa y
 la idea activa queda `pendiente` antes de pasar a la siguiente.
 
-En confirmación, “así está bien” confirma y termina la mejora: se evalúa esa versión; madura si alcanza
-el umbral y, si no, queda pendiente. “Vamos a mejorarla” (o frase configurada equivalente) confirma
-implícitamente la versión vigente, la evalúa completa y, bajo umbral, abre una pregunta socrática sobre
-esa misma idea; la frase no se agrega a la versión. Una idea nueva explícita durante el coaching se
-encola aunque la segmentación automática inicial I-06 esté apagada.
+Después de una retroalimentación, “así está bien” termina la mejora y deja la idea pendiente si todavía
+no alcanzó el umbral. Un complemento se integra y se reevalúa inmediatamente; “vamos a mejorarla” sigue
+siendo compatible con conversaciones históricas que ya esperaban confirmación y no se agrega a la
+versión. Una idea nueva explícita durante el coaching se encola aunque la segmentación automática
+inicial I-06 esté apagada.
 
 Mientras la campaña esté activa, el participante puede pedir “quiero complementar la anterior”. Se
 reabre el mismo `ideaId`; si la referencia es ambigua, el sistema muestra una lista breve numerada. La
@@ -344,6 +340,7 @@ lo que otros han dicho. Reglas duras de esta función:
 | `Conversacion:CierreAnticipadoHabilitado` | App config / env `Conversacion__CierreAnticipadoHabilitado` | `true` | Kill-switch global: `false` apaga el cierre anticipado para todas las campañas, incluidos sus overrides. |
 | `Conversacion:FrasesContinuar` | App config / env `Conversacion__FrasesContinuar__0`, `...__1` | (lista compilada) | Frases con las que el participante pide continuar a la siguiente pregunta. Vacío = usa la lista por defecto. |
 | `Conversacion:FrasesSolicitarMejora` | App config / env `Conversacion__FrasesSolicitarMejora__0`, `...__1` | (lista compilada) | **P-24** — frases cortas como “vamos a mejorarla”. Solo con propuesta pendiente: confirman implícitamente su versión completa para evaluarla y abrir coaching; no crean un aporte. Vacío = usa la lista por defecto. |
+| `Conversacion:ConfirmacionExplicitaIdeasHabilitada` | App config / env `Conversacion__ConfirmacionExplicitaIdeasHabilitada` | `false` en la aplicación distribuida | **P-25** — `false` confirma internamente y evalúa cada versión sustantiva en el mismo turno; `true` restaura temporalmente la confirmación explícita I-19/P-24. No tiene opt-in por campaña. |
 | `Conversacion:FrasesRevisitarAnterior` | App config / env `Conversacion__FrasesRevisitarAnterior__0`, `...__1` | (lista compilada) | **I-19 §4.7** — frases que piden volver a la **idea cerrada más reciente** ("la anterior"). Resuelven sin lista de opciones. Vacío = usa la lista por defecto. |
 | `Conversacion:FrasesRevisitarIdea` | App config / env `Conversacion__FrasesRevisitarIdea__0`, `...__1` | (lista compilada) | **I-19 §4.7** — frases que piden revisitar **alguna** idea previa sin señalar cuál; con varias candidatas se ofrece la lista numerada. Vacío = usa la lista por defecto. |
 | `Conversacion:Mensajes:AcuseReaperturaIdea` / `:InvitacionReaperturaIdea` / `:PreguntaSeleccionIdea` | App config / env `Conversacion__Mensajes__…` | (textos por defecto) | **I-19 §4.7** — acuse y invitación del mensaje de reapertura, y encabezado de la lista numerada. Nunca incluyen calificaciones. |

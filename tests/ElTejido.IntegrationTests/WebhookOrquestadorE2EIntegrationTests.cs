@@ -212,6 +212,42 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             .Should().ContainSingle(respuesta => respuesta.Texto.Contains("desperdicio en bodega", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// P-25: la configuración operativa evalúa el aporte sustantivo en su mismo turno y elimina la
+    /// confirmación repetitiva del recorrido webhook real.
+    /// </summary>
+    [Fact]
+    public async Task P25_CicloCompleto_EvaluaSinPedirConfirmacionExplicita()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+
+        using var fabrica = Construir(
+            gateway, conversaciones, respuestas, contextos, compilaciones,
+            confirmacionExplicitaIdeas: false);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.P25.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(
+            client,
+            "wamid.P25.2",
+            "Hagamos una presentación en PowerPoint con casos reales y una demostración");
+        await EsperarAsync(() =>
+            respuestas.Ideas.Values.Any(idea => idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada));
+
+        contextos.Should().ContainSingle();
+        contextos.Single().RespuestaTexto.Should()
+            .Contain("presentación en PowerPoint con casos reales y una demostración");
+        gateway.Enviados.Should().NotContain(enviado =>
+            enviado.Texto.Contains("¿Es correcto?", StringComparison.Ordinal)
+            || enviado.Texto.Contains("Entendí que propones", StringComparison.OrdinalIgnoreCase));
+        respuestas.Ideas.Values.Should().ContainSingle().Which.VersionConfirmadaRef.Should().NotBeNull();
+    }
+
     private static async Task EnviarEntranteAsync(HttpClient client, string wamid, string texto)
     {
         var cuerpo =
@@ -228,7 +264,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         RespuestasFake respuestas,
         System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion> contextos,
         System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion> compilaciones,
-        IRedactorTurnoConversacional? redactor = null)
+        IRedactorTurnoConversacional? redactor = null,
+        bool confirmacionExplicitaIdeas = true)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
         dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
@@ -269,6 +306,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Secretos:wa-appsec"] = AppSecret,
+                    ["Conversacion:ConfirmacionExplicitaIdeasHabilitada"] =
+                        confirmacionExplicitaIdeas.ToString(),
                 }));
 
             builder.ConfigureTestServices(services =>
@@ -322,6 +361,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                     // Este recorrido conserva explícitamente el contrato histórico; I-19 tiene sus
                     // propias pruebas de confirmación antes de sustituir este escenario E2E.
                     ["Conversacion:ConsolidacionProgresivaHabilitada"] = "false",
+                    ["Conversacion:ConfirmacionExplicitaIdeasHabilitada"] = "true",
                 }));
 
             builder.ConfigureTestServices(services =>
