@@ -93,13 +93,22 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.
 - **`coachingSecuencialIdeas` (I-18):** transiciones `iniciado|repregunta|finalizada|avance|timeout|fallback`
   con índice/total, revisión y motivo; sin texto ni PII. Permite comprobar que no se salten ideas y
   dimensionar el costo antes de activar.
+- **`redaccionConversacional` (I-20):** una entrada por llamada al redactor de turnos, con
+  `accion:<acto>` (`confirmar|mejorar|transicionar|aclarar|reabrir|cerrar`), `resultado`
+  (`redactado` o `respaldo`), el `motivo` técnico cuando degrada (`error_proveedor`,
+  `salida_invalida:*`, `excede_longitud`, `mas_de_una_pregunta`, `pregunta_en_el_puente`,
+  `pregunta_en_acto_sin_pregunta`, `salida_vacia`, `fuga_de_rubrica`, `killswitch`), si usó el prompt de
+  voz propio o heredó el de retro, y los tokens de **esa** llamada —separados de consolidación y
+  evaluación (I-20 §4.1)—. **Nunca incluye el texto redactado ni el rechazado**, ni el aporte del
+  participante. Permite dimensionar costo por turno y detectar un modelo que intente filtrar rúbrica.
+
 - **`consolidacionProgresivaIdeas` (I-19):** transiciones
   `propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback`, con índice, versión, estado y
   motivo; nunca incluye el aporte ni la paráfrasis.
