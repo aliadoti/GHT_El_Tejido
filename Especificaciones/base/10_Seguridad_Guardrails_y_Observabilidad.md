@@ -21,12 +21,13 @@ Servicio `IGuardrails` consumido por el Gateway (`05`) y la Evaluación (`08`). 
 | Máx. tokens enviados al LLM | `ConfigLLM.limitesTokens.maxPrompt` (p. ej. 6000) | Acotar historial; truncar. |
 | Máx. historial conversacional enviado | últimos N turnos / tope de tokens | Acotar. |
 | Máx. repreguntas | 1 (MVP) | No enviar más; cerrar. |
-| Máx. mensajes por usuario/campaña | 10 | `429`/rechazo controlado; registrar. |
-| Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. |
+| Máx. mensajes por usuario/campaña | 10 | `429`/rechazo controlado; registrar. En campañas P-26 continuas se cuentan en ventana móvil de 24 h; en las demás conservan el acumulado vigente. |
+| Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. En campañas P-26 continuas se cuentan en ventana móvil de 24 h; el universo de llamadas cobradas no cambia. |
 | **Presupuesto de tokens LLM por campaña (P-10)** | `Campania.configSeguridad.presupuestoTokensCampania` (0 = off) | Con `Conversacion:CuposHabilitados` activo, al alcanzarlo se cierra elegante (cupo LLM agotado) y `LogSeguridad(rateLimit, "presupuesto_tokens_campania")`. Metering: cada llamada emite log de tokens con `campaniaId` (sin secretos) para alerta al 80% en App Insights. |
 | **Segmentación multi-idea (I-06)** | `Conversacion:SegmentacionIdeas=true`, `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30` | Solo se aplica si la campaña tiene `configConversacional.segmentacionIdeas=true`. Salida inválida/0 ideas -> fallback 1-idea. Excedentes -> procesar primeras N. Cada intento emite `LogSeguridad(segmentacionIdeas)` con conteos, fallback, truncamiento y tokens, sin texto. |
 | **Coaching secuencial por idea (I-18)** | Kill-switch `Conversacion:CoachingSecuencialIdeas=true`; campaña `coachingSecuencialIdeas=false`; `MinutosCoachingPorIdea=0` | Solo opera con I-06 efectivo. `MaxRepreguntas` es por idea, pero siguen aplicando cupos por usuario, presupuesto y `MaxTurnosPorHilo`. Al exceder tiempo/límite, finaliza la idea y avanza; evento sin texto ni PII. |
 | **Consolidación progresiva (I-19)** | Kill-switch global `Conversacion:ConsolidacionProgresivaHabilitada=true`; sin opt-in por campaña | Activa para todas las campañas. Cada consolidación cuenta como llamada LLM. Al apagar el kill-switch, conserva aportes nuevos como pendientes y evita evaluarlos aisladamente. |
+| **Participación continua (P-26)** | `Campania.configConversacional.participacionContinua=false` | Solo con campaña `activa`. Habilita ciclos nuevos, enrutamiento por campaña/pregunta y cupos móviles de 24 h. El aporte pendiente se conserva en el plano de negocio; estado cerrado prevalece. |
 | Timeout LLM | 30 s | Reintentar (hasta `maxReintentos`), luego fallback. |
 | Máx. reintentos LLM | 2 | Fallback seguro. |
 | Rate limit por número WhatsApp (P-10) | `Seguridad:RateNumeroWhatsAppPorMinuto` (0 = off) | Ventana deslizante en memoria aplicada antes de resolver el participante; al exceder, **descarte silencioso** + `LogSeguridad(rateLimit, "rate_numero")`. |
@@ -85,6 +86,9 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - Para I-19, métricas separadas de consolidación/evaluación: propuestas, confirmaciones, correcciones,
   reaperturas, cambio de calificación, fallos, tokens y latencia. No registrar aportes ni versiones
   consolidadas en telemetría técnica.
+- Para P-26, métricas agregadas por campaña: ciclos nuevos, menús de campaña/pregunta ofrecidos,
+  selecciones válidas/ambiguas, expiraciones y latencia hasta procesar el aporte. No registrar el
+  texto raíz, nombres mostrados ni respuestas de selección.
 - Para I-09, métricas por conversación/campaña: número de aportes recuperados, tasa de conversaciones con tejido vs. autocontenidas (degradación), latencia de recuperación y **costo/latencia por conversación** (criterio de salida del core, Sprint 1b). No registrar los resúmenes de aportes en telemetría técnica.
 - Para I-05, medir por campaña la tasa de `Evaluacion.parafraseoDevuelto` no nulo y contrastarla con `usoTokens`/latencia de evaluación antes de encender campañas reales. El contenido del parafraseo queda en el plano de negocio (`responses`), nunca en telemetría técnica.
 - **Sin PII sensible ni secretos** en telemetría; los textos completos viven en el plano de negocio, no en logs técnicos.
@@ -93,7 +97,7 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.
@@ -119,6 +123,10 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
     caminos (hilo simple y cola I-18). El **cupo** `MaxLlamadasLlmPorUsuario` (§2) cuenta desde ahora
     **ambas clases de llamada**: evaluaciones + versiones consolidadas, ya que cada versión nace de una
     llamada al consolidador (también las de fallback).
+- **`enrutamientoParticipacion` (P-26):** acciones
+  `ofrecido|seleccionado|invalido|expirado|procesado|cambioCampania`, con tipo de selección, conteo de
+  opciones, ids internos, resultado y `correlationId`. Nunca incluye el aporte, el nombre de campaña,
+  el texto de la pregunta ni la respuesta libre de selección.
 
 ---
 
@@ -143,6 +151,8 @@ participante la confirme.
 ## 9. Criterios de aceptación (resumen; ver `13`)
 - Firma de webhook inválida se rechaza; válida se procesa.
 - Excederse en mensajes/llamadas por campaña aplica el límite y registra el evento.
+- En una campaña continua, los cupos por participante usan las últimas 24 horas, mientras el
+  presupuesto total de tokens de la campaña permanece acumulado.
 - Ningún secreto aparece en logs, telemetría ni Markdown.
 - `correlationId` aparece en la cadena completa de una conversación en App Insights.
 - OTP expira y se borra solo (TTL).

@@ -29,9 +29,13 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Una campaña embebe `mensajesIniciales[]` y `preguntas[]` (`03 §3.3`).
 - Asocia por referencia: `rubricaRef` (+versión), `promptRefs`, `configLLMRef`, y configs de markdown/conversacional/seguridad.
 - I-06 agrega `configConversacional.segmentacionIdeas` (aditivo, default `false`) como comportamiento por campaña; el kill-switch global `Conversacion:SegmentacionIdeas` queda fuera del CRUD de campaña.
+- P-26 agrega `configConversacional.participacionContinua` (aditivo, default `false`) al crear,
+  consultar, editar y duplicar. El servicio no lo confunde con el estado administrativo.
 
 ### 2.2 Reglas de negocio (`REQ §11.3`)
 - Solo `activa` permite envío de mensajes iniciales y recepción de respuestas (`§11.3.1–2`).
+- `participacionContinua=true` solo permite ciclos nuevos mientras la campaña continúe `activa`.
+  Apagarlo deja terminar ideas abiertas y bloquea las posteriores; cerrar la campaña prevalece.
 - Una campaña requiere participantes asociados antes del envío (`§11.3.7`).
 - `POST .../duplicar` clona la campaña como plantilla reutilizable (`§11.3.8`).
 - La configuración usada en cada interacción se persiste vía snapshots en la Evaluación (`§11.3.9`, ver `08`).
@@ -112,5 +116,7 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Configura el proveedor/modelo LLM y guarda la API key de forma segura (solo `apiKeyRef` en BD; key en Key Vault; enmascarada en UI).
 - Solo campañas activas permiten envío/recepción.
 - Duplicar una campaña produce una plantilla reutilizable.
+- Crear/editar/duplicar preserva `participacionContinua`; un documento histórico ausente se devuelve
+  como `false`.
 
 *Fin del documento.*

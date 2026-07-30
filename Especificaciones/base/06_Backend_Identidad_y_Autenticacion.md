@@ -32,12 +32,17 @@ Reglas (`REQ §10.2`, `§12.2.2`):
 ```csharp
 public interface IResolutorParticipante
 {
-    // Devuelve el participante autorizado para una campaña activa, o un rechazo tipado.
+    // Devuelve una resolución única, opciones autorizadas o un rechazo tipado.
     Task<ResultadoResolucion> ResolverAsync(string numeroCrudo, CancellationToken ct);
 }
 ```
-`ResultadoResolucion`: `Autorizado(ParticipanteResuelto)` | `NoAutorizado(MotivoRechazo)`.
+`ResultadoResolucion`: `Autorizado(ParticipanteResuelto)` |
+`RequiereSeleccionCampania(Usuario, CampaniasElegibles)` | `NoAutorizado(MotivoRechazo)`.
 `ParticipanteResuelto`: `{ Usuario usuario; Campania campania; Pregunta preguntaVigente; }`.
+
+P-26 añade un servicio de enrutamiento que conserva el aporte y resuelve la pregunta después de que
+el participante elige campaña. El resolutor de identidad solo devuelve opciones ya autorizadas; no
+acepta ids enviados por el cliente sin revalidarlos.
 
 ### 3.2 Algoritmo (`REQ §26.3`)
 ```
@@ -46,19 +51,33 @@ public interface IResolutorParticipante
    - Si no existe → NoAutorizado(NoMatriculado).
 3. Verifica usuario.estado == activo → si no, NoAutorizado(Inactivo).
 4. Verifica rol == participante (los admin/visor no participan por WhatsApp).
-5. Resuelve la campaña activa asociada:
-   - Busca ParticipanteCampania por whatsappNormalizado/usuarioId con campaña en estado 'activa'.
-   - Si no hay campaña activa asociada → NoAutorizado(SinCampaniaActiva).
-6. Determina la pregunta vigente del hilo (la de la conversación abierta, o la primera pendiente).
-7. Devuelve Autorizado(participante, campania, pregunta).
+5. Busca todas las asociaciones `ParticipanteCampania.estado=activo` y carga sus campañas.
+6. Conserva solo campañas `estado=activa` con al menos una pregunta activa y donde:
+   - haya una conversación/idea abierta o una pregunta pendiente; o
+   - `configConversacional.participacionContinua=true`.
+7. Si existe una afinidad P-26 no vencida hacia una conversación abierta y el mensaje no solicitó
+   cambiar de campaña, la revalida y devuelve `Autorizado`.
+8. Si no hay campaña elegible → `NoAutorizado(SinCampaniaActiva)`.
+9. Si hay una sola campaña → determina la pregunta elegible; si es única, devuelve `Autorizado`.
+10. Si hay varias campañas → `RequiereSeleccionCampania`; no elige silenciosamente por fecha.
+11. Tras elegir campaña, el servicio de enrutamiento:
+    - con una pregunta elegible, la selecciona;
+    - con varias, conserva el aporte y muestra una lista numerada;
+    - revalida campaña/asociación/pregunta antes de devolver `ParticipanteResuelto`.
 ```
-> Para el MVP se asume **una** campaña activa por participante a la vez. Si hubiera varias, elegir la conversación abierta más reciente; documentar supuesto si se requiere desambiguación adicional (`01 §9`).
+> P-26 elimina el supuesto de una sola campaña activa. Una idea abierta con afinidad vigente conserva
+> el contexto; sin afinidad y con varias opciones, el participante elige. Solo se acepta número o
+> nombre/texto exacto no ambiguo de la lista ofrecida.
 
 ### 3.3 Rechazo controlado y neutral (`REQ §26.3.6`, `§10.3.10`)
 Cuando el resultado es `NoAutorizado`, el sistema responde por WhatsApp un mensaje **neutro** que **no revela** si el número existe ni el motivo exacto:
 > "Este número no está habilitado para esta actividad."
 
 Se registra un `LogSeguridad` (`tipoEvento=rechazoParticipacion`, `resultado=rechazado`, motivo en `detalle` interno) sin exponer el motivo al usuario.
+
+`RequiereSeleccionCampania` no es un rechazo: solo muestra nombres de campañas que pasaron todas las
+reglas de autorización. Si la autorización cambia antes de seleccionar, se recalculan las opciones y
+el aporte queda auditable, sin filtrar el motivo.
 
 ---
 
@@ -131,6 +150,8 @@ Cada solicitud y verificación (éxito/fallo) genera un `LogSeguridad` con núme
 - Un código vencido/usado/erróneo es rechazado con mensaje neutral.
 - Un número no registrado recibe la misma respuesta neutral (no se revela inexistencia).
 - Un participante matriculado/activo/asociado es resuelto y autorizado.
+- Un participante asociado a varias campañas activas recibe solo opciones autorizadas; una afinidad
+  abierta continúa automáticamente y ninguna selección obsoleta evita la revalidación.
 - Un no matriculado, inactivo o sin campaña activa recibe rechazo neutral y se registra el evento.
 - Tras N intentos/solicitudes excedidos, se aplica el límite y se registra.
 

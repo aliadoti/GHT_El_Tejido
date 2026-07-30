@@ -6,7 +6,10 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-07-29 — **`P-25` elimina la confirmación mecánica del flujo normal.** Cada
+> Última revisión: 2026-07-29 — **`P-26` especificada, pendiente de implementación.** Añade
+> participación continua por campaña, selección determinista de campaña/pregunta, conservación del
+> aporte raíz, ciclos independientes y cupos móviles de 24 h. Solo campañas activas reciben aportes.
+> Revisión anterior: **`P-25` elimina la confirmación mecánica del flujo normal.** Cada
 > aporte sustantivo se consolida y evalúa completo en el mismo turno; solo una ambigüedad real pide
 > aclaración. I-19 conserva la versión canónica y P-24 queda como compatibilidad/rollback. I-20 redacta
 > el coaching con un LLM controlado por el servidor y hace visible umbral/escala en Markdown. Revisión anterior:
@@ -39,6 +42,7 @@
 | P-23 | [P-23_UX_Resultados.md](P-23_UX_Resultados.md) | A coordinar (mejoras de portal) | **DONE local 2026-07-25.** UX de Resultados frontend-only: precarga de campaña en sesión, patrón **maestro-detalle** (lista de respuestas → evaluación + Markdown), leyenda/conteos, lectura fácil y estados guiados. Sin contratos, rutas ni permisos nuevos; 24/24 pruebas Angular, Prettier y build verdes. |
 | P-24 | [P-24_Evaluacion_Implicita_Al_Solicitar_Mejora.md](P-24_Evaluacion_Implicita_Al_Solicitar_Mejora.md) | Inmediata | **DONE local 2026-07-29.** Corrige el bug confirmado en hilo simple y cola multi-idea: una petición corta de mejorar confirma implícitamente la versión completa, la evalúa contra la rúbrica y abre coaching; no se persiste como corrección ni reduce `MaxRepreguntas`. Backend 579/579, formato y diff verdes. |
 | P-25 | [P-25_Coaching_Directo_Sin_Confirmacion_Repetitiva.md](P-25_Coaching_Directo_Sin_Confirmacion_Repetitiva.md) | Inmediata | **DONE local 2026-07-29.** Cada aporte sustantivo consolida y evalúa la versión completa en el mismo turno; la confirmación explícita repetitiva sale del flujo normal y queda solo como rollback global. Backend 583/583, formato y diff verdes. |
+| P-26 | [P-26_Participacion_Continua_y_Seleccion_de_Campania.md](P-26_Participacion_Continua_y_Seleccion_de_Campania.md) | Inmediata | **ESPECIFICADA 2026-07-29; implementación pendiente (6 cortes).** Flag `participacionContinua` por campaña, selección campaña/pregunta, aporte preservado, afinidad 24 h, ciclos independientes y cupos móviles. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
@@ -233,6 +237,7 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | I-17 madurez (dos niveles) | Reutiliza `umbralCierreAnticipado` (`double?`, precedencia pregunta→campaña→global) — **DONE local** | la clasificación siempre se calcula; el cierre anticipado queda apagado mientras su kill-switch global esté OFF |
 | I-18 coaching secuencial | `coachingSecuencialIdeas` (bool, default `false`) + `minutosCoachingPorIdea` (`int?`, null = hereda global) — **DONE local** | `false` = confirmación multi-idea anterior; minutos `<=0` = sin timeout por idea |
 | P-21 número saliente de WhatsApp | `configConversacional.numeroWhatsAppSaliente` (alias `string?`, default null) — **DONE local 2026-07-25** | **null = usa el número predeterminado global** (`WhatsApp:AliasPredeterminado`); la respuesta conversacional NO usa este campo: sale siempre por el número entrante |
+| P-26 participación continua | `configConversacional.participacionContinua` (bool, default `false`) — **ESPECIFICADA; código pendiente** | `false`/ausente = recorrido único actual; `true` permite ideas/ciclos nuevos solo con campaña `activa` |
 | ~~I-09/I-10 tejido colectivo~~ | ~~`tejidoColectivo`~~ | **DIFERIDA (Capa 3)** — el campo existe en el modelo pero queda OFF; su UI no se construye para el MVP |
 
 ### 4.3 Candidatas a por-campaña (decidir al implementar; post-Hito si aprieta el freeze)

@@ -123,7 +123,15 @@ Estados de `Conversacion.estadoMaquina` (`03 §3.6`):
 
 ```
 ProcesarMensajeEntranteAsync:
-1. Cargar/crear Conversacion (usuario, campaña, pregunta vigente).
+0. P-26, antes de entrar al orquestador:
+   - resolver una afinidad vigente hacia una idea abierta, o calcular campañas elegibles;
+   - con 0 opciones, rechazo neutral; con 1, seleccionar; con N, conservar el aporte y pedir campaña;
+   - dentro de la campaña, seleccionar automáticamente una pregunta elegible o pedirla si hay N;
+   - revalidar campaña/asociación/pregunta y entregar el aporte original exactamente una vez.
+1. Cargar/crear Conversacion (usuario, campaña, pregunta vigente y ciclo de participación).
+   - Documento histórico/campaña no continua: ciclo 1 y comportamiento actual.
+   - P-26 continuo: después de cerrar una idea/cola, el aporte sustantivo siguiente crea otra
+     Conversacion con id derivado también del mensaje raíz; nunca reabre ni vacía el hilo cerrado.
 2. Persistir Respuesta/aporte (esRepregunta según estadoMaquina) con tagsSnapshot.
    - I-06 multi-idea: si `Campania.configConversacional.segmentacionIdeas=true` y
      `Conversacion:SegmentacionIdeas` no lo apaga, antes de evaluar se llama `ISegmentadorIdeas`.
@@ -269,6 +277,26 @@ versión completa y acto ya decidido por el servidor. No puede decidir estado, c
 cierre. Cada turno expresa una sola intención y a lo sumo una pregunta; salida inválida, timeout o fuga
 cae a un respaldo breve y seguro. Ver `Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md`.
 
+### 4.4.3 Participación continua y enrutamiento (P-26)
+
+`configConversacional.participacionContinua` permite abrir **otro ciclo** después de completar el
+anterior, pero solo con `Campania.estado=activa`. La resolución previa al orquestador es determinista:
+
+1. una afinidad vigente hacia una conversación abierta continúa sin menú;
+2. sin afinidad, se listan solo campañas activas, asociadas/habilitadas y con trabajo pendiente o
+   participación continua;
+3. una opción se toma automáticamente; varias requieren número o nombre exacto no ambiguo;
+4. con varias preguntas elegibles se solicita también la pregunta;
+5. el aporte raíz se conserva en `EnrutamientoAporte` (`03 §3.6.1`) y se entrega exactamente una vez;
+6. la afinidad dura mientras se trabaja la idea y como máximo 24 horas;
+7. un nuevo aporte después del cierre crea otra `Conversacion`/`ideaId`; una frase explícita de
+   reapertura conserva el `ideaId` y reutiliza I-19.
+
+El LLM no elige campaña ni pregunta. Las opciones se vuelven a validar al seleccionar; una campaña
+cerrada entre la oferta y la selección deja de ser elegible. Apagar `participacionContinua` deja
+terminar el ciclo abierto y bloquea el siguiente; cerrar la campaña detiene la interacción de
+inmediato. Ver `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. En el flujo legacy, I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`**. Con I-19, la paráfrasis acumulada para confirmación es obligatoria y reemplaza esa salida opcional para no enviar dos resúmenes; no depende del flag I-05. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 
@@ -319,6 +347,8 @@ El coach deja de ser autocontenido: enriquece la evaluación/retro con la **base
 - Con I-19, el participante confirma la paráfrasis acumulada y todas las evaluaciones/retroalimentaciones
   usan esa versión completa; Resultados no duplica una fila por aporte.
 - Una idea reabierta conserva el mismo `ideaId`, crea otra versión y se vuelve a evaluar.
+- Con P-26 activo, cerrar una idea y enviar un aporte posterior crea otro ciclo/idea independiente;
+  con varias campañas/preguntas el aporte se conserva y se procesa una sola vez tras la selección.
 - El cierre envía mensaje de agradecimiento y dispara compilación Markdown.
 - Mensajes repetidos por reintento de Meta no duplican Respuestas ni Evaluaciones (idempotencia).
 - Fuera de ventana de 24h, la repregunta se envía por plantilla aprobada.

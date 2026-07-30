@@ -160,7 +160,9 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
 En I-19, el cierre deja una única idea como `madura`, `pendiente` o `rechazada` y compila su Markdown
 canónico. Una idea madura queda `pendiente` de curaduría experta; no se publica ni prioriza
 automáticamente. Una conversación cerrada no acepta contenido nuevo como otra respuesta independiente,
-pero puede reabrir la misma idea ante una petición explícita mientras la campaña siga activa.
+pero puede reabrir la misma idea ante una petición explícita mientras la campaña siga activa. Con
+P-26 y `participacionContinua=true`, un aporte posterior **no modifica esa conversación cerrada**:
+crea otro ciclo/conversación y otra idea.
 
 El Markdown de la idea muestra para curaduría campaña, pregunta, umbral de madurez efectivo con origen
 y calificación total como `X de Y puntos` —por ejemplo `Umbral de madurez: 3,4 de 5 puntos (60 %;
@@ -309,6 +311,12 @@ se pensaron para una campaña de una pregunta). El techo 3 es independiente del 
 Regla del equipo (D2): **no se retira el tope determinístico de revisiones (I-01) hasta que estos cupos
 estén activos en producción.**
 
+**P-26 — ventana móvil para campañas continuas:** si
+`configConversacional.participacionContinua=true`, los cupos 1 y 2 cuentan únicamente los eventos de
+las últimas 24 horas para ese usuario/campaña. La ventana es móvil y compartida por todos sus ciclos y
+preguntas. En campañas no continuas se conserva el acumulado actual. El presupuesto total de tokens
+de la campaña nunca se reinicia.
+
 ### 2.9 Tejido colectivo (I-09, diseño Sprint 1a — core Sprint 1b)
 > **⚠️ DIFERIDO del MVP (reunión GHT 20-jul → Capa 3 post-convención).** El comportamiento está
 > implementado pero el flag `tejidoColectivo` queda **OFF para el Hito**: en el go-live el coach es
@@ -329,6 +337,28 @@ lo que otros han dicho. Reglas duras de esta función:
 - **Degradación limpia:** si no hay aportes relevantes o falla la recuperación, la conversación es
   **autocontenida** (modo probado), sin fallo visible. La recuperación nunca bloquea el hilo.
 - **Apagado por defecto:** `tejidoColectivo=false` por campaña → autocontenido, sin redeploy.
+
+### 2.10 Participación continua y selección de campaña/pregunta (P-26)
+
+El interruptor por campaña `configConversacional.participacionContinua` controla si un participante
+puede iniciar ideas nuevas después de completar su recorrido. Campo ausente/`false` conserva el flujo
+actual. `true` solo tiene efecto si la campaña está `activa`; no permite escribir en campañas
+cerradas, archivadas o en borrador.
+
+Orden del flujo:
+
+1. una respuesta de coaching continúa en la afinidad vigente sin volver a preguntar campaña;
+2. sin idea activa se calculan campañas autorizadas con trabajo pendiente o participación continua;
+3. una campaña se elige automáticamente; varias producen una lista numerada;
+4. una pregunta elegible se elige automáticamente; varias producen otra lista;
+5. el aporte original se conserva y se procesa exactamente una vez después de elegir;
+6. la selección vence en 24 horas, pero el aporte queda auditable;
+7. después de cerrar una idea, otro aporte sustantivo crea conversación/idea/Markdown independientes;
+8. solo una intención explícita de complementar/revisitar conserva el `ideaId` anterior.
+
+La selección acepta número o nombre/texto exacto no ambiguo y se vuelve a validar contra campaña,
+asociación y pregunta. El LLM no elige el alcance. Apagar el interruptor deja terminar una idea ya
+activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción. Ver P-26.
 
 ## 3. Parámetros configurables
 
@@ -380,6 +410,8 @@ lo que otros han dicho. Reglas duras de esta función:
 | `Conversacion:MinutosInactividadSesion` | App config / env `Conversacion__MinutosInactividadSesion` | 0 (**desactivado**) | **I-17 §7** — default global de la ventana de inactividad **en minutos** (granularidad sub-hora; interruptor maestro). Recomendado `5` en el acta del día-D. |
 | `configConversacional.minutosInactividadSesion` | Portal admin (campaña) | ausente (**hereda global**) | **I-17 §7** — override por campaña de la ventana de inactividad en minutos; `<= 0` la apaga solo para esa campaña. |
 | `configConversacional.numeroWhatsAppSaliente` | Portal admin (campaña) | ausente (**usa predeterminado**) | **P-21** — alias lógico para el envío inicial/reenvío; nunca guarda el id de Meta. |
+| `configConversacional.participacionContinua` | Portal admin (campaña, creación/edición) | `false` | **P-26** — permite ciclos/ideas nuevos después de finalizar, solo mientras la campaña esté `activa`. Campo ausente = recorrido único. |
+| Ventana de selección P-26 | Regla fija del flujo | 24 horas | Afinidad y selección pendientes vencen; el aporte raíz permanece auditable. |
 | `pregunta.umbralCierreAnticipado` | Portal admin (pregunta) | ausente (**hereda campaña**) | **I-17** — override del umbral compartido (madurez + cierre) por pregunta; precedencia pregunta → campaña → global. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |
@@ -400,6 +432,8 @@ lo que otros han dicho. Reglas duras de esta función:
   conversación se cierra o avanza de pregunta únicamente cuando no quedan ideas pendientes.
 - **Idea I-19:** flujo `pendienteConfirmacion ↔ enMejora|enRevision → cerrada`; resultado
   `madura|pendiente|rechazada`. Una idea madura recibe `estadoCuraduria=pendiente`.
+- **Enrutamiento P-26:** `seleccionCampania|seleccionPregunta|listo → enIdea → completado`;
+  puede terminar `expirado|cancelado`. Cada ciclo nuevo crea otra conversación.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).
 
 ## 5. Referencias

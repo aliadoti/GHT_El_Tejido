@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Especificaciones/Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md",
+                "file": "Especificaciones/Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo"
+              "title": "P-26_Participacion_Continua_y_Seleccion_de_Campania"
             }
           },
           {
@@ -92,7 +92,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 341.5
   },
   "right": {
     "id": "1e371abced1fb1bf",
@@ -199,6 +199,8 @@
   },
   "active": "8cc6b5c552480c8c",
   "lastOpenFiles": [
+    "Especificaciones/Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md",
+    "Especificaciones/Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md",
     "Especificaciones/Iniciativas/P-25_Coaching_Directo_Sin_Confirmacion_Repetitiva.md",
     "Especificaciones/Iniciativas/P-24_Evaluacion_Implicita_Al_Solicitar_Mejora.md",
     "scripts/SimulacionLocalOpenBrainTemporal.ps1",
@@ -213,7 +215,6 @@
     "src/ElTejido.Application/Conversacion/OrquestadorConversacion.cs.tmp.1059.10c85da39ec0",
     "Especificaciones/Iniciativas/P-20_Pestanas_Accesibles_Campanias.md",
     "Rubricas/Rúbrica Tejido de Red — Calificación de Ideas de Mejora (propuesta) - 072026.md",
-    "Especificaciones/Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md",
     "Semillas/Semilla.md",
     "Especificaciones/Iniciativas/TODO.md",
     "Semillas/## Apéndice F - Preguntas Semilla.md",
@@ -236,7 +237,6 @@
     "QAS/Auditoria/03_hallazgos.md",
     "Especificaciones/Iniciativas/P-19_Estados_Dinamicos_Accesibles.md",
     "Especificaciones/Iniciativas/P-17_Errores_API_Uniformes.md",
-    "Especificaciones/Iniciativas/P-16_Refactor_Pagina_Campanias.md",
     "src/ElTejido.Web/public/brand/eltejido-logo.png",
     "Marca/ElTejidoGHTbyGTA_1.png",
     "src/ElTejido.Web/public/brand/aliadoti-mark.png",

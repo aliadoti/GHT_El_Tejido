@@ -29,6 +29,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 7. Configura proveedor/modelo LLM y guarda la API key de forma segura (enmascarada; solo `apiKeyRef` en BD).
 8. Consulta una fila por idea consolidada, con estado, calificación, explicación, Markdown e historial
    de aportes/versiones; los resultados históricos siguen disponibles.
+9. Configura “Permitir nuevas ideas después de finalizar” al crear/editar una campaña y distingue ese
+   permiso del estado activa/cerrada.
 
 ## 3. Criterios de aceptación — Participante (`REQ §33.2`)
 1. Recibe el mensaje inicial por WhatsApp tras el envío del admin.
@@ -41,6 +43,10 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 8. Puede volver a una idea anterior mientras la campaña esté activa.
 9. La interacción cierra dejando la idea madura, pendiente o rechazada; una madura queda pendiente de
    curaduría y no se publica automáticamente.
+10. En campaña continua puede volver después y crear otra idea independiente.
+11. Con varias campañas o preguntas elegibles elige de una lista y su aporte original se procesa sin
+    escribirlo otra vez.
+12. Durante el coaching sus respuestas continúan en la idea activa sin repetir la selección.
 
 ## 4. Criterios de aceptación — Sistema y Seguridad (`REQ §33.3`, `§36.6`)
 1. Guarda historial, mensajes iniciales enviados, estado de envío, aportes, ideas consolidadas,
@@ -54,6 +60,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 7. Verifica la firma del webhook; idempotencia ante reintentos de Meta.
 8. No filtra secretos en logs, telemetría ni Markdown; auth neutral; anti prompt-injection efectivo.
 9. Mantiene separación entre configuración, conversación, evaluación, envío, seguridad, persistencia y Markdown.
+10. P-26 revalida autorización, evita duplicar ciclos/aportes, conserva selecciones vencidas como
+    auditoría y aplica cupos móviles de 24 h sin reiniciar el presupuesto de campaña.
 
 ---
 
@@ -75,6 +83,14 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
     artefactos/logs.
 14. Verificar que confirmación, mejora y transición son un solo acto natural; que no se revelan
     puntajes al participante; y que Markdown muestra umbral/origen y nota `X de Y puntos`.
+15. En simulación, activar participación continua, cerrar una idea y enviar otra: comprobar
+    conversación, `ideaId`, evaluación y Markdown diferentes.
+16. Asociar el mismo usuario a dos campañas activas, enviar primero el aporte, seleccionar campaña y
+    pregunta y comprobar que el aporte se procesa una sola vez.
+17. Responder al coaching y verificar que no reaparecen los menús; pedir explícitamente otra campaña y
+    comprobar el cambio sin cerrar la idea suspendida.
+18. Apagar el flag durante una idea y verificar que termina pero no abre otra; cerrar una campaña y
+    verificar el corte inmediato.
 
 ---
 
@@ -95,6 +111,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §22, §26.7 Markdown | 09 | Unit (render) + integración (regenerar) + §4.3 |
 | §9/§20/§21/§22 Consolidación progresiva I-19 | I-19, 03 §3.8.1–2, 05 §4.4.2, 08 §2.2 | Unit (versiones/estados/intenciones) + integración (confirmar/evaluar/reabrir) + E2E §5.9–13 |
 | §9/§20/§21/§22 Redacción fluida I-20 | I-20, 03 §3.3, 05 §4.4–§4.5, 08, 09 | Unit (JSON/guardrails/fallback/formato) + integración (un acto por turno) + E2E §5.9–14 |
+| Participación continua y enrutamiento P-26 | P-26, 03 §3.3/§3.6.1, 05 §4.4.3, 06 §3 | Unit (elegibilidad/selección/ciclos/ventana) + integración (webhook y Cosmos) + E2E §5.15–18 |
 | §25 Guardrails/abuso | 10 §2 | Unit + integración límites + §4.6 |
 | §30 Trazabilidad | 10 §6 | Integración (snapshots, logs) + §4.1–2 |
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |

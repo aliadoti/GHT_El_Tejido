@@ -170,7 +170,11 @@
   - **Alternativas descartadas:** honrar `RecomendacionEvaluacion.Cerrar` del LLM como corte (menos auditable y se descarto en 2026-06-17); detectar intencion con una llamada extra al LLM (costo y re-evalua un "ya termine"); detectar intencion tambien en la primera respuesta (se comeria respuestas reales cortas como "asi esta bien gestionada"); umbral absoluto en vez de fraccion de escala (no portable entre rubricas con distinta escala).
 - Contexto: `05 §4` define la maquina de estados y el algoritmo, pero deja abiertos: la identidad de la conversacion, como se combinan retro/repregunta/cierre en mensajes, como se encola la compilacion Markdown, que pasa con configuracion incompleta y la resolucion de snapshots. REQ §9, §21, §25.2, §26 / ARQ §4, §6.
 - Decision:
-  - **Identidad de conversacion determinista** `conv_<campaniaId>_<usuarioId>_<preguntaId>` (una por terna, MVP `03 §3.6`): permite upsert/lectura directa. Una conversacion **cerrada ignora** mensajes posteriores (se descartan en silencio).
+  - **Identidad de conversacion determinista** `conv_<campaniaId>_<usuarioId>_<preguntaId>` (una por
+    terna en el flujo histórico, MVP `03 §3.6`): permite upsert/lectura directa. Una conversación
+    cerrada no se modifica. **Actualización P-26:** si la campaña activa tiene participación continua,
+    un aporte posterior crea otro ciclo con id derivado también del mensaje raíz; no se descarta ni
+    reabre el hilo anterior. Ver `#participacion-continua-p26`.
   - **Pregunta vigente:** la que entrega la resolucion de participante (`06 §3`, primera activa por orden en el MVP); el orquestador no implementa aun seleccion por hilo abierto.
   - **Mensajes combinados:** para reducir mensajes de WhatsApp, el turno de repregunta envia `retro + "\n\n" + repreguntaSugerida` (tipo `Repregunta`). El cierre por evaluacion valida puede enviar `retro + "\n\n" + mensajeCierre`; cuando el participante responde despues de agotar revisiones, el cierre envia solo `mensajeCierre` (tipo `Cierre`).
   - **Textos operativos configurables:** `SaludoPrimerContacto`, `SaludoSiguientePregunta`, `InvitacionMejora` y `MensajeConfiguracionNoDisponible` se leen de `Conversacion:Mensajes:*` (env `Conversacion__Mensajes__...`) con defaults compilados si el valor falta o esta vacio. `MensajeCierre` no se mueve a env porque sigue siendo configuracion conversacional de la campania editable desde el portal.
@@ -239,7 +243,14 @@
   - **Como se evita el bucle:** el primer entrante **crea y persiste** la `Conversacion` en `EsperandoRespuestaInicial` (no avanza a `Evaluando`). El SIGUIENTE entrante ya halla esa conversacion (`conversacion is not null`) y cae al flujo normal de evaluacion. Es decir, el discriminador del "segundo turno" es la existencia de la conversacion, no el estado de envio.
   - **Mensaje enviado:** saludo + `pregunta.Texto` combinados, como **texto libre** dentro de la ventana (05 §2.2), registrado como `EnvioMensaje` tipo `Inicial` (es, en efecto, la entrega de la pregunta inicial). Se guarda tambien el `Mensaje(in)` del saludo para el hilo, pero NO se llama al LLM ni se persiste `Respuesta`/`Evaluacion`.
   - **Origen del saludo (actualizado 2026-06-23):** el saludo es el `MensajeInicial` **activo de la campania** (el de menor `orden`), guardado en la BD y editable desde el portal, con sus variables resueltas por `RenderizadorMensaje` (mismas variables que el envio masivo: `nombre`/`area`/`empresa`/`campania` + dinamicas). Solo si la campania **no** tiene `MensajeInicial` activo se cae al texto configurable `Conversacion:Mensajes:SaludoPrimerContacto` (respaldo, evita saludo vacio). Antes el saludo salia siempre de App Settings, lo que ignoraba el mensaje inicial configurado por campania; ahora App Settings es solo el respaldo. La **plantilla de Meta** proactiva (fuera de ventana) sigue siendo global (`#plantilla-envio-inicial-campania`) e independiente de este saludo.
-  - **Campanias multipregunta:** la pregunta de trabajo se resuelve por preguntas activas en `orden` ascendente y por el estado de sus conversaciones del usuario. Una conversacion abierta conserva su ciclo de revisiones; cuando esta en `EsperandoRepregunta` y `RepreguntasUsadas >= MaxRepreguntas`, el siguiente entrante se registra como `recibida`, no se manda al LLM, no genera retroalimentacion ni Markdown, envia solo `MensajeCierre`, cierra el hilo y habilita avanzar a la siguiente pregunta activa. Si no quedan preguntas activas pendientes, los entrantes posteriores se ignoran.
+  - **Campanias multipregunta:** la pregunta de trabajo se resuelve por preguntas activas en `orden`
+    ascendente y por el estado de sus conversaciones del usuario. Una conversación abierta conserva
+    su ciclo de revisiones; cuando está en `EsperandoRepregunta` y
+    `RepreguntasUsadas >= MaxRepreguntas`, el siguiente entrante se registra como `recibida`, no se
+    manda al LLM, no genera retroalimentación ni Markdown, envía solo `MensajeCierre`, cierra el hilo y
+    habilita avanzar a la siguiente pregunta activa. Si no quedan preguntas activas pendientes, los
+    entrantes posteriores se ignoran **salvo P-26**: con campaña activa y participación continua se
+    solicita campaña/pregunta y se crea otro ciclo.
 - Alternativa(s) descartada(s): mantener `EstadoEnvio` como condicion (reproduce el bug business-initiated: saludo enviado, pregunta nunca enviada, primer "Hola" evaluado); agregar la pregunta al envio masivo (cambia semantica de `MensajeInicial` y mezcla saludo+pregunta en la plantilla de campania); exigir que `MensajeInicial` contenga la pregunta (traslada un invariante critico a operacion manual); marcar `EstadoEnvio=Enviado` tras el primer entrante (confunde el estado del envio masivo con el contacto entrante); evaluar el saludo y responder con la pregunta a la vez (gasta un turno de evaluacion sobre "Hola", mala señal para la rubrica).
 - Impacto / reversibilidad: no cambia contratos `03`/`04`. El texto del saludo es una constante facilmente ajustable; el discriminador es reversible (volver a evaluar todo entrante) sin tocar el dominio.
 
@@ -808,3 +819,39 @@
 - Alternativas descartadas: mejorar solo el texto de “¿Es correcto?”; bajar `MaxRepreguntas`; evaluar
   únicamente el último mensaje; permitir al redactor decidir si confirma o avanza.
 - Spec: `Iniciativas/P-25_Coaching_Directo_Sin_Confirmacion_Repetitiva.md`.
+
+### participacion-continua-p26 - Ciclos repetibles y selección explícita de alcance
+
+- Fecha: 2026-07-29 - Agente/Rol: Codex - Arquitecto/Backend/Frontend/AppSec/SDET - decisiones
+  confirmadas por el usuario; código pendiente.
+- Contexto: el resolutor actual supone una campaña principal y cada
+  `(usuario,campaña,pregunta)` tiene un único hilo. Al cerrarse todas las preguntas, otro aporte no
+  puede formar una idea nueva; con varias campañas activas se escoge una sin preguntarle al
+  participante.
+- Decisión:
+  - Se añade `configConversacional.participacionContinua` por campaña, default `false`; ausente
+    conserva el recorrido único. Solo `Campania.estado=activa` permite recibir.
+  - Una idea en coaching conserva afinidad y recibe sus respuestas sin menú. Sin idea activa, una
+    opción de campaña/pregunta se resuelve automáticamente y varias se ofrecen en lista numerada.
+  - La campaña requiere asociación/participante activos y trabajo pendiente o continuidad; toda
+    opción se revalida al seleccionarse.
+  - El aporte directo recibido antes de elegir se conserva en `EnrutamientoAporte` dentro de
+    `conversations`, partición interna `routing:<usuarioId>`; se procesa exactamente una vez y vence
+    lógicamente a las 24 h sin perder auditoría. Se reutiliza infraestructura existente y no se le
+    atribuye una campaña antes de la selección.
+  - Cada idea posterior abre otra `Conversacion` con ciclo/idempotencia por mensaje raíz y otro
+    `ideaId`; no se vacía ni reabre el hilo cerrado. Solo una intención explícita reutiliza la
+    reapertura I-19.
+  - Apagar el flag deja terminar la idea abierta y bloquea la siguiente. Cerrar la campaña prevalece
+    y detiene toda interacción.
+  - En campañas continuas, cupos de mensajes/llamadas LLM por participante usan ventana móvil de
+    24 h; el presupuesto total de tokens de campaña sigue acumulado. Campañas no continuas conservan
+    los cupos acumulados.
+  - El enrutamiento, elegibilidad, expiración, cupos y estados son deterministas. El LLM solo conserva
+    sus responsabilidades validadas de segmentación, consolidación, evaluación y redacción.
+- Alternativas descartadas: permitir campañas cerradas; reabrir/resetear la conversación anterior;
+  escoger la campaña más reciente; pedir que el participante repita el aporte; crear un contenedor
+  Cosmos nuevo; reiniciar el presupuesto de campaña cada 24 h; delegar selección al LLM.
+- Impacto/reversibilidad: contratos aditivos `03/04`; default `false`; rollback apagando el flag sin
+  borrar ciclos ni ideas. Implementación planificada en seis cortes según P-26.
+- Spec: `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.

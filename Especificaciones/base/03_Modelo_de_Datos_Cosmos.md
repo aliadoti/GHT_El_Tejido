@@ -26,7 +26,7 @@
 | `users` | `Usuario`, `Tag` | `/pk` (= `tipo` lógico: `"usuario"` o `"tag"`) | No | Catálogo pequeño; lectura por número e id. |
 | `campaigns` | `Campania` (con mensajes y preguntas embebidos) | `/id` | No | Unidad de configuración; se lee completa. |
 | `participants` | `ParticipanteCampania`, `EnvioMensaje` | `/campaniaId` | No | Consultas y envíos siempre por campaña. |
-| `conversations` | `Conversacion`, `Mensaje` | `/campaniaId` | No | Hilo conversacional agrupado por campaña. |
+| `conversations` | `Conversacion`, `Mensaje`, `EnrutamientoAporte` | `/campaniaId` | No | Hilo conversacional agrupado por campaña; P-26 usa una partición interna por usuario antes de conocer la campaña. |
 | `responses` | `Respuesta`, `IdeaConsolidada`, `VersionIdeaConsolidada`, `Evaluacion`, `ArtefactoMarkdown` | `/campaniaId` | No | Consulta administrativa filtra por campaña/idea/madurez; I-19 conserva aportes y versiones en la misma partición. |
 | `config` | `Rubrica`, `Prompt`, `ConfigLLM` (todas las versiones) | `/pk` (= `tipo`) | No | Catálogo versionado de baja escritura. |
 | `security` | `CodigoAuthAdmin`, `LogSeguridad` | `/pk` (= `tipo`) | **Sí** (en `CodigoAuthAdmin`) | OTP con TTL; logs append-only. |
@@ -127,7 +127,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "conversacion": "pr_conversar", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "numeroWhatsAppSaliente": null },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "numeroWhatsAppSaliente": null },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -157,6 +157,12 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   `minutosInactividadSesion`, que cierra la sesión completa.
 - `configConversacional.tejidoColectivo` (I-09, **aditivo**, default `false`): habilita el **tejido colectivo** — el coach recupera e inyecta (como dato no confiable delimitado, `08 §3.2`) resúmenes **anonimizados** de aportes de otros participantes de la misma campaña antes de evaluar/retroalimentar. Documento viejo sin el campo = conversación autocontenida (comportamiento actual). Gateado además por el kill-switch operativo global `Conversacion:TejidoColectivo=false`. I-10 (Sprint 2) añade sobre este mismo campo la semántica *base previa vs. blanco* y su UI. Requiere consentimiento de uso colectivo declarado en el arranque de la campaña (P-07). Ver `SUPUESTOS.md#tejido-colectivo-i09-diseno`.
 - `configConversacional.parafraseo` (I-05, **aditivo**, default `false`): solicita un resumen fiel y breve del aporte antes de la retroalimentación. Documento viejo sin el campo = retro clásica (comportamiento actual). El kill-switch global `Conversacion:Parafraseo=false` evita solicitar y mostrar el campo para todas las campañas; rollback sin redeploy.
+- `configConversacional.participacionContinua` (**P-26**, **aditivo**, default `false`): mientras la
+  campaña permanezca `activa`, permite iniciar ciclos e ideas nuevas después de completar las
+  preguntas anteriores. Campo ausente = recorrido único actual. No reemplaza `estado`: una campaña
+  `cerrada`, `archivada` o `borrador` nunca recibe aportes. Si cambia de `true` a `false`, las ideas
+  abiertas pueden terminar, pero no se crean ciclos posteriores. Ver
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
 - `configConversacional.umbralCierreAnticipado` (P-13 + **I-17**, **aditivo**, default **ausente/null**): **override por campaña** del **umbral único compartido** que gobierna tanto el cierre anticipado por calificación alta (`05 §4.4`) como la **clasificación de madurez** de guardado (I-17: `maduro`/`incubacion`) y el disparo de paráfrasis (I-05). Fracción de la escala de la rúbrica en `[0,1]`, `<= 0` desactiva el cierre para esa campaña. Ausente/null = la campaña **hereda** el default numérico global `Conversacion:UmbralCierreAnticipado` (**I-17: default `0.6`**). **I-17 añade un nivel más de override, por pregunta** (`pregunta.umbralCierreAnticipado`), con precedencia **pregunta → campaña → global**. El kill-switch operativo independiente `Conversacion:CierreAnticipadoHabilitado` (**I-17: default `false`** para no encender el cierre al subir el default global a 0.6; la clasificación de madurez no depende de este kill-switch) prevalece sobre el **cierre**: `false` apaga el cierre anticipado para todas las campañas sin afectar la clasificación. Documento viejo sin el campo = usa el global. Ver `Iniciativas/P-13_Umbral_Cierre_Por_Campania.md`, `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md` y `SUPUESTOS.md#bd-dos-niveles-madurez-i17`.
 - `configConversacional.minutosInactividadSesion` (**I-17 §7**, **aditivo**, default **ausente/null**): **override por campaña** de la ventana de **cierre por inactividad de sesión** en minutos (granularidad sub-hora que el flujo del 20-jul pide; hoy la expiración es por horas). Ausente/null = hereda el default global `Conversacion:MinutosInactividadSesion`; `<= 0` desactiva el cierre por inactividad para esa campaña. No se parametriza por pregunta. Documento viejo sin el campo = usa el global.
 - `configConversacional.numeroWhatsAppSaliente` (**P-21**, **aditivo**, default **ausente/null**): alias lógico del número que inicia los envíos de la campaña. Ausente/null usa el número predeterminado de `WhatsApp:Numeros`; nunca almacena un id de Meta. Documento viejo sin el campo conserva el envío por el número único/predeterminado.
@@ -213,6 +219,9 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "campaniaId": "c_2026conv",
   "usuarioId": "u_8f3c...",
   "preguntaId": "p_ingresos",
+  "cicloParticipacion": 1,
+  "origenAporteMessageId": "wamid.entrada-inicial",
+  "enrutamientoAporteId": null,
   "canal": "whatsapp",
   "estado": "abierta",
   "estadoMaquina": "esperandoRespuestaInicial",
@@ -259,7 +268,65 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   versión confirmada vigente. `respuestaVigenteId` se conserva para lectores I-18 y señala el último
   aporte, pero ya no define por sí solo el texto que se evalúa.
 - `ventanaServicioVenceEn`: fin de la ventana de 24h de WhatsApp (`ARQ §4.1`); decide plantilla vs texto libre.
-- Una conversación por (usuario, campaña, pregunta) en el MVP.
+- `cicloParticipacion`, `origenAporteMessageId` y `enrutamientoAporteId` (**P-26**, aditivos):
+  permiten más de una conversación para la misma combinación usuario/campaña/pregunta sin mezclar
+  ideas. Documento histórico sin `cicloParticipacion` = ciclo `1`. Para ciclos posteriores el id se
+  deriva determinísticamente también del mensaje raíz; `origenAporteMessageId` evita duplicados ante
+  reintentos y `enrutamientoAporteId` enlaza la selección que conservó el aporte.
+- La unidad pasa a ser una conversación por (usuario, campaña, pregunta, ciclo). Con
+  `participacionContinua=false` solo existe el recorrido único vigente.
+
+### 3.6.1 `EnrutamientoAporte` (contenedor `conversations`) — P-26
+
+Conserva el aporte mientras el participante elige campaña/pregunta y funciona como afinidad temporal
+durante el coaching. Reutiliza el contenedor existente con la partición interna determinista
+`campaniaId="routing:<usuarioId>"`; no requiere un recurso Azure nuevo ni atribuye prematuramente el
+aporte a una campaña real.
+
+```json
+{
+  "id": "route_u_8f3c_wamidabc",
+  "type": "EnrutamientoAporte",
+  "campaniaId": "routing:u_8f3c...",
+  "usuarioId": "u_8f3c...",
+  "whatsappMessageId": "wamid.abc",
+  "phoneNumberIdDestino": "123456789",
+  "textoOriginal": "Se me ocurrió crear...",
+  "estado": "seleccionCampania",
+  "campaniasOfrecidas": [
+    { "campaniaId": "c_1", "nombreSnapshot": "Innovación comercial", "orden": 1 }
+  ],
+  "campaniaSeleccionadaId": null,
+  "preguntasOfrecidas": [],
+  "preguntaSeleccionadaId": null,
+  "conversacionId": null,
+  "intentosSeleccion": [
+    {
+      "whatsappMessageId": "wamid.sel1",
+      "tipo": "campania",
+      "resultado": "invalido",
+      "fecha": "2026-07-29T15:05:00Z"
+    }
+  ],
+  "creadoEn": "2026-07-29T15:00:00Z",
+  "actualizadoEn": "2026-07-29T15:05:00Z",
+  "venceEn": "2026-07-30T15:00:00Z",
+  "procesadoEn": null
+}
+```
+
+- `estado` ∈
+  `seleccionCampania|seleccionPregunta|listo|enIdea|completado|expirado|cancelado`.
+- `id` es determinístico por usuario + `whatsappMessageId`; un reintento no crea otro enrutamiento.
+- La partición reservada `routing:<usuarioId>` permite leer por usuario sin consulta cross-partition.
+  No se expone como campaña y los repositorios normales filtran `type=Conversacion|Mensaje`.
+- `campaniasOfrecidas`/`preguntasOfrecidas` son snapshots auditables. La autorización y vigencia se
+  consultan otra vez antes de aceptar la selección.
+- `intentosSeleccion` conserva ids, tipo, resultado y fecha, no el texto libre de la respuesta.
+- `venceEn` controla una expiración **lógica** de 24 horas. No se usa TTL físico porque el aporte
+  original debe permanecer auditable.
+- `textoOriginal` pertenece al plano de negocio y recibe los mismos controles de acceso/retención que
+  `Mensaje`; nunca se copia a telemetría técnica.
 
 ### 3.7 `Mensaje` (contenedor `conversations`) — `REQ §28.3`
 
@@ -614,6 +681,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 | Webhook entrante | `whatsappMessageId` | `WebhookDedupe` en `leases` (create-if-not-exists; si ya existe, descartar). |
 | Envío saliente | `(campaniaId, usuarioId, tipo, mensajeInicialId)` | Consultar `EnvioMensaje` antes de reenviar; estado por participante. |
 | Evaluación | `respuestaId` | Una evaluación por respuesta por intento; reintentos no duplican (upsert lógico o verificación previa). |
+| Enrutamiento y ciclo P-26 | `(usuarioId, whatsappMessageId)` | `EnrutamientoAporte.id` y `Conversacion.origenAporteMessageId`; transición condicional `listo→enIdea` + `procesadoEn` para entregar el aporte una sola vez. |
 
 ---
 
@@ -633,7 +701,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 | Usuario, Tag | `users` | 06, 07 |
 | Campania (+ mensajes, preguntas) | `campaigns` | 07 |
 | ParticipanteCampania, EnvioMensaje | `participants` | 05, 07 |
-| Conversacion, Mensaje | `conversations` | 05 |
+| Conversacion, Mensaje, EnrutamientoAporte | `conversations` | 05, 06, P-26 |
 | Respuesta, IdeaConsolidada, VersionIdeaConsolidada, Evaluacion, ArtefactoMarkdown | `responses` | 05, 08, 09, I-19 |
 | Rubrica, Prompt, ConfigLLM | `config` | 07, 08 |
 | CodigoAuthAdmin, LogSeguridad | `security` | 06, 10 |

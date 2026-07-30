@@ -4,6 +4,15 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-29 por Codex (Arquitecto/Backend/Frontend/AppSec/SDET):
+  **P-26 participación continua — especificación y contratos DONE; código 0/6.** Se confirmó y
+  documentó: flag de campaña default `false`; solo campañas activas; selección determinista de
+  campaña/pregunta; aporte original conservado y procesado una vez; afinidad de coaching hasta 24 h;
+  conversación/ciclo e idea independientes por aporte posterior; reapertura explícita conserva
+  `ideaId`; apagar el flag deja terminar la idea abierta; cupos por participante móviles 24 h y
+  presupuesto de campaña acumulado. Se actualizaron `03/04/05/06/10/11`, Reglas, Supuestos, índice,
+  TODO, QAS y prompt de continuidad. **Sin código, build, push, despliegue ni cambio remoto. Próximo:
+  P-26 corte 1 — dominio y contratos.**
 - Ultima actualizacion: 2026-07-29 por Codex (Arquitecto/Backend/SDET): **P-25 coaching directo sin
   confirmación repetitiva — DONE local.** Un aporte sustantivo ya no genera el turno obligatorio
   “Entendí que propones… ¿Es correcto?”: se conserva, consolida, confirma internamente y evalúa completo
@@ -291,6 +300,12 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **P-26 corte 1 de 6 — dominio y contratos.** Leer
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md` y
+  `SUPUESTOS.md#participacion-continua-p26`. Implementar el flag con default histórico `false`, campos
+  de ciclo, `EnrutamientoAporte`, persistencia/puertos y round-trip POST/GET/PUT/duplicado. En este
+  corte no cambiar aún la resolución multi-campaña ni el portal. Añadir pruebas de serialización,
+  compatibilidad e idempotencia y ejecutar el gate backend.
 - [ ] **Validar operativamente I-19/I-20/P-24/P-25 antes de desplegar.** Requiere humano y presupuesto:
   corrido D5 real contra staging con el golden set, UAT de idea única y varias ideas, y revisión de
   costo/latencia para consolidación, evaluación y redacción. Comprobar especialmente que “vamos a
@@ -476,6 +491,7 @@
 | I-20 | Redacción conversacional fluida y Markdown ejecutivo | DONE local; D5/UAT/costo pendiente | `6a6d0b8` (spec), `242b0f4` (1), `4697de3` (2), `afcceaf`+`045b199` (3), `c813cda` (4) | backend 573 verdes | Puerto, política y redactor con guardas, composición por acto, respaldo determinista, cupos/telemetría y Markdown con umbral/origen/escala. Corte 5 con E2E de redactor inyectado completo; queda validación operativa. |
 | P-24 | Evaluación implícita al solicitar mejora | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 579/579 verde | Una petición corta de mejorar una propuesta confirma implícitamente la versión completa, la evalúa y abre coaching bajo umbral en hilo simple y cola multi-idea. No crea aporte/version nueva ni reduce `MaxRepreguntas`; lista configurable y auditoría diferenciada. |
 | P-25 | Coaching directo sin confirmación repetitiva | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 583/583 verde | Cada aporte sustantivo se consolida y evalúa completo en el mismo turno; solo una ambigüedad real pide aclaración. Hilo simple y cola multi-idea cubiertos; rollback global disponible. |
+| P-26 | Participación continua y selección de campaña/pregunta | ESPECIFICADA; código 0/6 | sin commit aún | verificación documental pendiente de cierre | Flag por campaña default OFF, aporte raíz auditable, afinidad y selección 24 h, ciclos independientes y cupos móviles; próximo corte: dominio/contratos. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -754,3 +770,11 @@
   Validación local: build Release sin warnings, 493 pruebas no calibración (440 unitarias + 53
   integración), formato y `git diff --check` verdes. Sin commit, push ni despliegue; se preservó el
   cambio ajeno `.obsidian/workspace.json`.
+- 2026-07-29 - Codex - **P-26 participación continua especificada; código pendiente.** Rol:
+  Arquitecto/Backend/Frontend/AppSec/SDET. Se cerraron con el usuario todas las decisiones funcionales
+  y se creó `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`: flag por campaña
+  default OFF, campañas activas, selección campaña/pregunta, aporte preservado, afinidad 24 h, ciclos
+  e ideas independientes, reapertura explícita, apagado con gracia y cupos móviles. Se sincronizaron
+  contratos `03/04/05/06/10/11`, Reglas, Supuestos, índice, TODO, QAS y prompt de continuidad. Sin
+  cambios de código ni ejecución de build/test. Handoff: corte 1 de 6, dominio y contratos; no push,
+  despliegue ni configuración remota.

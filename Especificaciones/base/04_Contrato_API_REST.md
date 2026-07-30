@@ -208,6 +208,7 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
     "coachingSecuencialIdeas": false,
     "minutosCoachingPorIdea": null,
     "parafraseo": false,
+    "participacionContinua": false,
     "umbralCierreAnticipado": null,
     "numeroWhatsAppSaliente": null
   }
@@ -228,6 +229,11 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
 - `parafraseo` (`I-05`, default `false`): si está en `true` y `Conversacion:Parafraseo` no lo apaga,
   el evaluador solicita y el orquestador antepone un resumen fiel del aporte a la retroalimentación.
   Campo ausente = retro clásica; ambos flags permiten rollback sin redeploy.
+- `participacionContinua` (`P-26`, default `false`): mientras la campaña esté `activa`, permite
+  iniciar ideas/ciclos nuevos después de completar el recorrido anterior. Campo ausente conserva el
+  flujo de una sola participación. Se admite en `POST`, se devuelve en `GET`, se actualiza en `PUT` y
+  se copia de forma explícita al duplicar. Apagarlo permite terminar ideas abiertas, pero impide abrir
+  otra; el estado `cerrada` prevalece y detiene toda interacción.
 - `umbralCierreAnticipado` (`P-13`, `double?`, default `null`): override opcional de la fracción de
   cierre anticipado para esta campaña. `null` hereda `Conversacion:UmbralCierreAnticipado`; `<= 0`
   lo desactiva para la campaña. `Conversacion:CierreAnticipadoHabilitado=false` es el kill-switch

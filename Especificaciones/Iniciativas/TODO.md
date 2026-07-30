@@ -9,6 +9,15 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **ESTADO VIGENTE 2026-07-29 — `P-26` ESPECIFICADA; CÓDIGO PENDIENTE (0/6 cortes).** El usuario
+> confirmó participación continua solo para campañas activas, selección de campaña/pregunta,
+> conservación automática del aporte original, afinidad durante coaching, ciclos independientes,
+> apagado con gracia para la idea activa y cupos por participante en ventana móvil de 24 h. Contratos
+> `03/04/05/06/10/11`, Reglas, Supuestos, QAS e índice están sincronizados. Spec:
+> `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
+> **Próximo trabajo ejecutable: corte 1 — dominio y contratos. No implementar desde resúmenes:
+> leer la spec completa y `SUPUESTOS.md#participacion-continua-p26`.**
+>
 > **ESTADO VIGENTE 2026-07-29 — `P-25` DONE LOCAL.** Cada aporte sustantivo se consolida, confirma
 > internamente y evalúa completo en el mismo turno; el coach responde con retroalimentación de rúbrica y
 > una pregunta natural. Solo una ambigüedad real pide aclaración. Rollback:
@@ -38,9 +47,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: validación operativa de `I-19/I-20/P-24/P-25`.**
-No queda implementación local pendiente para P-25. El siguiente agente debe ejecutar D5 real, UAT con
-tema variable y revisión de costo/latencia antes de desplegar o modificar configuración remota.
+**Iniciativa objetivo vigente: implementar `P-26` por 6 cortes.**
+La especificación y contratos ya están escritos; no hay código P-26. El siguiente agente comienza por
+el corte 1 y mantiene la validación operativa de I-19/I-20/P-24/P-25 como pendiente paralela, sin
+desplegar ni modificar configuración remota.
 
 ---
 
@@ -160,13 +170,15 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **DONE local** | **Codex / Claude** | **Cortes 1-5 DONE local 2026-07-28:** redactor por acto, guardas, composición servidor, cupos/telemetría y Markdown con umbral/origen/escala; E2E con redactor inyectado. Pendiente operativo: D5/UAT/costo. |
 | 30 | **`P-24` evaluación implícita al solicitar mejora** | **DONE local** | **Codex** | **Corregido 2026-07-29:** “Vamos a mejorarla” confirma implícitamente la versión propuesta, la evalúa completa y abre coaching bajo umbral en hilo simple o cola multi-idea. No crea aporte/version nueva, no reduce `MaxRepreguntas`, ni cambia contratos/remoto. Backend 579/579 verde. |
 | 31 | **`P-25` coaching directo sin confirmación repetitiva** | **DONE local** | **Codex** | Cada aporte sustantivo confirma automáticamente su versión consolidada y la evalúa completa en el mismo turno; respuesta natural con una sola pregunta de coaching. Rollback global disponible; backend 583/583 verde. |
+| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Siguiente agente** | **ESPECIFICADA; 0/6 cortes de código.** Comenzar por dominio/contratos; luego resolución, ciclos, cupos, portal y E2E. Default `false`; solo campañas activas. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
 
-**Dependencias duras (actualizada 2026-07-28):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
-`I-18 + I-05 + P-23` → `I-19` **DONE local** → `I-20` **TODO**. I-12 sigue bloqueada por seeds,
-pero no bloquea I-19/I-20: campo vacío degrada limpio. D5/UAT/costo arbitran el despliegue.
+**Dependencias duras (actualizada 2026-07-29):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
+`I-18 + I-05 + P-23` → `I-19` **DONE local** → `I-20/P-24/P-25` **DONE local** → `P-26`
+**ESPECIFICADA**. I-12 sigue bloqueada por seeds, pero no bloquea P-26: campo vacío degrada limpio.
+D5/UAT/costo arbitran el despliegue, no el inicio del código P-26.
 
 > **Excepción I-19 confirmada por el usuario:** la consolidación no tiene opt-in por campaña y se
 > activa para todas. Solo conserva un kill-switch global de emergencia, default `true`.
@@ -211,17 +223,17 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Validar P-25 antes de desplegar.** En staging/simulación, ejecutar D5 y UAT con ideas simples,
-   complementos y mensajes multi-idea de temas distintos. Confirmar que cada aporte recibe coaching de
-   rúbrica sin “¿Es correcto?”, que la evaluación usa la versión completa y que la cola conserva una
-   sola idea activa. Medir costo/latencia de consolidación + evaluación + redacción. Si falla, usar
-   `Conversacion:ConfirmacionExplicitaIdeasHabilitada=true`; no cambiar remoto sin decisión operativa.
+1. **Implementar P-26 corte 1 — dominio y contratos.** Leer completa
+   `P-26_Participacion_Continua_y_Seleccion_de_Campania.md`. Añadir con default seguro el flag de
+   campaña, los campos de ciclo, el tipo `EnrutamientoAporte`, puertos/repositorios y round-trip API;
+   todavía no cambiar la selección en el webhook ni construir el portal. Cubrir documentos históricos,
+   creación/edición/duplicado e idempotencia de persistencia con pruebas.
 
 2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-4. **La aprobación expresa de I-20 ya existe.** Implementa sus cortes en pasos pequeños según §8.
-   Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no resuelta por
-   I-20 o `SUPUESTOS.md#redaccion-fluida-i20`.
+4. **La aprobación expresa de P-26 ya existe.** Implementa sus 6 cortes en el orden de la spec. Solo
+   vuelve a consultar al usuario si aparece una decisión de producto o contrato no resuelta por P-26
+   o `SUPUESTOS.md#participacion-continua-p26`.
 5. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
 5b. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
 6. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.

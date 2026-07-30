@@ -377,6 +377,14 @@ se encienden por campaña.
 
 ## D. Aún no se prueba (por ahora)
 
+- 🧭 **P-26 — Volver después con ideas nuevas:** la especificación está lista, pero el código todavía
+  no. Cuando se implemente, la prueba será: (1) crear una campaña y activar **“Permitir nuevas ideas
+  después de finalizar”**; (2) terminar una idea; (3) enviar otra y comprobar que comienza separada;
+  (4) asociar el mismo teléfono a dos campañas activas y verificar que pregunta cuál corresponde sin
+  pedir repetir el aporte; (5) elegir también la pregunta cuando haya varias; y (6) confirmar que una
+  respuesta al coach continúa en la idea activa sin mostrar otra vez las listas. **Algo va mal si:** una
+  campaña cerrada aparece, se mezclan ideas, se pierde el aporte original, se repite el menú durante
+  coaching o apagar el interruptor corta una idea que ya estaba en curso.
 - ⏳ **I-12 — Ideas semilla:** en espera del material de Felipe. Cuando llegue: el coach se apoyará en
   esos temas guía. Prueba mínima hoy: una campaña **sin** ideas semilla funciona igual que siempre.
 - 💤 **I-09 / I-10 — "Tejido colectivo"** (que el coach use aportes de otros): **aplazado** para después
