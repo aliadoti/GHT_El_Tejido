@@ -443,6 +443,38 @@ public sealed class ServicioEnrutamientoParticipacionTests
         _enviados.Should().BeEmpty();
     }
 
+    // P-26 §12 criterio 11: apagar el interruptor deja terminar la idea abierta y bloquea la siguiente.
+    [Fact]
+    public async Task FlagApagado_ConIdeaAbierta_LaDejaTerminar()
+    {
+        // La campaña ya no es continua, pero su conversación sigue abierta con afinidad vigente.
+        var candidato = Candidato("c_1", participacionContinua: false);
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_activa"));
+        await SembrarAfinidadAsync("c_1", "conv_activa");
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.sigue", texto: "Le agrego el indicador"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>()
+            .Which.Contexto!.PreguntaId.Should().Be("p_1");
+        _enviados.Should().BeEmpty("la idea en curso termina sin menús");
+    }
+
+    [Fact]
+    public async Task FlagApagado_TrasCerrarLaIdea_BloqueaLaSiguiente()
+    {
+        var candidato = Candidato("c_1", participacionContinua: false);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        await SembrarAfinidadAsync("c_1", "conv_c_1_p_1");
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.otra", texto: "Se me ocurrió otra idea"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.SinElegibles>("sin continuidad no se abren ciclos nuevos");
+        _enrutamientos.Documentos.Single(d => d.WhatsappMessageId == "wamid.afinidad")
+            .Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
+    }
+
     /// <summary>Deja un enrutamiento en <c>enIdea</c> apuntando a una conversación (afinidad vigente §5.6).</summary>
     private Task SembrarAfinidadAsync(string campaniaId, string conversacionId)
         => _enrutamientos.GuardarAsync(

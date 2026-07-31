@@ -113,6 +113,55 @@ public sealed class ResolutorParticipanteTests
         autorizado.Participante.PreguntaVigente.Id.Should().Be("p_1");
     }
 
+    // P-26 §12 criterio 12: cerrar la campaña detiene toda interacción, incluso si la participación
+    // continua estaba encendida. El filtro vive en la resolución de candidatos, antes del enrutamiento.
+    [Fact]
+    public async Task ResolverCandidatos_CampaniaCerradaAunqueSeaContinua_NoEsCandidata()
+    {
+        var ctx = new Contexto();
+        ctx.Usuarios.ObtenerUsuarioPorNumeroAsync(Arg.Any<NumeroWhatsApp>(), Arg.Any<CancellationToken>())
+            .Returns(FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante));
+        ctx.Participantes.BuscarParticipantesPorNumeroAsync(Arg.Any<NumeroWhatsApp>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero) });
+        ctx.Campanias.ObtenerCampaniaPorIdAsync("c_1", Arg.Any<CancellationToken>()).Returns(
+            FabricasDominio.CrearCampania(
+                "c_1",
+                EstadoCampania.Cerrada,
+                new[] { FabricasDominio.CrearPregunta("p_1", 1) },
+                configConversacional: ConfigConversacional.Crear(1, "Gracias.", participacionContinua: true)));
+        var resolutor = ctx.Construir();
+
+        var resultado = await resolutor.ResolverCandidatosAsync(Numero, CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoCandidatos.NoAutorizado>()
+            .Which.Motivo.Should().Be(MotivoRechazo.SinCampaniaActiva);
+        await ctx.DebeHaberRegistradoRechazo();
+    }
+
+    [Fact]
+    public async Task ResolverCandidatos_VariasCampaniasActivas_LasDevuelveTodasSinElegir()
+    {
+        var ctx = new Contexto();
+        ctx.Usuarios.ObtenerUsuarioPorNumeroAsync(Arg.Any<NumeroWhatsApp>(), Arg.Any<CancellationToken>())
+            .Returns(FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante));
+        ctx.Participantes.BuscarParticipantesPorNumeroAsync(Arg.Any<NumeroWhatsApp>(), Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero),
+                FabricasDominio.CrearParticipante("pc_2", "c_2", "u_1", Numero),
+            });
+        ctx.Campanias.ObtenerCampaniaPorIdAsync("c_1", Arg.Any<CancellationToken>()).Returns(
+            FabricasDominio.CrearCampania("c_1", EstadoCampania.Activa, new[] { FabricasDominio.CrearPregunta("p_1", 1) }));
+        ctx.Campanias.ObtenerCampaniaPorIdAsync("c_2", Arg.Any<CancellationToken>()).Returns(
+            FabricasDominio.CrearCampania("c_2", EstadoCampania.Activa, new[] { FabricasDominio.CrearPregunta("p_1", 1) }));
+        var resolutor = ctx.Construir();
+
+        var resultado = await resolutor.ResolverCandidatosAsync(Numero, CancellationToken.None);
+
+        var autorizado = resultado.Should().BeOfType<ResultadoCandidatos.Autorizado>().Subject;
+        autorizado.Candidatos.Select(c => c.Campania.Id).Should().BeEquivalentTo(["c_1", "c_2"]);
+    }
+
     private static void DebeRechazar(ResultadoResolucion resultado, MotivoRechazo motivo)
         => resultado.Should().BeOfType<ResultadoResolucion.NoAutorizado>()
             .Which.Motivo.Should().Be(motivo);

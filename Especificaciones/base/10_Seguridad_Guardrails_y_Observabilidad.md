@@ -130,9 +130,16 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
     **ambas clases de llamada**: evaluaciones + versiones consolidadas, ya que cada versión nace de una
     llamada al consolidador (también las de fallback).
 - **`enrutamientoParticipacion` (P-26):** acciones
-  `ofrecido|seleccionado|invalido|expirado|procesado|cambioCampania`, con tipo de selección, conteo de
-  opciones, ids internos, resultado y `correlationId`. Nunca incluye el aporte, el nombre de campaña,
-  el texto de la pregunta ni la respuesta libre de selección.
+  `ofrecido|seleccionado|invalido|expirado|procesado|cambioCampania|cicloNuevo|reapertura`, con tipo
+  de selección, conteo de opciones, ids internos, resultado y `correlationId`. Nunca incluye el
+  aporte, el nombre de campaña, el texto de la pregunta ni la respuesta libre de selección.
+  `procesado` añade `latenciaMs` (desde que se conservó el aporte hasta que quedó persistido en su
+  conversación); `cicloNuevo` y `reapertura` los emite el orquestador con el id de conversación y el
+  número de ciclo. **Métricas agregadas derivables sin documentos contadores nuevos:** participantes
+  con continuidad (usuarios distintos con `cicloNuevo`), ciclos nuevos (`cicloNuevo`), menús ofrecidos
+  (`ofrecido`), tasa de selección (`seleccionado` ÷ `ofrecido`), expiraciones (`expirado`),
+  ambigüedades (`invalido`), reaperturas vs. ideas nuevas (`reapertura` vs. `cicloNuevo`) y latencia
+  hasta procesar (percentiles de `latenciaMs`).
 
 ---
 

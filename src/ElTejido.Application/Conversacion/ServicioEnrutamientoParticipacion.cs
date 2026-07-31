@@ -203,8 +203,16 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         var conversacionId = await ResolverConversacionRecienteAsync(
             enrutamiento.CampaniaSeleccionadaId, usuarioId, enrutamiento.PreguntaSeleccionadaId, cancellationToken);
         await _enrutamientos.GuardarAsync(enrutamiento.MarcarEnIdea(conversacionId, ahora), cancellationToken);
+
+        // §10: latencia desde que se conservo el aporte hasta que quedo procesado en su conversacion.
+        var latenciaMs = (long)(ahora - enrutamiento.CreadoEn).TotalMilliseconds;
         await RegistrarUsuarioAsync(
-            usuarioId, null, "procesado", Detalle(enrutamiento), ahora, cancellationToken);
+            usuarioId,
+            null,
+            "procesado",
+            $"{Detalle(enrutamiento)};latenciaMs={latenciaMs}",
+            ahora,
+            cancellationToken);
     }
 
     private async Task<ResultadoEnrutamiento> ResolverSeleccionCampaniaAsync(

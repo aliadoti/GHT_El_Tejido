@@ -4,6 +4,28 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **`P-26`
+  COMPLETA local — 6/6 cortes.** El corte 6 cerró la iniciativa con: (1) **observabilidad §10** —
+  el evento `enrutamientoParticipacion` suma las acciones `cicloNuevo` y `reapertura` (emitidas por
+  el orquestador con id de conversación y número de ciclo) y `latenciaMs` en `procesado`; con eso las
+  siete métricas agregadas de §10 se derivan **sin documentos contadores nuevos** (participantes con
+  continuidad, ciclos nuevos, menús ofrecidos, tasa de selección, expiraciones, ambigüedades y
+  latencia), documentado en `10 §6.2`. (2) **E2E simulada del criterio 16**, sin WhatsApp real:
+  webhook → menú de campaña → selección → menú de pregunta → selección → coaching → cierre →
+  recorrido completado → aporte posterior → **ciclo 2 independiente** derivado de su mensaje raíz,
+  con el hilo anterior cerrado e intacto. (3) **Concurrencia §11:** dos aportes seguidos sin afinidad
+  no abren dos ciclos —la cola del webhook tiene un solo lector, así que los entrantes de un
+  participante se serializan y el segundo entra en la conversación que abrió el primero—. (4) **Los
+  16 criterios de aceptación §12 quedaron cubiertos**; los dos que no tenían prueba directa se
+  añadieron: campaña cerrada nunca es candidata aunque la continuidad esté encendida (criterio 12) y
+  apagar el interruptor deja terminar la idea abierta pero bloquea la siguiente (criterio 11).
+  **Verificado:** build Release `-warnaserror` 0/0, **654** pruebas backend no calibración (590 unit
+  + 64 integración; +12 en este corte), `dotnet format` y `git diff --check` limpios, portal
+  **30/30** verde. **Estado de P-26: código completo y verde en local, con el flag apagado por
+  defecto.** Pendiente **operativo** antes de activar en UAT/producción: D5 real, UAT y costo, junto
+  con lo ya pendiente de I-19/I-20/P-24/P-25, y **P-27** (que debe quedar lista antes de activar
+  estos flujos). Sin push, despliegue ni cambio remoto. **Próximo: `P-27` corte 1 de 5 — dominio y
+  contratos.**
 - Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Frontend/UX/SDET): **P-26 corte 5 de 6 —
   portal de creación/edición y accesibilidad DONE local (frontend-only).** En Campañas →
   Configuración, un **fieldset propio "Participación continua"** —separado del de Conversación y del
@@ -425,16 +447,20 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **P-26 corte 6 de 6 — observabilidad, E2E simulada, QA y cierre documental.** Leer
-  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §10/§12/§13` y
-  `SUPUESTOS.md#participacion-continua-p26`. Entregar: (1) **métricas agregadas §10** que aún faltan
-  (participantes con continuidad, ciclos nuevos, menús ofrecidos, tasa de selección, expiraciones,
-  ambigüedades y latencia hasta procesar) sobre el evento `enrutamientoParticipacion` ya emitido;
-  (2) **E2E simulada** del recorrido completo del criterio 16 — webhook → selección de campaña →
-  selección de pregunta → coaching → madurez → aporte posterior → idea nueva, **sin WhatsApp real**;
-  (3) **concurrencia/reintento**: dos aportes casi simultáneos sin afinidad se serializan por
-  participante y nunca crean dos afinidades activas (§11); (4) repaso de los 16 criterios de
-  aceptación §12 y cierre documental (`AVANCES`, `TODO`, `QAS`). Gate completo backend + frontend.
+- [ ] **`P-27` corte 1 de 5 — dominio y contratos (clasificación flexible de intenciones de
+  control).** P-26 quedó COMPLETA local, así que el backlog rota aquí. Leer
+  `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
+  `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Añadir con **defaults OFF**: flag de campaña
+  `clasificacionIntencionControl`, estado aditivo `esperandoConfirmacionSalida` y el objeto
+  `intencionControlPendiente`, el motivo de finalización `finParticipacion`, DTO/API y round-trip
+  Cosmos. **En este corte no conectar todavía el clasificador al orquestador.** Recordar que P-27
+  corrige un bug confirmado de I-18 (alias deterministas de salida) y debe quedar lista **antes** de
+  activar I-18/P-26 en UAT o producción.
+- [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 654: 590 unit + 64 integración; portal
+  30/30; format y diff limpios) P-26 corte 6 de 6 — observabilidad, E2E simulada, QA y cierre.**
+  Acciones `cicloNuevo`/`reapertura` y `latenciaMs` completan las métricas §10; E2E del criterio 16
+  sin WhatsApp real; serialización §11 verificada; los 16 criterios §12 cubiertos. **P-26 COMPLETA
+  local (6/6).** Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — frontend verde 30/30; prettier, tsc y build de
   producción limpios con Node 24.18.0) P-26 corte 5 de 6 — portal de creación/edición y
   accesibilidad.** Fieldset propio “Participación continua” con el checkbox, ayuda asociada y aviso

@@ -311,6 +311,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             // mismo `ideaId` (lista numerada si hay varias candidatas y curaduría suspendida).
             var reabierta = reciente.Reabrir(ahora);
             await _conversaciones.GuardarConversacionAsync(reabierta, cancellationToken);
+            await RegistrarEnrutamientoAsync(
+                usuario,
+                "reapertura",
+                $"conversacion={reabierta.Id};ciclo={reabierta.CicloParticipacion}",
+                ahora,
+                cancellationToken);
             hilo = new HiloTrabajo(pregunta, reabierta.Id, reabierta);
         }
         else
@@ -331,6 +337,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             if (existente is null)
             {
                 await _conversaciones.GuardarConversacionAsync(conversacionCiclo, cancellationToken);
+                await RegistrarEnrutamientoAsync(
+                    usuario,
+                    "cicloNuevo",
+                    $"conversacion={cicloId};ciclo={conversacionCiclo.CicloParticipacion}",
+                    ahora,
+                    cancellationToken);
             }
 
             hilo = new HiloTrabajo(pregunta, cicloId, conversacionCiclo);
@@ -3560,6 +3572,29 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 usuario.WhatsappNormalizado.Valor,
                 "rechazado",
                 motivo,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+
+    /// <summary>
+    /// P-26 §10: telemetría del enrutamiento emitida desde el orquestador (<c>cicloNuevo</c> y
+    /// <c>reapertura</c>), complemento de la que emite el servicio de enrutamiento. Solo ids y
+    /// conteos: nunca el texto del participante ni nombres de campaña/pregunta.
+    /// </summary>
+    private Task RegistrarEnrutamientoAsync(
+        Usuario usuario,
+        string accion,
+        string detalle,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.EnrutamientoParticipacion,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                accion,
+                detalle,
                 _correlacion.CorrelationIdActual,
                 ahora),
             cancellationToken);

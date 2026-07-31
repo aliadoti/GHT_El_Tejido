@@ -386,14 +386,19 @@ se encienden por campaña.
   dudosa, comprobar que aparecen opciones 1/2/3. **Algo va mal si:** el coach repite la pregunta tras
   una salida clara, cierra por una frase de contenido, el modelo decide por fuera del estado del
   servidor o una aclaración consume una oportunidad de mejora.
-- 🧭 **P-26 — Volver después con ideas nuevas:** la especificación está lista, pero el código todavía
-  no. Cuando se implemente, la prueba será: (1) crear una campaña y activar **“Permitir nuevas ideas
-  después de finalizar”**; (2) terminar una idea; (3) enviar otra y comprobar que comienza separada;
-  (4) asociar el mismo teléfono a dos campañas activas y verificar que pregunta cuál corresponde sin
-  pedir repetir el aporte; (5) elegir también la pregunta cuando haya varias; y (6) confirmar que una
-  respuesta al coach continúa en la idea activa sin mostrar otra vez las listas. **Algo va mal si:** una
-  campaña cerrada aparece, se mezclan ideas, se pierde el aporte original, se repite el menú durante
-  coaching o apagar el interruptor corta una idea que ya estaba en curso.
+- ✅ **P-26 — Volver después con ideas nuevas:** **implementada (6/6 cortes, local).** Prueba:
+  (1) en Campañas → Configuración, activar **“Permitir nuevas ideas después de finalizar”** (bloque
+  propio, separado del estado de la campaña); (2) terminar una idea y enviar otra: debe comenzar
+  **separada**, sin mezclarse con la anterior; (3) asociar el mismo teléfono a dos campañas activas y
+  verificar que el sistema **pregunta cuál corresponde** con una lista numerada y **no pide repetir
+  el aporte** —al responder el número, procesa la idea que ya habías escrito—; (4) con varias
+  preguntas, elegir también la pregunta; (5) responder al coach y comprobar que **no vuelve a
+  aparecer ninguna lista**; (6) escribir “quiero complementar la anterior” y verificar que retoma esa
+  misma idea en vez de crear una vacía; (7) escribir “otra campaña” y ver que ofrece el menú **sin
+  cerrar** la idea en curso; (8) apagar el interruptor: la idea abierta puede terminar, pero no se
+  abren nuevas. **Algo va mal si:** una campaña cerrada aparece en la lista, se mezclan ideas, se
+  pierde el aporte original, se repite el menú durante el coaching, “complementar la anterior” crea
+  una idea vacía, o apagar el interruptor corta una idea que ya estaba en curso.
 - ⏳ **I-12 — Ideas semilla:** en espera del material de Felipe. Cuando llegue: el coach se apoyará en
   esos temas guía. Prueba mínima hoy: una campaña **sin** ideas semilla funciona igual que siempre.
 - 💤 **I-09 / I-10 — "Tejido colectivo"** (que el coach use aportes de otros): **aplazado** para después
