@@ -874,6 +874,22 @@
   - *Cambio de campaña sin alternativa.* Si el participante pide "otra campaña" y no existe otra
     elegible, se conserva la afinidad actual y se reengancha el turno de coaching pendiente en vez de
     ofrecer un menú de una sola opción.
+  - *Reapertura tras cerrar el recorrido (corte 4, §5.8).* La reapertura explícita **reabre el hilo
+    que contiene la idea** (`Conversacion.Reabrir`, aditivo) en vez de abrir un ciclo nuevo: es la
+    única forma de conservar el `ideaId` reutilizando la reapertura I-19 §4.7 tal cual, con su lista
+    numerada y su suspensión de curaduría. La inmutabilidad que exige §5.7 sigue aplicando al caso que
+    describe —un **aporte normal** posterior crea otra `Conversacion` y deja la anterior intacta—. La
+    reapertura solo procede si la consolidación I-19 está activa y existen ideas cerradas candidatas
+    en ese hilo; sin candidatas la frase no tiene a qué volver y el aporte sigue el camino de ciclo
+    nuevo.
+  - *Cupos móviles (corte 4, §9).* La ventana de 24 h se aplica **solo** a los cupos por participante
+    (`maxMensajesPorUsuario`, `maxLlamadasLlmPorUsuario`) y únicamente cuando
+    `participacionContinua=true`; se calcula como `ahoraUtc - 24h` en cada evaluación, por lo que es
+    móvil y no se reinicia a medianoche. Los mensajes se filtran por su `timestamp` ya disponible; las
+    llamadas LLM usan sobrecargas nuevas de conteo con `desde` en `IRepositorioRespuestas`, cuya
+    **implementación por defecto degrada al conteo acumulado** (más restrictivo): un adaptador que no
+    la implemente nunca abre el cupo por accidente. `presupuestoTokensCampania` y `MaxTurnosPorHilo`
+    quedan explícitamente fuera de la ventana.
 
 ### clasificacion-intenciones-control-p27 - El modelo propone la intención y el servidor dispone
 

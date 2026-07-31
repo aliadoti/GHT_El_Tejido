@@ -37,6 +37,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// <summary>Largo máximo de cada paráfrasis en la lista de selección de reapertura (I-19 §4.7).</summary>
     private const int MaxCaracteresParafrasisSeleccion = 160;
 
+    /// <summary>P-26 §9: ventana móvil de los cupos por participante en campañas continuas.</summary>
+    private const int HorasVentanaCuposContinua = 24;
+
     private readonly IRepositorioConversaciones _conversaciones;
     private readonly IRepositorioRespuestas _respuestas;
     private readonly IRepositorioParticipantes _participantes;
@@ -236,7 +239,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // Cupo de mensajes por usuario/campania (10 §2, Campania.ConfigSeguridad): al exceder, el
         // entrante se descarta con rechazo neutral silencioso (como una conversacion cerrada) y el
         // motivo queda solo en LogSeguridad. Gateado por Conversacion:CuposHabilitados (default off).
-        if (_cuposHabilitados && await CupoMensajesExcedidoAsync(campania, usuario.Id, cancellationToken))
+        if (_cuposHabilitados && await CupoMensajesExcedidoAsync(campania, usuario.Id, ahora, cancellationToken))
         {
             await RegistrarRateLimitAsync(usuario, "cupo_mensajes_usuario", ahora, cancellationToken);
             return;
@@ -270,7 +273,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var ahora = _tiempo.GetUtcNow();
 
         // Mismo cupo de mensajes que la entrada normal (10 §2), gateado por Conversacion:CuposHabilitados.
-        if (_cuposHabilitados && await CupoMensajesExcedidoAsync(campania, usuario.Id, cancellationToken))
+        if (_cuposHabilitados && await CupoMensajesExcedidoAsync(campania, usuario.Id, ahora, cancellationToken))
         {
             await RegistrarRateLimitAsync(usuario, "cupo_mensajes_usuario", ahora, cancellationToken);
             return;
@@ -300,6 +303,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         else if (reciente.Estado != EstadoConversacion.Cerrada)
         {
             hilo = new HiloTrabajo(pregunta, reciente.Id, reciente);
+        }
+        else if (await PideReaperturaEnHiloCerradoAsync(reciente, campania, mensaje.Texto, cancellationToken))
+        {
+            // P-26 §5.8: una petición explícita de complementar/revisitar NO crea idea ni ciclo nuevo.
+            // Se reabre el hilo que contiene la idea y la ruta I-19 §4.7 hace el resto conservando el
+            // mismo `ideaId` (lista numerada si hay varias candidatas y curaduría suspendida).
+            var reabierta = reciente.Reabrir(ahora);
+            await _conversaciones.GuardarConversacionAsync(reabierta, cancellationToken);
+            hilo = new HiloTrabajo(pregunta, reabierta.Id, reabierta);
         }
         else
         {
@@ -410,7 +422,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var evaluarCupoLlm = ResolvedorTransicionConversacion.PermiteEvaluarTechos(revisionesAgotadas, deseaContinuar, deseaRechazarGuardado)
             && !turnosExcedidos && _cuposHabilitados;
         var cupoLlamadasUsuarioExcedido = evaluarCupoLlm
-            && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
+            && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, ahora, cancellationToken);
         var presupuestoTokensExcedido = evaluarCupoLlm && !cupoLlamadasUsuarioExcedido
             && await PresupuestoTokensExcedidoAsync(campania, cancellationToken);
         var cupoLlmExcedido = cupoLlamadasUsuarioExcedido || presupuestoTokensExcedido;
@@ -610,7 +622,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var estadoPrevio = conversacion.EstadoMaquina;
         // Techos deterministas (10 §2 / D2) antes de consolidar o evaluar: el hilo simple I-19 los
         // evalúa aquí porque ya no pasa por la rama histórica que los aplicaba.
-        var motivoTecho = await MotivoTechoAlcanzadoAsync(campania, conversacion, usuario.Id, cancellationToken);
+        var motivoTecho = await MotivoTechoAlcanzadoAsync(campania, conversacion, usuario.Id, ahora, cancellationToken);
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
         await MarcarParticipanteRespondioAsync(participante.Participante, ahora, cancellationToken);
         conversacion = conversacion.RegistrarEntrante(mensaje.Timestamp).AvanzarA(EstadoMaquinaConversacion.Evaluando);
@@ -864,6 +876,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         Campania campania,
         DominioConversacion conversacion,
         string usuarioId,
+        DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         if (await TurnosHiloExcedidosAsync(conversacion, cancellationToken))
@@ -876,7 +889,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return null;
         }
 
-        if (await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, cancellationToken))
+        if (await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, ahora, cancellationToken))
         {
             return "cupo_llamadas_llm_usuario";
         }
@@ -1510,7 +1523,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         // I-20 §4.1 / P-10: redactar también gasta LLM. Con el cupo agotado no se llama al modelo y el
         // turno sale con su respaldo determinista: el aporte y el estado no se tocan.
-        if (_cuposHabilitados && await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, cancellationToken))
+        if (_cuposHabilitados && await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, ahora, cancellationToken))
         {
             return respaldo;
         }
@@ -2435,7 +2448,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var estadoPrevio = conversacion.EstadoMaquina;
         var turnosExcedidos = await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
         var cupoLlamadasExcedido = _cuposHabilitados
-            && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, cancellationToken);
+            && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, ahora, cancellationToken);
         var presupuestoExcedido = _cuposHabilitados
             && !cupoLlamadasExcedido
             && await PresupuestoTokensExcedidoAsync(campania, cancellationToken);
@@ -3428,6 +3441,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private async Task<bool> CupoMensajesExcedidoAsync(
         Campania campania,
         string usuarioId,
+        DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         var maximo = campania.ConfigSeguridad.MaxMensajesPorUsuario;
@@ -3436,12 +3450,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return false;
         }
 
+        // P-26 §9: en campaña continua el cupo por participante mira una ventana movil de 24 h (los
+        // ciclos y preguntas de la campania la comparten); sin continuidad conserva el acumulado.
+        var desde = VentanaCuposDesde(campania, ahora);
         var conversaciones = await _conversaciones.ListarConversacionesAsync(campania.Id, cancellationToken);
         var total = 0;
         foreach (var conversacion in conversaciones.Where(c => c.UsuarioId == usuarioId))
         {
             var mensajes = await _conversaciones.ListarMensajesAsync(campania.Id, conversacion.Id, cancellationToken);
-            total += mensajes.Count(m => m.Direccion == DireccionMensaje.In);
+            total += mensajes.Count(m =>
+                m.Direccion == DireccionMensaje.In && (desde is null || m.Timestamp >= desde.Value));
             if (total >= maximo)
             {
                 return true;
@@ -3476,6 +3494,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private async Task<bool> CupoLlamadasLlmExcedidoAsync(
         Campania campania,
         string usuarioId,
+        DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         var maximo = campania.ConfigSeguridad.MaxLlamadasLlmPorUsuario;
@@ -3484,14 +3503,32 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return false;
         }
 
-        var evaluaciones = await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken);
+        // P-26 §9: misma ventana movil que el cupo de mensajes cuando la campania es continua; las
+        // clases de llamada contabilizadas (evaluacion + consolidacion) no cambian.
+        var desde = VentanaCuposDesde(campania, ahora);
+        var evaluaciones = desde is null
+            ? await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
+            : await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken);
         // I-19 §12.3: la consolidacion tambien gasta LLM. Una correccion repetida antes de confirmar
         // consume llamadas sin producir evaluacion, asi que el cupo cuenta ambas clases.
         var consolidaciones = ConsolidacionIdeasActiva
-            ? await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
+            ? desde is null
+                ? await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
+                : await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken)
             : 0;
         return evaluaciones + consolidaciones >= maximo;
     }
+
+    /// <summary>
+    /// P-26 §9 — inicio de la ventana movil de cupos por participante: 24 h atras en campañas con
+    /// <c>participacionContinua=true</c>; <c>null</c> (acumulado historico, comportamiento actual) en
+    /// las demas. La ventana es movil: no se reinicia a medianoche y la comparten ciclos y preguntas
+    /// de la misma campaña. No aplica a <c>presupuestoTokensCampania</c> ni a <c>MaxTurnosPorHilo</c>.
+    /// </summary>
+    private static DateTimeOffset? VentanaCuposDesde(Campania campania, DateTimeOffset ahora)
+        => campania.ConfigConversacional.ParticipacionContinua
+            ? ahora.ToUniversalTime().AddHours(-HorasVentanaCuposContinua)
+            : null;
 
     /// <summary>
     /// P-10 — ¿La campania ya consumio su presupuesto de tokens LLM?
@@ -3722,6 +3759,32 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string CrearConversacionId(string campaniaId, string usuarioId, string preguntaId)
         => $"conv_{campaniaId}_{usuarioId}_{preguntaId}";
+
+    /// <summary>
+    /// P-26 §5.8: ¿el mensaje es una petición explícita de complementar/revisitar una idea que vive en
+    /// el hilo ya cerrado? Solo entonces se reabre ese hilo en vez de abrir un ciclo nuevo. Exige que
+    /// la consolidación I-19 esté activa y que existan ideas cerradas reabribles: sin candidatas la
+    /// frase no tendría a qué volver y el aporte sigue el camino normal (ciclo nuevo).
+    /// </summary>
+    private async Task<bool> PideReaperturaEnHiloCerradoAsync(
+        DominioConversacion cerrada,
+        Campania campania,
+        string texto,
+        CancellationToken cancellationToken)
+    {
+        if (!ConsolidacionIdeasActiva || campania.Estado != EstadoCampania.Activa)
+        {
+            return false;
+        }
+
+        if (!_intencionRevisitarAnterior.Coincide(texto) && !_intencionRevisitarIdea.Coincide(texto))
+        {
+            return false;
+        }
+
+        var candidatas = await CandidatasReaperturaAsync(cerrada, campania.Id, cancellationToken);
+        return candidatas.Count > 0;
+    }
 
     /// <summary>
     /// P-26 §5.7: id determinista de un ciclo posterior, derivado tambien del mensaje raiz (hash

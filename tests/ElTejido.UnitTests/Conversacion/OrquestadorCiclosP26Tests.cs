@@ -14,6 +14,7 @@ using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Participantes;
+using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Usuarios;
 using ElTejido.UnitTests.Soporte;
 using FluentAssertions;
@@ -166,6 +167,174 @@ public sealed class OrquestadorCiclosP26Tests
         _conversaciones.Conversaciones.Should().ContainSingle();
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Corte 4: reapertura entre alcances (§5.8) y cupos móviles de 24 h (§9).
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Reapertura_PeticionExplicitaTrasCerrarElRecorrido_NoCreaCicloYConservaElIdeaId()
+    {
+        var cerrada = await SembrarConversacionCerradaAsync();
+        var almacen = ConfigurarAlmacenIdeasCerradas(cerrada.Id);
+
+        await Construir(consolidador: ConsolidadorNeutro()).ProcesarAporteEnrutadoAsync(
+            Participante(),
+            Mensaje("quiero complementar la anterior", "wamid.reapertura"),
+            new ContextoAporteEnrutado("p_1", null),
+            CancellationToken.None);
+
+        _conversaciones.Conversaciones.Should().ContainSingle("una reapertura explícita no abre un ciclo nuevo");
+        var hilo = _conversaciones.Conversaciones.Single();
+        hilo.Id.Should().Be(cerrada.Id);
+        hilo.Estado.Should().Be(EstadoConversacion.Abierta, "el hilo que contiene la idea se reabre");
+        hilo.CicloParticipacion.Should().Be(1);
+        almacen.Ideas.Should().ContainSingle().Which.Value.Id
+            .Should().Be("idea_1", "la idea reabierta conserva su ideaId");
+    }
+
+    [Fact]
+    public async Task Reapertura_AporteNormalTrasCerrarElRecorrido_SiCreaCicloNuevo()
+    {
+        var cerrada = await SembrarConversacionCerradaAsync();
+        ConfigurarAlmacenIdeasCerradas(cerrada.Id);
+
+        await Construir(consolidador: ConsolidadorNeutro()).ProcesarAporteEnrutadoAsync(
+            Participante(),
+            Mensaje("Propongo además un programa de mentoría inversa", "wamid.otra"),
+            new ContextoAporteEnrutado("p_1", null),
+            CancellationToken.None);
+
+        _conversaciones.Conversaciones.Should().HaveCount(2, "un aporte normal sí abre otro ciclo");
+        _conversaciones.Conversaciones.Single(c => c.Id != cerrada.Id).CicloParticipacion.Should().Be(2);
+        _conversaciones.Conversaciones.Single(c => c.Id == cerrada.Id).Estado
+            .Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    [Fact]
+    public async Task Reapertura_SinIdeasCandidatas_SigueElCaminoNormalDeCicloNuevo()
+    {
+        var cerrada = await SembrarConversacionCerradaAsync();
+        ConfigurarAlmacenIdeasVacio();
+
+        await Construir(consolidador: ConsolidadorNeutro()).ProcesarAporteEnrutadoAsync(
+            Participante(),
+            Mensaje("quiero complementar la anterior", "wamid.sinideas"),
+            new ContextoAporteEnrutado("p_1", null),
+            CancellationToken.None);
+
+        _conversaciones.Conversaciones.Should().HaveCount(2);
+        _conversaciones.Conversaciones.Single(c => c.Id == cerrada.Id).Estado
+            .Should().Be(EstadoConversacion.Cerrada, "sin candidatas no hay nada que reabrir");
+    }
+
+    [Fact]
+    public async Task CuposMoviles_CampaniaContinua_SoloCuentaLasUltimas24Horas()
+    {
+        // 3 entrantes viejos (fuera de ventana) + 1 reciente; el cupo es 2.
+        var reloj = new RelojFijo(Epoca.AddDays(5));
+        var conversacion = DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca);
+        await _conversaciones.GuardarConversacionAsync(conversacion, CancellationToken.None);
+        _conversaciones.SembrarEntrantes(conversacion.Id, Epoca, cantidad: 3);
+        _conversaciones.SembrarEntrantes(conversacion.Id, reloj.GetUtcNow().AddHours(-1), cantidad: 1);
+
+        var orquestador = Construir(
+            opciones: new OpcionesConversacion { CuposHabilitados = true },
+            reloj: reloj);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxMensajesPorUsuario: 2, participacionContinua: true),
+            Mensaje("Sigo participando", "wamid.hoy"),
+            CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CuposMoviles_CampaniaNoContinua_ConservaElAcumuladoHistorico()
+    {
+        var reloj = new RelojFijo(Epoca.AddDays(5));
+        var conversacion = DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca);
+        await _conversaciones.GuardarConversacionAsync(conversacion, CancellationToken.None);
+        _conversaciones.SembrarEntrantes(conversacion.Id, Epoca, cantidad: 3);
+
+        var orquestador = Construir(
+            opciones: new OpcionesConversacion { CuposHabilitados = true },
+            reloj: reloj);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxMensajesPorUsuario: 2, participacionContinua: false),
+            Mensaje("Otro mensaje", "wamid.hoy"),
+            CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task CuposMoviles_MensajesDentroDeLaVentana_SiAgotanElCupo()
+    {
+        var reloj = new RelojFijo(Epoca.AddDays(5));
+        var conversacion = DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca);
+        await _conversaciones.GuardarConversacionAsync(conversacion, CancellationToken.None);
+        _conversaciones.SembrarEntrantes(conversacion.Id, reloj.GetUtcNow().AddHours(-2), cantidad: 2);
+
+        var orquestador = Construir(
+            opciones: new OpcionesConversacion { CuposHabilitados = true },
+            reloj: reloj);
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxMensajesPorUsuario: 2, participacionContinua: true),
+            Mensaje("Uno más", "wamid.hoy"),
+            CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+    }
+
+    /// <summary>Consolidador que devuelve el texto tal cual: aísla la prueba del contenido generado.</summary>
+    private static IConsolidadorIdeas ConsolidadorNeutro()
+    {
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => new ResultadoConsolidacionIdeas.Exito(
+                llamada.Arg<ContextoConsolidacionIdeas>().NuevoAporte, TipoAporteIdea.Inicial, [], false, null, false, null));
+        return consolidador;
+    }
+
+    /// <summary>Una idea cerrada del hilo indicado, candidata a reapertura (I-19 §4.7).</summary>
+    private AlmacenIdeasFake ConfigurarAlmacenIdeasCerradas(string conversacionId)
+    {
+        var almacen = ConfigurarAlmacenIdeasVacio();
+        var idea = IdeaConsolidada
+            .Crear("idea_1", "c_1", "u_1", "p_1", conversacionId, "resp_1", 1, Epoca)
+            .ConPropuesta("idea_1_v1", Epoca)
+            .ConfirmarVersion("idea_1_v1", Epoca)
+            .Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "participante", Epoca);
+        almacen.Ideas[idea.Id] = idea;
+        return almacen;
+    }
+
+    private AlmacenIdeasFake ConfigurarAlmacenIdeasVacio()
+    {
+        var almacen = new AlmacenIdeasFake();
+        _respuestas.GuardarIdeaConsolidadaAsync(Arg.Do<IdeaConsolidada>(idea => almacen.Ideas[idea.Id] = idea), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.GuardarVersionIdeaAsync(Arg.Do<VersionIdeaConsolidada>(v => almacen.Versiones[v.Id] = v), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.ObtenerIdeaConsolidadaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(l => almacen.Ideas.GetValueOrDefault(l.ArgAt<string>(1)));
+        _respuestas.ObtenerVersionIdeaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(l => almacen.Versiones.GetValueOrDefault(l.ArgAt<string>(1)));
+        _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyCollection<IdeaConsolidada>)almacen.Ideas.Values.ToArray());
+        _respuestas.ListarVersionesIdeaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(l => (IReadOnlyCollection<VersionIdeaConsolidada>)almacen.Versiones.Values
+                .Where(v => v.IdeaId == l.ArgAt<string>(1)).ToArray());
+        return almacen;
+    }
+
+    private sealed class AlmacenIdeasFake
+    {
+        public Dictionary<string, IdeaConsolidada> Ideas { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, VersionIdeaConsolidada> Versiones { get; } = new(StringComparer.Ordinal);
+    }
+
     private async Task<DominioConversacion> SembrarConversacionCerradaAsync()
     {
         var cerrada = DominioConversacion
@@ -175,7 +344,10 @@ public sealed class OrquestadorCiclosP26Tests
         return cerrada;
     }
 
-    private OrquestadorConversacion Construir()
+    private OrquestadorConversacion Construir(
+        OpcionesConversacion? opciones = null,
+        IConsolidadorIdeas? consolidador = null,
+        TimeProvider? reloj = null)
         => new(
             _conversaciones,
             _respuestas,
@@ -188,10 +360,13 @@ public sealed class OrquestadorCiclosP26Tests
             _gateway,
             _logSeguridad,
             _correlacion,
-            new OpcionesConversacion(),
-            _reloj);
+            opciones ?? new OpcionesConversacion(),
+            reloj ?? _reloj,
+            consolidador);
 
-    private static ParticipanteResuelto Participante()
+    private static ParticipanteResuelto Participante(
+        bool participacionContinua = true,
+        int maxMensajesPorUsuario = 10)
     {
         var pregunta = CrearPregunta("p_1", 1);
         var campania = Campania.Crear(
@@ -202,8 +377,8 @@ public sealed class OrquestadorCiclosP26Tests
             new Dictionary<string, string> { ["evaluar"] = "pr_eval" },
             "llm_1",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
-            ConfigConversacional.Crear(1, "Gracias por participar.", participacionContinua: true),
-            LimitesSeguridad.Crear(1500, 10, 2),
+            ConfigConversacional.Crear(1, "Gracias por participar.", participacionContinua: participacionContinua),
+            LimitesSeguridad.Crear(1500, maxMensajesPorUsuario, 2),
             usuariosHabilitados: null,
             Epoca,
             Epoca);
@@ -246,8 +421,20 @@ public sealed class OrquestadorCiclosP26Tests
     private sealed class FakeConversaciones : IRepositorioConversaciones
     {
         private readonly Dictionary<string, DominioConversacion> _conversaciones = new(StringComparer.Ordinal);
+        private readonly List<Mensaje> _mensajes = [];
 
         public IReadOnlyCollection<DominioConversacion> Conversaciones => _conversaciones.Values.ToArray();
+
+        /// <summary>Siembra entrantes con una marca de tiempo concreta (cupos §9: la ventana los filtra).</summary>
+        public void SembrarEntrantes(string conversacionId, DateTimeOffset timestamp, int cantidad)
+        {
+            for (var i = 0; i < cantidad; i++)
+            {
+                _mensajes.Add(ElTejido.Domain.Conversaciones.Mensaje.Crear(
+                    $"msg_{Guid.NewGuid():N}", "c_1", conversacionId, DireccionMensaje.In,
+                    "texto", $"wamid.{Guid.NewGuid():N}", timestamp));
+            }
+        }
 
         public Task GuardarConversacionAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
         {
@@ -266,9 +453,14 @@ public sealed class OrquestadorCiclosP26Tests
             => Task.FromResult<IReadOnlyCollection<DominioConversacion>>(Array.Empty<DominioConversacion>());
 
         public Task<IReadOnlyCollection<Mensaje>> ListarMensajesAsync(string campaniaId, string conversacionId, CancellationToken cancellationToken)
-            => Task.FromResult<IReadOnlyCollection<Mensaje>>(Array.Empty<Mensaje>());
+            => Task.FromResult<IReadOnlyCollection<Mensaje>>(
+                _mensajes.Where(m => m.CampaniaId == campaniaId && m.ConversacionId == conversacionId).ToArray());
 
-        public Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task GuardarMensajeAsync(Mensaje mensaje, CancellationToken cancellationToken)
+        {
+            _mensajes.Add(mensaje);
+            return Task.CompletedTask;
+        }
 
         public Task<ConteoBorradoConversaciones> EliminarPorUsuarioAsync(string campaniaId, string? usuarioId, CancellationToken cancellationToken)
             => Task.FromResult(new ConteoBorradoConversaciones(0, 0));

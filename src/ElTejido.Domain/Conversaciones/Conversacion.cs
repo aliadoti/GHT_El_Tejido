@@ -189,6 +189,31 @@ public sealed class Conversacion
             estadoMaquina: EstadoMaquinaConversacion.Cerrada,
             fechaCierre: fechaCierre.ToUniversalTime());
 
+    /// <summary>
+    /// P-26 §5.8: reabre este hilo para atender una petición explícita de complementar/revisitar una
+    /// idea que vive en él. Es lo que permite conservar el <c>ideaId</c> (I-19 §4.7) en vez de abrir
+    /// un ciclo nuevo; un aporte normal posterior sí crea otro ciclo y deja este hilo intacto. Vuelve
+    /// a <c>esperandoRepregunta</c>, limpia la fecha de cierre y renueva la ventana de servicio.
+    /// </summary>
+    public Conversacion Reabrir(DateTimeOffset ahora)
+        => new(
+            Id,
+            CampaniaId,
+            UsuarioId,
+            PreguntaId,
+            Canal,
+            EstadoConversacion.Abierta,
+            EstadoMaquinaConversacion.EsperandoRepregunta,
+            RepreguntasUsadas,
+            ahora.ToUniversalTime().AddHours(HorasVentanaServicio),
+            CorrelationId,
+            FechaInicio,
+            fechaCierre: null,
+            CoachingIdeas,
+            CicloParticipacion,
+            OrigenAporteMessageId,
+            EnrutamientoAporteId);
+
     private Conversacion With(
         EstadoConversacion? estado = null,
         EstadoMaquinaConversacion? estadoMaquina = null,

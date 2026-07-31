@@ -5,6 +5,29 @@
 
 ## Estado global
 - Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **P-26
+  corte 4 de 6 — reapertura entre alcances y cupos móviles de 24 h DONE local.** (1) **Reapertura
+  §5.8:** una petición explícita de complementar/revisitar recibida después de cerrar el recorrido ya
+  **no abre una idea nueva**: el servidor reabre el hilo que contiene la idea
+  (`Conversacion.Reabrir`, aditivo) y delega en la reapertura I-19 §4.7, que conserva el mismo
+  `ideaId`, ofrece la lista numerada cuando hay varias candidatas y suspende la curaduría hasta cerrar
+  la nueva evaluación. Solo procede con consolidación I-19 activa, campaña activa y candidatas reales;
+  un aporte normal posterior sigue creando otro ciclo con el hilo anterior intacto (criterio 13 de la
+  spec). Como el alcance ya se resolvió en los cortes 2-3, nunca se mezclan ideas de campañas o
+  preguntas distintas. (2) **Cupos móviles §9:** con `participacionContinua=true`,
+  `maxMensajesPorUsuario` y `maxLlamadasLlmPorUsuario` cuentan solo lo ocurrido en `ahoraUtc - 24h`
+  —ventana móvil, sin reinicio a medianoche, compartida por ciclos y preguntas de la campaña—;
+  los mensajes se filtran por su `timestamp` y las llamadas LLM por sobrecargas nuevas de
+  `IRepositorioRespuestas` (`ContarEvaluacionesUsuarioAsync`/`ContarConsolidacionesUsuarioAsync` con
+  `desde`), implementadas en Cosmos (filtro en la consulta, sin traer documentos fuera de alcance) y
+  memoria, con **degradación por defecto al acumulado** para que ningún adaptador abra el cupo por
+  accidente. `presupuestoTokensCampania` sigue acumulado toda la campaña y `MaxTurnosPorHilo` sigue
+  siendo por conversación/ciclo. Con el interruptor apagado, los cupos conservan exactamente su
+  semántica actual. **Verificado:** build Release `-warnaserror` 0/0, **648** pruebas no calibración
+  (586 unit + 62 integración; +6: reapertura vs. aporte normal vs. sin candidatas, ventana que
+  excluye lo viejo, ventana que sí agota con lo reciente y acumulado intacto sin continuidad), format
+  limpio. Sin push, despliegue ni cambio remoto. **Próximo: P-26 corte 5 — portal de creación/edición
+  y accesibilidad.**
+- Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **P-26
   corte 3 de 6 — selección de pregunta, afinidad y ciclos nuevos DONE local.** Completa la resolución
   determinista de alcance (05 §4.4.3, Reglas §2.10): (1) **selección de pregunta** — tras elegir la
   campaña, una pregunta elegible se selecciona sola y varias producen otro menú numerado (estado
@@ -384,19 +407,21 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **P-26 corte 4 de 6 — reapertura entre alcances y cupos móviles de 24 h.** Leer
-  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §5.8/§9` y
-  `SUPUESTOS.md#participacion-continua-p26`. Implementar: (1) **reapertura §5.8** — una frase
-  explícita de complementar/revisitar resuelve primero el alcance vigente (campaña/pregunta) y
-  después reutiliza la reapertura I-19 conservando el mismo `ideaId`, incluida la lista numerada de
-  ideas cuando hay varias candidatas; nunca mezcla ideas de campañas o preguntas distintas y una idea
-  madura reabierta suspende su curaduría hasta cerrar la nueva evaluación. (2) **Cupos móviles §9** —
-  en campaña con `participacionContinua=true`, `maxMensajesPorUsuario` y `maxLlamadasLlmPorUsuario`
-  cuentan solo lo ocurrido en `ahoraUtc - 24h` (ventana móvil, no reinicio a medianoche, compartida
-  entre ciclos y preguntas); `MaxTurnosPorHilo` sigue siendo por conversación/ciclo y
-  `presupuestoTokensCampania` sigue acumulado toda la campaña. Con el flag apagado los cupos
-  conservan su semántica acumulada actual. Pruebas: idea nueva vs. reapertura, bordes de ventana,
-  presupuesto acumulado.
+- [ ] **P-26 corte 5 de 6 — portal de creación/edición y accesibilidad.** Leer
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §8.2` y `11 §6`. En Campañas →
+  Configuración → Conversación añadir el checkbox **“Permitir nuevas ideas después de finalizar”**
+  (`participacionContinua`, default OFF) con su ayuda (“Mientras la campaña esté activa, cada
+  participante podrá volver y comenzar ideas nuevas. Sus ideas anteriores no se mezclarán.”),
+  **separado visualmente del selector de estado** para no confundir “continua” con “activa”, y el
+  aviso al apagarlo (“Las ideas que ya están en conversación podrán terminar; no se abrirán ideas
+  nuevas.”). Editable por admin y de solo lectura para visor; el round-trip del backend ya está listo
+  desde el corte 1. Pruebas: admin/visor, texto de ayuda, round-trip y regresión P-16/P-18/P-20/P-22.
+  **Node:** el frontend requiere Node temporal 24.15.0 vía `npx` (el Node del sistema no corre `ng`).
+- [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 648: 586 unit + 62 integración; format
+  limpio) P-26 corte 4 de 6 — reapertura entre alcances y cupos móviles de 24 h.** La reapertura
+  explícita reabre el hilo de la idea y conserva su `ideaId` en vez de abrir un ciclo; los cupos por
+  participante de campañas continuas miran las últimas 24 h, con presupuesto de tokens y techo de
+  turnos sin cambio. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 642: 580 unit + 62 integración; format
   limpio) P-26 corte 3 de 6 — selección de pregunta, afinidad y ciclos nuevos.** Menú/selección de
   pregunta con revalidación, afinidad `enIdea` que enruta el coaching sin menús y se completa al

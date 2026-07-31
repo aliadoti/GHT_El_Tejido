@@ -413,17 +413,40 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
         => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
 
     public Task<int> ContarEvaluacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
-        => Task.FromResult(_evaluaciones.Values.Count(e => e.CampaniaId == campaniaId && e.UsuarioId == usuarioId));
+        => ContarEvaluacionesUsuarioAsync(campaniaId, usuarioId, desde: null, cancellationToken);
+
+    /// <summary>P-26 §9: ventana movil de 24 h para campanias con participacion continua.</summary>
+    public Task<int> ContarEvaluacionesUsuarioAsync(
+        string campaniaId, string usuarioId, DateTimeOffset desde, CancellationToken cancellationToken)
+        => ContarEvaluacionesUsuarioAsync(campaniaId, usuarioId, (DateTimeOffset?)desde, cancellationToken);
+
+    private Task<int> ContarEvaluacionesUsuarioAsync(
+        string campaniaId, string usuarioId, DateTimeOffset? desde, CancellationToken cancellationToken)
+        => Task.FromResult(_evaluaciones.Values.Count(e =>
+            e.CampaniaId == campaniaId
+            && e.UsuarioId == usuarioId
+            && (desde is null || e.Fecha >= desde.Value)));
 
     /// <summary>I-19 §12.3: una version = una llamada de consolidacion (incluidas las de fallback).</summary>
     public Task<int> ContarConsolidacionesUsuarioAsync(string campaniaId, string usuarioId, CancellationToken cancellationToken)
+        => ContarConsolidacionesUsuarioAsync(campaniaId, usuarioId, desde: null, cancellationToken);
+
+    /// <summary>P-26 §9: ventana movil de 24 h para campanias con participacion continua.</summary>
+    public Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId, string usuarioId, DateTimeOffset desde, CancellationToken cancellationToken)
+        => ContarConsolidacionesUsuarioAsync(campaniaId, usuarioId, (DateTimeOffset?)desde, cancellationToken);
+
+    private Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId, string usuarioId, DateTimeOffset? desde, CancellationToken cancellationToken)
     {
         var ideas = _ideas.Values
             .Where(idea => idea.CampaniaId == campaniaId && idea.UsuarioId == usuarioId)
             .Select(idea => idea.Id)
             .ToHashSet(StringComparer.Ordinal);
-        return Task.FromResult(_versionesIdea.Values.Count(
-            version => version.CampaniaId == campaniaId && ideas.Contains(version.IdeaId)));
+        return Task.FromResult(_versionesIdea.Values.Count(version =>
+            version.CampaniaId == campaniaId
+            && ideas.Contains(version.IdeaId)
+            && (desde is null || version.GeneradaEn >= desde.Value)));
     }
 
     public Task<long> SumarTokensCampaniaAsync(string campaniaId, CancellationToken cancellationToken)

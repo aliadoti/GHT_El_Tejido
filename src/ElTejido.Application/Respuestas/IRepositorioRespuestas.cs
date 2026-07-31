@@ -63,6 +63,20 @@ public interface IRepositorioRespuestas
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-26 §9 — variante con <b>ventana móvil</b>: solo cuenta las evaluaciones con
+    /// <c>fecha &gt;= desde</c>. La usan las campañas con <c>participacionContinua=true</c>, donde el
+    /// cupo acumulado haría inviable volver a participar. La implementación por defecto degrada al
+    /// conteo acumulado (más restrictivo, nunca menos), para que un adaptador que no la implemente
+    /// conserve el comportamiento actual sin abrir el cupo por accidente.
+    /// </summary>
+    Task<int> ContarEvaluacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset desde,
+        CancellationToken cancellationToken)
+        => ContarEvaluacionesUsuarioAsync(campaniaId, usuarioId, cancellationToken);
+
+    /// <summary>
     /// I-19 §12.3 — llamadas de <b>consolidación</b> de un usuario en la campaña. Cada
     /// <see cref="VersionIdeaConsolidada"/> nace de exactamente una llamada al consolidador (también
     /// cuando esa llamada terminó en fallback), así que contar versiones cuenta llamadas sin documentos
@@ -74,6 +88,18 @@ public interface IRepositorioRespuestas
         string campaniaId,
         string usuarioId,
         CancellationToken cancellationToken) => Task.FromResult(0);
+
+    /// <summary>
+    /// P-26 §9 — variante con <b>ventana móvil</b> de <see cref="ContarConsolidacionesUsuarioAsync(string,string,CancellationToken)"/>:
+    /// solo cuenta las versiones generadas con <c>generadaEn &gt;= desde</c>. Misma degradación segura:
+    /// por defecto delega al conteo acumulado.
+    /// </summary>
+    Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset desde,
+        CancellationToken cancellationToken)
+        => ContarConsolidacionesUsuarioAsync(campaniaId, usuarioId, cancellationToken);
 
     /// <summary>
     /// P-10 — suma los tokens LLM (prompt + completion) de todas las evaluaciones de una campaña.

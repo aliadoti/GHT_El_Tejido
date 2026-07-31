@@ -136,26 +136,64 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.Select(d => d.ToDomain()).ToArray();
     }
 
-    public async Task<int> ContarEvaluacionesUsuarioAsync(
+    public Task<int> ContarEvaluacionesUsuarioAsync(
         string campaniaId,
         string usuarioId,
+        CancellationToken cancellationToken)
+        => ContarEvaluacionesUsuarioAsync(campaniaId, usuarioId, desde: null, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> ContarEvaluacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset desde,
+        CancellationToken cancellationToken)
+        => ContarEvaluacionesUsuarioAsync(campaniaId, usuarioId, (DateTimeOffset?)desde, cancellationToken);
+
+    private async Task<int> ContarEvaluacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset? desde,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
         ArgumentException.ThrowIfNullOrWhiteSpace(usuarioId);
 
-        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId")
+        // P-26 §9: la ventana movil se filtra en la consulta (no en memoria) para no traer documentos
+        // fuera de alcance; sin `desde` el conteo sigue siendo el acumulado historico.
+        var sql = "SELECT * FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId"
+            + (desde is null ? string.Empty : " AND c.fecha >= @desde");
+        var query = new QueryDefinition(sql)
             .WithParameter("@type", EvaluacionCosmosDocument.DocumentType)
             .WithParameter("@usuarioId", usuarioId.Trim());
+        if (desde is not null)
+        {
+            query = query.WithParameter("@desde", desde.Value.UtcDateTime);
+        }
 
         var documentos = await _container.QueryAsync<EvaluacionCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
         return documentos.Count;
     }
 
     /// <inheritdoc />
-    public async Task<int> ContarConsolidacionesUsuarioAsync(
+    public Task<int> ContarConsolidacionesUsuarioAsync(
         string campaniaId,
         string usuarioId,
+        CancellationToken cancellationToken)
+        => ContarConsolidacionesUsuarioAsync(campaniaId, usuarioId, desde: null, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset desde,
+        CancellationToken cancellationToken)
+        => ContarConsolidacionesUsuarioAsync(campaniaId, usuarioId, (DateTimeOffset?)desde, cancellationToken);
+
+    private async Task<int> ContarConsolidacionesUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset? desde,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
@@ -174,10 +212,16 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         }
 
         var idsIdeas = documentosIdeas.Select(documento => documento.Id).ToArray();
-        var versiones = new QueryDefinition(
-                "SELECT c.id FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@ideaIds, c.ideaId)")
+        var sqlVersiones = "SELECT c.id FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@ideaIds, c.ideaId)"
+            + (desde is null ? string.Empty : " AND c.generadaEn >= @desde");
+        var versiones = new QueryDefinition(sqlVersiones)
             .WithParameter("@type", VersionIdeaConsolidadaCosmosDocument.DocumentType)
             .WithParameter("@ideaIds", idsIdeas);
+        if (desde is not null)
+        {
+            versiones = versiones.WithParameter("@desde", desde.Value.UtcDateTime);
+        }
+
         var documentosVersiones = await _container.QueryAsync<VersionIdeaConsolidadaCosmosDocument>(
             versiones, particion, cancellationToken);
         return documentosVersiones.Count;

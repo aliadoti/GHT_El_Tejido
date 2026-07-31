@@ -30,11 +30,14 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > abierta y con ventana vigente (y se marca `completado` al cerrarse la idea), cambio explícito de
 > campaña (`Conversacion:FrasesCambiarCampania`) que suspende la afinidad sin cerrar la idea, y
 > ciclos nuevos §5.7 vía `ProcesarAporteEnrutadoAsync` con id determinista por mensaje raíz
-> (`cicloParticipacion+1`, hilo anterior intacto). Backend **642/642** (580 unit + 62 integración),
-> format limpio; sin push.
-> **Próximo trabajo ejecutable: corte 4 — reapertura entre alcances y cupos móviles de 24 h (spec
-> §5.8/§9 y §13). No implementar desde resúmenes: leer la spec completa y
-> `SUPUESTOS.md#participacion-continua-p26`.**
+> (`cicloParticipacion+1`, hilo anterior intacto). Corte 4: la reapertura explícita (§5.8) reabre el
+> hilo que contiene la idea y conserva su `ideaId` reutilizando I-19 §4.7 en vez de abrir un ciclo
+> —un aporte normal sí lo abre—, y los cupos por participante (§9) usan ventana móvil de 24 h en
+> campañas continuas, con `presupuestoTokensCampania` acumulado y `MaxTurnosPorHilo` por ciclo sin
+> cambio. Backend **648/648** (586 unit + 62 integración), format limpio; sin push.
+> **Próximo trabajo ejecutable: corte 5 — portal de creación/edición y accesibilidad (spec §8.2,
+> `11 §6` y §13). Requiere Node temporal 24.15.0 vía `npx`. No implementar desde resúmenes: leer la
+> spec completa y `SUPUESTOS.md#participacion-continua-p26`.**
 >
 > **ESTADO VIGENTE 2026-07-29 — `P-25` DONE LOCAL.** Cada aporte sustantivo se consolida, confirma
 > internamente y evalúa completo en el mismo turno; el coach responde con retroalimentación de rúbrica y
@@ -65,11 +68,11 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: implementar `P-26` por 6 cortes — cortes 1, 2 y 3 DONE local; sigue
-el corte 4.** El siguiente agente continúa con el corte 4 (reapertura entre alcances y cupos móviles
-de 24 h) y mantiene la validación operativa de I-19/I-20/P-24/P-25 como pendiente paralela, sin
-desplegar ni modificar configuración remota. Al cerrar P-26, rota a `P-27` corte 1 de 5; no
-adelantar el clasificador dentro de los cortes de P-26.
+**Iniciativa objetivo vigente: implementar `P-26` por 6 cortes — cortes 1 a 4 DONE local; sigue el
+corte 5.** El siguiente agente continúa con el corte 5 (portal de creación/edición y accesibilidad;
+requiere Node temporal 24.15.0) y mantiene la validación operativa de I-19/I-20/P-24/P-25 como
+pendiente paralela, sin desplegar ni modificar configuración remota. Al cerrar P-26, rota a `P-27`
+corte 1 de 5; no adelantar el clasificador dentro de los cortes de P-26.
 
 ---
 
@@ -189,7 +192,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **DONE local** | **Codex / Claude** | **Cortes 1-5 DONE local 2026-07-28:** redactor por acto, guardas, composición servidor, cupos/telemetría y Markdown con umbral/origen/escala; E2E con redactor inyectado. Pendiente operativo: D5/UAT/costo. |
 | 30 | **`P-24` evaluación implícita al solicitar mejora** | **DONE local** | **Codex** | **Corregido 2026-07-29:** “Vamos a mejorarla” confirma implícitamente la versión propuesta, la evalúa completa y abre coaching bajo umbral en hilo simple o cola multi-idea. No crea aporte/version nueva, no reduce `MaxRepreguntas`, ni cambia contratos/remoto. Backend 579/579 verde. |
 | 31 | **`P-25` coaching directo sin confirmación repetitiva** | **DONE local** | **Codex** | Cada aporte sustantivo confirma automáticamente su versión consolidada y la evalúa completa en el mismo turno; respuesta natural con una sola pregunta de coaching. Rollback global disponible; backend 583/583 verde. |
-| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Claude (cortes 1-3) / siguiente agente (corte 4)** | **EN CURSO: cortes 1/6, 2/6 y 3/6 DONE local 2026-07-31** (corte 1: dominio/contratos; corte 2: resolución multi-campaña determinista, aporte conservado + menú numerado, selección validada/revalidada, expiración 24 h, entrega única y telemetría; corte 3: menú/selección de pregunta, afinidad de coaching sin menús, cambio explícito de campaña y ciclos nuevos con id determinista; backend 642/642 verde). Siguiente: corte 4 — reapertura entre alcances y cupos móviles de 24 h; luego portal y E2E. Default `false`; solo campañas activas. |
+| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Claude (cortes 1-4) / siguiente agente (corte 5)** | **EN CURSO: cortes 1/6 a 4/6 DONE local 2026-07-31** (1: dominio/contratos; 2: resolución multi-campaña determinista, aporte conservado + menú numerado, selección validada/revalidada, expiración 24 h, entrega única y telemetría; 3: menú/selección de pregunta, afinidad de coaching sin menús, cambio explícito de campaña y ciclos nuevos con id determinista; 4: reapertura explícita que conserva `ideaId` sin abrir ciclo y cupos por participante en ventana móvil de 24 h; backend 648/648 verde). Siguiente: corte 5 — portal (checkbox + ayuda, admin/visor); luego corte 6 E2E y cierre. Default `false`; solo campañas activas. |
 | 33 | **`P-27` clasificación flexible de intenciones de control** | **Alta; después de P-26** | **Siguiente agente tras P-26** | **ESPECIFICADA; 0/5 cortes de código.** Corrige alias de salida y añade clasificador LLM tipado detrás de flags OFF; ejecución de cierre/avance siempre server-side. Debe quedar lista antes de activar I-18/P-26 en UAT/producción. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
@@ -244,19 +247,18 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Implementar P-26 corte 4 — reapertura entre alcances y cupos móviles de 24 h.** Leer completa
-   `P-26_Participacion_Continua_y_Seleccion_de_Campania.md` (§5.8, §9, §11, §13). Sobre la base de
-   los cortes 1-3 (dominio, enrutamiento de campaña/pregunta, afinidad y ciclos, ya en verde),
-   implementar: (a) **reapertura §5.8** — una frase explícita de complementar/revisitar resuelve
-   primero el alcance vigente y después reutiliza la reapertura I-19 con el **mismo `ideaId`**
-   (incluida la lista numerada cuando hay varias candidatas), sin mezclar nunca ideas de campañas o
-   preguntas distintas, y una idea madura reabierta suspende su curaduría hasta cerrar la nueva
-   evaluación; (b) **cupos móviles §9** — con `participacionContinua=true`,
-   `maxMensajesPorUsuario`/`maxLlamadasLlmPorUsuario` cuentan solo lo ocurrido en `ahoraUtc - 24h`
-   (ventana móvil compartida entre ciclos y preguntas), mientras `MaxTurnosPorHilo` sigue por
-   conversación/ciclo y `presupuestoTokensCampania` sigue acumulado; con el flag apagado los cupos
-   conservan su semántica actual. Pruebas: idea nueva vs. reapertura, bordes de ventana, presupuesto
-   acumulado. Todavía no construir el portal (corte 5) ni la E2E de cierre (corte 6).
+1. **Implementar P-26 corte 5 — portal de creación/edición y accesibilidad.** Leer completa
+   `P-26_Participacion_Continua_y_Seleccion_de_Campania.md` (§8.2, §13) y `11 §6`. Todo el backend ya
+   está verde desde el corte 1 (el flag hace round-trip por POST/GET/PUT y duplicado), así que este
+   corte es **frontend-only**: en Campañas → Configuración → Conversación añadir el checkbox
+   **“Permitir nuevas ideas después de finalizar”** (`participacionContinua`, default OFF) con la
+   ayuda “Mientras la campaña esté activa, cada participante podrá volver y comenzar ideas nuevas.
+   Sus ideas anteriores no se mezclarán.”, **separado visualmente del selector de estado** para no
+   confundir “continua” con “activa”, y el aviso al apagarlo (“Las ideas que ya están en conversación
+   podrán terminar; no se abrirán ideas nuevas.”). Admin edita, visor solo lee. Pruebas: admin/visor,
+   texto de ayuda, round-trip y regresión P-16/P-18/P-20/P-22. **Node temporal 24.15.0 vía `npx`**
+   (el Node del sistema no corre `ng`). Después queda el corte 6 (observabilidad, E2E simulada, QA y
+   cierre documental).
 
 2. **Backlog siguiente ya aprobado: P-27 corte 1 de 5.** Solo después de cerrar P-26, leer
    `P-27_Clasificacion_Flexible_Intenciones_Control.md` y añadir dominio/contratos con defaults OFF:
