@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { Campania, ParticipantePreview } from '../../core/api-models';
@@ -161,7 +161,12 @@ describe('paneles de campanias', () => {
       legend.textContent?.trim(),
     );
 
-    expect(leyendas).toEqual(['Evaluacion', 'Seguridad y costo', 'Conversacion']);
+    expect(leyendas).toEqual([
+      'Evaluacion',
+      'Seguridad y costo',
+      'Conversacion',
+      'Participacion continua',
+    ]);
     expect(
       host.querySelector('[name="editarUmbralCierreAnticipado"]')?.getAttribute('aria-describedby'),
     ).toBe('ayuda-umbral');
@@ -182,4 +187,82 @@ describe('paneles de campanias', () => {
       host.querySelector('[name="editarPresupuestoTokens"]')?.getAttribute('aria-describedby'),
     ).toBe('ayuda-presupuesto');
   });
+
+  // P-26 §8.2: participacion continua editable por admin, separada del estado de la campania.
+  it('hidrata la participacion continua y la devuelve al guardar', async () => {
+    const fixture = crearConfiguracion({ participacionContinua: true }, true);
+    fixture.detectChanges();
+    // ngModel escribe el valor en el DOM de forma asincrona: hay que esperar la estabilizacion.
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    let guardado: { participacionContinua: boolean } | null = null;
+    fixture.componentInstance.guardar.subscribe((formulario) => (guardado = formulario));
+
+    const casilla = host.querySelector('[name="editarParticipacionContinua"]') as HTMLInputElement;
+    expect(casilla.checked).toBe(true);
+    expect(casilla.getAttribute('aria-describedby')).toBe('ayuda-participacion-continua');
+    expect(host.querySelector('#ayuda-participacion-continua')?.textContent).toContain(
+      'ideas anteriores no se mezclaran',
+    );
+
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+
+    expect(guardado!.participacionContinua).toBe(true);
+  });
+
+  it('una campania sin el campo deja la participacion continua apagada y sin aviso', async () => {
+    const fixture = crearConfiguracion({}, true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(
+      (host.querySelector('[name="editarParticipacionContinua"]') as HTMLInputElement).checked,
+    ).toBe(false);
+    expect(host.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('avisa que las ideas en curso podran terminar cuando se apaga la participacion continua', async () => {
+    const fixture = crearConfiguracion({ participacionContinua: true }, true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[role="status"]')).toBeNull();
+
+    const casilla = host.querySelector('[name="editarParticipacionContinua"]') as HTMLInputElement;
+    casilla.click();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[role="status"]')?.textContent).toContain(
+      'no se abriran ideas nuevas',
+    );
+  });
+
+  it('el visor no puede guardar los cambios de participacion continua', () => {
+    const fixture = crearConfiguracion({ participacionContinua: true }, false);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[name="editarParticipacionContinua"]')).not.toBeNull();
+    expect((host.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+  });
 });
+
+function crearConfiguracion(
+  configConversacional: Record<string, unknown>,
+  esAdmin: boolean,
+): ComponentFixture<CampaniaConfiguracionPanel> {
+  const fixture = TestBed.createComponent(CampaniaConfiguracionPanel);
+  fixture.componentRef.setInput('campania', {
+    id: 'campania-1',
+    nombre: 'Prueba',
+    estado: 'activa',
+    objetivo: 'Validar',
+    configConversacional,
+  } as unknown as Campania);
+  fixture.componentRef.setInput('rubricas', []);
+  fixture.componentRef.setInput('configsLlm', []);
+  fixture.componentRef.setInput('prompts', []);
+  fixture.componentRef.setInput('esAdmin', esAdmin);
+  return fixture;
+}

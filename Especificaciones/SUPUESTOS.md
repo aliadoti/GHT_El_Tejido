@@ -882,6 +882,11 @@
     reapertura solo procede si la consolidación I-19 está activa y existen ideas cerradas candidatas
     en ese hilo; sin candidatas la frase no tiene a qué volver y el aporte sigue el camino de ciclo
     nuevo.
+  - *"Solo lectura para visor" en el portal (corte 5, §8.2).* Se implementa **con el patrón vigente
+    del panel de Configuración** (P-16/P-22): el control se muestra a todos, pero el botón "Guardar
+    cambios" está deshabilitado para el visor y la API rechaza la mutación. No se marcó `disabled`
+    solo en este checkbox porque sería incoherente con los otros ocho controles del mismo formulario;
+    cambiar el patrón sería un rediseño del panel completo, fuera del alcance de P-26.
   - *Cupos móviles (corte 4, §9).* La ventana de 24 h se aplica **solo** a los cupos por participante
     (`maxMensajesPorUsuario`, `maxLlamadasLlmPorUsuario`) y únicamente cuando
     `participacionContinua=true`; se calcula como `ahoraUtc - 24h` en cada evaluación, por lo que es

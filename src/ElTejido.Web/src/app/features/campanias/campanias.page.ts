@@ -208,6 +208,8 @@ export class CampaniasPage {
           coachingSecuencialIdeas: false,
           minutosCoachingPorIdea: null,
           umbralCierreAnticipado: null,
+          // P-26: una campania nueva nace sin participacion continua (default seguro).
+          participacionContinua: false,
         },
         configSeguridad: {
           maxCaracteresMensaje: 1500,
@@ -259,6 +261,7 @@ export class CampaniasPage {
               ? null
               : Math.max(0, Math.trunc(Number(formulario.minutosInactividadSesion) || 0)),
           numeroWhatsAppSaliente: formulario.numeroWhatsAppSaliente.trim() || null,
+          participacionContinua: Boolean(formulario.participacionContinua),
         },
         configSeguridad: {
           maxCaracteresMensaje: actual?.configSeguridad?.maxCaracteresMensaje ?? 1500,

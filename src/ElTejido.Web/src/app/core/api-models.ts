@@ -92,6 +92,10 @@ export interface ConfigConversacional {
   // default global; 0 o negativo desactiva el cierre por inactividad solo para esta campaña.
   minutosInactividadSesion?: number | null;
   numeroWhatsAppSaliente?: string | null;
+  // P-26 (aditivo, default false): mientras la campaña esté activa, permite que un participante que
+  // ya terminó su recorrido vuelva y comience ideas nuevas, cada una con su propio historial.
+  // Campo ausente = false; no reemplaza al estado de la campaña.
+  participacionContinua?: boolean;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).

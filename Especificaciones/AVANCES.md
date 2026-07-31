@@ -4,6 +4,24 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Frontend/UX/SDET): **P-26 corte 5 de 6 —
+  portal de creación/edición y accesibilidad DONE local (frontend-only).** En Campañas →
+  Configuración, un **fieldset propio "Participación continua"** —separado del de Conversación y del
+  selector de estado, para no confundir "continua" con "activa"— aloja el checkbox **"Permitir nuevas
+  ideas después de finalizar"** (`participacionContinua`, default OFF) con ayuda asociada por
+  `aria-describedby` que explica que solo aplica mientras la campaña esté activa y que las ideas
+  anteriores no se mezclan. Al **apagarlo** aparece un aviso en `role="status"` ("Las ideas que ya
+  están en conversación podrán terminar; no se abrirán ideas nuevas."), visible solo mientras el
+  cambio está sin guardar sobre una campaña que hoy lo tiene encendido. El valor hace round-trip
+  completo: `ConfigConversacional` del modelo de API, hidratación del formulario (campo ausente =
+  `false`), creación con default seguro y edición. Admin edita; el visor ve el control pero no puede
+  guardar, con el mismo patrón del resto del panel (`SUPUESTOS.md#participacion-continua-p26`). Sin
+  cambios de backend, contratos, rutas ni permisos; se preservan P-16/P-18/P-20/P-22.
+  **Verificado con Node 24.18.0:** `tsc --noEmit` limpio, `prettier --check` limpio,
+  `ng test --watch=false` **30/30 verde** (+4: round-trip y ayuda, default apagado sin aviso, aviso
+  al apagar, visor sin guardar) y `ng build --configuration production` verde. Backend sin tocar
+  (**648/648** del corte 4 sigue vigente). Sin push, despliegue ni cambio remoto. **Próximo: P-26
+  corte 6 — observabilidad, E2E simulada, QA y cierre documental.**
 - Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **P-26
   corte 4 de 6 — reapertura entre alcances y cupos móviles de 24 h DONE local.** (1) **Reapertura
   §5.8:** una petición explícita de complementar/revisitar recibida después de cerrar el recorrido ya
@@ -407,16 +425,21 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **P-26 corte 5 de 6 — portal de creación/edición y accesibilidad.** Leer
-  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §8.2` y `11 §6`. En Campañas →
-  Configuración → Conversación añadir el checkbox **“Permitir nuevas ideas después de finalizar”**
-  (`participacionContinua`, default OFF) con su ayuda (“Mientras la campaña esté activa, cada
-  participante podrá volver y comenzar ideas nuevas. Sus ideas anteriores no se mezclarán.”),
-  **separado visualmente del selector de estado** para no confundir “continua” con “activa”, y el
-  aviso al apagarlo (“Las ideas que ya están en conversación podrán terminar; no se abrirán ideas
-  nuevas.”). Editable por admin y de solo lectura para visor; el round-trip del backend ya está listo
-  desde el corte 1. Pruebas: admin/visor, texto de ayuda, round-trip y regresión P-16/P-18/P-20/P-22.
-  **Node:** el frontend requiere Node temporal 24.15.0 vía `npx` (el Node del sistema no corre `ng`).
+- [ ] **P-26 corte 6 de 6 — observabilidad, E2E simulada, QA y cierre documental.** Leer
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §10/§12/§13` y
+  `SUPUESTOS.md#participacion-continua-p26`. Entregar: (1) **métricas agregadas §10** que aún faltan
+  (participantes con continuidad, ciclos nuevos, menús ofrecidos, tasa de selección, expiraciones,
+  ambigüedades y latencia hasta procesar) sobre el evento `enrutamientoParticipacion` ya emitido;
+  (2) **E2E simulada** del recorrido completo del criterio 16 — webhook → selección de campaña →
+  selección de pregunta → coaching → madurez → aporte posterior → idea nueva, **sin WhatsApp real**;
+  (3) **concurrencia/reintento**: dos aportes casi simultáneos sin afinidad se serializan por
+  participante y nunca crean dos afinidades activas (§11); (4) repaso de los 16 criterios de
+  aceptación §12 y cierre documental (`AVANCES`, `TODO`, `QAS`). Gate completo backend + frontend.
+- [x] **(HECHO 2026-07-31, Claude Fable 5 — frontend verde 30/30; prettier, tsc y build de
+  producción limpios con Node 24.18.0) P-26 corte 5 de 6 — portal de creación/edición y
+  accesibilidad.** Fieldset propio “Participación continua” con el checkbox, ayuda asociada y aviso
+  al apagar; round-trip completo del flag y visor sin poder guardar. Backend sin tocar. Ver "Estado
+  global" arriba.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 648: 586 unit + 62 integración; format
   limpio) P-26 corte 4 de 6 — reapertura entre alcances y cupos móviles de 24 h.** La reapertura
   explícita reabre el hilo de la idea y conserva su `ideaId` en vez de abrir un ciclo; los cupos por

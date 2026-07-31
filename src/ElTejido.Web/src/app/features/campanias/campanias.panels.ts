@@ -41,6 +41,7 @@ export interface CampaniaEdicionForm extends CampaniaCrearForm {
   umbralCierreAnticipado: number | null;
   minutosInactividadSesion: number | null;
   numeroWhatsAppSaliente: string;
+  participacionContinua: boolean;
 }
 export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'participantes';
 export interface MensajeInicialForm {
@@ -131,6 +132,7 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
     umbralCierreAnticipado: campania.configConversacional?.umbralCierreAnticipado ?? null,
     minutosInactividadSesion: campania.configConversacional?.minutosInactividadSesion ?? null,
     numeroWhatsAppSaliente: campania.configConversacional?.numeroWhatsAppSaliente ?? '',
+    participacionContinua: campania.configConversacional?.participacionContinua ?? false,
   };
 }
 
@@ -408,6 +410,26 @@ export class CampaniaCreacionPanel implements OnChanges {
           ></label
         >
       </fieldset>
+      <fieldset class="form-fieldset">
+        <legend>Participacion continua</legend>
+        <label class="checkbox-label"
+          ><input
+            aria-describedby="ayuda-participacion-continua"
+            type="checkbox"
+            name="editarParticipacionContinua"
+            [(ngModel)]="formulario.participacionContinua"
+          />Permitir nuevas ideas despues de finalizar</label
+        ><small id="ayuda-participacion-continua" class="muted"
+          >Mientras la campania este activa, cada participante podra volver y comenzar ideas nuevas.
+          Sus ideas anteriores no se mezclaran. Es distinto del estado de la campania: una campania
+          cerrada no recibe aportes aunque esto este encendido.</small
+        >
+        @if (avisoApagado()) {
+          <p class="muted" role="status">
+            Las ideas que ya estan en conversacion podran terminar; no se abriran ideas nuevas.
+          </p>
+        }
+      </fieldset>
       <div class="actions-row">
         <button class="primary-button" type="submit" [disabled]="!esAdmin()">
           Guardar cambios
@@ -426,6 +448,18 @@ export class CampaniaConfiguracionPanel implements OnChanges {
   protected formulario = crearFormularioVacio() as CampaniaEdicionForm;
   ngOnChanges(): void {
     this.formulario = formularioDesdeCampania(this.campania());
+  }
+
+  /**
+   * P-26 §8.2: al apagar la participacion continua se avisa que las ideas en curso podran terminar
+   * pero no se abriran nuevas. Solo aplica mientras el cambio esta sin guardar sobre una campania
+   * que hoy la tiene encendida.
+   */
+  protected avisoApagado(): boolean {
+    return (
+      (this.campania().configConversacional?.participacionContinua ?? false) &&
+      !this.formulario.participacionContinua
+    );
   }
 }
 
