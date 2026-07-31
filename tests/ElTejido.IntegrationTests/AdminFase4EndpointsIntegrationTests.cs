@@ -124,6 +124,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
                     minutosCoachingPorIdea = 7,
                     parafraseo = true,
                     umbralCierreAnticipado = 0.85,
+                    participacionContinua = true,
                 },
             });
 
@@ -134,6 +135,7 @@ public sealed class AdminFase4EndpointsIntegrationTests
         cuerpo.Should().Contain("\"minutosCoachingPorIdea\":7");
         cuerpo.Should().Contain("\"parafraseo\":true");
         cuerpo.Should().Contain("\"umbralCierreAnticipado\":0.85");
+        cuerpo.Should().Contain("\"participacionContinua\":true");
         var campaniaId = await LeerStringAsync(creacion, "id");
 
         using var detalle = await client.GetAsync($"/api/admin/campanias/{campaniaId}");
@@ -144,6 +146,56 @@ public sealed class AdminFase4EndpointsIntegrationTests
         detalleJson.Should().Contain("\"minutosCoachingPorIdea\":7");
         detalleJson.Should().Contain("\"parafraseo\":true");
         detalleJson.Should().Contain("\"umbralCierreAnticipado\":0.85");
+        detalleJson.Should().Contain("\"participacionContinua\":true");
+    }
+
+    [Fact]
+    public async Task Campanias_ParticipacionContinuaP26_SinElCampoQuedaFalseYDuplicarCopiaElValor()
+    {
+        using var fabrica = Construir(
+            new RepositorioUsuariosMemoria(),
+            new RepositorioCampaniasMemoria(),
+            new RepositorioParticipantesMemoria());
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/campanias",
+            new
+            {
+                nombre = "Convencion 2026",
+                descripcion = "Ideas",
+                objetivo = "Capturar ideas",
+                rubricaRef = "r_general",
+                configLLMRef = "llm_default",
+                configConversacional = new { maxRepreguntas = 1, mensajeCierre = "Gracias." },
+            });
+        creacion.StatusCode.Should().Be(HttpStatusCode.Created);
+        var cuerpo = await creacion.Content.ReadAsStringAsync();
+        cuerpo.Should().Contain("\"participacionContinua\":false");
+        var campaniaId = await LeerStringAsync(creacion, "id");
+
+        using var edicion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Put,
+            $"/api/admin/campanias/{campaniaId}",
+            new
+            {
+                configConversacional = new { maxRepreguntas = 1, mensajeCierre = "Gracias.", participacionContinua = true },
+            });
+        edicion.StatusCode.Should().Be(HttpStatusCode.OK);
+        var editada = await edicion.Content.ReadAsStringAsync();
+        editada.Should().Contain("\"participacionContinua\":true");
+
+        using var duplicado = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/admin/campanias/{campaniaId}/duplicar",
+            new { });
+        duplicado.IsSuccessStatusCode.Should().BeTrue();
+        var copia = await duplicado.Content.ReadAsStringAsync();
+        copia.Should().Contain("\"participacionContinua\":true");
     }
 
     [Fact]

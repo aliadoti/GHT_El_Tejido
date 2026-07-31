@@ -16,14 +16,17 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > Implementar **después de cerrar P-26** y antes de activar estos flujos en UAT/producción. Spec:
 > `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`.
 >
-> **ESTADO VIGENTE 2026-07-29 — `P-26` ESPECIFICADA; CÓDIGO PENDIENTE (0/6 cortes).** El usuario
-> confirmó participación continua solo para campañas activas, selección de campaña/pregunta,
-> conservación automática del aporte original, afinidad durante coaching, ciclos independientes,
-> apagado con gracia para la idea activa y cupos por participante en ventana móvil de 24 h. Contratos
-> `03/04/05/06/10/11`, Reglas, Supuestos, QAS e índice están sincronizados. Spec:
-> `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
-> **Próximo trabajo ejecutable: corte 1 — dominio y contratos. No implementar desde resúmenes:
-> leer la spec completa y `SUPUESTOS.md#participacion-continua-p26`.**
+> **ESTADO VIGENTE 2026-07-31 — `P-26` EN CURSO: corte 1/6 DONE local (Claude Fable 5).** Dominio y
+> contratos entregados con cambios aditivos y default seguro: flag
+> `configConversacional.participacionContinua` (histórico = `false`) con round-trip
+> Cosmos/API/duplicado; campos de ciclo en `Conversacion` (`cicloParticipacion` ausente = 1,
+> `origenAporteMessageId`, `enrutamientoAporteId`); tipo `EnrutamientoAporte` (03 §3.6.1) con id
+> determinista, partición `routing:<usuarioId>`, estados y vencimiento lógico 24 h; puerto
+> `IRepositorioEnrutamientosAporte` + repos memoria/Cosmos idempotentes en DI. Webhook, orquestador y
+> portal sin tocar. Backend **605/605** (543 unit + 62 integración; +22), format limpio; sin push.
+> **Próximo trabajo ejecutable: corte 2 — resolución multi-campaña y persistencia del
+> aporte/selección (spec §5.1–§5.3/§5.5 y §13). No implementar desde resúmenes: leer la spec completa
+> y `SUPUESTOS.md#participacion-continua-p26`.**
 >
 > **ESTADO VIGENTE 2026-07-29 — `P-25` DONE LOCAL.** Cada aporte sustantivo se consolida, confirma
 > internamente y evalúa completo en el mismo turno; el coach responde con retroalimentación de rúbrica y
@@ -54,11 +57,11 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: implementar `P-26` por 6 cortes.**
-La especificación y contratos ya están escritos; no hay código P-26. El siguiente agente comienza por
-el corte 1 y mantiene la validación operativa de I-19/I-20/P-24/P-25 como pendiente paralela, sin
-desplegar ni modificar configuración remota. Al cerrar P-26, rota a `P-27` corte 1 de 5; no adelantar
-el clasificador dentro de los cortes de P-26.
+**Iniciativa objetivo vigente: implementar `P-26` por 6 cortes — corte 1 DONE local; sigue el
+corte 2.** El siguiente agente continúa con el corte 2 (resolución multi-campaña y persistencia del
+aporte/selección) y mantiene la validación operativa de I-19/I-20/P-24/P-25 como pendiente paralela,
+sin desplegar ni modificar configuración remota. Al cerrar P-26, rota a `P-27` corte 1 de 5; no
+adelantar el clasificador dentro de los cortes de P-26.
 
 ---
 
@@ -178,7 +181,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **DONE local** | **Codex / Claude** | **Cortes 1-5 DONE local 2026-07-28:** redactor por acto, guardas, composición servidor, cupos/telemetría y Markdown con umbral/origen/escala; E2E con redactor inyectado. Pendiente operativo: D5/UAT/costo. |
 | 30 | **`P-24` evaluación implícita al solicitar mejora** | **DONE local** | **Codex** | **Corregido 2026-07-29:** “Vamos a mejorarla” confirma implícitamente la versión propuesta, la evalúa completa y abre coaching bajo umbral en hilo simple o cola multi-idea. No crea aporte/version nueva, no reduce `MaxRepreguntas`, ni cambia contratos/remoto. Backend 579/579 verde. |
 | 31 | **`P-25` coaching directo sin confirmación repetitiva** | **DONE local** | **Codex** | Cada aporte sustantivo confirma automáticamente su versión consolidada y la evalúa completa en el mismo turno; respuesta natural con una sola pregunta de coaching. Rollback global disponible; backend 583/583 verde. |
-| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Siguiente agente** | **ESPECIFICADA; 0/6 cortes de código.** Comenzar por dominio/contratos; luego resolución, ciclos, cupos, portal y E2E. Default `false`; solo campañas activas. |
+| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Claude (corte 1) / siguiente agente (corte 2)** | **EN CURSO: corte 1/6 DONE local 2026-07-31** (dominio/contratos: flag, campos de ciclo, `EnrutamientoAporte`, puertos/repos, round-trip API; backend 605/605 verde). Siguiente: corte 2 — resolución multi-campaña y persistencia del aporte/selección; luego ciclos, cupos, portal y E2E. Default `false`; solo campañas activas. |
 | 33 | **`P-27` clasificación flexible de intenciones de control** | **Alta; después de P-26** | **Siguiente agente tras P-26** | **ESPECIFICADA; 0/5 cortes de código.** Corrige alias de salida y añade clasificador LLM tipado detrás de flags OFF; ejecución de cierre/avance siempre server-side. Debe quedar lista antes de activar I-18/P-26 en UAT/producción. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
@@ -233,11 +236,13 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Implementar P-26 corte 1 — dominio y contratos.** Leer completa
-   `P-26_Participacion_Continua_y_Seleccion_de_Campania.md`. Añadir con default seguro el flag de
-   campaña, los campos de ciclo, el tipo `EnrutamientoAporte`, puertos/repositorios y round-trip API;
-   todavía no cambiar la selección en el webhook ni construir el portal. Cubrir documentos históricos,
-   creación/edición/duplicado e idempotencia de persistencia con pruebas.
+1. **Implementar P-26 corte 2 — resolución multi-campaña y persistencia del aporte/selección.**
+   Leer completa `P-26_Participacion_Continua_y_Seleccion_de_Campania.md` (§5.1–§5.3, §5.5, §11,
+   §13). Sobre la base del corte 1 (ya en verde: flag, campos de ciclo, `EnrutamientoAporte`,
+   puerto y repos), implementar el orden determinista de resolución, el cálculo de campañas
+   elegibles, el menú numerado servidor-side, la conservación/expiración lógica del aporte y la
+   revalidación al aceptar la selección. Pruebas mínimas: 0/1/N campañas, número/nombre/ambigüedad,
+   expiración, revalidación e idempotencia. Todavía no construir el portal (corte 5).
 
 2. **Backlog siguiente ya aprobado: P-27 corte 1 de 5.** Solo después de cerrar P-26, leer
    `P-27_Clasificacion_Flexible_Intenciones_Control.md` y añadir dominio/contratos con defaults OFF:

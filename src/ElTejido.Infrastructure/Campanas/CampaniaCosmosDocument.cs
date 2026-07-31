@@ -394,6 +394,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("numeroWhatsAppSaliente")]
         public string? NumeroWhatsAppSaliente { get; init; }
 
+        // P-26 (aditivo, 03 §3.3): documento viejo sin el campo deserializa false = participacion unica.
+        [JsonProperty("participacionContinua")]
+        public bool ParticipacionContinua { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -408,6 +412,7 @@ internal sealed class CampaniaCosmosDocument
                 UmbralCierreAnticipado = config.UmbralCierreAnticipado,
                 MinutosInactividadSesion = config.MinutosInactividadSesion,
                 NumeroWhatsAppSaliente = config.NumeroWhatsAppSaliente,
+                ParticipacionContinua = config.ParticipacionContinua,
             };
         }
 
@@ -415,7 +420,8 @@ internal sealed class CampaniaCosmosDocument
         {
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
                 MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
-                MinutosInactividadSesion, NumeroWhatsAppSaliente, CoachingSecuencialIdeas, MinutosCoachingPorIdea);
+                MinutosInactividadSesion, NumeroWhatsAppSaliente, CoachingSecuencialIdeas, MinutosCoachingPorIdea,
+                ParticipacionContinua);
         }
     }
 

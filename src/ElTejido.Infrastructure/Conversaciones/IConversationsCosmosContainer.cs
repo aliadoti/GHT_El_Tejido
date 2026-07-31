@@ -12,6 +12,12 @@ internal interface IConversationsCosmosContainer
 
     Task CreateMensajeAsync(MensajeCosmosDocument document, string partitionKey, CancellationToken cancellationToken);
 
+    /// <summary>P-26: upsert idempotente del EnrutamientoAporte en su particion routing (03 §3.6.1).</summary>
+    Task UpsertEnrutamientoAsync(EnrutamientoAporteCosmosDocument document, string partitionKey, CancellationToken cancellationToken);
+
+    /// <summary>P-26: lectura puntual del EnrutamientoAporte; null si no existe.</summary>
+    Task<EnrutamientoAporteCosmosDocument?> ReadEnrutamientoAsync(string id, string partitionKey, CancellationToken cancellationToken);
+
     /// <summary>Borra un documento por id dentro de su particion (P-03). Tolera 404 (ya borrado).</summary>
     Task DeleteAsync(string id, string partitionKey, CancellationToken cancellationToken);
 

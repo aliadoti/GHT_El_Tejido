@@ -14,7 +14,8 @@ public sealed class ConfigConversacional
         int? minutosInactividadSesion,
         string? numeroWhatsAppSaliente,
         bool coachingSecuencialIdeas,
-        int? minutosCoachingPorIdea)
+        int? minutosCoachingPorIdea,
+        bool participacionContinua)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -26,6 +27,7 @@ public sealed class ConfigConversacional
         NumeroWhatsAppSaliente = string.IsNullOrWhiteSpace(numeroWhatsAppSaliente) ? null : numeroWhatsAppSaliente.Trim();
         CoachingSecuencialIdeas = coachingSecuencialIdeas;
         MinutosCoachingPorIdea = minutosCoachingPorIdea;
+        ParticipacionContinua = participacionContinua;
     }
 
     public int MaxRepreguntas { get; }
@@ -82,6 +84,14 @@ public sealed class ConfigConversacional
     /// </summary>
     public string? NumeroWhatsAppSaliente { get; }
 
+    /// <summary>
+    /// P-26: mientras la campania este <c>activa</c>, permite que un participante que ya completo su
+    /// recorrido regrese con una idea nueva en un ciclo independiente. Default <c>false</c>: documento
+    /// historico sin el campo conserva la participacion unica actual. No reemplaza
+    /// <c>Campania.estado</c>: una campania cerrada nunca recibe aportes.
+    /// </summary>
+    public bool ParticipacionContinua { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
@@ -92,7 +102,8 @@ public sealed class ConfigConversacional
         int? minutosInactividadSesion = null,
         string? numeroWhatsAppSaliente = null,
         bool coachingSecuencialIdeas = false,
-        int? minutosCoachingPorIdea = null)
+        int? minutosCoachingPorIdea = null,
+        bool participacionContinua = false)
     {
         if (maxRepreguntas < 0)
         {
@@ -118,6 +129,7 @@ public sealed class ConfigConversacional
             minutosInactividadSesion,
             numeroWhatsAppSaliente,
             coachingSecuencialIdeas,
-            minutosCoachingPorIdea);
+            minutosCoachingPorIdea,
+            participacionContinua);
     }
 }

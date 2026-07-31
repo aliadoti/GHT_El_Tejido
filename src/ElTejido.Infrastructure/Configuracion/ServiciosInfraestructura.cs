@@ -55,6 +55,7 @@ public static class ServiciosInfraestructura
         services.AddSingleton<IRepositorioConfiguracion, RepositorioConfiguracionMemoria>();
         services.AddSingleton<IRepositorioRespuestas, RepositorioRespuestasMemoria>();
         services.AddSingleton<IRepositorioConversaciones, RepositorioConversacionesMemoria>();
+        services.AddSingleton<IRepositorioEnrutamientosAporte, RepositorioEnrutamientosAporteMemoria>();
         services.AddSingleton<IRegistroWebhookDedupe, RegistroWebhookDedupeMemoria>();
         services.AddSingleton<IRepositorioCodigosAuth, RepositorioCodigosAuthMemoria>();
         services.AddSingleton<IRepositorioLogSeguridad, RepositorioLogSeguridadMemoria>();
@@ -89,6 +90,8 @@ public static class ServiciosInfraestructura
             new RepositorioRespuestasCosmos(Contenedor(sp, "Responses", "responses")));
         services.AddSingleton<IRepositorioConversaciones>(sp =>
             new RepositorioConversacionesCosmos(Contenedor(sp, "Conversations", "conversations")));
+        services.AddSingleton<IRepositorioEnrutamientosAporte>(sp =>
+            new RepositorioEnrutamientosAporteCosmos(Contenedor(sp, "Conversations", "conversations")));
         services.AddSingleton<IRegistroWebhookDedupe>(sp =>
             new RepositorioWebhookDedupeCosmos(Contenedor(sp, "Leases", "leases")));
         services.AddSingleton<IRepositorioCodigosAuth>(sp =>

@@ -4,6 +4,24 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/SDET): **P-26 corte 1 de
+  6 — dominio y contratos DONE local.** Cambios aditivos con default seguro, sin tocar webhook,
+  orquestador ni portal: (1) `ConfigConversacional.ParticipacionContinua` (default `false`; documento
+  histórico sin el campo = `false`) con round-trip Cosmos (`campaigns`), API
+  POST/GET/PUT `/api/admin/campanias` y duplicado que copia la elección explícita; (2)
+  `Conversacion.CicloParticipacion` (ausente = 1, valida >= 1), `OrigenAporteMessageId` y
+  `EnrutamientoAporteId` aditivos en dominio y documento Cosmos; (3) nuevo tipo de dominio
+  `EnrutamientoAporte` (estados `seleccionCampania|seleccionPregunta|listo|enIdea|completado|
+  expirado|cancelado`, id determinista `route_<usuarioId>_<wamid>`, partición interna
+  `routing:<usuarioId>` en el contenedor existente `conversations`, vencimiento lógico 24 h,
+  snapshots de opciones e intentos sin texto libre); (4) puerto
+  `IRepositorioEnrutamientosAporte` + adaptadores memoria y Cosmos
+  (`RepositorioEnrutamientosAporteCosmos`, upsert idempotente) registrados en DI. **Verificado:**
+  build Release `-warnaserror` 0/0, **605** pruebas no calibración (543 unitarias + 62 integración;
+  +22 nuevas: serialización histórica/default campaña y conversación, dominio y mapping de
+  EnrutamientoAporte, idempotencia de persistencia, CRUD/edición/duplicado con el flag y round-trip
+  API con PUT y duplicar), `dotnet format --verify-no-changes` limpio. Sin push, despliegue ni cambio
+  remoto. **Próximo: P-26 corte 2 — resolución multi-campaña y persistencia del aporte/selección.**
 - Ultima actualizacion: 2026-07-30 por Codex (Arquitecto/Backend/Frontend/AppSec/SDET):
   **P-27 clasificación flexible de intenciones de control — especificación y contratos DONE; código
   0/5.** Se confirmó el bug de I-18: expresiones naturales de parada/cambio se consolidan como
@@ -310,12 +328,20 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **P-26 corte 1 de 6 — dominio y contratos.** Leer
-  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md` y
-  `SUPUESTOS.md#participacion-continua-p26`. Implementar el flag con default histórico `false`, campos
-  de ciclo, `EnrutamientoAporte`, persistencia/puertos y round-trip POST/GET/PUT/duplicado. En este
-  corte no cambiar aún la resolución multi-campaña ni el portal. Añadir pruebas de serialización,
-  compatibilidad e idempotencia y ejecutar el gate backend.
+- [ ] **P-26 corte 2 de 6 — resolución multi-campaña y persistencia del aporte/selección.** Leer
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §5.1–§5.3/§5.5` y
+  `SUPUESTOS.md#participacion-continua-p26`. Implementar el cálculo determinista de campañas
+  elegibles (§5.2), el menú numerado servidor-side, la conservación del aporte en
+  `EnrutamientoAporte` antes de mostrar el menú, la validación número/nombre exacto no ambiguo,
+  la expiración lógica a 24 h y la revalidación al aceptar. Pruebas mínimas: 0/1/N campañas,
+  número/nombre/ambigüedad, expiración, revalidación e idempotencia. La base del corte 1 (dominio,
+  puerto `IRepositorioEnrutamientosAporte`, repos memoria/Cosmos y campos de ciclo) ya está verde.
+- [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 605: 543 unit + 62 integración; format
+  limpio) P-26 corte 1 de 6 — dominio y contratos.** Flag `participacionContinua` (default histórico
+  `false`) con round-trip Cosmos/API/duplicado; campos de ciclo aditivos en `Conversacion`
+  (ausente = ciclo 1); tipo `EnrutamientoAporte` + puerto y adaptadores memoria/Cosmos con upsert
+  idempotente en la partición `routing:<usuarioId>`. Sin cambios en webhook, orquestador ni portal.
+  Ver "Estado global" arriba.
 - [ ] **Backlog siguiente confirmado: P-27 corte 1 de 5 — dominio y contratos.** Solo después de
   cerrar P-26, leer `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
   `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Añadir flag de campaña OFF, estado/objeto de

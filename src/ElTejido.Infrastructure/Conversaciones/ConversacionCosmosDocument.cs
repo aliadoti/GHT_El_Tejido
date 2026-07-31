@@ -49,6 +49,16 @@ internal sealed class ConversacionCosmosDocument
     [JsonProperty("coachingIdeas", NullValueHandling = NullValueHandling.Ignore)]
     public CoachingIdeasDocument? CoachingIdeas { get; init; }
 
+    // P-26 (aditivos, 03 §3.6): documento historico sin cicloParticipacion = ciclo 1.
+    [JsonProperty("cicloParticipacion", NullValueHandling = NullValueHandling.Ignore)]
+    public int? CicloParticipacion { get; init; }
+
+    [JsonProperty("origenAporteMessageId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? OrigenAporteMessageId { get; init; }
+
+    [JsonProperty("enrutamientoAporteId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? EnrutamientoAporteId { get; init; }
+
     public static ConversacionCosmosDocument FromDomain(Conversacion conversacion)
         => new()
         {
@@ -68,6 +78,9 @@ internal sealed class ConversacionCosmosDocument
             CoachingIdeas = conversacion.CoachingIdeas is null
                 ? null
                 : CoachingIdeasDocument.FromDomain(conversacion.CoachingIdeas),
+            CicloParticipacion = conversacion.CicloParticipacion,
+            OrigenAporteMessageId = conversacion.OrigenAporteMessageId,
+            EnrutamientoAporteId = conversacion.EnrutamientoAporteId,
         };
 
     public Conversacion ToDomain()
@@ -84,7 +97,10 @@ internal sealed class ConversacionCosmosDocument
             CorrelationId,
             FechaInicio,
             FechaCierre,
-            CoachingIdeas?.ToDomain());
+            CoachingIdeas?.ToDomain(),
+            CicloParticipacion ?? 1,
+            OrigenAporteMessageId,
+            EnrutamientoAporteId);
 
     private static string MapearMaquina(EstadoMaquinaConversacion estado)
         => estado switch

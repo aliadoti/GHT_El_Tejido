@@ -571,6 +571,30 @@ internal sealed class RepositorioConversacionesMemoria : IRepositorioConversacio
     }
 }
 
+internal sealed class RepositorioEnrutamientosAporteMemoria : IRepositorioEnrutamientosAporte
+{
+    private readonly ConcurrentDictionary<string, EnrutamientoAporte> _enrutamientos = new(StringComparer.Ordinal);
+
+    public Task GuardarAsync(EnrutamientoAporte enrutamiento, CancellationToken cancellationToken)
+    {
+        _enrutamientos[enrutamiento.Id] = enrutamiento;
+        return Task.CompletedTask;
+    }
+
+    public Task<EnrutamientoAporte?> ObtenerPorMensajeAsync(
+        string usuarioId,
+        string whatsappMessageId,
+        CancellationToken cancellationToken)
+        => Task.FromResult(
+            _enrutamientos.GetValueOrDefault(EnrutamientoAporte.GenerarId(usuarioId, whatsappMessageId)));
+
+    public Task<IReadOnlyCollection<EnrutamientoAporte>> ListarPorUsuarioAsync(
+        string usuarioId,
+        CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyCollection<EnrutamientoAporte>>(
+            _enrutamientos.Values.Where(e => e.UsuarioId == usuarioId).ToArray());
+}
+
 internal sealed class RepositorioCodigosAuthMemoria : IRepositorioCodigosAuth
 {
     private readonly ConcurrentDictionary<string, CodigoAuthAdmin> _codigos = new(StringComparer.Ordinal);

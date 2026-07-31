@@ -45,6 +45,52 @@ public sealed class ConversacionCosmosMappingTests
     }
 
     [Fact]
+    public void Conversacion_RoundTrip_ConservaCicloP26YDocumentoHistoricoEquivaleACiclo1()
+    {
+        var ahora = DateTimeOffset.UnixEpoch.AddHours(1);
+        var conversacion = DominioConversacion.Iniciar(
+            "conv_c2",
+            "c_1",
+            "u_1",
+            "p_1",
+            "whatsapp",
+            null,
+            ahora,
+            cicloParticipacion: 2,
+            origenAporteMessageId: "wamid.raiz2",
+            enrutamientoAporteId: "route_u_1_wamid.raiz2");
+
+        var resultado = ConversacionCosmosDocument.FromDomain(conversacion).ToDomain();
+        var historico = new ConversacionCosmosDocument
+        {
+            Id = "conv_legacy",
+            CampaniaId = "c_1",
+            UsuarioId = "u_1",
+            PreguntaId = "p_1",
+            VentanaServicioVenceEn = ahora.AddHours(24),
+            FechaInicio = ahora,
+        }.ToDomain();
+
+        resultado.CicloParticipacion.Should().Be(2);
+        resultado.OrigenAporteMessageId.Should().Be("wamid.raiz2");
+        resultado.EnrutamientoAporteId.Should().Be("route_u_1_wamid.raiz2");
+        historico.CicloParticipacion.Should().Be(1);
+        historico.OrigenAporteMessageId.Should().BeNull();
+        historico.EnrutamientoAporteId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Conversacion_CicloParticipacionMenorA1_Lanza()
+    {
+        var ahora = DateTimeOffset.UnixEpoch.AddHours(1);
+
+        var acto = () => DominioConversacion.Iniciar(
+            "conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora, cicloParticipacion: 0);
+
+        acto.Should().Throw<ElTejido.Domain.Common.DomainValidationException>();
+    }
+
+    [Fact]
     public void Conversacion_RoundTrip_ConservaElEstadoDeSeleccionDeIdea()
     {
         var ahora = DateTimeOffset.UnixEpoch.AddHours(1);

@@ -140,6 +140,22 @@ public sealed class RepositorioCampaniasCosmosTests
     }
 
     [Fact]
+    public void ConfigConversacional_ParticipacionContinuaP26_SobreviveRoundTripYDocumentoAnteriorQuedaApagada()
+    {
+        var campania = CrearCampania(participacionContinua: true);
+        var documento = CampaniaCosmosDocument.FromDomain(campania);
+        var legacy = new CampaniaCosmosDocument.ConfigConversacionalDocument
+        {
+            MaxRepreguntas = 1,
+            MensajeCierre = "Gracias.",
+        }.ToDomain();
+
+        documento.ConfigConversacional.ParticipacionContinua.Should().BeTrue();
+        documento.ToDomain().ConfigConversacional.ParticipacionContinua.Should().BeTrue();
+        legacy.ParticipacionContinua.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task BuscarCampaniasAsync_UsesCosmosFilterAndMapsResults()
     {
         var container = new FakeCampaniasCosmosContainer
@@ -162,7 +178,8 @@ public sealed class RepositorioCampaniasCosmosTests
         double? umbralCierreAnticipado = null,
         string? numeroWhatsAppSaliente = null,
         bool coachingSecuencialIdeas = false,
-        int? minutosCoachingPorIdea = null)
+        int? minutosCoachingPorIdea = null,
+        bool participacionContinua = false)
     {
         return Campania.Crear(
             "c_2026conv",
@@ -184,7 +201,8 @@ public sealed class RepositorioCampaniasCosmosTests
                 umbralCierreAnticipado: umbralCierreAnticipado,
                 numeroWhatsAppSaliente: numeroWhatsAppSaliente,
                 coachingSecuencialIdeas: coachingSecuencialIdeas,
-                minutosCoachingPorIdea: minutosCoachingPorIdea),
+                minutosCoachingPorIdea: minutosCoachingPorIdea,
+                participacionContinua: participacionContinua),
             LimitesSeguridad.Crear(1500, 10, 2),
             ["u_1", "u_2"],
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),
