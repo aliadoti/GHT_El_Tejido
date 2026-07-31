@@ -855,6 +855,25 @@
 - Impacto/reversibilidad: contratos aditivos `03/04`; default `false`; rollback apagando el flag sin
   borrar ciclos ni ideas. Implementación planificada en seis cortes según P-26.
 - Spec: `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
+- **Decisiones de implementación (2026-07-31, Claude Fable 5, cortes 2-3):**
+  - *Vigencia de la afinidad.* La spec dice "mientras se trabaja la idea y como máximo 24 h". Se
+    implementa como: conversación **abierta** y `VentanaAbierta(ahora)` — es decir, la **ventana de
+    servicio de WhatsApp**, que ya se renueva con cada entrante y expira a las 24 h del último
+    mensaje. No se añadió un reloj paralelo: coincide con el límite pedido y evita dos vencimientos
+    distintos para el mismo hilo. Una afinidad sin conversación todavía (cambio explícito de campaña)
+    usa 24 h desde `actualizadoEn`.
+  - *Cierre de la afinidad.* Al detectar que la conversación apuntada ya está cerrada, el
+    enrutamiento pasa a `completado` de forma perezosa (en la siguiente resolución) en vez de un
+    barrido: no hay proceso nuevo y el efecto observable es el mismo.
+  - *Id de ciclo posterior.* `conv_<campania>_<usuario>_<pregunta>_c<sha256(wamidRaíz)[0..12]>`. Se
+    usa hash corto porque el `wamid` de Meta puede traer caracteres no válidos para un id de Cosmos;
+    conserva el determinismo exigido por §5.7 (un reintento no duplica el ciclo).
+  - *Compatibilidad.* Una campaña con trabajo pendiente y una sola opción sigue entrando por la
+    resolución secuencial actual del orquestador (sin pregunta dirigida), de modo que el recorrido
+    vigente no cambia. La entrega dirigida solo ocurre cuando P-26 resolvió campaña/pregunta.
+  - *Cambio de campaña sin alternativa.* Si el participante pide "otra campaña" y no existe otra
+    elegible, se conserva la afinidad actual y se reengancha el turno de coaching pendiente en vez de
+    ofrecer un menú de una sola opción.
 
 ### clasificacion-intenciones-control-p27 - El modelo propone la intención y el servidor dispone
 

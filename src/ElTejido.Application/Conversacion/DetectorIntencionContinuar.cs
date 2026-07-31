@@ -122,6 +122,22 @@ public sealed class DetectorIntencionContinuar
     };
 
     /// <summary>
+    /// P-26 §5.1 paso 3 — frases con las que el participante pide explicitamente cambiar de campania.
+    /// Suspenden la afinidad vigente sin cerrar la idea y recalculan las opciones. Se normalizan al
+    /// construir el detector (mayusculas/acentos no importan).
+    /// </summary>
+    public static readonly IReadOnlyList<string> FrasesCambiarCampaniaPorDefecto = new[]
+    {
+        "otra campaña",
+        "cambiar de campaña",
+        "quiero cambiar de campaña",
+        "cambiemos de campaña",
+        "quiero otra campaña",
+        "cambio de campaña",
+        "ver otras campañas",
+    };
+
+    /// <summary>
     /// Coincidencia deterministica de una intención por frases (match barato con guarda de longitud).
     /// Es el mecanismo generico que usan tanto la intención de continuar como (I-17) la de rechazo.
     /// </summary>

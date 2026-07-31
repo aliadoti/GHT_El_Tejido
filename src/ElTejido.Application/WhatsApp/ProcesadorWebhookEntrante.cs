@@ -139,6 +139,17 @@ public sealed class ProcesadorWebhookEntrante
                 // campania ya tienen su hilo cerrado.
                 return new ResultadoEntrante(ResultadoProcesoEntrante.SinCampaniaElegible);
 
+            case ResultadoEnrutamiento.CambioCampaniaAplicado cambio:
+                // P-26 §5.6: la afinidad cambio de campania sin cerrar la idea suspendida. Si la nueva
+                // campania tiene una conversacion abierta, se reengancha su turno de coaching pendiente.
+                if (cambio.ConversacionAbierta is not null)
+                {
+                    await _orquestador.EnviarTurnoCoachingPendienteAsync(
+                        cambio.ConversacionAbierta, cambio.Candidato.Campania, cancellationToken);
+                }
+
+                return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
+
             case ResultadoEnrutamiento.ContinuarConversacion continuar:
                 var candidato = continuar.Candidato;
                 var participante = new ParticipanteResuelto(
@@ -150,7 +161,17 @@ public sealed class ProcesadorWebhookEntrante
                     ? continuar.Mensaje with { Texto = continuar.Mensaje.Texto[..maximo] }
                     : continuar.Mensaje;
 
-                await _orquestador.ProcesarMensajeEntranteAsync(participante, mensajeAcotado, cancellationToken);
+                // P-26 corte 3: con la pregunta ya resuelta la entrega es dirigida (afinidad o ciclo
+                // nuevo); sin contexto se conserva la resolucion secuencial actual.
+                if (continuar.Contexto is not null)
+                {
+                    await _orquestador.ProcesarAporteEnrutadoAsync(
+                        participante, mensajeAcotado, continuar.Contexto, cancellationToken);
+                }
+                else
+                {
+                    await _orquestador.ProcesarMensajeEntranteAsync(participante, mensajeAcotado, cancellationToken);
+                }
 
                 // Aporte conservado (P-26): tras persistirse en la conversacion, el enrutamiento pasa a
                 // enIdea y fija procesadoEn exactamente una vez (03 §3.6.1).

@@ -249,6 +249,96 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// P-26 corte 3 (05 §4.4.3): entrega un aporte con campania y pregunta ya resueltas por el
+    /// enrutamiento determinista. Conversacion reciente abierta = afinidad (se procesa alli); sin
+    /// conversacion = primer contacto de siempre; cerrada = <b>ciclo nuevo</b> (§5.7) con id derivado
+    /// del mensaje raiz para que un reintento no lo duplique, y el aporte se procesa como contenido
+    /// sustantivo del ciclo (I-19/P-25), no como saludo.
+    /// </summary>
+    public async Task ProcesarAporteEnrutadoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ContextoAporteEnrutado contexto,
+        CancellationToken cancellationToken)
+    {
+        var usuario = participante.Usuario;
+        var campania = participante.Campania;
+        var ahora = _tiempo.GetUtcNow();
+
+        // Mismo cupo de mensajes que la entrada normal (10 §2), gateado por Conversacion:CuposHabilitados.
+        if (_cuposHabilitados && await CupoMensajesExcedidoAsync(campania, usuario.Id, cancellationToken))
+        {
+            await RegistrarRateLimitAsync(usuario, "cupo_mensajes_usuario", ahora, cancellationToken);
+            return;
+        }
+
+        var pregunta = PreguntasActivasOrdenadas(campania)
+            .FirstOrDefault(p => p.Id == contexto.PreguntaId);
+        if (pregunta is null)
+        {
+            // La pregunta dejo de estar activa entre la seleccion y la entrega: degradacion limpia al
+            // flujo normal (que resuelve la pregunta vigente como siempre).
+            await ProcesarMensajeEntranteAsync(participante, mensaje, cancellationToken);
+            return;
+        }
+
+        var conversaciones = await _conversaciones.ListarConversacionesAsync(campania.Id, cancellationToken);
+        var reciente = conversaciones
+            .Where(c => c.UsuarioId == usuario.Id && c.PreguntaId == pregunta.Id)
+            .OrderByDescending(c => c.FechaInicio)
+            .FirstOrDefault();
+
+        HiloTrabajo hilo;
+        if (reciente is null)
+        {
+            hilo = new HiloTrabajo(pregunta, CrearConversacionId(campania.Id, usuario.Id, pregunta.Id), null);
+        }
+        else if (reciente.Estado != EstadoConversacion.Cerrada)
+        {
+            hilo = new HiloTrabajo(pregunta, reciente.Id, reciente);
+        }
+        else
+        {
+            var cicloId = CrearConversacionIdCiclo(campania.Id, usuario.Id, pregunta.Id, mensaje.WhatsappMessageId);
+            var existente = await _conversaciones.ObtenerConversacionAsync(campania.Id, cicloId, cancellationToken);
+            var conversacionCiclo = existente ?? DominioConversacion.Iniciar(
+                cicloId,
+                campania.Id,
+                usuario.Id,
+                pregunta.Id,
+                Canal,
+                correlationId: null,
+                ahora,
+                cicloParticipacion: reciente.CicloParticipacion + 1,
+                origenAporteMessageId: mensaje.WhatsappMessageId,
+                enrutamientoAporteId: contexto.EnrutamientoAporteId);
+            if (existente is null)
+            {
+                await _conversaciones.GuardarConversacionAsync(conversacionCiclo, cancellationToken);
+            }
+
+            hilo = new HiloTrabajo(pregunta, cicloId, conversacionCiclo);
+        }
+
+        await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, cancellationToken);
+    }
+
+    private async Task ProcesarEnHiloAsync(
+        HiloTrabajo hilo,
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var usuario = participante.Usuario;
+        var campania = participante.Campania;
+        var numero = usuario.WhatsappNormalizado;
+        var emisor = mensaje.PhoneNumberIdDestino;
+
         var pregunta = hilo.Pregunta;
         var conversacionId = hilo.ConversacionId;
         var conversacion = hilo.Conversacion;
@@ -3632,6 +3722,23 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string CrearConversacionId(string campaniaId, string usuarioId, string preguntaId)
         => $"conv_{campaniaId}_{usuarioId}_{preguntaId}";
+
+    /// <summary>
+    /// P-26 §5.7: id determinista de un ciclo posterior, derivado tambien del mensaje raiz (hash
+    /// corto, porque el wamid de Meta puede traer caracteres invalidos para un id de Cosmos). Un
+    /// reintento con el mismo mensaje produce el mismo id y no duplica el ciclo.
+    /// </summary>
+    private static string CrearConversacionIdCiclo(
+        string campaniaId,
+        string usuarioId,
+        string preguntaId,
+        string mensajeRaizId)
+    {
+        var hash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(mensajeRaizId)))[..12]
+            .ToLowerInvariant();
+        return $"{CrearConversacionId(campaniaId, usuarioId, preguntaId)}_c{hash}";
+    }
 
     /// <summary>Resultado de intentar resolver una lista de selección ya ofrecida (I-19 §4.7).</summary>
     private sealed record ResultadoSeleccionIdea(bool Manejado, DominioConversacion Conversacion);

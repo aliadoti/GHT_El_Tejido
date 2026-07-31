@@ -22,6 +22,19 @@ public interface IOrquestadorConversacion
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-26 corte 3 (05 §4.4.3): entrega un aporte cuya campania y pregunta ya fueron resueltas por el
+    /// enrutamiento determinista. Con la conversacion mas reciente de esa pregunta abierta se procesa
+    /// alli (afinidad); sin conversacion se aplica el primer contacto de siempre; con la conversacion
+    /// cerrada se crea un <b>ciclo nuevo</b> (§5.7) con id derivado del mensaje raiz — un reintento no
+    /// duplica el ciclo — y el aporte se procesa como contenido sustantivo del ciclo.
+    /// </summary>
+    Task ProcesarAporteEnrutadoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ContextoAporteEnrutado contexto,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// I-18: envia el turno ya evaluado de la idea activa que el barrido por tiempo acaba de activar.
     /// La fachada conserva una sola ruta para enviar y persistir mensajes salientes.
     /// </summary>
@@ -30,3 +43,9 @@ public interface IOrquestadorConversacion
         Campania campania,
         CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// P-26: alcance ya resuelto de un aporte enrutado — la pregunta elegida y, si el aporte estuvo
+/// conservado, el id del <c>EnrutamientoAporte</c> que lo origino (auditoria en la conversacion).
+/// </summary>
+public sealed record ContextoAporteEnrutado(string PreguntaId, string? EnrutamientoAporteId);

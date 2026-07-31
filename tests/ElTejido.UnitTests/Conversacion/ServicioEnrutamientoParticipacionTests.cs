@@ -270,6 +270,193 @@ public sealed class ServicioEnrutamientoParticipacionTests
         _logs.Count(l => l.Resultado == "procesado").Should().Be(1, "la transicion listo→enIdea ocurre una sola vez");
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Corte 3: selección de pregunta (§5.4), afinidad durante el coaching (§5.6) y cambio explícito
+    // de campaña (§5.1 paso 3).
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Resolver_CampaniaContinuaConVariasPreguntas_ConservaAporteYPideLaPregunta()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true, preguntas: 2);
+        // Recorrido completo: sin trabajo pendiente, la campaña sigue elegible solo por continuidad.
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_2"));
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.raiz", texto: "Una idea nueva"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.SeleccionPendiente>();
+        var doc = _enrutamientos.Documentos.Should().ContainSingle().Which;
+        doc.Estado.Should().Be(EstadoEnrutamientoAporte.SeleccionPregunta);
+        doc.CampaniaSeleccionadaId.Should().Be("c_1");
+        doc.TextoOriginal.Should().Be("Una idea nueva");
+        doc.PreguntasOfrecidas.Should().HaveCount(2, "campaña continua completada reabre todas sus preguntas activas");
+        var menu = _enviados.Should().ContainSingle().Which;
+        menu.Should().Contain("1. Pregunta 1").And.Contain("2. Pregunta 2");
+        menu.Should().Contain("Responde con el número");
+    }
+
+    [Fact]
+    public async Task Seleccion_PorNumeroDePregunta_EntregaElAporteDirigidoAEsaPregunta()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true, preguntas: 2);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_2"));
+        var servicio = Servicio();
+        await servicio.ResolverAsync(_usuario, [candidato], Mensaje("wamid.raiz", texto: "Mi idea"), CancellationToken.None);
+
+        var resultado = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.sel", texto: "2"), CancellationToken.None);
+
+        var continuar = resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.Mensaje.Texto.Should().Be("Mi idea", "la respuesta de selección no sustituye el aporte");
+        continuar.Contexto.Should().NotBeNull();
+        continuar.Contexto!.PreguntaId.Should().Be("p_2");
+        var doc = _enrutamientos.Documentos.Single();
+        doc.Estado.Should().Be(EstadoEnrutamientoAporte.Listo);
+        doc.PreguntaSeleccionadaId.Should().Be("p_2");
+        doc.IntentosSeleccion.Should().ContainSingle(i =>
+            i.Tipo == TipoIntentoSeleccion.Pregunta && i.Resultado == ResultadoIntentoSeleccion.Valido);
+    }
+
+    [Fact]
+    public async Task Seleccion_PreguntaInvalida_ConservaElAporteYVuelveAPedirla()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true, preguntas: 2);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_2"));
+        var servicio = Servicio();
+        await servicio.ResolverAsync(_usuario, [candidato], Mensaje("wamid.raiz", texto: "Mi idea"), CancellationToken.None);
+
+        var resultado = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.sel", texto: "99"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.SeleccionPendiente>();
+        var doc = _enrutamientos.Documentos.Single();
+        doc.Estado.Should().Be(EstadoEnrutamientoAporte.SeleccionPregunta);
+        doc.TextoOriginal.Should().Be("Mi idea");
+        doc.IntentosSeleccion.Should().ContainSingle(i => i.Resultado == ResultadoIntentoSeleccion.Invalido);
+        _enviados.Should().HaveCount(2);
+        _enviados[1].Should().Contain("No reconocí esa opción");
+    }
+
+    [Fact]
+    public async Task Resolver_CampaniaContinuaConUnaSolaPregunta_EntregaSinMenu()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.raiz", texto: "Otra idea"), CancellationToken.None);
+
+        var continuar = resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.Contexto!.PreguntaId.Should().Be("p_1");
+        _enviados.Should().BeEmpty("una sola pregunta elegible no produce menú");
+        _enrutamientos.Documentos.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Afinidad_ConversacionAbierta_EnrutaLaRespuestaSinVolverAPreguntarCampania()
+    {
+        var candidatos = new[] { Candidato("c_1"), Candidato("c_2") };
+        var abierta = ConversacionAbierta("c_1", "p_1", "conv_activa");
+        _conversaciones.Agregar(abierta);
+        await SembrarAfinidadAsync("c_1", "conv_activa");
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, candidatos, Mensaje("wamid.coach", texto: "Le agrego un indicador de impacto"), CancellationToken.None);
+
+        var continuar = resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.Candidato.Campania.Id.Should().Be("c_1");
+        continuar.Contexto!.PreguntaId.Should().Be("p_1");
+        continuar.Mensaje.Texto.Should().Be("Le agrego un indicador de impacto");
+        _enviados.Should().BeEmpty("una respuesta de coaching nunca vuelve a listar campañas");
+    }
+
+    [Fact]
+    public async Task Afinidad_ConversacionCerrada_SeMarcaCompletadaYElAporteVuelveAResolverse()
+    {
+        var candidatos = new[] { Candidato("c_1"), Candidato("c_2") };
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        await SembrarAfinidadAsync("c_1", "conv_c_1_p_1");
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, candidatos, Mensaje("wamid.nuevo", texto: "Se me ocurrió otra cosa"), CancellationToken.None);
+
+        _enrutamientos.Documentos.Single(d => d.WhatsappMessageId == "wamid.afinidad")
+            .Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
+        // c_1 quedó completada y no es continua; c_2 sigue pendiente, así que se resuelve sola.
+        resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>()
+            .Which.Candidato.Campania.Id.Should().Be("c_2");
+    }
+
+    [Fact]
+    public async Task Afinidad_VentanaDeServicioVencida_DejaDeEnrutarAutomaticamente()
+    {
+        var reloj = new RelojMutable(Ahora);
+        var candidatos = new[] { Candidato("c_1"), Candidato("c_2") };
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_activa"));
+        await SembrarAfinidadAsync("c_1", "conv_activa");
+
+        reloj.Avanzar(TimeSpan.FromHours(25));
+        var resultado = await Servicio(reloj).ResolverAsync(
+            _usuario, candidatos, Mensaje("wamid.tarde", texto: "Otra idea"), CancellationToken.None);
+
+        // Sin afinidad vigente vuelve a resolver: dos campañas elegibles => menú.
+        resultado.Should().BeOfType<ResultadoEnrutamiento.SeleccionPendiente>();
+        _enviados.Should().ContainSingle().Which.Should().Contain("¿A cuál campaña corresponde tu aporte?");
+    }
+
+    [Fact]
+    public async Task CambioExplicitoDeCampania_SuspendeLaAfinidadSinCerrarLaIdeaYReofreceElMenu()
+    {
+        var candidatos = new[] { Candidato("c_1", nombre: "Alfa"), Candidato("c_2", nombre: "Beta") };
+        var abierta = ConversacionAbierta("c_1", "p_1", "conv_activa");
+        _conversaciones.Agregar(abierta);
+        await SembrarAfinidadAsync("c_1", "conv_activa");
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, candidatos, Mensaje("wamid.cambio", texto: "otra campaña"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.SeleccionPendiente>();
+        _enviados.Should().ContainSingle().Which.Should().Contain("¿A cuál campaña corresponde tu aporte?");
+        _logs.Should().Contain(l => l.Resultado == "cambioCampania");
+        _conversaciones.Todas.Single(c => c.Id == "conv_activa").Estado
+            .Should().Be(EstadoConversacion.Abierta, "cambiar de campaña no cierra ni rechaza la idea suspendida");
+    }
+
+    [Fact]
+    public async Task CambioExplicitoDeCampania_SinOtraCampaniaDisponible_ConservaLaAfinidadActual()
+    {
+        var candidatos = new[] { Candidato("c_1") };
+        var abierta = ConversacionAbierta("c_1", "p_1", "conv_activa");
+        _conversaciones.Agregar(abierta);
+        await SembrarAfinidadAsync("c_1", "conv_activa");
+
+        var resultado = await Servicio().ResolverAsync(
+            _usuario, candidatos, Mensaje("wamid.cambio", texto: "otra campaña"), CancellationToken.None);
+
+        var cambio = resultado.Should().BeOfType<ResultadoEnrutamiento.CambioCampaniaAplicado>().Which;
+        cambio.Candidato.Campania.Id.Should().Be("c_1");
+        cambio.ConversacionAbierta!.Id.Should().Be("conv_activa");
+        _enviados.Should().BeEmpty();
+    }
+
+    /// <summary>Deja un enrutamiento en <c>enIdea</c> apuntando a una conversación (afinidad vigente §5.6).</summary>
+    private Task SembrarAfinidadAsync(string campaniaId, string conversacionId)
+        => _enrutamientos.GuardarAsync(
+            EnrutamientoAporte.Crear(
+                    _usuario.Id,
+                    "wamid.afinidad",
+                    "Aporte que abrió la idea",
+                    EstadoEnrutamientoAporte.Listo,
+                    Ahora,
+                    campaniaSeleccionadaId: campaniaId,
+                    preguntaSeleccionadaId: "p_1")
+                .MarcarEnIdea(conversacionId, Ahora),
+            CancellationToken.None);
+
     private ServicioEnrutamientoParticipacion Servicio(TimeProvider? reloj = null)
     {
         var logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
@@ -288,17 +475,20 @@ public sealed class ServicioEnrutamientoParticipacionTests
     private CandidatoCampania Candidato(
         string campaniaId,
         string? nombre = null,
-        bool participacionContinua = false)
+        bool participacionContinua = false,
+        int preguntas = 1)
     {
-        var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
+        var activas = Enumerable.Range(1, preguntas)
+            .Select(orden => FabricasDominio.CrearPregunta($"p_{orden}", orden))
+            .ToArray();
         var campania = FabricasDominio.CrearCampania(
             campaniaId,
             EstadoCampania.Activa,
-            new[] { pregunta },
+            activas,
             nombre,
             ConfigConversacional.Crear(1, "Gracias.", participacionContinua: participacionContinua));
         var participante = FabricasDominio.CrearParticipante($"pc_{campaniaId}", campaniaId, _usuario.Id, Numero);
-        return new CandidatoCampania(participante, campania, pregunta);
+        return new CandidatoCampania(participante, campania, activas[0]);
     }
 
     private static MensajeEntrante Mensaje(string wamid, string texto = "Hola")
@@ -341,6 +531,8 @@ public sealed class ServicioEnrutamientoParticipacionTests
     private sealed class ConversacionesFake : IRepositorioConversaciones
     {
         private readonly List<DominioConversacion> _conversaciones = [];
+
+        public IReadOnlyList<DominioConversacion> Todas => _conversaciones.ToArray();
 
         public void Agregar(DominioConversacion conversacion) => _conversaciones.Add(conversacion);
 

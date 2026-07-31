@@ -5,6 +5,35 @@
 
 ## Estado global
 - Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **P-26
+  corte 3 de 6 — selección de pregunta, afinidad y ciclos nuevos DONE local.** Completa la resolución
+  determinista de alcance (05 §4.4.3, Reglas §2.10): (1) **selección de pregunta** — tras elegir la
+  campaña, una pregunta elegible se selecciona sola y varias producen otro menú numerado (estado
+  `seleccionPregunta`, textos configurables `Conversacion:Mensajes:EncabezadoSeleccionPregunta`/
+  `InstruccionSeleccionPregunta`); en campaña continua ya completada **todas** las preguntas activas
+  vuelven a estar disponibles, en no continua solo las pendientes; número o texto exacto no ambiguo,
+  con revalidación al aceptar (pregunta desactivada → recalcula: 1 restante auto-selecciona, 0
+  cancela, N reoferta). (2) **Afinidad §5.6** — un enrutamiento `enIdea` enruta las respuestas de
+  coaching a su conversación sin volver a mostrar menús mientras siga abierta y con ventana de
+  servicio vigente; al cerrarse la idea el enrutamiento pasa a `completado` y el siguiente aporte
+  vuelve a resolver alcance. (3) **Cambio explícito de campaña** — `Conversacion:FrasesCambiarCampania`
+  ("otra campaña") suspende la afinidad **sin cerrar ni rechazar** la idea, registra
+  `cambioCampania` y recalcula opciones; sin otra campaña elegible conserva la afinidad y reengancha
+  el turno pendiente. (4) **Ciclos nuevos §5.7** — `IOrquestadorConversacion.ProcesarAporteEnrutadoAsync`
+  (aditivo): con la conversación reciente abierta procesa allí, sin conversación aplica el primer
+  contacto de siempre, y **cerrada abre otra `Conversacion`** con `cicloParticipacion+1`,
+  `origenAporteMessageId`, `enrutamientoAporteId` e id determinista derivado del mensaje raíz (un
+  reintento no duplica el ciclo); el hilo anterior queda intacto y el aporte del ciclo nuevo se
+  evalúa como contenido, no como saludo. El orquestador se refactorizó extrayendo `ProcesarEnHiloAsync`
+  sin cambiar el flujo existente. Compatibilidad: una campaña con trabajo pendiente y una sola opción
+  sigue entrando por la resolución secuencial actual. Supuestos de implementación (vigencia de
+  afinidad = ventana de servicio, cierre perezoso, hash del id de ciclo) en
+  `SUPUESTOS.md#participacion-continua-p26`. **Verificado:** build Release `-warnaserror` 0/0,
+  **642** pruebas no calibración (580 unit + 62 integración; +21: menú y selección de pregunta,
+  afinidad con/sin ventana, cierre de afinidad, cambio explícito con y sin alternativa, ciclo nuevo
+  independiente e idempotente, aporte de ciclo evaluado, degradación por pregunta inactiva y
+  transiciones de dominio), format limpio; E2E existentes verdes. Sin push, despliegue ni cambio
+  remoto. **Próximo: P-26 corte 4 — reapertura entre alcances y cupos móviles de 24 h.**
+- Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **P-26
   corte 2 de 6 — resolución multi-campaña y persistencia del aporte/selección DONE local.** El
   webhook ahora resuelve la campaña de forma determinista antes del orquestador (05 §4.3 paso 0):
   (1) `IResolutorParticipante.ResolverCandidatosAsync` (aditivo) valida usuario/rol/estado y devuelve
@@ -355,16 +384,24 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **P-26 corte 3 de 6 — selección de pregunta, afinidad y ciclos nuevos.** Leer
-  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §5.4/§5.6/§5.7` y
-  `SUPUESTOS.md#participacion-continua-p26`. Implementar: menú de pregunta cuando la campaña elegida
-  tiene varias elegibles (estado `seleccionPregunta`; en campaña continua completada todas las
-  activas vuelven a estar disponibles, en no continua solo las pendientes); afinidad vigente hacia la
-  conversación abierta (respuestas de coaching sin menú, estado `enIdea` como puntero); cambio
-  explícito de campaña ("otra campaña", acción `cambioCampania`) sin cerrar la idea; y ciclos nuevos
-  (`cicloParticipacion > 1`, id de conversación derivado del mensaje raíz, hilo anterior cerrado e
-  inmutable) cuando la campaña es continua. Pruebas: 1/N preguntas, coaching sin menú, segundo ciclo
-  independiente, cambio explícito.
+- [ ] **P-26 corte 4 de 6 — reapertura entre alcances y cupos móviles de 24 h.** Leer
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §5.8/§9` y
+  `SUPUESTOS.md#participacion-continua-p26`. Implementar: (1) **reapertura §5.8** — una frase
+  explícita de complementar/revisitar resuelve primero el alcance vigente (campaña/pregunta) y
+  después reutiliza la reapertura I-19 conservando el mismo `ideaId`, incluida la lista numerada de
+  ideas cuando hay varias candidatas; nunca mezcla ideas de campañas o preguntas distintas y una idea
+  madura reabierta suspende su curaduría hasta cerrar la nueva evaluación. (2) **Cupos móviles §9** —
+  en campaña con `participacionContinua=true`, `maxMensajesPorUsuario` y `maxLlamadasLlmPorUsuario`
+  cuentan solo lo ocurrido en `ahoraUtc - 24h` (ventana móvil, no reinicio a medianoche, compartida
+  entre ciclos y preguntas); `MaxTurnosPorHilo` sigue siendo por conversación/ciclo y
+  `presupuestoTokensCampania` sigue acumulado toda la campaña. Con el flag apagado los cupos
+  conservan su semántica acumulada actual. Pruebas: idea nueva vs. reapertura, bordes de ventana,
+  presupuesto acumulado.
+- [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 642: 580 unit + 62 integración; format
+  limpio) P-26 corte 3 de 6 — selección de pregunta, afinidad y ciclos nuevos.** Menú/selección de
+  pregunta con revalidación, afinidad `enIdea` que enruta el coaching sin menús y se completa al
+  cerrar la idea, cambio explícito de campaña sin cerrarla, y ciclos nuevos con id determinista por
+  mensaje raíz vía `ProcesarAporteEnrutadoAsync`. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 621: 559 unit + 62 integración; format
   limpio) P-26 corte 2 de 6 — resolución multi-campaña y persistencia del aporte/selección.**
   Elegibilidad determinista §5.2, menú numerado server-side con textos configurables, aporte

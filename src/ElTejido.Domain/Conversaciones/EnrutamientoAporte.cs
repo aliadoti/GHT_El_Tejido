@@ -167,15 +167,32 @@ public sealed class EnrutamientoAporte
             actualizadoEn: ahora);
 
     /// <summary>
-    /// Fija la campania elegida (ya revalidada por el servidor). En el corte 2 el enrutamiento pasa a
-    /// <c>listo</c>; la seleccion de pregunta (corte 3) inserta el estado intermedio.
+    /// Fija la campania elegida (ya revalidada por el servidor) y pasa a resolver la pregunta: el
+    /// servidor la selecciona automaticamente (una elegible) u ofrece la lista numerada (varias).
     /// </summary>
     public EnrutamientoAporte SeleccionarCampania(string campaniaId, DateTimeOffset ahora)
     {
         ExigirEstado(EstadoEnrutamientoAporte.SeleccionCampania, "seleccionar la campania");
         return With(
-            estado: EstadoEnrutamientoAporte.Listo,
+            estado: EstadoEnrutamientoAporte.SeleccionPregunta,
             campaniaSeleccionadaId: DomainGuards.Required(campaniaId, nameof(campaniaId)),
+            actualizadoEn: ahora);
+    }
+
+    /// <summary>Reemplaza el snapshot de preguntas ofrecidas dentro de la campania ya elegida (§5.4).</summary>
+    public EnrutamientoAporte OfrecerPreguntas(IEnumerable<OpcionPreguntaOfrecida> opciones, DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.SeleccionPregunta, "ofrecer preguntas");
+        return With(preguntasOfrecidas: opciones.ToArray(), actualizadoEn: ahora);
+    }
+
+    /// <summary>Fija la pregunta elegida (ya revalidada por el servidor); el enrutamiento queda listo.</summary>
+    public EnrutamientoAporte SeleccionarPregunta(string preguntaId, DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.SeleccionPregunta, "seleccionar la pregunta");
+        return With(
+            estado: EstadoEnrutamientoAporte.Listo,
+            preguntaSeleccionadaId: DomainGuards.Required(preguntaId, nameof(preguntaId)),
             actualizadoEn: ahora);
     }
 
@@ -189,8 +206,31 @@ public sealed class EnrutamientoAporte
         return With(
             estado: EstadoEnrutamientoAporte.EnIdea,
             conversacionId: conversacionId,
+            reemplazarConversacion: true,
             procesadoEn: procesadoEn,
             actualizadoEn: procesadoEn);
+    }
+
+    /// <summary>
+    /// P-26 §5.6: afinidad establecida por un cambio explicito de campania — el enrutamiento apunta a
+    /// la conversacion vigente (o a la campania, si aun no hay conversacion) sin fijar
+    /// <c>procesadoEn</c>: su aporte original ya fue procesado antes (o nunca fue un aporte nuevo).
+    /// </summary>
+    public EnrutamientoAporte EstablecerAfinidad(string? conversacionId, DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.Listo, "establecer la afinidad");
+        return With(
+            estado: EstadoEnrutamientoAporte.EnIdea,
+            conversacionId: conversacionId,
+            reemplazarConversacion: true,
+            actualizadoEn: ahora);
+    }
+
+    /// <summary>La idea/conversacion a la que apuntaba la afinidad termino (§5.6): queda auditable.</summary>
+    public EnrutamientoAporte Completar(DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.EnIdea, "completar el enrutamiento");
+        return With(estado: EstadoEnrutamientoAporte.Completado, actualizadoEn: ahora);
     }
 
     /// <summary>Vencimiento logico: el texto permanece auditable pero ya no se procesa automaticamente.</summary>
@@ -218,6 +258,7 @@ public sealed class EnrutamientoAporte
         IReadOnlyList<OpcionPreguntaOfrecida>? preguntasOfrecidas = null,
         string? preguntaSeleccionadaId = null,
         string? conversacionId = null,
+        bool reemplazarConversacion = false,
         IReadOnlyList<IntentoSeleccion>? intentosSeleccion = null,
         DateTimeOffset? actualizadoEn = null,
         DateTimeOffset? procesadoEn = null)
@@ -232,7 +273,7 @@ public sealed class EnrutamientoAporte
             campaniaSeleccionadaId ?? CampaniaSeleccionadaId,
             preguntasOfrecidas ?? PreguntasOfrecidas,
             preguntaSeleccionadaId ?? PreguntaSeleccionadaId,
-            conversacionId ?? ConversacionId,
+            reemplazarConversacion ? conversacionId : conversacionId ?? ConversacionId,
             intentosSeleccion ?? IntentosSeleccion,
             CreadoEn,
             (actualizadoEn ?? ActualizadoEn).ToUniversalTime(),

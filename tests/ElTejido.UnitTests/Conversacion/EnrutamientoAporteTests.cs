@@ -54,6 +54,65 @@ public sealed class EnrutamientoAporteTests
         acto.Should().Throw<DomainValidationException>();
     }
 
+    [Fact]
+    public void Transiciones_SeleccionCampaniaPreguntaYProcesado_SiguenElOrdenDelContrato()
+    {
+        var resuelto = CrearEnrutamiento()
+            .SeleccionarCampania("c_1", Ahora.AddMinutes(1))
+            .OfrecerPreguntas([new OpcionPreguntaOfrecida("p_1", "¿Cómo mejorar?", 1)], Ahora.AddMinutes(2))
+            .SeleccionarPregunta("p_1", Ahora.AddMinutes(3));
+
+        resuelto.Estado.Should().Be(EstadoEnrutamientoAporte.Listo);
+        resuelto.CampaniaSeleccionadaId.Should().Be("c_1");
+        resuelto.PreguntaSeleccionadaId.Should().Be("p_1");
+
+        var enIdea = resuelto.MarcarEnIdea("conv_1", Ahora.AddMinutes(4));
+        enIdea.Estado.Should().Be(EstadoEnrutamientoAporte.EnIdea);
+        enIdea.ConversacionId.Should().Be("conv_1");
+        enIdea.ProcesadoEn.Should().Be(Ahora.AddMinutes(4));
+
+        enIdea.Completar(Ahora.AddMinutes(5)).Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
+    }
+
+    [Fact]
+    public void EstablecerAfinidad_DesdeListo_ApuntaALaConversacionSinFijarProcesadoEn()
+    {
+        var listo = CrearEnrutamiento()
+            .SeleccionarCampania("c_2", Ahora.AddMinutes(1))
+            .SeleccionarPregunta("p_1", Ahora.AddMinutes(2));
+
+        var afinidad = listo.EstablecerAfinidad(null, Ahora.AddMinutes(3));
+
+        afinidad.Estado.Should().Be(EstadoEnrutamientoAporte.EnIdea);
+        afinidad.ConversacionId.Should().BeNull("aún no hay conversación en la campaña nueva");
+        afinidad.ProcesadoEn.Should().BeNull("su aporte original ya fue procesado antes del cambio");
+    }
+
+    [Theory]
+    [InlineData(EstadoEnrutamientoAporte.SeleccionCampania)]
+    [InlineData(EstadoEnrutamientoAporte.EnIdea)]
+    [InlineData(EstadoEnrutamientoAporte.Completado)]
+    public void MarcarEnIdea_FueraDeListo_Lanza(EstadoEnrutamientoAporte estado)
+    {
+        var enrutamiento = EnrutamientoAporte.Crear(
+            "u_1", "wamid.abc", "texto", estado, Ahora);
+
+        var acto = () => enrutamiento.MarcarEnIdea("conv_1", Ahora);
+
+        acto.Should().Throw<DomainValidationException>();
+    }
+
+    [Fact]
+    public void SeleccionVencida_SoloAplicaAEstadosDeSeleccion()
+    {
+        var enSeleccion = CrearEnrutamiento();
+        var listo = enSeleccion.SeleccionarCampania("c_1", Ahora).SeleccionarPregunta("p_1", Ahora);
+
+        enSeleccion.SeleccionVencida(Ahora.AddHours(25)).Should().BeTrue();
+        enSeleccion.SeleccionVencida(Ahora.AddHours(23)).Should().BeFalse();
+        listo.SeleccionVencida(Ahora.AddHours(25)).Should().BeFalse("un enrutamiento resuelto no expira por este camino");
+    }
+
     private static EnrutamientoAporte CrearEnrutamiento()
         => EnrutamientoAporte.Crear(
             "u_8f3c",

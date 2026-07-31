@@ -96,6 +96,13 @@ public sealed class OpcionesConversacion
     public IList<string> FrasesRevisitarIdea { get; set; } = new List<string>();
 
     /// <summary>
+    /// P-26 §5.1 paso 3 — frases con las que el participante pide explicitamente cambiar de campania
+    /// ("otra campaña"). Suspenden la afinidad vigente sin cerrar la idea y recalculan opciones.
+    /// Vacio = usa <see cref="DetectorIntencionContinuar.FrasesCambiarCampaniaPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesCambiarCampania { get; set; } = new List<string>();
+
+    /// <summary>
     /// Interruptor global de los <b>cupos por usuario/campania</b> (10 §2): cuando esta en <c>true</c>,
     /// el orquestador aplica <c>Campania.ConfigSeguridad.MaxMensajesPorUsuario</c> (al exceder, el
     /// entrante se descarta con rechazo neutral silencioso y se registra <c>RateLimit</c>) y
@@ -243,6 +250,12 @@ public sealed class OpcionesMensajesConversacion
     public const string AyudaSeleccionCampaniaInvalidaDefault =
         "No reconocí esa opción. Tu aporte sigue guardado.";
 
+    public const string EncabezadoSeleccionPreguntaDefault =
+        "¿Sobre cuál pregunta quieres aportar?";
+
+    public const string InstruccionSeleccionPreguntaDefault =
+        "Responde con el número o con el texto de la pregunta.";
+
     /// <summary>
     /// Coletillas (variantes) que invitan al participante a quedarse o seguir, ensenando ademas la frase
     /// de salida del "no quiero mejorar". Se rotan por turno/hilo para que el flujo no repita siempre la
@@ -312,6 +325,12 @@ public sealed class OpcionesMensajesConversacion
 
     /// <summary>P-26 §5.5 — ayuda que antecede al menu cuando la seleccion recibida no es valida.</summary>
     public string AyudaSeleccionCampaniaInvalida { get; set; } = AyudaSeleccionCampaniaInvalidaDefault;
+
+    /// <summary>P-26 §5.4 — encabezado del menu numerado de preguntas elegibles.</summary>
+    public string EncabezadoSeleccionPregunta { get; set; } = EncabezadoSeleccionPreguntaDefault;
+
+    /// <summary>P-26 §5.4 — instruccion final del menu de preguntas (numero o texto completo).</summary>
+    public string InstruccionSeleccionPregunta { get; set; } = InstruccionSeleccionPreguntaDefault;
 
     /// <summary>
     /// Variantes del acuse de continuar; se rotan por hilo para no repetir siempre la misma frase.
