@@ -4,6 +4,16 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-30 por Codex (Arquitecto/Backend/Frontend/AppSec/SDET):
+  **P-27 clasificación flexible de intenciones de control — especificación y contratos DONE; código
+  0/5.** Se confirmó el bug de I-18: expresiones naturales de parada/cambio se consolidan como
+  contenido cuando no coinciden con `FrasesContinuar`. P-27 corrige alias inequívocos y diseña, detrás
+  de flag global + opt-in de campaña OFF, un clasificador LLM con salida cerrada
+  `aportar|finalizarIdea|finalizarParticipacion|ambigua`; el servidor conserva toda decisión y efecto.
+  Incluye aclaración 1/2/3, cierre de idea vs. participación, cupos, telemetría sin PII, portal,
+  rollback y cinco cortes. **Se mantiene P-26 corte 1 como próximo trabajo; P-27 queda inmediatamente
+  después de P-26 y antes de activar estos flujos. Sin código, build, push, despliegue ni cambio
+  remoto.**
 - Ultima actualizacion: 2026-07-29 por Codex (Arquitecto/Backend/Frontend/AppSec/SDET):
   **P-26 participación continua — especificación y contratos DONE; código 0/6.** Se confirmó y
   documentó: flag de campaña default `false`; solo campañas activas; selección determinista de
@@ -306,6 +316,11 @@
   de ciclo, `EnrutamientoAporte`, persistencia/puertos y round-trip POST/GET/PUT/duplicado. En este
   corte no cambiar aún la resolución multi-campaña ni el portal. Añadir pruebas de serialización,
   compatibilidad e idempotencia y ejecutar el gate backend.
+- [ ] **Backlog siguiente confirmado: P-27 corte 1 de 5 — dominio y contratos.** Solo después de
+  cerrar P-26, leer `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
+  `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Añadir flag de campaña OFF, estado/objeto de
+  aclaración pendiente, motivo `finParticipacion`, DTO/API y round-trip Cosmos. En ese corte no
+  conectar todavía el clasificador al orquestador.
 - [ ] **Validar operativamente I-19/I-20/P-24/P-25 antes de desplegar.** Requiere humano y presupuesto:
   corrido D5 real contra staging con el golden set, UAT de idea única y varias ideas, y revisión de
   costo/latencia para consolidación, evaluación y redacción. Comprobar especialmente que “vamos a
@@ -492,6 +507,7 @@
 | P-24 | Evaluación implícita al solicitar mejora | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 579/579 verde | Una petición corta de mejorar una propuesta confirma implícitamente la versión completa, la evalúa y abre coaching bajo umbral en hilo simple y cola multi-idea. No crea aporte/version nueva ni reduce `MaxRepreguntas`; lista configurable y auditoría diferenciada. |
 | P-25 | Coaching directo sin confirmación repetitiva | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 583/583 verde | Cada aporte sustantivo se consolida y evalúa completo en el mismo turno; solo una ambigüedad real pide aclaración. Hilo simple y cola multi-idea cubiertos; rollback global disponible. |
 | P-26 | Participación continua y selección de campaña/pregunta | ESPECIFICADA; código 0/6 | sin commit aún | verificación documental pendiente de cierre | Flag por campaña default OFF, aporte raíz auditable, afinidad y selección 24 h, ciclos independientes y cupos móviles; próximo corte: dominio/contratos. |
+| P-27 | Clasificación flexible de intenciones de control | ESPECIFICADA; código 0/5 | sin commit | validación documental | Alias deterministas corrigen el bug; clasificador LLM opcional propone una intención tipada y el servidor ejecuta. Flags OFF, aclaración 1/2/3, cupos/telemetría/portal y rollback definidos. Va después de P-26. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -778,3 +794,10 @@
   contratos `03/04/05/06/10/11`, Reglas, Supuestos, índice, TODO, QAS y prompt de continuidad. Sin
   cambios de código ni ejecución de build/test. Handoff: corte 1 de 6, dominio y contratos; no push,
   despliegue ni configuración remota.
+- 2026-07-30 - Codex - **P-27 clasificación flexible de intenciones de control especificada; código
+  pendiente.** Rol: Arquitecto/Backend/Frontend/AppSec/SDET. Se registró como bug de I-18 el tratamiento
+  de “quiero parar aquí”, “stop now” y “quiero pasar a otra idea” como contenido. La solución queda
+  híbrida: alias inequívocos deterministas + clasificador LLM opcional con JSON enum; política,
+  ids/estado/cola/cierre siempre server-side. Se sincronizaron contratos `03/04/05/08/10/11/13`,
+  Reglas, Supuestos, índice, TODO, QAS y prompt de continuidad. Sin cambios de código ni build/test.
+  Orden: completar P-26 y luego P-27 corte 1 de 5; sin push, despliegue ni configuración remota.

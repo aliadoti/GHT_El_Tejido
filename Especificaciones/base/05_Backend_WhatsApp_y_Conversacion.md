@@ -297,6 +297,31 @@ cerrada entre la oferta y la selección deja de ser elegible. Apagar `participac
 terminar el ciclo abierto y bloquea el siguiente; cerrar la campaña detiene la interacción de
 inmediato. Ver `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
 
+### 4.4.4 Clasificación flexible de intenciones de control (P-27)
+
+P-27 corrige el caso en que “quiero parar aquí”, “stop now” o “quiero pasar a otra idea” se trata
+como aporte y vuelve a evaluarse. La ruta es híbrida:
+
+1. rechazo, reapertura, selección y alias inequívocos se resuelven primero de forma determinista;
+2. si la campaña y el kill-switch P-27 están activos, el estado espera una mejora y el mensaje es
+   corto/elegible, `IClasificadorIntencionControl` propone JSON estricto:
+   `aportar|finalizarIdea|finalizarParticipacion|ambigua`;
+3. una política server-side valida estado, idea activa, cola, cupos e idempotencia;
+4. `finalizarIdea` conserva la última versión, cierra solo la activa por `participante` y avanza;
+5. `finalizarParticipacion` finaliza abiertas por `finParticipacion`, cierra el hilo y no abre otra
+   idea/pregunta;
+6. `ambigua` pasa a `esperandoConfirmacionSalida`, persiste el control pendiente y presenta las
+   opciones deterministas 1=seguir, 2=dejar idea, 3=terminar;
+7. `aportar` continúa por I-19/P-25 sin que la clasificación modifique el contenido.
+
+El mensaje de control permanece auditable como `Mensaje`, pero no entra a la versión consolidada,
+evaluación ni Markdown. JSON inválido, timeout, ConfigLLM ausente o cupo agotado no cierra nada:
+degrada a `aportar`. La aclaración no consume `MaxRepreguntas`.
+
+El LLM nunca selecciona ids, campaña, pregunta, idea siguiente, estado, umbral o límite; tampoco
+invoca herramientas. Solo propone una etiqueta no confiable. Ver
+`Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y `08 §2.3`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. En el flujo legacy, I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`**. Con I-19, la paráfrasis acumulada para confirmación es obligatoria y reemplaza esa salida opcional para no enviar dos resúmenes; no depende del flag I-05. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 

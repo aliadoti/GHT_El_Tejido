@@ -9,6 +9,13 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **BACKLOG CONFIRMADO 2026-07-30 — `P-27` ESPECIFICADA; CÓDIGO PENDIENTE (0/5 cortes).** Corrige
+> el bug de I-18 por el que “quiero parar aquí”, “stop now” o “quiero pasar a otra idea” se procesan
+> como contenido. Añade alias deterministas y, detrás de flags OFF, un clasificador LLM que solo
+> propone `aportar|finalizarIdea|finalizarParticipacion|ambigua`; el servidor valida y ejecuta.
+> Implementar **después de cerrar P-26** y antes de activar estos flujos en UAT/producción. Spec:
+> `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`.
+>
 > **ESTADO VIGENTE 2026-07-29 — `P-26` ESPECIFICADA; CÓDIGO PENDIENTE (0/6 cortes).** El usuario
 > confirmó participación continua solo para campañas activas, selección de campaña/pregunta,
 > conservación automática del aporte original, afinidad durante coaching, ciclos independientes,
@@ -50,7 +57,8 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 **Iniciativa objetivo vigente: implementar `P-26` por 6 cortes.**
 La especificación y contratos ya están escritos; no hay código P-26. El siguiente agente comienza por
 el corte 1 y mantiene la validación operativa de I-19/I-20/P-24/P-25 como pendiente paralela, sin
-desplegar ni modificar configuración remota.
+desplegar ni modificar configuración remota. Al cerrar P-26, rota a `P-27` corte 1 de 5; no adelantar
+el clasificador dentro de los cortes de P-26.
 
 ---
 
@@ -171,14 +179,16 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 30 | **`P-24` evaluación implícita al solicitar mejora** | **DONE local** | **Codex** | **Corregido 2026-07-29:** “Vamos a mejorarla” confirma implícitamente la versión propuesta, la evalúa completa y abre coaching bajo umbral en hilo simple o cola multi-idea. No crea aporte/version nueva, no reduce `MaxRepreguntas`, ni cambia contratos/remoto. Backend 579/579 verde. |
 | 31 | **`P-25` coaching directo sin confirmación repetitiva** | **DONE local** | **Codex** | Cada aporte sustantivo confirma automáticamente su versión consolidada y la evalúa completa en el mismo turno; respuesta natural con una sola pregunta de coaching. Rollback global disponible; backend 583/583 verde. |
 | 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Siguiente agente** | **ESPECIFICADA; 0/6 cortes de código.** Comenzar por dominio/contratos; luego resolución, ciclos, cupos, portal y E2E. Default `false`; solo campañas activas. |
+| 33 | **`P-27` clasificación flexible de intenciones de control** | **Alta; después de P-26** | **Siguiente agente tras P-26** | **ESPECIFICADA; 0/5 cortes de código.** Corrige alias de salida y añade clasificador LLM tipado detrás de flags OFF; ejecución de cierre/avance siempre server-side. Debe quedar lista antes de activar I-18/P-26 en UAT/producción. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
 
-**Dependencias duras (actualizada 2026-07-29):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
+**Dependencias duras (actualizada 2026-07-30):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
 `I-18 + I-05 + P-23` → `I-19` **DONE local** → `I-20/P-24/P-25` **DONE local** → `P-26`
-**ESPECIFICADA**. I-12 sigue bloqueada por seeds, pero no bloquea P-26: campo vacío degrada limpio.
-D5/UAT/costo arbitran el despliegue, no el inicio del código P-26.
+**ESPECIFICADA** → `P-27` **ESPECIFICADA**. I-12 sigue bloqueada por seeds, pero no bloquea
+P-26/P-27: campo vacío degrada limpio. D5/UAT/costo arbitran el despliegue y la activación del
+clasificador, no el inicio del código.
 
 > **Excepción I-19 confirmada por el usuario:** la consolidación no tiene opt-in por campaña y se
 > activa para todas. Solo conserva un kill-switch global de emergencia, default `true`.
@@ -229,14 +239,18 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    todavía no cambiar la selección en el webhook ni construir el portal. Cubrir documentos históricos,
    creación/edición/duplicado e idempotencia de persistencia con pruebas.
 
-2. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
-3. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-4. **La aprobación expresa de P-26 ya existe.** Implementa sus 6 cortes en el orden de la spec. Solo
-   vuelve a consultar al usuario si aparece una decisión de producto o contrato no resuelta por P-26
-   o `SUPUESTOS.md#participacion-continua-p26`.
-5. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
-5b. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
-6. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
-7. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
+2. **Backlog siguiente ya aprobado: P-27 corte 1 de 5.** Solo después de cerrar P-26, leer
+   `P-27_Clasificacion_Flexible_Intenciones_Control.md` y añadir dominio/contratos con defaults OFF:
+   flag de campaña, estado/aclaración pendiente, motivo `finParticipacion`, DTO/API y round-trip
+   Cosmos. Todavía no conectar el clasificador al orquestador.
+3. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
+4. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
+5. **La aprobación expresa de P-26 y P-27 ya existe.** Implementa cada iniciativa en el orden y cortes
+   de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
+   resuelta por P-26/P-27 o sus anclas en `SUPUESTOS.md`.
+6. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
+6b. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
+7. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
+8. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
 
 Declara brevemente, antes de cada acción significativa, **desde qué rol** decides y **qué REQ §/ARQ § + ID-iniciativa** cubres. Mantén el rigor de un equipo de 25+ años: simple, correcto, probado y documentado.

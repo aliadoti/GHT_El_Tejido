@@ -47,6 +47,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 11. Con varias campañas o preguntas elegibles elige de una lista y su aporte original se procesa sin
     escribirlo otra vez.
 12. Durante el coaching sus respuestas continúan en la idea activa sin repetir la selección.
+13. Durante una mejora puede pedir con palabras naturales dejar la idea o terminar por ahora; el
+    sistema no evalúa esa orden como parte de su idea y aclara con opciones cuando el alcance no es
+    seguro.
 
 ## 4. Criterios de aceptación — Sistema y Seguridad (`REQ §33.3`, `§36.6`)
 1. Guarda historial, mensajes iniciales enviados, estado de envío, aportes, ideas consolidadas,
@@ -62,6 +65,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 9. Mantiene separación entre configuración, conversación, evaluación, envío, seguridad, persistencia y Markdown.
 10. P-26 revalida autorización, evita duplicar ciclos/aportes, conserva selecciones vencidas como
     auditoría y aplica cupos móviles de 24 h sin reiniciar el presupuesto de campaña.
+11. P-27 trata la clasificación LLM como candidato no confiable: solo el servidor valida y ejecuta la
+    transición; fallos, cupo agotado o salida inválida no cierran ideas ni conversaciones.
 
 ---
 
@@ -91,6 +96,12 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
     comprobar el cambio sin cerrar la idea suspendida.
 18. Apagar el flag durante una idea y verificar que termina pero no abre otra; cerrar una campaña y
     verificar el corte inmediato.
+19. En una mejora, enviar “quiero parar aquí”, “stop now” y “quiero pasar a otra idea”; comprobar que
+    no se consolidan ni evalúan y que cada transición ocurre una sola vez según su alcance.
+20. Enviar “hay que parar la máquina durante el mantenimiento” y comprobar que sigue como aporte;
+    provocar una intención ambigua y resolver el menú 1/2/3 sin consumir una repregunta.
+21. Apagar ambos gates P-27 y simular timeout, JSON inválido y cupo agotado: los alias inequívocos
+    siguen funcionando, mientras la ruta flexible degrada sin cerrar ni perder la idea.
 
 ---
 
@@ -112,6 +123,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §9/§20/§21/§22 Consolidación progresiva I-19 | I-19, 03 §3.8.1–2, 05 §4.4.2, 08 §2.2 | Unit (versiones/estados/intenciones) + integración (confirmar/evaluar/reabrir) + E2E §5.9–13 |
 | §9/§20/§21/§22 Redacción fluida I-20 | I-20, 03 §3.3, 05 §4.4–§4.5, 08, 09 | Unit (JSON/guardrails/fallback/formato) + integración (un acto por turno) + E2E §5.9–14 |
 | Participación continua y enrutamiento P-26 | P-26, 03 §3.3/§3.6.1, 05 §4.4.3, 06 §3 | Unit (elegibilidad/selección/ciclos/ventana) + integración (webhook y Cosmos) + E2E §5.15–18 |
+| Intenciones de control flexibles P-27 | P-27, 03 §3.3/§3.6, 05 §4.4.4, 08 §2.3, 10 §2/§6 | Unit (enum/política/falsos positivos/fallback) + integración (Cosmos/API/orquestador) + E2E §5.19–21 |
 | §25 Guardrails/abuso | 10 §2 | Unit + integración límites + §4.6 |
 | §30 Trazabilidad | 10 §6 | Integración (snapshots, logs) + §4.1–2 |
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |

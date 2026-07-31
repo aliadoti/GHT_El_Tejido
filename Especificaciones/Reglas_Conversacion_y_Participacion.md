@@ -153,8 +153,28 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
    sistema **degrada esa(s) respuesta(s) de madura a incubacion** (regenera su Markdown y registra
    telemetria), **no evalua** el mensaje, antepone el acuse `Conversacion:Mensajes:AcuseRechazoGuardado` al
    `MensajeCierre` y cierra. Si no hay ninguna idea madura que rechazar, el mensaje cae al flujo normal (se
-   evalua), para no cortar al participante por una negacion sin contexto de guardado. La degradacion nunca
-   promueve (idempotente) y no toca contratos compartidos.
+    evalua), para no cortar al participante por una negacion sin contexto de guardado. La degradacion nunca
+    promueve (idempotente) y no toca contratos compartidos.
+
+### 2.3.1 Intenciones de parar o avanzar escritas libremente (P-27, especificada)
+
+P-27 corrige primero el detector determinista con alias inequívocos como “quiero parar aquí”, “stop
+now” y “quiero pasar a otra idea”. Esta corrección no depende del LLM. Para expresiones cortas que no
+coincidan con el catálogo y solo cuando el servidor ya espera una mejora o una aclaración, una función
+opcional puede proponer una de cuatro intenciones cerradas:
+`aportar|finalizarIdea|finalizarParticipacion|ambigua`.
+
+El modelo **no ejecuta** la transición: el servidor valida estado, autorización, precedencia,
+idempotencia, cupos e idea activa. `finalizarIdea` termina solo la idea activa y avanza;
+`finalizarParticipacion` cierra la cola/hilo sin abrir otra unidad; `aportar` continúa por
+consolidación/evaluación; y `ambigua` abre una confirmación determinista con opciones 1/2/3. El
+mensaje de control se conserva para auditoría, pero nunca se incorpora a la idea, evaluación o
+Markdown.
+
+La ruta flexible nace apagada globalmente y por campaña. No aplica al primer aporte, mensajes largos,
+selecciones P-26/I-19, rechazo o reapertura. Si el clasificador falla, devuelve JSON inválido o no hay
+cupo, el servidor no cierra nada y conserva el mensaje como aporte. Ver
+`Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`.
 
 ### 2.4 Cierre y Markdown
 En I-19, el cierre deja una única idea como `madura`, `pendiente` o `rechazada` y compila su Markdown
@@ -195,7 +215,8 @@ crea una cola en el orden original y trabaja con **una idea activa**:
 `MaxRepreguntas` se cuenta por idea y la respuesta a la última pregunta siempre se evalúa. “Así está
 bien” finaliza solo la idea activa; “no lo guardes” degrada solo esa idea. Mientras siga bajo umbral y
 pueda mejorar no se anexa automáticamente “si ya te sientes conforme…”. La transición la decide el
-servidor; `recomendacion` del LLM no cierra por sí sola.
+servidor; `recomendacion` del LLM no cierra por sí sola. P-27 amplía las expresiones naturales de
+salida, pero conserva esta autoridad server-side.
 
 Activación: kill-switch `Conversacion:CoachingSecuencialIdeas=true`, campo de campaña en `true` e I-06
 efectivo. El reloj opcional por idea usa `MinutosCoachingPorIdea`; es distinto del cierre de sesión de
@@ -412,6 +433,9 @@ activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción
 | `configConversacional.numeroWhatsAppSaliente` | Portal admin (campaña) | ausente (**usa predeterminado**) | **P-21** — alias lógico para el envío inicial/reenvío; nunca guarda el id de Meta. |
 | `configConversacional.participacionContinua` | Portal admin (campaña, creación/edición) | `false` | **P-26** — permite ciclos/ideas nuevos después de finalizar, solo mientras la campaña esté `activa`. Campo ausente = recorrido único. |
 | Ventana de selección P-26 | Regla fija del flujo | 24 horas | Afinidad y selección pendientes vencen; el aporte raíz permanece auditable. |
+| `configConversacional.clasificacionIntencionControl` | Portal admin (campaña, creación/edición) | `false` | **P-27** — permite clasificar expresiones libres de parar/avanzar; requiere kill-switch global y ConfigLLM. |
+| `Conversacion:ClasificacionIntencionControl` | App config / env `Conversacion__ClasificacionIntencionControl` | `false` (**desactivado**) | **P-27** — kill-switch global; no apaga los alias deterministas que corrigen el bug. |
+| `Conversacion:MaxCaracteresClasificacionIntencionControl` | App config / env `Conversacion__MaxCaracteresClasificacionIntencionControl` | 160 | **P-27** — longitud máxima elegible; `<=0` deshabilita la ruta LLM. |
 | `pregunta.umbralCierreAnticipado` | Portal admin (pregunta) | ausente (**hereda campaña**) | **I-17** — override del umbral compartido (madurez + cierre) por pregunta; precedencia pregunta → campaña → global. |
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |
@@ -434,6 +458,8 @@ activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción
   `madura|pendiente|rechazada`. Una idea madura recibe `estadoCuraduria=pendiente`.
 - **Enrutamiento P-26:** `seleccionCampania|seleccionPregunta|listo → enIdea → completado`;
   puede terminar `expirado|cancelado`. Cada ciclo nuevo crea otra conversación.
+- **Aclaración P-27 (opcional):** `esperandoRepregunta → esperandoConfirmacionSalida →
+  esperandoRepregunta|cerrada`; las opciones 1/2/3 son deterministas y no consumen una repregunta.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).
 
 ## 5. Referencias

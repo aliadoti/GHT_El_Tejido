@@ -377,6 +377,15 @@ se encienden por campaña.
 
 ## D. Aún no se prueba (por ahora)
 
+- 🧭 **P-27 — Entender solicitudes naturales de parar o avanzar:** la especificación está lista, pero
+  el código todavía no. Cuando se implemente, la prueba será: (1) activar en una campaña de prueba
+  **“Interpretar solicitudes de parar o avanzar escritas libremente”**; (2) durante una mejora escribir
+  “quiero parar aquí”, “stop now” y “quiero pasar a otra idea”; (3) comprobar que la orden no queda
+  guardada ni evaluada como parte de la idea; (4) probar una frase de contenido como “hay que parar la
+  máquina durante el mantenimiento” y verificar que sí continúa como aporte; y (5) ante una expresión
+  dudosa, comprobar que aparecen opciones 1/2/3. **Algo va mal si:** el coach repite la pregunta tras
+  una salida clara, cierra por una frase de contenido, el modelo decide por fuera del estado del
+  servidor o una aclaración consume una oportunidad de mejora.
 - 🧭 **P-26 — Volver después con ideas nuevas:** la especificación está lista, pero el código todavía
   no. Cuando se implemente, la prueba será: (1) crear una campaña y activar **“Permitir nuevas ideas
   después de finalizar”**; (2) terminar una idea; (3) enviar otra y comprobar que comienza separada;

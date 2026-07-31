@@ -855,3 +855,46 @@
 - Impacto/reversibilidad: contratos aditivos `03/04`; default `false`; rollback apagando el flag sin
   borrar ciclos ni ideas. Implementación planificada en seis cortes según P-26.
 - Spec: `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
+
+### clasificacion-intenciones-control-p27 - El modelo propone la intención y el servidor dispone
+
+- Fecha: 2026-07-30 - Agente/Rol: Codex - Arquitecto/Backend/Frontend/AppSec/SDET - especificación
+  solicitada y autorizada por el usuario; código pendiente.
+- Contexto: durante coaching I-18/I-19/P-25, “quiero parar aquí”, “stop now” y “quiero pasar a otra
+  idea” no coinciden con `FrasesContinuar`; se consolidan/evalúan como contenido y el coach vuelve a
+  preguntar. I-18 ya exige que una salida del participante finalice la idea activa, así que el síntoma
+  es un bug. Permitir que un LLM interprete lenguaje libre cambia, además, costo, latencia y frontera
+  de confianza. REQ §9/§20/§21/§25/§26/§27/§30; ARQ §4.2/§6/§7/§12/§13.
+- Decisión:
+  - Se crea P-27 como corrección evolutiva separada de P-26. P-26 conserva sus seis cortes y P-27 se
+    implementa después, antes de activar ambos flujos en UAT/producción.
+  - La detección es híbrida. Alias inequívocos en español/inglés amplían la ruta determinista y
+    funcionan incluso con el clasificador apagado o caído.
+  - El clasificador LLM es un puerto separado de evaluación, consolidación y redacción. Solo devuelve
+    JSON estricto con `aportar|finalizarIdea|finalizarParticipacion|ambigua`; no devuelve confianza,
+    texto, ids, herramientas ni razonamiento.
+  - El servidor valida estado, campaña, autorización, idea/cola, cupos e idempotencia. El modelo nunca
+    cierra directamente ni elige campaña, pregunta, idea siguiente, umbral o límite.
+  - `finalizarIdea` conserva la versión vigente, deja pendiente si no madura y avanza.
+    `finalizarParticipacion` añade motivo `finParticipacion`, finaliza abiertas, cierra el hilo y no
+    abre otra unidad. Con P-26, un aporte posterior puede iniciar otro ciclo.
+  - `ambigua` persiste `intencionControlPendiente`, usa el estado aditivo
+    `esperandoConfirmacionSalida` y muestra opciones deterministas 1/2/3. La aclaración no consume una
+    revisión ni llama al redactor/evaluador.
+  - La capacidad flexible requiere
+    `configConversacional.clasificacionIntencionControl=true` y
+    `Conversacion:ClasificacionIntencionControl=true`; ambos defaults son `false`.
+    `MaxCaracteresClasificacionIntencionControl=160` limita el alcance. El prompt es global y no
+    editable por campaña.
+  - Cada llamada cuenta para cupos P-10/presupuesto/ventana P-26. Falla, JSON inválido, ConfigLLM
+    ausente o cupo agotado degradan a `aportar`; nunca cierran por fallback.
+  - Telemetría `clasificacionIntencionControl` registra origen, resultado, intención, estado, tokens,
+    latencia y motivo técnico; nunca mensaje, salida cruda, razonamiento ni PII.
+- Alternativas descartadas: ampliar indefinidamente una lista de frases; usar únicamente el LLM;
+  dejar que el coach invoque un cierre/herramienta; reutilizar la salida de evaluación; confianza
+  numérica auto-reportada; prompt de control editable por campaña; mezclar P-27 dentro de los cortes
+  P-26.
+- Impacto/reversibilidad: contratos `03/04` aditivos y estados/motivo compatibles; clasificador OFF por
+  defecto y rollback sin borrar datos. Los alias deterministas permanecen porque corrigen el bug.
+  Implementación planificada en cinco cortes según P-27.
+- Spec: `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`.

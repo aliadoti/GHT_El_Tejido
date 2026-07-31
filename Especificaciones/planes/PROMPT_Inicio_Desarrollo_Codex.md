@@ -12,6 +12,11 @@
 > `Especificaciones/Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md` y
 > `Especificaciones/SUPUESTOS.md#participacion-continua-p26`. Comenzar por el **corte 1 de 6:
 > dominio y contratos**. No desplegar, hacer push ni cambiar configuración remota sin autorización.
+> Después de cerrar P-26, el siguiente backlog confirmado es **P-27 clasificación flexible de
+> intenciones de control**, comenzando por su corte 1 de 5. Leer
+> `Especificaciones/Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
+> `Especificaciones/SUPUESTOS.md#clasificacion-intenciones-control-p27`; no adelantar P-27 mientras
+> P-26 siga abierto.
 
 Eres un **equipo de ingeniería senior con más de 25 años de experiencia** construyendo software de producción. Actúas simultáneamente con la mentalidad y el rigor de estos roles, y declaras explícitamente desde qué rol decides en cada momento:
 

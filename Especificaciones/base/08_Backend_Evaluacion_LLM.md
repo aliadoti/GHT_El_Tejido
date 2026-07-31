@@ -98,6 +98,38 @@ separadas. Devuelve JSON estricto:
 El servidor valida longitud, no vacío, máximo de ideas y esquema; asigna ids/orden/estados y exige
 confirmación antes de evaluar. La salida nunca puede promover madurez por sí misma.
 
+### 2.3 Clasificación de intenciones de control (P-27)
+
+La clasificación de parada/avance es un puerto separado; no reutiliza el contrato de evaluación,
+consolidación ni redacción:
+
+```csharp
+public interface IClasificadorIntencionControl
+{
+    Task<ResultadoClasificacionIntencionControl> ClasificarAsync(
+        ContextoClasificacionIntencionControl contexto,
+        CancellationToken cancellationToken);
+}
+```
+
+Recibe únicamente el estado permitido, acto anterior, presencia de idea/unidades pendientes, texto
+entrante delimitado y `ConfigLLM` efectiva. No recibe rúbrica, nota, seeds, otras ideas ni listas de
+campañas/preguntas.
+
+Devuelve exclusivamente:
+
+```json
+{ "intencion": "aportar | finalizarIdea | finalizarParticipacion | ambigua" }
+```
+
+La salida no admite confianza, razonamiento, texto visible, ids, herramientas ni campos adicionales.
+El parser valida el enum exacto; cualquier desviación produce `Fallback`. El resultado es un candidato
+no confiable: el orquestador aplica la política de `05 §4.4.4` y puede rechazar/degradar una transición.
+
+La llamada usa `ILlmClient`/`ConfigLLM` existentes, prompt global no editable por campaña, temperatura
+conservadora y salida máxima acotada. Cuenta en cupos/tokens P-10. Con proveedor ausente/caído, JSON
+inválido o cupo agotado, el mensaje degrada a aporte; los alias deterministas funcionan sin LLM.
+
 ---
 
 ## 3. Flujo (`ARQ §6`)
@@ -199,6 +231,9 @@ Reglas duras:
 - **I-20 — redacción de turno:** el redactor recibe el acto ya resuelto y devuelve solo `puente` y
   `pregunta` en JSON estricto. Ambos pasan guardas de longitud y fuga de rúbrica; no agregan hechos,
   puntajes, criterios ni decisiones. Esta llamada no crea ni modifica una `Evaluacion`.
+- **P-27 — intención de control:** el clasificador recibe el texto como dato no confiable y devuelve
+  un enum cerrado. No puede crear una `Evaluacion`, elegir ids ni ejecutar el cierre. La política
+  server-side valida la etiqueta antes de cualquier efecto.
 
 ### 3.5 Persistencia y decisión
 - Construye y devuelve la `Evaluacion` con **snapshots**: `rubricaRef+versionRubrica`,
@@ -211,6 +246,8 @@ Reglas duras:
   puede cerrar por sí sola: el servidor arbitra umbral, intención, máximo, tiempo y fallback.
 - En I-19, el servidor además arbitra confirmación, corrección, reapertura, estado de resultado y
   entrada a curaduría pendiente.
+- En P-27, el servidor arbitra si se conserva el aporte, finaliza una idea, termina la participación
+  o solicita aclaración; la etiqueta LLM nunca constituye por sí misma una transición.
 
 ---
 

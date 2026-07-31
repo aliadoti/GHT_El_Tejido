@@ -127,7 +127,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "conversacion": "pr_conversar", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "numeroWhatsAppSaliente": null },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "clasificacionIntencionControl": false, "numeroWhatsAppSaliente": null },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -163,6 +163,11 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   `cerrada`, `archivada` o `borrador` nunca recibe aportes. Si cambia de `true` a `false`, las ideas
   abiertas pueden terminar, pero no se crean ciclos posteriores. Ver
   `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`.
+- `configConversacional.clasificacionIntencionControl` (**P-27**, **aditivo**, default `false`):
+  habilita para la campaña la clasificación LLM de expresiones cortas de parada/avance no reconocidas
+  por el detector determinista. Requiere además
+  `Conversacion:ClasificacionIntencionControl=true`. El modelo solo propone una intención enumerada;
+  el servidor valida y ejecuta la transición. Campo ausente conserva el flujo sin llamada flexible.
 - `configConversacional.umbralCierreAnticipado` (P-13 + **I-17**, **aditivo**, default **ausente/null**): **override por campaña** del **umbral único compartido** que gobierna tanto el cierre anticipado por calificación alta (`05 §4.4`) como la **clasificación de madurez** de guardado (I-17: `maduro`/`incubacion`) y el disparo de paráfrasis (I-05). Fracción de la escala de la rúbrica en `[0,1]`, `<= 0` desactiva el cierre para esa campaña. Ausente/null = la campaña **hereda** el default numérico global `Conversacion:UmbralCierreAnticipado` (**I-17: default `0.6`**). **I-17 añade un nivel más de override, por pregunta** (`pregunta.umbralCierreAnticipado`), con precedencia **pregunta → campaña → global**. El kill-switch operativo independiente `Conversacion:CierreAnticipadoHabilitado` (**I-17: default `false`** para no encender el cierre al subir el default global a 0.6; la clasificación de madurez no depende de este kill-switch) prevalece sobre el **cierre**: `false` apaga el cierre anticipado para todas las campañas sin afectar la clasificación. Documento viejo sin el campo = usa el global. Ver `Iniciativas/P-13_Umbral_Cierre_Por_Campania.md`, `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md` y `SUPUESTOS.md#bd-dos-niveles-madurez-i17`.
 - `configConversacional.minutosInactividadSesion` (**I-17 §7**, **aditivo**, default **ausente/null**): **override por campaña** de la ventana de **cierre por inactividad de sesión** en minutos (granularidad sub-hora que el flujo del 20-jul pide; hoy la expiración es por horas). Ausente/null = hereda el default global `Conversacion:MinutosInactividadSesion`; `<= 0` desactiva el cierre por inactividad para esa campaña. No se parametriza por pregunta. Documento viejo sin el campo = usa el global.
 - `configConversacional.numeroWhatsAppSaliente` (**P-21**, **aditivo**, default **ausente/null**): alias lógico del número que inicia los envíos de la campaña. Ausente/null usa el número predeterminado de `WhatsApp:Numeros`; nunca almacena un id de Meta. Documento viejo sin el campo conserva el envío por el número único/predeterminado.
@@ -252,16 +257,22 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 }
 ```
 - `estado` ∈ `abierta` | `cerrada`.
-- `estadoMaquina` (control de repregunta): ver máquina de estados en `05 §4`. Valores: `esperandoRespuestaInicial` | `evaluando` | `esperandoRepregunta` | `esperandoSeleccionIdea` | `cerrada`.
+- `estadoMaquina` (control de repregunta): ver máquina de estados en `05 §4`. Valores:
+  `esperandoRespuestaInicial` | `evaluando` | `esperandoRepregunta` |
+  `esperandoConfirmacionSalida` | `esperandoSeleccionIdea` | `cerrada`.
   - `esperandoSeleccionIdea` (**I-19 §4.7**, **aditivo**): el hilo ofreció una lista breve **numerada**
     de ideas cerradas para reabrir y espera que el participante elija un número. Es transitorio: al
     resolverse (o ante una respuesta que no es un número válido) el hilo vuelve a
     `esperandoRepregunta`. Un documento anterior nunca trae este valor, así que el comportamiento
     histórico no cambia.
+  - `esperandoConfirmacionSalida` (**P-27**, **aditivo**): el clasificador no pudo distinguir con
+    seguridad entre seguir, dejar la idea o terminar por ahora. El servidor ofreció opciones 1/2/3 y
+    espera una selección determinista; no consolida/evalúa esa respuesta ni consume
+    `MaxRepreguntas`.
 - `coachingIdeas` (**I-18**, **aditivo**, opcional): cola ordenada de ideas del mensaje raíz. Solo una
   puede estar `activa`; `ideaActivaIndice=null` cuando ninguna lo está. Cada elemento usa estado
   `pendiente|activa|finalizada` y motivo final
-  `umbral|participante|rechazo|maxRevisiones|tiempo|fallback|desactivacion`. Su
+  `umbral|participante|rechazo|maxRevisiones|tiempo|fallback|desactivacion|finParticipacion`. Su
   `repreguntasUsadas` es por idea; el
   contador superior permanece como dato legado/single-idea. Ausente = máquina anterior.
 - `ideaId` y `versionIdeaVigenteId` (**I-19**, aditivos): identifican la unidad consolidada y su
@@ -275,6 +286,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   reintentos y `enrutamientoAporteId` enlaza la selección que conservó el aporte.
 - La unidad pasa a ser una conversación por (usuario, campaña, pregunta, ciclo). Con
   `participacionContinua=false` solo existe el recorrido único vigente.
+- `intencionControlPendiente` (**P-27**, **aditivo**, opcional): objeto
+  `{ tipo:"aclararSalida", intentosInvalidos:int, creadoEn:datetime }`. Solo existe en
+  `esperandoConfirmacionSalida`; no guarda el mensaje ni la salida cruda del modelo. Se elimina al
+  seleccionar, volver a aporte, cerrar/expirar o apagar el gate. Ausente = flujo anterior.
 
 ### 3.6.1 `EnrutamientoAporte` (contenedor `conversations`) — P-26
 

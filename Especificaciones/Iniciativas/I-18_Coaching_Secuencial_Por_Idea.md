@@ -20,6 +20,12 @@
 > se confirma y solo entonces se evalúa. I-19 también permite detectar complemento + idea nueva y
 > reabrir una idea anterior. Estas reglas prevalecen sobre cualquier frase legacy de esta spec que diga
 > evaluar o mostrar `respuestaVigenteId` como resultado final.
+>
+> **Corrección planificada P-27 (especificada 30-jul-2026; no implementada):** amplía las salidas
+> naturales de la idea activa. Los alias inequívocos se resuelven de forma determinista y un
+> clasificador opcional solo propone `aportar|finalizarIdea|finalizarParticipacion|ambigua`; la
+> transición continúa siendo exclusiva del servidor. Ver
+> `P-27_Clasificacion_Flexible_Intenciones_Control.md`.
 
 ## 1. Resultado que se busca
 
@@ -345,6 +351,8 @@ Antes de activar, P-10 debe dimensionar `maxLlamadasLlmPorUsuario`, costo por ca
   también contiene otra idea, esa nueva idea se añade a la cola sin mezclarlas.
 - [ ] Al superar el umbral efectivo, la idea finaliza y el sistema pasa a la siguiente.
 - [ ] “Así está bien” finaliza solo la idea activa; “no lo guardes” la degrada y también avanza.
+- [ ] Con P-27 implementado, “quiero parar aquí”, “stop now” y “quiero pasar a otra idea” no se
+  evalúan como contenido; el servidor distingue dejar la idea de terminar la participación.
 - [ ] La respuesta a la última repregunta se evalúa antes de finalizar por límite.
 - [ ] Al terminar todas las ideas se abre la siguiente pregunta una sola vez.
 - [ ] El timeout/fallback de una idea no pierde ni cierra indebidamente las demás.

@@ -209,6 +209,7 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
     "minutosCoachingPorIdea": null,
     "parafraseo": false,
     "participacionContinua": false,
+    "clasificacionIntencionControl": false,
     "umbralCierreAnticipado": null,
     "numeroWhatsAppSaliente": null
   }
@@ -234,6 +235,11 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
   flujo de una sola participación. Se admite en `POST`, se devuelve en `GET`, se actualiza en `PUT` y
   se copia de forma explícita al duplicar. Apagarlo permite terminar ideas abiertas, pero impide abrir
   otra; el estado `cerrada` prevalece y detiene toda interacción.
+- `clasificacionIntencionControl` (`P-27`, default `false`): permite que, además de los alias
+  deterministas, un clasificador LLM proponga si un mensaje corto significa aportar, dejar la idea,
+  terminar la participación o pedir aclaración. Requiere el kill-switch global
+  `Conversacion:ClasificacionIntencionControl=true`; el servidor conserva la decisión. Se admite en
+  POST, se devuelve en GET, se actualiza en PUT y se copia explícitamente al duplicar.
 - `umbralCierreAnticipado` (`P-13`, `double?`, default `null`): override opcional de la fracción de
   cierre anticipado para esta campaña. `null` hereda `Conversacion:UmbralCierreAnticipado`; `<= 0`
   lo desactiva para la campaña. `Conversacion:CierreAnticipadoHabilitado=false` es el kill-switch

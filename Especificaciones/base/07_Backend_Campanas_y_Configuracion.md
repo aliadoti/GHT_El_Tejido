@@ -31,6 +31,9 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - I-06 agrega `configConversacional.segmentacionIdeas` (aditivo, default `false`) como comportamiento por campaña; el kill-switch global `Conversacion:SegmentacionIdeas` queda fuera del CRUD de campaña.
 - P-26 agrega `configConversacional.participacionContinua` (aditivo, default `false`) al crear,
   consultar, editar y duplicar. El servicio no lo confunde con el estado administrativo.
+- P-27 agrega `configConversacional.clasificacionIntencionControl` (aditivo, default `false`) al
+  crear, consultar, editar y duplicar. Solo habilita la clasificación flexible; el kill-switch global
+  y la política server-side no son editables desde el CRUD de campaña.
 
 ### 2.2 Reglas de negocio (`REQ §11.3`)
 - Solo `activa` permite envío de mensajes iniciales y recepción de respuestas (`§11.3.1–2`).
@@ -118,5 +121,7 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Duplicar una campaña produce una plantilla reutilizable.
 - Crear/editar/duplicar preserva `participacionContinua`; un documento histórico ausente se devuelve
   como `false`.
+- Crear/editar/duplicar preserva `clasificacionIntencionControl`; ausente se devuelve como `false` y
+  no habilita llamadas LLM de control.
 
 *Fin del documento.*
