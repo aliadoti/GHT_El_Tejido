@@ -67,6 +67,8 @@ public static class ServiciosWhatsApp
             // El orquestador real (05 §4) consume los repos (Cosmos o Memoria), evaluador (08) y
             // compilador (09); se gatilla con la presencia de un almacen, igual que el resto.
             services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();
+            // P-26: resolucion determinista de campania previa al orquestador (05 §4.3 paso 0).
+            services.AddScoped<IServicioEnrutamientoParticipacion, ServicioEnrutamientoParticipacion>();
             services.AddScoped<ProcesadorWebhookEntrante>();
             services.AddScoped<ProcesadorEnvio>();
             services.AddScoped<IServicioEnvios, ServicioEnvios>();

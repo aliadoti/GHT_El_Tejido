@@ -52,4 +52,10 @@ public enum TipoEventoSeguridad
     // uso el respaldo, el motivo tecnico al degradar y los tokens de esa llamada. Nunca incluye el
     // texto redactado ni el rechazado. Aditivo al final para preservar los valores existentes.
     RedaccionConversacional,
+
+    // P-26 (10 §6.2): auditoria del enrutamiento de participacion —
+    // accion=ofrecido|seleccionado|invalido|expirado|procesado|cambioCampania con conteo de opciones e
+    // ids internos. Nunca incluye el texto del participante ni nombres de campania. Aditivo al final
+    // para preservar los valores existentes (03 §3.15).
+    EnrutamientoParticipacion,
 }

@@ -234,6 +234,15 @@ public sealed class OpcionesMensajesConversacion
     public const string PreguntaSeleccionIdeaDefault =
         "¿Cuál de estas ideas quieres retomar? Respóndeme con el número.";
 
+    public const string EncabezadoSeleccionCampaniaDefault =
+        "¿A cuál campaña corresponde tu aporte?";
+
+    public const string InstruccionSeleccionCampaniaDefault =
+        "Responde con el número o con el nombre de la campaña.";
+
+    public const string AyudaSeleccionCampaniaInvalidaDefault =
+        "No reconocí esa opción. Tu aporte sigue guardado.";
+
     /// <summary>
     /// Coletillas (variantes) que invitan al participante a quedarse o seguir, ensenando ademas la frase
     /// de salida del "no quiero mejorar". Se rotan por turno/hilo para que el flujo no repita siempre la
@@ -294,6 +303,15 @@ public sealed class OpcionesMensajesConversacion
     /// La lista nunca muestra calificaciones.
     /// </summary>
     public string PreguntaSeleccionIdea { get; set; } = PreguntaSeleccionIdeaDefault;
+
+    /// <summary>P-26 §5.3 — encabezado del menu numerado de campanias elegibles.</summary>
+    public string EncabezadoSeleccionCampania { get; set; } = EncabezadoSeleccionCampaniaDefault;
+
+    /// <summary>P-26 §5.3 — instruccion final del menu (numero o nombre de la campania).</summary>
+    public string InstruccionSeleccionCampania { get; set; } = InstruccionSeleccionCampaniaDefault;
+
+    /// <summary>P-26 §5.5 — ayuda que antecede al menu cuando la seleccion recibida no es valida.</summary>
+    public string AyudaSeleccionCampaniaInvalida { get; set; } = AyudaSeleccionCampaniaInvalidaDefault;
 
     /// <summary>
     /// Variantes del acuse de continuar; se rotan por hilo para no repetir siempre la misma frase.

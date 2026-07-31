@@ -147,6 +147,97 @@ public sealed class EnrutamientoAporte
             (venceEn ?? creado.AddHours(HorasVigencia)).ToUniversalTime(),
             procesadoEn?.ToUniversalTime());
     }
+
+    /// <summary>¿La seleccion pendiente ya vencio logicamente? Solo aplica a los estados de seleccion.</summary>
+    public bool SeleccionVencida(DateTimeOffset ahora)
+        => Estado is EstadoEnrutamientoAporte.SeleccionCampania or EstadoEnrutamientoAporte.SeleccionPregunta
+            && ahora.ToUniversalTime() >= VenceEn;
+
+    /// <summary>Reemplaza el snapshot de campanias ofrecidas (oferta inicial o recalculo tras revalidar).</summary>
+    public EnrutamientoAporte OfrecerCampanias(IEnumerable<OpcionCampaniaOfrecida> opciones, DateTimeOffset ahora)
+        => With(
+            estado: EstadoEnrutamientoAporte.SeleccionCampania,
+            campaniasOfrecidas: opciones.ToArray(),
+            actualizadoEn: ahora);
+
+    /// <summary>Audita un intento de seleccion (solo ids/tipo/resultado/fecha, nunca el texto libre).</summary>
+    public EnrutamientoAporte RegistrarIntento(IntentoSeleccion intento, DateTimeOffset ahora)
+        => With(
+            intentosSeleccion: IntentosSeleccion.Append(intento).ToArray(),
+            actualizadoEn: ahora);
+
+    /// <summary>
+    /// Fija la campania elegida (ya revalidada por el servidor). En el corte 2 el enrutamiento pasa a
+    /// <c>listo</c>; la seleccion de pregunta (corte 3) inserta el estado intermedio.
+    /// </summary>
+    public EnrutamientoAporte SeleccionarCampania(string campaniaId, DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.SeleccionCampania, "seleccionar la campania");
+        return With(
+            estado: EstadoEnrutamientoAporte.Listo,
+            campaniaSeleccionadaId: DomainGuards.Required(campaniaId, nameof(campaniaId)),
+            actualizadoEn: ahora);
+    }
+
+    /// <summary>
+    /// El aporte original quedo persistido en la conversacion resuelta: solo una ejecucion puede pasar
+    /// de <c>listo</c> a <c>enIdea</c> y fijar <c>procesadoEn</c> (03 §3.6.1).
+    /// </summary>
+    public EnrutamientoAporte MarcarEnIdea(string? conversacionId, DateTimeOffset procesadoEn)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.Listo, "marcar el aporte en idea");
+        return With(
+            estado: EstadoEnrutamientoAporte.EnIdea,
+            conversacionId: conversacionId,
+            procesadoEn: procesadoEn,
+            actualizadoEn: procesadoEn);
+    }
+
+    /// <summary>Vencimiento logico: el texto permanece auditable pero ya no se procesa automaticamente.</summary>
+    public EnrutamientoAporte Expirar(DateTimeOffset ahora)
+        => With(estado: EstadoEnrutamientoAporte.Expirado, actualizadoEn: ahora);
+
+    /// <summary>El enrutamiento deja de ser procesable (p. ej. ninguna campania siguio elegible); queda auditable.</summary>
+    public EnrutamientoAporte Cancelar(DateTimeOffset ahora)
+        => With(estado: EstadoEnrutamientoAporte.Cancelado, actualizadoEn: ahora);
+
+    private void ExigirEstado(EstadoEnrutamientoAporte esperado, string accion)
+    {
+        if (Estado != esperado)
+        {
+            throw new DomainValidationException(
+                "ENRUTAMIENTO_ESTADO_INVALIDO",
+                $"No se puede {accion} desde el estado {Estado}.");
+        }
+    }
+
+    private EnrutamientoAporte With(
+        EstadoEnrutamientoAporte? estado = null,
+        IReadOnlyList<OpcionCampaniaOfrecida>? campaniasOfrecidas = null,
+        string? campaniaSeleccionadaId = null,
+        IReadOnlyList<OpcionPreguntaOfrecida>? preguntasOfrecidas = null,
+        string? preguntaSeleccionadaId = null,
+        string? conversacionId = null,
+        IReadOnlyList<IntentoSeleccion>? intentosSeleccion = null,
+        DateTimeOffset? actualizadoEn = null,
+        DateTimeOffset? procesadoEn = null)
+        => new(
+            Id,
+            UsuarioId,
+            WhatsappMessageId,
+            PhoneNumberIdDestino,
+            TextoOriginal,
+            estado ?? Estado,
+            campaniasOfrecidas ?? CampaniasOfrecidas,
+            campaniaSeleccionadaId ?? CampaniaSeleccionadaId,
+            preguntasOfrecidas ?? PreguntasOfrecidas,
+            preguntaSeleccionadaId ?? PreguntaSeleccionadaId,
+            conversacionId ?? ConversacionId,
+            intentosSeleccion ?? IntentosSeleccion,
+            CreadoEn,
+            (actualizadoEn ?? ActualizadoEn).ToUniversalTime(),
+            VenceEn,
+            (procesadoEn ?? ProcesadoEn)?.ToUniversalTime());
 }
 
 /// <summary>Estados del enrutamiento (03 §3.6.1). El vencimiento y las transiciones son server-side.</summary>

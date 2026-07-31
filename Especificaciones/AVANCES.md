@@ -4,6 +4,33 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **P-26
+  corte 2 de 6 — resolución multi-campaña y persistencia del aporte/selección DONE local.** El
+  webhook ahora resuelve la campaña de forma determinista antes del orquestador (05 §4.3 paso 0):
+  (1) `IResolutorParticipante.ResolverCandidatosAsync` (aditivo) valida usuario/rol/estado y devuelve
+  TODAS las campañas activas autorizadas con pregunta activa, con los mismos rechazos neutrales de
+  hoy; (2) nuevo `IServicioEnrutamientoParticipacion`/`ServicioEnrutamientoParticipacion` aplica la
+  elegibilidad §5.2 (trabajo pendiente **o** `participacionContinua=true`): 0 elegibles → silencio
+  neutral (igual que el hilo cerrado actual), 1 → flujo actual intacto, N → conserva el aporte en
+  `EnrutamientoAporte` **antes** de enviar el menú numerado (server-side, textos configurables
+  `Conversacion:Mensajes:EncabezadoSeleccionCampania`/`InstruccionSeleccionCampania`/
+  `AyudaSeleccionCampaniaInvalida`); (3) la selección acepta número o nombre exacto normalizado (sin
+  acentos/mayúsculas) no ambiguo, audita cada intento sin texto libre, revalida elegibilidad al
+  aceptar (campaña cerrada entre oferta y selección → recalcula: 1 restante auto-selecciona, 0
+  cancela auditable), expira lógicamente a las 24 h conservando la evidencia, y entrega el aporte
+  original exactamente una vez (transición `listo→enIdea` + `procesadoEn` idempotente tras persistir
+  en la conversación, sin re-pasar por dedupe); (4) transiciones inmutables con guardas en el dominio
+  `EnrutamientoAporte`; (5) telemetría `LogSeguridad(EnrutamientoParticipacion)` (enum aditivo
+  03 §3.15 mapeado en Cosmos) con acciones ofrecido|seleccionado|invalido|expirado|procesado, solo
+  ids/conteos. El menú responde por el número entrante (P-21). Cambio visible aprobado por P-26: con
+  varias campañas elegibles ya no se elige silenciosamente la más reciente; se pregunta. Pendientes
+  del corte 3: selección de pregunta, afinidad durante coaching, ciclos nuevos y "otra campaña".
+  **Verificado:** build Release `-warnaserror` 0/0, **621** pruebas no calibración (559 unit + 62
+  integración; +16: 0/1/N campañas, número/nombre/ambigüedad, idempotencia raíz, expiración,
+  revalidación con auto-selección y cancelación, confirmación de procesado única, y rutas nuevas del
+  procesador webhook), format limpio; E2E existentes verdes = flujo de una campaña preservado. Sin
+  push, despliegue ni cambio remoto. **Próximo: P-26 corte 3 — selección de pregunta, afinidad y
+  ciclos nuevos.**
 - Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/SDET): **P-26 corte 1 de
   6 — dominio y contratos DONE local.** Cambios aditivos con default seguro, sin tocar webhook,
   orquestador ni portal: (1) `ConfigConversacional.ParticipacionContinua` (default `false`; documento
@@ -328,14 +355,22 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **P-26 corte 2 de 6 — resolución multi-campaña y persistencia del aporte/selección.** Leer
-  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §5.1–§5.3/§5.5` y
-  `SUPUESTOS.md#participacion-continua-p26`. Implementar el cálculo determinista de campañas
-  elegibles (§5.2), el menú numerado servidor-side, la conservación del aporte en
-  `EnrutamientoAporte` antes de mostrar el menú, la validación número/nombre exacto no ambiguo,
-  la expiración lógica a 24 h y la revalidación al aceptar. Pruebas mínimas: 0/1/N campañas,
-  número/nombre/ambigüedad, expiración, revalidación e idempotencia. La base del corte 1 (dominio,
-  puerto `IRepositorioEnrutamientosAporte`, repos memoria/Cosmos y campos de ciclo) ya está verde.
+- [ ] **P-26 corte 3 de 6 — selección de pregunta, afinidad y ciclos nuevos.** Leer
+  `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md §5.4/§5.6/§5.7` y
+  `SUPUESTOS.md#participacion-continua-p26`. Implementar: menú de pregunta cuando la campaña elegida
+  tiene varias elegibles (estado `seleccionPregunta`; en campaña continua completada todas las
+  activas vuelven a estar disponibles, en no continua solo las pendientes); afinidad vigente hacia la
+  conversación abierta (respuestas de coaching sin menú, estado `enIdea` como puntero); cambio
+  explícito de campaña ("otra campaña", acción `cambioCampania`) sin cerrar la idea; y ciclos nuevos
+  (`cicloParticipacion > 1`, id de conversación derivado del mensaje raíz, hilo anterior cerrado e
+  inmutable) cuando la campaña es continua. Pruebas: 1/N preguntas, coaching sin menú, segundo ciclo
+  independiente, cambio explícito.
+- [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 621: 559 unit + 62 integración; format
+  limpio) P-26 corte 2 de 6 — resolución multi-campaña y persistencia del aporte/selección.**
+  Elegibilidad determinista §5.2, menú numerado server-side con textos configurables, aporte
+  conservado antes del menú, selección número/nombre exacto no ambiguo con auditoría sin texto,
+  expiración lógica 24 h, revalidación al aceptar, entrega única (`listo→enIdea`+`procesadoEn`) y
+  telemetría `enrutamientoParticipacion`. Ver "Estado global" arriba.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 605: 543 unit + 62 integración; format
   limpio) P-26 corte 1 de 6 — dominio y contratos.** Flag `participacionContinua` (default histórico
   `false`) con round-trip Cosmos/API/duplicado; campos de ciclo aditivos en `Conversacion`

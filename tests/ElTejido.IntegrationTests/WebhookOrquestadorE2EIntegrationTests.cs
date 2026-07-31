@@ -556,6 +556,17 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
         public Task<ResultadoResolucion> ResolverAsync(string numeroCrudo, CancellationToken cancellationToken)
             => Task.FromResult<ResultadoResolucion>(new ResultadoResolucion.Autorizado(_participante));
+
+        public Task<ResultadoCandidatos> ResolverCandidatosAsync(string numeroCrudo, CancellationToken cancellationToken)
+            => Task.FromResult<ResultadoCandidatos>(new ResultadoCandidatos.Autorizado(
+                _participante.Usuario,
+                new[]
+                {
+                    new CandidatoCampania(
+                        _participante.Participante,
+                        _participante.Campania,
+                        _participante.PreguntaVigente),
+                }));
     }
 
     private sealed class ConversacionesFake : IRepositorioConversaciones

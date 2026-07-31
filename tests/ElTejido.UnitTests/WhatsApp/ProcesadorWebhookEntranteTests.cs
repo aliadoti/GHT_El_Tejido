@@ -22,6 +22,7 @@ public sealed class ProcesadorWebhookEntranteTests
     private readonly IRegistroWebhookDedupe _dedupe = Substitute.For<IRegistroWebhookDedupe>();
     private readonly ILimitadorNumeroEntrante _limitadorNumero = Substitute.For<ILimitadorNumeroEntrante>();
     private readonly IResolutorParticipante _resolutor = Substitute.For<IResolutorParticipante>();
+    private readonly IServicioEnrutamientoParticipacion _enrutamiento = Substitute.For<IServicioEnrutamientoParticipacion>();
     private readonly IOrquestadorConversacion _orquestador = Substitute.For<IOrquestadorConversacion>();
     private readonly IRepositorioLogSeguridad _logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
     private readonly IProveedorCorrelacion _correlacion = Substitute.For<IProveedorCorrelacion>();
@@ -54,7 +55,7 @@ public sealed class ProcesadorWebhookEntranteTests
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
         resultado.Estado.Should().Be(ResultadoProcesoEntrante.Duplicado);
-        await _resolutor.DidNotReceiveWithAnyArgs().ResolverAsync(default!, default);
+        await _resolutor.DidNotReceiveWithAnyArgs().ResolverCandidatosAsync(default!, default);
     }
 
     [Fact]
@@ -63,8 +64,8 @@ public sealed class ProcesadorWebhookEntranteTests
         _gateway.ParsearWebhook(Arg.Any<WhatsAppWebhookPayload>()).Returns(_mensaje);
         _dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        _resolutor.ResolverAsync(Numero, Arg.Any<CancellationToken>())
-            .Returns(new ResultadoResolucion.NoAutorizado(MotivoRechazo.NoMatriculado));
+        _resolutor.ResolverCandidatosAsync(Numero, Arg.Any<CancellationToken>())
+            .Returns(new ResultadoCandidatos.NoAutorizado(MotivoRechazo.NoMatriculado));
 
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
@@ -76,31 +77,71 @@ public sealed class ProcesadorWebhookEntranteTests
     [Fact]
     public async Task Procesar_Autorizado_EntregaAlOrquestador()
     {
-        _gateway.ParsearWebhook(Arg.Any<WhatsAppWebhookPayload>()).Returns(_mensaje);
-        _dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        _resolutor.ResolverAsync(Numero, Arg.Any<CancellationToken>())
-            .Returns(new ResultadoResolucion.Autorizado(CrearParticipanteResuelto()));
+        var candidato = AutorizarConCandidato();
+        _enrutamiento.ResolverAsync(Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ResultadoEnrutamiento.ContinuarConversacion(candidato, ci.Arg<MensajeEntrante>(), null));
 
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
         resultado.Estado.Should().Be(ResultadoProcesoEntrante.Procesado);
         await _orquestador.Received(1).ProcesarMensajeEntranteAsync(
-            Arg.Any<ParticipanteResuelto>(),
+            Arg.Is<ParticipanteResuelto>(p => p.Campania.Id == candidato.Campania.Id),
             Arg.Any<MensajeEntrante>(),
             Arg.Any<CancellationToken>());
+        await _enrutamiento.DidNotReceiveWithAnyArgs().ConfirmarProcesadoAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Procesar_AporteConservado_ConfirmaProcesadoTrasElOrquestador()
+    {
+        var candidato = AutorizarConCandidato();
+        _enrutamiento.ResolverAsync(Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ResultadoEnrutamiento.ContinuarConversacion(
+                candidato, ci.Arg<MensajeEntrante>(), "route_u_1_wamid.ABC"));
+
+        var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.Procesado);
+        Received.InOrder(() =>
+        {
+            _orquestador.ProcesarMensajeEntranteAsync(Arg.Any<ParticipanteResuelto>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>());
+            _enrutamiento.ConfirmarProcesadoAsync("u_1", "wamid.ABC", Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task Procesar_VariasCampanias_DevuelveSeleccionPendienteSinOrquestador()
+    {
+        AutorizarConCandidato();
+        _enrutamiento.ResolverAsync(Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEnrutamiento.SeleccionPendiente("route_u_1_wamid.ABC"));
+
+        var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.SeleccionCampaniaPendiente);
+        await _orquestador.DidNotReceiveWithAnyArgs().ProcesarMensajeEntranteAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Procesar_SinElegibles_DevuelveSilencioNeutral()
+    {
+        AutorizarConCandidato();
+        _enrutamiento.ResolverAsync(Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEnrutamiento.SinElegibles());
+
+        var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.SinCampaniaElegible);
+        await _orquestador.DidNotReceiveWithAnyArgs().ProcesarMensajeEntranteAsync(default!, default!, default);
     }
 
     [Fact]
     public async Task Procesar_MensajeMuyLargo_SeAcotaAlMaximoDeCampania()
     {
         var largo = new string('a', 5000);
-        _gateway.ParsearWebhook(Arg.Any<WhatsAppWebhookPayload>())
-            .Returns(_mensaje with { Texto = largo });
-        _dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
-            .Returns(true);
-        _resolutor.ResolverAsync(Numero, Arg.Any<CancellationToken>())
-            .Returns(new ResultadoResolucion.Autorizado(CrearParticipanteResuelto()));
+        var candidato = AutorizarConCandidato(texto: largo);
+        _enrutamiento.ResolverAsync(Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ResultadoEnrutamiento.ContinuarConversacion(candidato, ci.Arg<MensajeEntrante>(), null));
 
         MensajeEntrante? entregado = null;
         await _orquestador.ProcesarMensajeEntranteAsync(
@@ -128,7 +169,7 @@ public sealed class ProcesadorWebhookEntranteTests
         var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
 
         resultado.Estado.Should().Be(ResultadoProcesoEntrante.RateLimitado);
-        await _resolutor.DidNotReceiveWithAnyArgs().ResolverAsync(default!, default);
+        await _resolutor.DidNotReceiveWithAnyArgs().ResolverCandidatosAsync(default!, default);
         await _orquestador.DidNotReceiveWithAnyArgs().ProcesarMensajeEntranteAsync(default!, default!, default);
         capturado.Should().NotBeNull();
         capturado!.TipoEvento.Should().Be(TipoEventoSeguridad.RateLimit);
@@ -137,7 +178,22 @@ public sealed class ProcesadorWebhookEntranteTests
     }
 
     private ProcesadorWebhookEntrante Construir()
-        => new(_gateway, _dedupe, _limitadorNumero, _resolutor, _orquestador, _logSeguridad, _correlacion, new RelojFijo(DateTimeOffset.UnixEpoch));
+        => new(_gateway, _dedupe, _limitadorNumero, _resolutor, _enrutamiento, _orquestador, _logSeguridad, _correlacion, new RelojFijo(DateTimeOffset.UnixEpoch));
+
+    /// <summary>Mockea parseo, dedupe y candidatos autorizados; devuelve el candidato unico.</summary>
+    private CandidatoCampania AutorizarConCandidato(string? texto = null)
+    {
+        _gateway.ParsearWebhook(Arg.Any<WhatsAppWebhookPayload>())
+            .Returns(texto is null ? _mensaje : _mensaje with { Texto = texto });
+        _dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var resuelto = CrearParticipanteResuelto();
+        var candidato = new CandidatoCampania(resuelto.Participante, resuelto.Campania, resuelto.PreguntaVigente);
+        _resolutor.ResolverCandidatosAsync(Numero, Arg.Any<CancellationToken>())
+            .Returns(new ResultadoCandidatos.Autorizado(resuelto.Usuario, new[] { candidato }));
+        return candidato;
+    }
 
     private static ParticipanteResuelto CrearParticipanteResuelto()
     {

@@ -92,6 +92,71 @@ public sealed class ResolutorParticipante : IResolutorParticipante
             new ParticipanteResuelto(usuario, campania, participante, preguntaVigente));
     }
 
+    public async Task<ResultadoCandidatos> ResolverCandidatosAsync(string numeroCrudo, CancellationToken cancellationToken)
+    {
+        if (!_normalizador.TryNormalizar(numeroCrudo, out var numeroOpt) || numeroOpt is null)
+        {
+            return await RechazarCandidatosAsync(MotivoRechazo.NoMatriculado, null, null, cancellationToken);
+        }
+
+        var numero = numeroOpt;
+
+        var usuario = await _usuarios.ObtenerUsuarioPorNumeroAsync(numero, cancellationToken);
+        if (usuario is null)
+        {
+            return await RechazarCandidatosAsync(MotivoRechazo.NoMatriculado, numero, null, cancellationToken);
+        }
+
+        if (usuario.Estado != EstadoRegistro.Activo)
+        {
+            return await RechazarCandidatosAsync(MotivoRechazo.Inactivo, numero, usuario.Id, cancellationToken);
+        }
+
+        if (usuario.Rol != RolUsuario.Participante)
+        {
+            return await RechazarCandidatosAsync(MotivoRechazo.NoEsParticipante, numero, usuario.Id, cancellationToken);
+        }
+
+        var asociaciones = await _participantes.BuscarParticipantesPorNumeroAsync(numero, cancellationToken);
+        var candidatos = new List<CandidatoCampania>();
+        var hayCampaniaActivaSinPregunta = false;
+        foreach (var asociacion in asociaciones)
+        {
+            if (asociacion.Estado != EstadoRegistro.Activo)
+            {
+                continue;
+            }
+
+            var campania = await _campanias.ObtenerCampaniaPorIdAsync(asociacion.CampaniaId, cancellationToken);
+            if (campania is null || campania.Estado != EstadoCampania.Activa)
+            {
+                continue;
+            }
+
+            var preguntaVigente = campania.Preguntas
+                .Where(pregunta => pregunta.Estado == EstadoRegistro.Activo)
+                .OrderBy(pregunta => pregunta.Orden)
+                .FirstOrDefault();
+            if (preguntaVigente is null)
+            {
+                hayCampaniaActivaSinPregunta = true;
+                continue;
+            }
+
+            candidatos.Add(new CandidatoCampania(asociacion, campania, preguntaVigente));
+        }
+
+        if (candidatos.Count == 0)
+        {
+            // Mismo rechazo neutral que la ruta actual: sin campania activa, o activa pero sin
+            // pregunta vigente (06 §3.2/§3.3).
+            var motivo = hayCampaniaActivaSinPregunta ? MotivoRechazo.SinPreguntaVigente : MotivoRechazo.SinCampaniaActiva;
+            return await RechazarCandidatosAsync(motivo, numero, usuario.Id, cancellationToken);
+        }
+
+        return new ResultadoCandidatos.Autorizado(usuario, candidatos);
+    }
+
     /// <summary>
     /// MVP: se asume una campania activa por participante. Si hubiera varias, se elige la
     /// asociacion mas reciente por ultima respuesta o, en su defecto, por fecha de inclusion
@@ -149,5 +214,15 @@ public sealed class ResolutorParticipante : IResolutorParticipante
 
         await _logSeguridad.RegistrarAsync(log, cancellationToken);
         return new ResultadoResolucion.NoAutorizado(motivo);
+    }
+
+    private async Task<ResultadoCandidatos> RechazarCandidatosAsync(
+        MotivoRechazo motivo,
+        NumeroWhatsApp? numero,
+        string? usuarioId,
+        CancellationToken cancellationToken)
+    {
+        await RechazarAsync(motivo, numero, usuarioId, cancellationToken);
+        return new ResultadoCandidatos.NoAutorizado(motivo);
     }
 }

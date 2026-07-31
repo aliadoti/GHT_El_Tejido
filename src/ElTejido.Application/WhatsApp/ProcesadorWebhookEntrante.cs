@@ -26,6 +26,18 @@ public enum ResultadoProcesoEntrante
 
     /// <summary>Mensaje aceptado y entregado al orquestador conversacional.</summary>
     Procesado,
+
+    /// <summary>
+    /// P-26: el aporte quedo conservado y el participante debe elegir campania (menu enviado), o el
+    /// mensaje fue un intento de seleccion. Aditivo al final para preservar los valores existentes.
+    /// </summary>
+    SeleccionCampaniaPendiente,
+
+    /// <summary>
+    /// P-26: ninguna campania resulto elegible (todas completadas y sin participacion continua);
+    /// rechazo neutral silencioso, equivalente al hilo cerrado actual. Aditivo al final.
+    /// </summary>
+    SinCampaniaElegible,
 }
 
 /// <summary>
@@ -46,6 +58,7 @@ public sealed class ProcesadorWebhookEntrante
     private readonly IRegistroWebhookDedupe _dedupe;
     private readonly ILimitadorNumeroEntrante _limitadorNumero;
     private readonly IResolutorParticipante _resolutor;
+    private readonly IServicioEnrutamientoParticipacion _enrutamiento;
     private readonly IOrquestadorConversacion _orquestador;
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
@@ -56,6 +69,7 @@ public sealed class ProcesadorWebhookEntrante
         IRegistroWebhookDedupe dedupe,
         ILimitadorNumeroEntrante limitadorNumero,
         IResolutorParticipante resolutor,
+        IServicioEnrutamientoParticipacion enrutamiento,
         IOrquestadorConversacion orquestador,
         IRepositorioLogSeguridad logSeguridad,
         IProveedorCorrelacion correlacion,
@@ -65,6 +79,7 @@ public sealed class ProcesadorWebhookEntrante
         _dedupe = dedupe;
         _limitadorNumero = limitadorNumero;
         _resolutor = resolutor;
+        _enrutamiento = enrutamiento;
         _orquestador = orquestador;
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
@@ -100,25 +115,56 @@ public sealed class ProcesadorWebhookEntrante
             return new ResultadoEntrante(ResultadoProcesoEntrante.RateLimitado);
         }
 
-        var resolucion = await _resolutor.ResolverAsync(mensaje.NumeroE164, cancellationToken);
-        if (resolucion is not ResultadoResolucion.Autorizado autorizado)
+        var resolucion = await _resolutor.ResolverCandidatosAsync(mensaje.NumeroE164, cancellationToken);
+        if (resolucion is not ResultadoCandidatos.Autorizado autorizado)
         {
             // El rechazo neutral ya quedo registrado en LogSeguridad por la resolucion (06 §3.3);
             // el motivo se devuelve para diagnostico interno (logs), nunca se revela al usuario.
-            var motivo = (resolucion as ResultadoResolucion.NoAutorizado)?.Motivo;
+            var motivo = (resolucion as ResultadoCandidatos.NoAutorizado)?.Motivo;
             return new ResultadoEntrante(ResultadoProcesoEntrante.NoAutorizado, motivo);
         }
 
-        var participante = autorizado.Participante;
+        // P-26 (05 §4.3 paso 0): resolucion determinista de campania previa al orquestador. Con una
+        // sola elegible continua el flujo actual; con varias se conserva el aporte y se pide eleccion.
+        var enrutado = await _enrutamiento.ResolverAsync(
+            autorizado.Usuario, autorizado.Candidatos, mensaje, cancellationToken);
 
-        // Guardrail de entrada: acota la longitud al maximo configurado de la campania (10 §2).
-        var maximo = participante.Campania.ConfigSeguridad.MaxCaracteresMensaje;
-        var mensajeAcotado = mensaje.Texto.Length > maximo
-            ? mensaje with { Texto = mensaje.Texto[..maximo] }
-            : mensaje;
+        switch (enrutado)
+        {
+            case ResultadoEnrutamiento.SeleccionPendiente:
+                return new ResultadoEntrante(ResultadoProcesoEntrante.SeleccionCampaniaPendiente);
 
-        await _orquestador.ProcesarMensajeEntranteAsync(participante, mensajeAcotado, cancellationToken);
-        return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
+            case ResultadoEnrutamiento.SinElegibles:
+                // Silencio neutral: equivale al comportamiento actual cuando todas las preguntas de la
+                // campania ya tienen su hilo cerrado.
+                return new ResultadoEntrante(ResultadoProcesoEntrante.SinCampaniaElegible);
+
+            case ResultadoEnrutamiento.ContinuarConversacion continuar:
+                var candidato = continuar.Candidato;
+                var participante = new ParticipanteResuelto(
+                    autorizado.Usuario, candidato.Campania, candidato.Participante, candidato.PreguntaVigente);
+
+                // Guardrail de entrada: acota la longitud al maximo configurado de la campania (10 §2).
+                var maximo = candidato.Campania.ConfigSeguridad.MaxCaracteresMensaje;
+                var mensajeAcotado = continuar.Mensaje.Texto.Length > maximo
+                    ? continuar.Mensaje with { Texto = continuar.Mensaje.Texto[..maximo] }
+                    : continuar.Mensaje;
+
+                await _orquestador.ProcesarMensajeEntranteAsync(participante, mensajeAcotado, cancellationToken);
+
+                // Aporte conservado (P-26): tras persistirse en la conversacion, el enrutamiento pasa a
+                // enIdea y fija procesadoEn exactamente una vez (03 §3.6.1).
+                if (continuar.EnrutamientoAporteId is not null)
+                {
+                    await _enrutamiento.ConfirmarProcesadoAsync(
+                        autorizado.Usuario.Id, mensajeAcotado.WhatsappMessageId, cancellationToken);
+                }
+
+                return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
+
+            default:
+                throw new InvalidOperationException($"Resultado de enrutamiento no soportado: {enrutado}.");
+        }
     }
 
     private Task RegistrarRateNumeroAsync(string numero, CancellationToken cancellationToken)

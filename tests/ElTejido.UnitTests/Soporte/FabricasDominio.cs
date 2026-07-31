@@ -50,10 +50,12 @@ internal static class FabricasDominio
     public static Campania CrearCampania(
         string id,
         EstadoCampania estado,
-        IEnumerable<Pregunta>? preguntas = null)
+        IEnumerable<Pregunta>? preguntas = null,
+        string? nombre = null,
+        ConfigConversacional? configConversacional = null)
         => Campania.Crear(
             id,
-            $"Campania {id}",
+            nombre ?? $"Campania {id}",
             "Descripcion",
             "Objetivo",
             estado,
@@ -63,7 +65,7 @@ internal static class FabricasDominio
             promptRefs: null,
             configLlmRef: "llm_1",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Campania),
-            ConfigConversacional.Crear(1, "Gracias por participar."),
+            configConversacional ?? ConfigConversacional.Crear(1, "Gracias por participar."),
             LimitesSeguridad.Crear(1500, 10, 2),
             usuariosHabilitados: null,
             Epoca,
