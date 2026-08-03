@@ -210,6 +210,7 @@ export class CampaniasPage {
           umbralCierreAnticipado: null,
           // P-26: una campania nueva nace sin participacion continua (default seguro).
           participacionContinua: false,
+          clasificacionIntencionControl: false,
         },
         configSeguridad: {
           maxCaracteresMensaje: 1500,
@@ -262,6 +263,7 @@ export class CampaniasPage {
               : Math.max(0, Math.trunc(Number(formulario.minutosInactividadSesion) || 0)),
           numeroWhatsAppSaliente: formulario.numeroWhatsAppSaliente.trim() || null,
           participacionContinua: Boolean(formulario.participacionContinua),
+          clasificacionIntencionControl: Boolean(formulario.clasificacionIntencionControl),
         },
         configSeguridad: {
           maxCaracteresMensaje: actual?.configSeguridad?.maxCaracteresMensaje ?? 1500,

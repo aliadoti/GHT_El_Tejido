@@ -42,6 +42,7 @@ export interface CampaniaEdicionForm extends CampaniaCrearForm {
   minutosInactividadSesion: number | null;
   numeroWhatsAppSaliente: string;
   participacionContinua: boolean;
+  clasificacionIntencionControl: boolean;
 }
 export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'participantes';
 export interface MensajeInicialForm {
@@ -133,6 +134,8 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
     minutosInactividadSesion: campania.configConversacional?.minutosInactividadSesion ?? null,
     numeroWhatsAppSaliente: campania.configConversacional?.numeroWhatsAppSaliente ?? '',
     participacionContinua: campania.configConversacional?.participacionContinua ?? false,
+    clasificacionIntencionControl:
+      campania.configConversacional?.clasificacionIntencionControl ?? false,
   };
 }
 
@@ -430,6 +433,27 @@ export class CampaniaCreacionPanel implements OnChanges {
           </p>
         }
       </fieldset>
+      <fieldset class="form-fieldset">
+        <legend>Intenciones de control</legend>
+        <label class="checkbox-label"
+          ><input
+            aria-describedby="ayuda-clasificacion-intencion"
+            type="checkbox"
+            name="editarClasificacionIntencionControl"
+            [(ngModel)]="formulario.clasificacionIntencionControl"
+          />Interpretar expresiones flexibles para salir del coaching</label
+        ><small id="ayuda-clasificacion-intencion" class="muted"
+          >Solo se usa durante una mejora o confirmación y requiere que el interruptor global esté
+          habilitado. Las frases inequívocas siguen funcionando aunque esta opción esté
+          apagada.</small
+        >
+        @if (avisoClasificacionApagada()) {
+          <p class="muted" role="status">
+            Las aclaraciones de salida pendientes volverán a la conversación normal; no se perderá
+            la idea activa.
+          </p>
+        }
+      </fieldset>
       <div class="actions-row">
         <button class="primary-button" type="submit" [disabled]="!esAdmin()">
           Guardar cambios
@@ -459,6 +483,13 @@ export class CampaniaConfiguracionPanel implements OnChanges {
     return (
       (this.campania().configConversacional?.participacionContinua ?? false) &&
       !this.formulario.participacionContinua
+    );
+  }
+
+  protected avisoClasificacionApagada(): boolean {
+    return (
+      (this.campania().configConversacional?.clasificacionIntencionControl ?? false) &&
+      !this.formulario.clasificacionIntencionControl
     );
   }
 }

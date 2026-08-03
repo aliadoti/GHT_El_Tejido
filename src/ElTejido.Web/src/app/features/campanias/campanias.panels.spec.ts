@@ -166,6 +166,7 @@ describe('paneles de campanias', () => {
       'Seguridad y costo',
       'Conversacion',
       'Participacion continua',
+      'Intenciones de control',
     ]);
     expect(
       host.querySelector('[name="editarUmbralCierreAnticipado"]')?.getAttribute('aria-describedby'),
@@ -244,6 +245,54 @@ describe('paneles de campanias', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     expect(host.querySelector('[name="editarParticipacionContinua"]')).not.toBeNull();
+    expect((host.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('hidrata la clasificación de intención y explica su doble opt-in', async () => {
+    const fixture = crearConfiguracion({ clasificacionIntencionControl: true }, true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+    let guardado: { clasificacionIntencionControl: boolean } | null = null;
+    fixture.componentInstance.guardar.subscribe((formulario) => (guardado = formulario));
+
+    const casilla = host.querySelector(
+      '[name="editarClasificacionIntencionControl"]',
+    ) as HTMLInputElement;
+    expect(casilla.checked).toBe(true);
+    expect(casilla.getAttribute('aria-describedby')).toBe('ayuda-clasificacion-intencion');
+    expect(host.querySelector('#ayuda-clasificacion-intencion')?.textContent).toContain(
+      'interruptor global',
+    );
+
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+
+    expect(guardado!.clasificacionIntencionControl).toBe(true);
+  });
+
+  it('avisa el rollback seguro al apagar la clasificación de intención', async () => {
+    const fixture = crearConfiguracion({ clasificacionIntencionControl: true }, true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const host = fixture.nativeElement as HTMLElement;
+
+    const casilla = host.querySelector(
+      '[name="editarClasificacionIntencionControl"]',
+    ) as HTMLInputElement;
+    casilla.click();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[role="status"]')?.textContent).toContain(
+      'no se perderá la idea activa',
+    );
+  });
+
+  it('el visor ve pero no puede guardar la clasificación de intención', () => {
+    const fixture = crearConfiguracion({ clasificacionIntencionControl: true }, false);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[name="editarClasificacionIntencionControl"]')).not.toBeNull();
     expect((host.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
   });
 });

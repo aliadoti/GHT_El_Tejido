@@ -40,6 +40,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// <summary>P-26 §9: ventana móvil de los cupos por participante en campañas continuas.</summary>
     private const int HorasVentanaCuposContinua = 24;
 
+    private const string MenuAclaracionSalida =
+        "¿Qué prefieres? Responde 1 para seguir con esta idea, 2 para dejar esta idea y pasar a la siguiente, o 3 para terminar por ahora.";
+    private const string RespaldoAclaracionSalida =
+        "Puedes continuar con tu idea o indicar una salida cuando lo necesites.";
+
     private readonly IRepositorioConversaciones _conversaciones;
     private readonly IRepositorioRespuestas _respuestas;
     private readonly IRepositorioParticipantes _participantes;
@@ -384,6 +389,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         conversacion ??= DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora);
+        var pendienteControl = conversacion.IntencionControlPendiente;
         if (conversacion.CoachingIdeas is { Estado: EstadoCoachingIdeas.Activo })
         {
             await ProcesarRevisionCoachingAsync(
@@ -460,7 +466,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // puede cerrar la participación. El mensaje ya quedó auditado, pero no se vuelve Respuesta.
         if (!deseaRechazarGuardado)
         {
-            var decisionControl = await ResolverIntencionControlAsync(
+            var salidaPendiente = await ResolverSalidaPendienteAsync(
+                campania, conversacion, pendienteControl, conversacion.EstadoMaquina, mensaje.Texto, numero, emisor,
+                ahora, cancellationToken);
+            if (salidaPendiente.Manejado)
+            {
+                return;
+            }
+
+            var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
                 campania, usuario, conversacion, conversacion.EstadoMaquina, esRepregunta,
                 quedanUnidadesPendientes: false, mensaje.Texto, ahora, cancellationToken);
             if (decisionControl == DecisionIntencionControl.FinalizarParticipacion)
@@ -475,6 +489,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                     conversacion.RegistrarEntrante(mensaje.Timestamp), numero, campania,
                     SeleccionarAcuseContinuar(conversacion), emisor, ahora, cancellationToken);
                 await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
+                return;
+            }
+
+            if (decisionControl == DecisionIntencionControl.Ambigua)
+            {
+                await AbrirAclaracionSalidaAsync(conversacion, numero, emisor, ahora, cancellationToken);
                 return;
             }
         }
@@ -662,6 +682,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         CancellationToken cancellationToken)
     {
         var estadoPrevio = conversacion.EstadoMaquina;
+        var pendienteControl = conversacion.IntencionControlPendiente;
         // Techos deterministas (10 §2 / D2) antes de consolidar o evaluar: el hilo simple I-19 los
         // evalúa aquí porque ya no pasa por la rama histórica que los aplicaba.
         var motivoTecho = await MotivoTechoAlcanzadoAsync(campania, conversacion, usuario.Id, ahora, cancellationToken);
@@ -700,7 +721,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var decisionControl = await ResolverIntencionControlAsync(
+        var salidaPendiente = await ResolverSalidaPendienteAsync(
+            campania, conversacion, pendienteControl, estadoPrevio, mensaje.Texto, numero, emisor, ahora,
+            cancellationToken);
+        if (salidaPendiente.Manejado)
+        {
+            return;
+        }
+
+        var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
             campania, usuario, conversacion, estadoPrevio, hayUnidadActiva: true,
             quedanUnidadesPendientes: await HayOtraIdeaAbiertaAsync(campania.Id, conversacion.Id, idea.Id, cancellationToken),
             mensaje.Texto, ahora, cancellationToken);
@@ -1066,6 +1095,102 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             : DecisionIntencionControl.Aportar;
     }
 
+    /// <summary>
+    /// P-27 corte 4: consume una aclaración de salida ya persistida antes de clasificar o evaluar el
+    /// entrante. Las opciones son deliberadamente pequeñas y el segundo valor inválido devuelve el
+    /// hilo al flujo de aporte sin retener una orden ambigua.
+    /// </summary>
+    private async Task<ResultadoSalidaPendiente> ResolverSalidaPendienteAsync(
+        Campania campania,
+        DominioConversacion conversacion,
+        IntencionControlPendiente? pendiente,
+        EstadoMaquinaConversacion estadoPrevio,
+        string texto,
+        NumeroWhatsApp numero,
+        string? emisor,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        if (estadoPrevio != EstadoMaquinaConversacion.EsperandoConfirmacionSalida || pendiente is null)
+        {
+            return ResultadoSalidaPendiente.Continuar;
+        }
+
+        if (!ClasificacionIntencionControlEfectiva(campania))
+        {
+            await GuardarSalidaPendienteAsync(
+                conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+            await EnviarAsync(
+                conversacion, numero, RespaldoAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora,
+                cancellationToken);
+            return ResultadoSalidaPendiente.Consumida;
+        }
+
+        var alias = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva: true, texto);
+        if (alias is DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion)
+        {
+            return ResultadoSalidaPendiente.ConDecision(alias);
+        }
+
+        var opcion = texto.Trim();
+        if (opcion == "1")
+        {
+            await GuardarSalidaPendienteAsync(
+                conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+            await EnviarAsync(
+                conversacion, numero, "Perfecto, continuemos con esta idea.", TipoEnvioMensaje.Repregunta, emisor,
+                ahora, cancellationToken);
+            return ResultadoSalidaPendiente.Consumida;
+        }
+
+        if (opcion == "2")
+        {
+            return ResultadoSalidaPendiente.ConDecision(DecisionIntencionControl.FinalizarIdea);
+        }
+
+        if (opcion == "3")
+        {
+            return ResultadoSalidaPendiente.ConDecision(DecisionIntencionControl.FinalizarParticipacion);
+        }
+
+        if (pendiente.IntentosInvalidos == 0)
+        {
+            var reintentando = conversacion
+                .AvanzarA(EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
+                .ConIntencionControlPendiente(IntencionControlPendiente.Crear(1, pendiente.CreadoEn));
+            await GuardarSalidaPendienteAsync(reintentando, cancellationToken);
+            await EnviarAsync(reintentando, numero, MenuAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+            return ResultadoSalidaPendiente.Consumida;
+        }
+
+        await GuardarSalidaPendienteAsync(
+            conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
+        await EnviarAsync(
+            conversacion, numero, RespaldoAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora,
+            cancellationToken);
+        return ResultadoSalidaPendiente.Consumida;
+    }
+
+    private bool ClasificacionIntencionControlEfectiva(Campania campania)
+        => _clasificacionIntencionControlHabilitada && campania.ConfigConversacional.ClasificacionIntencionControl;
+
+    private Task GuardarSalidaPendienteAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
+        => _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+
+    private async Task AbrirAclaracionSalidaAsync(
+        DominioConversacion conversacion,
+        NumeroWhatsApp numero,
+        string? emisor,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var esperando = conversacion
+            .AvanzarA(EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
+            .ConIntencionControlPendiente(IntencionControlPendiente.Crear(0, ahora));
+        await GuardarSalidaPendienteAsync(esperando, cancellationToken);
+        await EnviarAsync(esperando, numero, MenuAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+    }
+
     private async Task<bool> EjecutarControlSimpleAsync(
         DecisionIntencionControl decision,
         DominioConversacion conversacion,
@@ -1078,6 +1203,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
+        if (decision == DecisionIntencionControl.Ambigua)
+        {
+            await AbrirAclaracionSalidaAsync(conversacion, numero, emisor, ahora, cancellationToken);
+            return true;
+        }
+
         if (decision is not (DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion))
         {
             return false;
@@ -1124,6 +1255,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
+        if (decision == DecisionIntencionControl.Ambigua)
+        {
+            await AbrirAclaracionSalidaAsync(conversacion, numero, emisor, ahora, cancellationToken);
+            return true;
+        }
+
         if (decision is not (DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion))
         {
             return false;
@@ -1192,6 +1329,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var cerrada = idea.Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, motivo, ahora);
         await _respuestas.GuardarIdeaConsolidadaAsync(cerrada, cancellationToken);
         await RegistrarConsolidacionAsync(usuario, "cerrada", cerrada, null, motivo, null, ahora, cancellationToken);
+    }
+
+    private sealed record ResultadoSalidaPendiente(bool Manejado, DecisionIntencionControl? Decision)
+    {
+        public static ResultadoSalidaPendiente Continuar { get; } = new(false, null);
+        public static ResultadoSalidaPendiente Consumida { get; } = new(true, null);
+
+        public static ResultadoSalidaPendiente ConDecision(DecisionIntencionControl decision)
+            => new(false, decision);
     }
 
     /// <summary>
@@ -2261,6 +2407,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string respuestaId,
         int revisionIndice,
         EstadoMaquinaConversacion estadoPrevio,
+        IntencionControlPendiente? pendienteControl,
         bool turnosExcedidos,
         bool cupoLlamadasExcedido,
         bool presupuestoExcedido,
@@ -2312,7 +2459,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var decisionControl = await ResolverIntencionControlAsync(
+        var salidaPendiente = await ResolverSalidaPendienteAsync(
+            campania, conversacion, pendienteControl, estadoPrevio, texto, numero, emisor, ahora, cancellationToken);
+        if (salidaPendiente.Manejado)
+        {
+            return;
+        }
+
+        var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
             campania, usuario, conversacion, estadoPrevio, hayUnidadActiva: true,
             quedanUnidadesPendientes: conversacion.CoachingIdeas!.Ideas.Any(entrada => entrada.Estado == EstadoIdeaCoaching.Pendiente),
             texto, ahora, cancellationToken);
@@ -2696,6 +2850,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var cola = conversacion.CoachingIdeas!;
         var activa = cola.IdeaActiva!;
         var estadoPrevio = conversacion.EstadoMaquina;
+        var pendienteControl = conversacion.IntencionControlPendiente;
         var turnosExcedidos = await TurnosHiloExcedidosAsync(conversacion, cancellationToken);
         var cupoLlamadasExcedido = _cuposHabilitados
             && await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, ahora, cancellationToken);
@@ -2816,6 +2971,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 respuestaId,
                 revisionIndice,
                 estadoPrevio,
+                pendienteControl,
                 turnosExcedidos,
                 cupoLlamadasExcedido,
                 presupuestoExcedido,
@@ -2831,7 +2987,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             mensaje.Texto);
         if (!intencion.DeseaRechazarGuardado)
         {
-            var decisionControl = await ResolverIntencionControlAsync(
+            var salidaPendiente = await ResolverSalidaPendienteAsync(
+                campania, conversacion, pendienteControl, estadoPrevio, mensaje.Texto, numero, emisor, ahora,
+                cancellationToken);
+            if (salidaPendiente.Manejado)
+            {
+                return;
+            }
+
+            var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
                 campania, usuario, conversacion, estadoPrevio, hayUnidadActiva: true,
                 quedanUnidadesPendientes: cola.Ideas.Any(entrada => entrada.Estado == EstadoIdeaCoaching.Pendiente),
                 mensaje.Texto, ahora, cancellationToken);

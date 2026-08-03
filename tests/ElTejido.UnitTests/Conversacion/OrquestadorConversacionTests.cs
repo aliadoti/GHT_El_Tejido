@@ -98,6 +98,122 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P27_Ambigua_AbreMenuPersistidoSinEvaluar()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Ambigua, null));
+        await PrepararConversacionEnRepreguntaAsync();
+
+        await Construir(
+                new OpcionesConversacion { ClasificacionIntencionControl = true },
+                clasificador: clasificador)
+            .ProcesarMensajeEntranteAsync(ParticipanteConClasificacionControl(), Mensaje("No sé qué hacer"), CancellationToken.None);
+
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoConfirmacionSalida);
+        _conversaciones.Ultima.IntencionControlPendiente!.IntentosInvalidos.Should().Be(0);
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero, Arg.Is<string>(texto => texto.Contains("Responde 1", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>(), Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task P27_MenuOpcionDos_FinalizaSinEvaluarElNumero()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Ambigua, null));
+        await PrepararConversacionEnRepreguntaAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion { ClasificacionIntencionControl = true }, clasificador: clasificador);
+        var participante = ParticipanteConClasificacionControl();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("No sé qué hacer"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("2", "wamid.menu.2"), CancellationToken.None);
+
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.DidNotReceive().GuardarRespuestaAsync(Arg.Any<Respuesta>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P27_MenuOpcionUno_RestauraRepreguntaSinEvaluarElNumero()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Ambigua, null));
+        await PrepararConversacionEnRepreguntaAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion { ClasificacionIntencionControl = true }, clasificador: clasificador);
+        var participante = ParticipanteConClasificacionControl();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("No sé qué hacer"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("1", "wamid.menu.1"), CancellationToken.None);
+
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+        _conversaciones.Ultima.IntencionControlPendiente.Should().BeNull();
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P27_MenuOpcionTres_CierraParticipacionSinEvaluarElNumero()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Ambigua, null));
+        await PrepararConversacionEnRepreguntaAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion { ClasificacionIntencionControl = true }, clasificador: clasificador);
+        var participante = ParticipanteConClasificacionControl();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("No sé qué hacer"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("3", "wamid.menu.3"), CancellationToken.None);
+
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.DidNotReceive().GuardarRespuestaAsync(Arg.Any<Respuesta>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P27_MenuInvalidoDosVeces_RestauraRepreguntaSinEvaluar()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Ambigua, null));
+        await PrepararConversacionEnRepreguntaAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion { ClasificacionIntencionControl = true }, clasificador: clasificador);
+        var participante = ParticipanteConClasificacionControl();
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("No sé qué hacer"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("quizá", "wamid.menu.invalido.1"), CancellationToken.None);
+        _conversaciones.Ultima!.IntencionControlPendiente!.IntentosInvalidos.Should().Be(1);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("todavía no", "wamid.menu.invalido.2"), CancellationToken.None);
+
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+        _conversaciones.Ultima.IntencionControlPendiente.Should().BeNull();
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P27_ApagarGateConMenuPendiente_RestauraRepreguntaSinPerderLaIdea()
+    {
+        await _conversaciones.GuardarConversacionAsync(
+            DominioConversacion.Crear(
+                "conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", EstadoConversacion.Abierta,
+                EstadoMaquinaConversacion.EsperandoConfirmacionSalida, repreguntasUsadas: 1, Epoca.AddHours(24), null,
+                Epoca, fechaCierre: null, intencionControlPendiente: IntencionControlPendiente.Crear(0, Epoca)),
+            CancellationToken.None);
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("1"), CancellationToken.None);
+
+        _conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+        _conversaciones.Ultima.IntencionControlPendiente.Should().BeNull();
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task P25_PrimerAporteSustantivo_SeEvaluaYRecibeCoachingSinConfirmacionRepetitiva()
     {
         var almacen = ConfigurarAlmacenIdeas();
@@ -2348,7 +2464,8 @@ public sealed class OrquestadorConversacionTests
     private OrquestadorConversacion Construir(
         OpcionesConversacion? opciones = null,
         IConsolidadorIdeas? consolidador = null,
-        IRedactorTurnoConversacional? redactor = null)
+        IRedactorTurnoConversacional? redactor = null,
+        IClasificadorIntencionControl? clasificador = null)
         => new(
             _conversaciones,
             _respuestas,
@@ -2364,7 +2481,8 @@ public sealed class OrquestadorConversacionTests
             opciones ?? new OpcionesConversacion(),
             _reloj,
             consolidador,
-            redactor);
+            redactor,
+            clasificador);
 
     /// <summary>I-20: redactor que siempre devuelve la misma voz, para verificar la composición.</summary>
     private static IRedactorTurnoConversacional RedactorQueDevuelve(string puente, string? pregunta)
@@ -2378,6 +2496,14 @@ public sealed class OrquestadorConversacionTests
     private Task PrepararConversacionAsync()
         => _conversaciones.GuardarConversacionAsync(
             DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca),
+            CancellationToken.None);
+
+    private Task PrepararConversacionEnRepreguntaAsync()
+        => _conversaciones.GuardarConversacionAsync(
+            DominioConversacion.Crear(
+                "conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", EstadoConversacion.Abierta,
+                EstadoMaquinaConversacion.EsperandoRepregunta, repreguntasUsadas: 1, Epoca.AddHours(24), null,
+                Epoca, fechaCierre: null),
             CancellationToken.None);
 
     /// <summary>Persiste un Mensaje(in) previo en el hilo estandar, para los contadores de cupos.</summary>
@@ -2398,6 +2524,18 @@ public sealed class OrquestadorConversacionTests
     {
         var pregunta = CrearPregunta("p_1", 1, maxRepreguntas);
         var campania = CrearCampania(new[] { pregunta }, estado: estadoCampania);
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
+
+    private static ParticipanteResuelto ParticipanteConClasificacionControl()
+    {
+        var pregunta = CrearPregunta("p_1", 1, 1);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(
+                1, "Gracias por participar.", clasificacionIntencionControl: true));
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
