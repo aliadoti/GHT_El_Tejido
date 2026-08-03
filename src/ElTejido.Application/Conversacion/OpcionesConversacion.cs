@@ -52,6 +52,18 @@ public sealed class OpcionesConversacion
     public int MaxCaracteresIntencionContinuar { get; set; } = 40;
 
     /// <summary>
+    /// P-27: kill-switch global del clasificador flexible de intenciones de control. Nace apagado;
+    /// los alias deterministas de salida no dependen de esta opción.
+    /// </summary>
+    public bool ClasificacionIntencionControl { get; set; }
+
+    /// <summary>
+    /// P-27: longitud máxima del texto normalizado elegible para clasificación flexible. Un valor
+    /// menor o igual a cero deshabilita la ruta; el orquestador decidirá la elegibilidad final.
+    /// </summary>
+    public int MaxCaracteresClasificacionIntencionControl { get; set; } = 160;
+
+    /// <summary>
     /// Frases con las que el participante expresa que ya esta conforme y quiere continuar a la siguiente
     /// pregunta (05 §4.4). Si se deja vacio, el orquestador usa <see cref="DetectorIntencionContinuar.FrasesPorDefecto"/>.
     /// </summary>

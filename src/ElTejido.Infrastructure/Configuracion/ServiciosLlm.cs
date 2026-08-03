@@ -23,6 +23,7 @@ public static class ServiciosLlm
         services.AddHttpClient<ILlmClient, LlmClientHttp>();
         services.AddScoped<ISegmentadorIdeas, SegmentadorIdeas>();
         services.AddScoped<IConsolidadorIdeas, ConsolidadorIdeas>();
+        services.AddScoped<IClasificadorIntencionControl, ClasificadorIntencionControl>();
         // I-20: el redactor solo da voz al acto que el servidor ya decidió; se registra siempre porque
         // su kill-switch y su respaldo viven en el llamador, no en la disponibilidad del servicio.
         services.AddScoped<IRedactorTurnoConversacional, RedactorTurnoConversacional>();
