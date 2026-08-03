@@ -49,6 +49,28 @@ public sealed class DetectorIntencionContinuar
         "no quiero mejorar",
     };
 
+    /// <summary>P-27: alias inequívocos para dejar solo la unidad activa.</summary>
+    public static readonly IReadOnlyList<string> FrasesFinalizarIdeaPorDefecto = new[]
+    {
+        "quiero parar aqui",
+        "quiero pasar a otra idea",
+        "pasar a otra idea",
+        "pasemos a otra idea",
+        "dejemos esta idea",
+        "dejar esta idea",
+    };
+
+    /// <summary>P-27: alias inequívocos para finalizar la participación actual.</summary>
+    public static readonly IReadOnlyList<string> FrasesFinalizarParticipacionPorDefecto = new[]
+    {
+        "stop now",
+        "quiero terminar por ahora",
+        "terminar por ahora",
+        "quiero parar por hoy",
+        "parar por hoy",
+        "finalizar participacion",
+    };
+
     /// <summary>
     /// P-24 — frases breves que piden acompañamiento sobre la propuesta vigente. El orquestador solo
     /// las interpreta en <c>pendienteConfirmacion</c>, por lo que no convierten una mejora con contenido

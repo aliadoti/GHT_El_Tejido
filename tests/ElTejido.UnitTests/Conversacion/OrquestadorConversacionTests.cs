@@ -76,6 +76,27 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("Quiero parar aquí")]
+    [InlineData("quiero pasar a otra idea")]
+    [InlineData("stop now")]
+    public async Task P27_AliasDeSalidaEnRepregunta_NoSeGuardaNiEvaluaComoAporte(string texto)
+    {
+        await _conversaciones.GuardarConversacionAsync(
+            DominioConversacion.Crear(
+                "conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", EstadoConversacion.Abierta,
+                EstadoMaquinaConversacion.EsperandoRepregunta, repreguntasUsadas: 1, Epoca.AddHours(24), null,
+                Epoca, fechaCierre: null),
+            CancellationToken.None);
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje(texto), CancellationToken.None);
+
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _respuestas.DidNotReceive().GuardarRespuestaAsync(Arg.Any<Respuesta>(), Arg.Any<CancellationToken>());
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero, Arg.Any<string>(), TipoEnvioMensaje.Cierre, Arg.Any<CancellationToken>(), Arg.Any<string?>());
+    }
+
     [Fact]
     public async Task P25_PrimerAporteSustantivo_SeEvaluaYRecibeCoachingSinConfirmacionRepetitiva()
     {
