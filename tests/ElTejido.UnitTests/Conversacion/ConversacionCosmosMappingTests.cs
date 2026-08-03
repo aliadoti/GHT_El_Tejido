@@ -103,4 +103,45 @@ public sealed class ConversacionCosmosMappingTests
         documento.EstadoMaquina.Should().Be("esperandoSeleccionIdea");
         documento.ToDomain().EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoSeleccionIdea);
     }
+
+    [Fact]
+    public void Conversacion_RoundTrip_ConservaAclaracionDeSalidaP27YDocumentoHistoricoQuedaSinPendiente()
+    {
+        var ahora = DateTimeOffset.UnixEpoch.AddHours(1);
+        var conversacion = DominioConversacion
+            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora)
+            .AvanzarA(EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
+            .ConIntencionControlPendiente(IntencionControlPendiente.Crear(1, ahora));
+        var documento = ConversacionCosmosDocument.FromDomain(conversacion);
+        var historico = new ConversacionCosmosDocument
+        {
+            Id = "conv_legacy",
+            CampaniaId = "c_1",
+            UsuarioId = "u_1",
+            PreguntaId = "p_1",
+            VentanaServicioVenceEn = ahora.AddHours(24),
+            FechaInicio = ahora,
+        };
+
+        documento.EstadoMaquina.Should().Be("esperandoConfirmacionSalida");
+        documento.IntencionControlPendiente.Should().NotBeNull();
+        documento.IntencionControlPendiente!.Tipo.Should().Be("aclararSalida");
+        documento.ToDomain().IntencionControlPendiente!.IntentosInvalidos.Should().Be(1);
+        documento.ToDomain().IntencionControlPendiente!.CreadoEn.Should().Be(ahora);
+        historico.ToDomain().IntencionControlPendiente.Should().BeNull();
+    }
+
+    [Fact]
+    public void Conversacion_AclaracionDeSalidaP27_SeLimpiaAlVolverARepreguntaOCerrar()
+    {
+        var ahora = DateTimeOffset.UnixEpoch.AddHours(1);
+        var esperandoSalida = DominioConversacion
+            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora)
+            .AvanzarA(EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
+            .ConIntencionControlPendiente(IntencionControlPendiente.Crear(0, ahora));
+
+        esperandoSalida.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta)
+            .IntencionControlPendiente.Should().BeNull();
+        esperandoSalida.Cerrar(ahora).IntencionControlPendiente.Should().BeNull();
+    }
 }

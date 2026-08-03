@@ -59,6 +59,9 @@ internal sealed class ConversacionCosmosDocument
     [JsonProperty("enrutamientoAporteId", NullValueHandling = NullValueHandling.Ignore)]
     public string? EnrutamientoAporteId { get; init; }
 
+    [JsonProperty("intencionControlPendiente", NullValueHandling = NullValueHandling.Ignore)]
+    public IntencionControlPendienteDocument? IntencionControlPendiente { get; init; }
+
     public static ConversacionCosmosDocument FromDomain(Conversacion conversacion)
         => new()
         {
@@ -81,6 +84,9 @@ internal sealed class ConversacionCosmosDocument
             CicloParticipacion = conversacion.CicloParticipacion,
             OrigenAporteMessageId = conversacion.OrigenAporteMessageId,
             EnrutamientoAporteId = conversacion.EnrutamientoAporteId,
+            IntencionControlPendiente = conversacion.IntencionControlPendiente is null
+                ? null
+                : IntencionControlPendienteDocument.FromDomain(conversacion.IntencionControlPendiente),
         };
 
     public Conversacion ToDomain()
@@ -100,7 +106,8 @@ internal sealed class ConversacionCosmosDocument
             CoachingIdeas?.ToDomain(),
             CicloParticipacion ?? 1,
             OrigenAporteMessageId,
-            EnrutamientoAporteId);
+            EnrutamientoAporteId,
+            IntencionControlPendiente?.ToDomain());
 
     private static string MapearMaquina(EstadoMaquinaConversacion estado)
         => estado switch
@@ -109,6 +116,7 @@ internal sealed class ConversacionCosmosDocument
             EstadoMaquinaConversacion.Evaluando => "evaluando",
             EstadoMaquinaConversacion.EsperandoRepregunta => "esperandoRepregunta",
             EstadoMaquinaConversacion.EsperandoSeleccionIdea => "esperandoSeleccionIdea",
+            EstadoMaquinaConversacion.EsperandoConfirmacionSalida => "esperandoConfirmacionSalida",
             EstadoMaquinaConversacion.Cerrada => "cerrada",
             _ => throw new InvalidOperationException($"Estado de maquina no soportado: {estado}."),
         };
@@ -120,9 +128,40 @@ internal sealed class ConversacionCosmosDocument
             "evaluando" => EstadoMaquinaConversacion.Evaluando,
             "esperandoRepregunta" => EstadoMaquinaConversacion.EsperandoRepregunta,
             "esperandoSeleccionIdea" => EstadoMaquinaConversacion.EsperandoSeleccionIdea,
+            "esperandoConfirmacionSalida" => EstadoMaquinaConversacion.EsperandoConfirmacionSalida,
             "cerrada" => EstadoMaquinaConversacion.Cerrada,
             _ => throw new InvalidOperationException($"Estado de maquina no soportado en Cosmos: {estado}."),
         };
+
+    internal sealed class IntencionControlPendienteDocument
+    {
+        [JsonProperty("tipo")]
+        public string Tipo { get; init; } = "aclararSalida";
+
+        [JsonProperty("intentosInvalidos")]
+        public int IntentosInvalidos { get; init; }
+
+        [JsonProperty("creadoEn")]
+        public DateTimeOffset CreadoEn { get; init; }
+
+        public static IntencionControlPendienteDocument FromDomain(Domain.Conversaciones.IntencionControlPendiente pendiente)
+            => new()
+            {
+                Tipo = pendiente.Tipo,
+                IntentosInvalidos = pendiente.IntentosInvalidos,
+                CreadoEn = pendiente.CreadoEn,
+            };
+
+        public Domain.Conversaciones.IntencionControlPendiente ToDomain()
+        {
+            if (!string.Equals(Tipo, "aclararSalida", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Tipo de intención de control pendiente no soportado en Cosmos: {Tipo}.");
+            }
+
+            return Domain.Conversaciones.IntencionControlPendiente.Crear(IntentosInvalidos, CreadoEn);
+        }
+    }
 
     internal sealed class CoachingIdeasDocument
     {

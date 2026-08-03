@@ -15,7 +15,8 @@ public sealed class ConfigConversacional
         string? numeroWhatsAppSaliente,
         bool coachingSecuencialIdeas,
         int? minutosCoachingPorIdea,
-        bool participacionContinua)
+        bool participacionContinua,
+        bool clasificacionIntencionControl)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -28,6 +29,7 @@ public sealed class ConfigConversacional
         CoachingSecuencialIdeas = coachingSecuencialIdeas;
         MinutosCoachingPorIdea = minutosCoachingPorIdea;
         ParticipacionContinua = participacionContinua;
+        ClasificacionIntencionControl = clasificacionIntencionControl;
     }
 
     public int MaxRepreguntas { get; }
@@ -92,6 +94,12 @@ public sealed class ConfigConversacional
     /// </summary>
     public bool ParticipacionContinua { get; }
 
+    /// <summary>
+    /// P-27: permite el clasificador LLM de intenciones de control para esta campaña. Nace apagado;
+    /// el kill-switch global y la política server-side se incorporan en cortes posteriores.
+    /// </summary>
+    public bool ClasificacionIntencionControl { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
@@ -103,7 +111,8 @@ public sealed class ConfigConversacional
         string? numeroWhatsAppSaliente = null,
         bool coachingSecuencialIdeas = false,
         int? minutosCoachingPorIdea = null,
-        bool participacionContinua = false)
+        bool participacionContinua = false,
+        bool clasificacionIntencionControl = false)
     {
         if (maxRepreguntas < 0)
         {
@@ -130,6 +139,7 @@ public sealed class ConfigConversacional
             numeroWhatsAppSaliente,
             coachingSecuencialIdeas,
             minutosCoachingPorIdea,
-            participacionContinua);
+            participacionContinua,
+            clasificacionIntencionControl);
     }
 }

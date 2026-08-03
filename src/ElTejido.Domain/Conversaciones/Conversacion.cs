@@ -29,7 +29,8 @@ public sealed class Conversacion
         CoachingIdeas? coachingIdeas,
         int cicloParticipacion,
         string? origenAporteMessageId,
-        string? enrutamientoAporteId)
+        string? enrutamientoAporteId,
+        IntencionControlPendiente? intencionControlPendiente)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -47,6 +48,7 @@ public sealed class Conversacion
         CicloParticipacion = cicloParticipacion;
         OrigenAporteMessageId = origenAporteMessageId;
         EnrutamientoAporteId = enrutamientoAporteId;
+        IntencionControlPendiente = intencionControlPendiente;
     }
 
     public string Id { get; }
@@ -85,6 +87,9 @@ public sealed class Conversacion
     /// <summary>P-26: id del EnrutamientoAporte que resolvio la seleccion de campania/pregunta, para auditoria.</summary>
     public string? EnrutamientoAporteId { get; }
 
+    /// <summary>P-27: aclaración pendiente de salida; ausente conserva el flujo histórico.</summary>
+    public IntencionControlPendiente? IntencionControlPendiente { get; }
+
     /// <summary>¿La ventana de servicio de 24h sigue abierta? Decide texto libre vs plantilla (05 §2.2).</summary>
     public bool VentanaAbierta(DateTimeOffset ahora) => ahora < VentanaServicioVenceEn;
 
@@ -104,7 +109,8 @@ public sealed class Conversacion
         CoachingIdeas? coachingIdeas = null,
         int cicloParticipacion = 1,
         string? origenAporteMessageId = null,
-        string? enrutamientoAporteId = null)
+        string? enrutamientoAporteId = null,
+        IntencionControlPendiente? intencionControlPendiente = null)
     {
         if (repreguntasUsadas < 0)
         {
@@ -118,6 +124,14 @@ public sealed class Conversacion
             throw new DomainValidationException(
                 "CICLO_PARTICIPACION_INVALIDO",
                 "El ciclo de participacion debe ser mayor o igual a 1.");
+        }
+
+        if (intencionControlPendiente is not null
+            && estadoMaquina != EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
+        {
+            throw new DomainValidationException(
+                "INTENCION_CONTROL_PENDIENTE_INVALIDA",
+                "La aclaración de salida solo puede existir mientras se espera su confirmación.");
         }
 
         return new Conversacion(
@@ -136,7 +150,8 @@ public sealed class Conversacion
             coachingIdeas,
             cicloParticipacion,
             string.IsNullOrWhiteSpace(origenAporteMessageId) ? null : origenAporteMessageId.Trim(),
-            string.IsNullOrWhiteSpace(enrutamientoAporteId) ? null : enrutamientoAporteId.Trim());
+            string.IsNullOrWhiteSpace(enrutamientoAporteId) ? null : enrutamientoAporteId.Trim(),
+            intencionControlPendiente);
     }
 
     /// <summary>Inicia un hilo nuevo (esperando la respuesta inicial), con la ventana abierta desde <paramref name="ahora"/>.</summary>
@@ -167,7 +182,8 @@ public sealed class Conversacion
             coachingIdeas: null,
             cicloParticipacion: cicloParticipacion,
             origenAporteMessageId: origenAporteMessageId,
-            enrutamientoAporteId: enrutamientoAporteId);
+            enrutamientoAporteId: enrutamientoAporteId,
+            intencionControlPendiente: null);
 
     /// <summary>Renueva la ventana de servicio desde el ultimo mensaje entrante (05 §2.2).</summary>
     public Conversacion RegistrarEntrante(DateTimeOffset timestampEntrante)
@@ -178,6 +194,9 @@ public sealed class Conversacion
 
     public Conversacion ConCoachingIdeas(CoachingIdeas coachingIdeas)
         => With(coachingIdeas: coachingIdeas, reemplazarCoaching: true);
+
+    public Conversacion ConIntencionControlPendiente(IntencionControlPendiente pendiente)
+        => With(intencionControlPendiente: pendiente, reemplazarIntencionControlPendiente: true);
 
     /// <summary>Cuenta una repregunta enviada y pasa a esperar la respuesta del usuario.</summary>
     public Conversacion RegistrarRepregunta()
@@ -212,7 +231,8 @@ public sealed class Conversacion
             CoachingIdeas,
             CicloParticipacion,
             OrigenAporteMessageId,
-            EnrutamientoAporteId);
+            EnrutamientoAporteId,
+            intencionControlPendiente: null);
 
     private Conversacion With(
         EstadoConversacion? estado = null,
@@ -221,15 +241,25 @@ public sealed class Conversacion
         DateTimeOffset? ventana = null,
         DateTimeOffset? fechaCierre = null,
         CoachingIdeas? coachingIdeas = null,
-        bool reemplazarCoaching = false)
-        => new(
+        bool reemplazarCoaching = false,
+        IntencionControlPendiente? intencionControlPendiente = null,
+        bool reemplazarIntencionControlPendiente = false)
+    {
+        var maquinaDestino = estadoMaquina ?? EstadoMaquina;
+        var pendienteDestino = reemplazarIntencionControlPendiente
+            ? intencionControlPendiente
+            : maquinaDestino == EstadoMaquinaConversacion.EsperandoConfirmacionSalida
+                ? IntencionControlPendiente
+                : null;
+
+        return new Conversacion(
             Id,
             CampaniaId,
             UsuarioId,
             PreguntaId,
             Canal,
             estado ?? Estado,
-            estadoMaquina ?? EstadoMaquina,
+            maquinaDestino,
             repreguntas ?? RepreguntasUsadas,
             ventana ?? VentanaServicioVenceEn,
             CorrelationId,
@@ -238,5 +268,7 @@ public sealed class Conversacion
             reemplazarCoaching ? coachingIdeas : CoachingIdeas,
             CicloParticipacion,
             OrigenAporteMessageId,
-            EnrutamientoAporteId);
+            EnrutamientoAporteId,
+            pendienteDestino);
+    }
 }

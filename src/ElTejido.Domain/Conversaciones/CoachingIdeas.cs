@@ -164,4 +164,5 @@ public enum MotivoFinalizacionIdea
     Tiempo,
     Fallback,
     Desactivacion,
+    FinParticipacion,
 }

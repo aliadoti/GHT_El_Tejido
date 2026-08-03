@@ -199,6 +199,62 @@ public sealed class AdminFase4EndpointsIntegrationTests
     }
 
     [Fact]
+    public async Task Campanias_ClasificacionIntencionControlP27_HaceRoundTripEnCrudYDuplicado()
+    {
+        using var fabrica = Construir(
+            new RepositorioUsuariosMemoria(),
+            new RepositorioCampaniasMemoria(),
+            new RepositorioParticipantesMemoria());
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/campanias",
+            new
+            {
+                nombre = "Convencion 2026",
+                descripcion = "Ideas",
+                objetivo = "Capturar ideas",
+                rubricaRef = "r_general",
+                configLLMRef = "llm_default",
+                configConversacional = new { maxRepreguntas = 1, mensajeCierre = "Gracias." },
+            });
+        creacion.StatusCode.Should().Be(HttpStatusCode.Created);
+        var creada = await creacion.Content.ReadAsStringAsync();
+        creada.Should().Contain("\"clasificacionIntencionControl\":false");
+        var campaniaId = await LeerStringAsync(creacion, "id");
+
+        using var edicion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Put,
+            $"/api/admin/campanias/{campaniaId}",
+            new
+            {
+                configConversacional = new
+                {
+                    maxRepreguntas = 1,
+                    mensajeCierre = "Gracias.",
+                    clasificacionIntencionControl = true,
+                },
+            });
+        edicion.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await edicion.Content.ReadAsStringAsync()).Should().Contain("\"clasificacionIntencionControl\":true");
+
+        using var detalle = await client.GetAsync($"/api/admin/campanias/{campaniaId}");
+        detalle.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await detalle.Content.ReadAsStringAsync()).Should().Contain("\"clasificacionIntencionControl\":true");
+
+        using var duplicado = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/admin/campanias/{campaniaId}/duplicar",
+            new { });
+        duplicado.IsSuccessStatusCode.Should().BeTrue();
+        (await duplicado.Content.ReadAsStringAsync()).Should().Contain("\"clasificacionIntencionControl\":true");
+    }
+
+    [Fact]
     public async Task Configuracion_AdminVersionaPromptYConfigLlmNoExponeApiKey()
     {
         using var fabrica = Construir(

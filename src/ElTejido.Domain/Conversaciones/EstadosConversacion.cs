@@ -23,6 +23,10 @@ public enum EstadoMaquinaConversacion
     // transitorio: al resolverse —o ante una respuesta que no es un numero valido— vuelve a
     // esperandoRepregunta.
     EsperandoSeleccionIdea,
+
+    // P-27 (03 §3.6, aditivo al final): el servidor presentó las opciones deterministas 1/2/3
+    // para aclarar si se continúa, se deja la idea o se termina la participación.
+    EsperandoConfirmacionSalida,
 }
 
 /// <summary>Direccion de un mensaje del hilo (03 §3.7).</summary>

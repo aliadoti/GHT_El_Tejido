@@ -398,6 +398,10 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("participacionContinua")]
         public bool ParticipacionContinua { get; init; }
 
+        // P-27 (aditivo, 03 §3.3): documento viejo sin el campo deserializa false = sin clasificación flexible.
+        [JsonProperty("clasificacionIntencionControl")]
+        public bool ClasificacionIntencionControl { get; init; }
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -413,6 +417,7 @@ internal sealed class CampaniaCosmosDocument
                 MinutosInactividadSesion = config.MinutosInactividadSesion,
                 NumeroWhatsAppSaliente = config.NumeroWhatsAppSaliente,
                 ParticipacionContinua = config.ParticipacionContinua,
+                ClasificacionIntencionControl = config.ClasificacionIntencionControl,
             };
         }
 
@@ -421,7 +426,7 @@ internal sealed class CampaniaCosmosDocument
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
                 MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
                 MinutosInactividadSesion, NumeroWhatsAppSaliente, CoachingSecuencialIdeas, MinutosCoachingPorIdea,
-                ParticipacionContinua);
+                ParticipacionContinua, ClasificacionIntencionControl);
         }
     }
 
