@@ -1063,6 +1063,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var determinista = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva, texto);
         if (determinista is DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion)
         {
+            await RegistrarClasificacionIntencionControlAsync(
+                usuario, estadoPrevio, "determinista", "clasificada", determinista, null, "ninguno", ahora,
+                cancellationToken);
             return determinista;
         }
 
@@ -1090,9 +1093,61 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             new ContextoClasificacionIntencionControl(
                 estadoPrevio, actoPrevio, hayUnidadActiva, quedanUnidadesPendientes, null, texto, configLlm),
             cancellationToken);
-        return resultado is ResultadoClasificacionIntencionControl.Exito exito
-            ? _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva, texto, exito.Intencion)
-            : DecisionIntencionControl.Aportar;
+        if (resultado is ResultadoClasificacionIntencionControl.Exito exito)
+        {
+            var decision = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva, texto, exito.Intencion);
+            await RegistrarClasificacionIntencionControlAsync(
+                usuario,
+                estadoPrevio,
+                "llm",
+                decision == DecisionIntencionControl.Ambigua ? "ambigua" : "clasificada",
+                decision,
+                exito.Uso,
+                "ninguno",
+                ahora,
+                cancellationToken);
+            return decision;
+        }
+
+        var fallback = (ResultadoClasificacionIntencionControl.Fallback)resultado;
+        await RegistrarClasificacionIntencionControlAsync(
+            usuario, estadoPrevio, "llm", "fallback", null, fallback.Uso, fallback.Motivo, ahora,
+            cancellationToken);
+        return DecisionIntencionControl.Aportar;
+    }
+
+    private Task RegistrarClasificacionIntencionControlAsync(
+        Usuario usuario,
+        EstadoMaquinaConversacion estado,
+        string origen,
+        string resultado,
+        DecisionIntencionControl? intencion,
+        UsoTokensLlm? uso,
+        string motivo,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var valorIntencion = intencion switch
+        {
+            DecisionIntencionControl.Aportar => "aportar",
+            DecisionIntencionControl.FinalizarIdea => "finalizarIdea",
+            DecisionIntencionControl.FinalizarParticipacion => "finalizarParticipacion",
+            DecisionIntencionControl.Ambigua => "ninguna",
+            _ => "ninguna",
+        };
+        var detalle = FormattableString.Invariant(
+            $"origen:{origen};resultado:{resultado};intencion:{valorIntencion};estado:{MinusculaInicial(estado.ToString())};promptTokens:{uso?.PromptTokens ?? 0};completionTokens:{uso?.CompletionTokens ?? 0};motivo:{motivo}");
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.ClasificacionIntencionControl,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                resultado,
+                detalle,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
     }
 
     /// <summary>

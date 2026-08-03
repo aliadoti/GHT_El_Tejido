@@ -58,4 +58,8 @@ public enum TipoEventoSeguridad
     // ids internos. Nunca incluye el texto del participante ni nombres de campania. Aditivo al final
     // para preservar los valores existentes (03 §3.15).
     EnrutamientoParticipacion,
+
+    // P-27 (10 §6.2): clasificación de intención de control. Solo resultado técnico, intención
+    // validada, estado y tokens; nunca el texto del participante ni la salida cruda del modelo.
+    ClasificacionIntencionControl,
 }

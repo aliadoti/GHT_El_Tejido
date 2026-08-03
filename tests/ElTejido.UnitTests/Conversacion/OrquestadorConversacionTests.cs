@@ -116,6 +116,12 @@ public sealed class OrquestadorConversacionTests
         await _gateway.Received(1).EnviarTextoAsync(
             Numero, Arg.Is<string>(texto => texto.Contains("Responde 1", StringComparison.Ordinal)),
             TipoEnvioMensaje.Repregunta, Arg.Any<CancellationToken>(), Arg.Any<string?>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ClasificacionIntencionControl
+                && log.Resultado == "ambigua"
+                && log.Detalle!.Contains("intencion:ninguna", StringComparison.Ordinal)
+                && !log.Detalle.Contains("No sé qué hacer", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
