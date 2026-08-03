@@ -938,3 +938,39 @@
   defecto y rollback sin borrar datos. Los alias deterministas permanecen porque corrigen el bug.
   Implementación planificada en cinco cortes según P-27.
 - Spec: `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`.
+
+### despertar-proactivo-p28 - Despertar proactivo / conversación iniciada por el participante
+- Fecha: 2026-07-31 - Agente/Rol: Analista/Arquitecto - Commit: n/a (solo especificación)
+- Contexto: hoy el sistema no responde a un mensaje entrante si no hay conversación activa (primer contacto o conversación cerrada/expirada). Reunión con Felipe Arango (GHT) 2026-07-31; REQ-012. REQ §12/§26.3, ARQ conversación. Spec P-28.
+- Decision:
+  - Un mensaje entrante de un participante `activo`/`participante`/asociado a campaña `activa` siempre recibe respuesta; el disparo lo hace el participante, nunca el sistema por su cuenta.
+  - Sin flujo activo y con kill-switch `Conversacion:DespertarProactivoHabilitado=true`, el servidor resuelve alcance con P-26 y envía un saludo de reactivación (LLM con fallback determinista) que ofrece continuar una idea previa (P-30) o crear una nueva.
+  - Respeta la ventana de servicio de 24 h de WhatsApp; no fuerza plantillas HSM para despertar (eso es P-08). El LLM solo redacta; nunca decide acceso, campaña ni estado.
+  - No introduce contenedores nuevos; `promptRefs.reactivacion` es opcional; telemetría sin PII.
+- Alternativa(s) descartada(s): permitir envío proactivo del sistema fuera de ventana (requiere HSM, es P-08); dejar que el LLM decida acceso/campaña.
+- Impacto / reversibilidad: aditivo; kill-switch OFF conserva el comportamiento actual. Habilita en la práctica las campañas continuas (P-26).
+- Spec: `Iniciativas/P-28_Despertar_Proactivo_Coach.md`.
+
+### cierre-por-tiempo-p29 - Cierre conversacional por tiempo (determinístico + no determinístico)
+- Fecha: 2026-07-31 - Agente/Rol: Analista/Arquitecto - Commit: n/a (solo especificación)
+- Contexto: GHT pidió que el cierre por inactividad sea humano y deje la idea reanudable. Reunión 2026-07-31; REQ-013. Extiende I-17 §7 e I-07. Spec P-29.
+- Decision:
+  - **Reconciliado 2026-08-03 con I-17 ya implementado (DONE local):** P-29 NO crea temporizador ni campo de umbral nuevos. Reutiliza el disparo por inactividad existente (`ServicioExpiracionConversaciones`) con el umbral existente `ConfigConversacional.MinutosInactividadSesion` (`int?`, null hereda `Conversacion:MinutosInactividadSesion`, ~5 min de referencia).
+  - El mensaje de pausa lo redacta un LLM (I-20) con fallback determinista; se envía UNO solo y solo dentro de la ventana de 24 h (si venció, se omite el envío libre pero el cierre se registra igual).
+  - La conversación queda `cerrada` con `motivoCierre="inactividad"`, **valor aditivo** al campo `motivoCierre` ya existente (hoy `"umbral"`, `03`); histórico conserva su valor. No se evalúa una versión no confirmada por cerrar (respeta I-19).
+  - Kill-switch global `Conversacion:CierrePorTiempoHabilitado` (default false) gobierna **solo el mensaje de pausa**; apagado, el cierre por inactividad de I-17 sigue operando sin el aviso humano.
+- Alternativa(s) descartada(s): evaluar forzadamente la versión incompleta al cerrar; reenviar recordatorios; forzar HSM fuera de ventana (P-08).
+- Impacto / reversibilidad: aditivo; kill-switch OFF vuelve al cierre de I-17; `motivoCierre` legible por flujos previos. Se coordina con P-28 (despertar) y P-30 (retomar).
+- Spec: `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md`.
+
+### retomar-ideas-p30 - Retomar ideas del pasado sin importar el estado
+- Fecha: 2026-07-31 - Agente/Rol: Analista/Arquitecto - Commit: n/a (solo especificación)
+- Contexto: el participante quiere volver a una idea ya aportada/evaluada del pasado y seguir trabajándola, sin importar su estado. Reunión 2026-07-31; REQ-014. Extiende la reapertura de I-19 y P-26 §5.8. Spec P-30.
+- Decision:
+  - El participante puede listar y elegir cualquiera de sus ideas previas (madura, incubación, cerrada, rechazada) dentro del alcance de campaña/pregunta resuelto por P-26; selección determinista por número o título exacto no ambiguo.
+  - La reapertura conserva el mismo `ideaId` (I-19); la nueva versión completa se re-evalúa; una idea madura reabierta suspende su curaduría hasta cerrar la nueva evaluación. Nunca mezcla ideas de otra campaña/pregunta ni de otros participantes.
+  - Búsqueda semántica/vectorial por lenguaje natural queda FUERA de alcance (fase posterior). Si el indexado actual no soporta la consulta por participante/alcance sin filtro de estado, se añade política de índice aditiva.
+  - Kill-switch global `Conversacion:RetomarIdeasHabilitado` (default false); apagado conserva la reapertura vigente de I-19/P-26.
+- Alternativa(s) descartada(s): búsqueda semántica ahora (requiere base vectorial); permitir cruzar campañas/preguntas sin resolver alcance.
+- Impacto / reversibilidad: aditivo; kill-switch OFF conserva I-19/P-26. Se coordina con P-28 (al reactivar, ofrecer continuar previa o crear nueva).
+- Spec: `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`.

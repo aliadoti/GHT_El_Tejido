@@ -4,6 +4,69 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-02 por Codex (Arquitecto/Backend/Frontend/AppSec/SDET): **P-27 corte 4 de 5 —
+  aclaración 1/2/3, rollback y portal DONE local.** Ante `ambigua`, el servidor persiste
+  `esperandoConfirmacionSalida` sin texto/PII, muestra el menú determinista y nunca llama al
+  redactor/evaluador. `1` vuelve a repregunta; `2` deja la idea; `3` cierra la participación; el
+  primer valor inválido repite el menú y el segundo vuelve seguro al aporte. Si cualquiera de los
+  dos gates se apaga con una aclaración pendiente, se limpia y restaura `esperandoRepregunta` sin perder
+  la idea. Campañas incluye el opt-in accesible, ayuda, aviso de rollback y edición solo para admin.
+  **Verificado:** build Release `-warnaserror` 0/0, **687** pruebas backend no calibración (622 unitarias
+  + 65 de integración), portal **33/33**, Prettier, TypeScript, build de producción, `dotnet format` y
+  `git diff --check` limpios. Commit local `ed76ccc`; sin push, despliegue ni configuración remota. **Próximo: P-27 corte 5 —
+  cupos y telemetría, E2E simulada, banco de variaciones, QAS y cierre documental.**
+- Ultima actualizacion: 2026-08-02 por Codex (Arquitecto/Backend/AppSec/SDET): **P-27 corte 3 de 5 —
+  política server-side e integración DONE local.** `PoliticaIntencionControl` conserva el control de
+  las transiciones en el servidor: los alias inequívocos “quiero parar aquí”, “quiero pasar a otra
+  idea” y “stop now” funcionan aunque los flags estén OFF; el clasificador solo propone y se consulta
+  con ambos opt-ins, estado elegible, ConfigLLM activa y cupos disponibles. La política se aplica
+  después de selección, rechazo y reapertura, y antes de consolidar/evaluar en hilo histórico, I-19/P-25
+  e I-18. El mensaje queda auditado sin aporte, versión, evaluación ni Markdown nuevo; finalizar una
+  idea conserva la versión previa y avanza una vez, y finalizar participación cierra la cola/hilo sin
+  abrir otra pregunta. Ambigüedad y menú 1/2/3 quedan para corte 4. **Verificado:** build Release
+  `-warnaserror` 0/0, **681** pruebas backend no calibración (616 unitarias + 65 de integración; +10),
+  `dotnet format` y `git diff --check` limpios. Commit local `73d22dd`; sin push, despliegue ni configuración remota.
+  **Próximo: P-27 corte 4 — aclaración 1/2/3, rollback de gates y portal accesible.**
+- Ultima actualizacion: 2026-08-02 por Codex (Arquitecto/Backend/AppSec/SDET): **P-27 corte 2 de 5 —
+  clasificador LLM aislado DONE local.** Se añadió `IClasificadorIntencionControl` con contexto mínimo
+  sin rúbrica, ideas, campañas, preguntas ni datos de terceros; el adaptador reutiliza `ILlmClient` y
+  ConfigLLM, delimita el mensaje como dato no confiable y solo admite exactamente
+  `{"intencion":"aportar|finalizarIdea|finalizarParticipacion|ambigua"}`. JSON inválido, campos extra,
+  valor desconocido, texto no elegible, configuración ausente o fallo/timeout degradan a fallback sin
+  cerrar nada; la cancelación se propaga. El kill-switch global nace OFF y el componente **todavía no se
+  invoca desde el orquestador**. **Verificado:** build Release `-warnaserror` 0/0, **671** pruebas
+  backend no calibración (606 unitarias + 65 de integración; +13), `dotnet format` y `git diff --check`
+  limpios. Commit local `708f473`; sin push, despliegue ni configuración remota. **Próximo: P-27 corte
+  3 — política server-side e integración antes de consolidar/evaluar.**
+- Ultima actualizacion: 2026-08-02 por Codex (Arquitecto/Backend/AppSec/SDET): **P-27 corte 1 de 5 —
+  dominio y contratos DONE local.** Cambio exclusivamente aditivo: (1) opt-in de campaña
+  `configConversacional.clasificacionIntencionControl`, default `false`, con POST/GET/PUT/duplicado y
+  persistencia Cosmos; (2) estado `esperandoConfirmacionSalida` y objeto sin texto ni PII
+  `intencionControlPendiente` (`tipo=aclararSalida`, intentos inválidos, fecha), ambos serializables y
+  legibles con documentos históricos; y (3) motivo `finParticipacion` al final del enum de cola.
+  Todavía no hay clasificador, llamada LLM, cambio de orquestación, portal ni activación. **Verificado:**
+  build Release `-warnaserror` 0/0, **658** pruebas backend no calibración (593 unitarias + 65 de
+  integración; +4), `dotnet format --verify-no-changes` limpio. Commit local `255c4cb`; sin push,
+  despliegue ni configuración remota. **Próximo: P-27 corte 2 — puerto/clasificador LLM estricto y
+  fallback, sin integrarlo aún.**
+- Ultima actualizacion: 2026-07-31 (Arquitecto/Analista): **`P-28`, `P-29` y `P-30` ESPECIFICADAS
+  — código pendiente.** Provienen de la reunión con Felipe Arango (GHT) del 2026-07-31 y de los
+  requerimientos de negocio REQ-012/013/014. **`P-28` Despertar proactivo del coach:** el participante
+  inicia o reactiva la conversación aunque no haya flujo activo (primer contacto y reanudar tras
+  timeout); prerrequisito real de las campañas continuas (P-26); kill-switch
+  `Conversacion:DespertarProactivoHabilitado` OFF. **`P-29` Cierre conversacional por tiempo:** **reutiliza** el
+  cierre por inactividad ya implementado en I-17 §7 (`ServicioExpiracionConversaciones` + umbral
+  `MinutosInactividadSesion`) y solo añade el mensaje de pausa por LLM con fallback y el valor aditivo
+  `motivoCierre="inactividad"` (junto al `"umbral"` existente) que deja la idea reanudable; kill-switch
+  `Conversacion:CierrePorTiempoHabilitado` OFF gobierna solo el aviso humano. **(Reconciliado 2026-08-03:
+  no inventa campos de umbral; usa los de I-17.)** **`P-30` Retomar ideas del pasado:**
+  el participante retoma cualquier idea previa sin importar el estado con lista determinista y reapertura
+  I-19 (mismo `ideaId`); búsqueda semántica/vectorial fuera de alcance; kill-switch
+  `Conversacion:RetomarIdeasHabilitado` OFF. Los tres son **aditivos, con defaults seguros** y se
+  coordinan (cierre → despertar → retomar). Specs:
+  `Iniciativas/P-28_Despertar_Proactivo_Coach.md`, `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md`,
+  `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`. **Orden sugerido:** entran después de P-27, sin alterar
+  su prioridad. Sin código, push ni cambio remoto en esta entrada.
 - Ultima actualizacion: 2026-07-31 por Claude (Fable 5, Arquitecto/Backend/AppSec/SDET): **`P-26`
   COMPLETA local — 6/6 cortes.** El corte 6 cerró la iniciativa con: (1) **observabilidad §10** —
   el evento `enrutamientoParticipacion` suma las acciones `cicloNuevo` y `reapertura` (emitidas por
@@ -447,15 +510,12 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`P-27` corte 1 de 5 — dominio y contratos (clasificación flexible de intenciones de
-  control).** P-26 quedó COMPLETA local, así que el backlog rota aquí. Leer
-  `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
-  `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Añadir con **defaults OFF**: flag de campaña
-  `clasificacionIntencionControl`, estado aditivo `esperandoConfirmacionSalida` y el objeto
-  `intencionControlPendiente`, el motivo de finalización `finParticipacion`, DTO/API y round-trip
-  Cosmos. **En este corte no conectar todavía el clasificador al orquestador.** Recordar que P-27
-  corrige un bug confirmado de I-18 (alias deterministas de salida) y debe quedar lista **antes** de
-  activar I-18/P-26 en UAT o producción.
+- [ ] **`P-27` corte 5 de 5 — cupos, telemetría, E2E simulada, banco de variaciones, QAS y cierre.**
+  Leer `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
+  `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Contar la clasificación para los cupos y la
+  ventana P-26, emitir `clasificacionIntencionControl` sin texto/PII, cubrir webhook→coaching→salida
+  en simulación, variaciones español/inglés/mixtas, QAS en lenguaje simple y cerrar documentación.
+  Mantener ambos gates OFF y no desplegar ni cambiar configuración remota.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 654: 590 unit + 64 integración; portal
   30/30; format y diff limpios) P-26 corte 6 de 6 — observabilidad, E2E simulada, QA y cierre.**
   Acciones `cicloNuevo`/`reapertura` y `latenciaMs` completan las métricas §10; E2E del criterio 16
@@ -488,11 +548,23 @@
   (ausente = ciclo 1); tipo `EnrutamientoAporte` + puerto y adaptadores memoria/Cosmos con upsert
   idempotente en la partición `routing:<usuarioId>`. Sin cambios en webhook, orquestador ni portal.
   Ver "Estado global" arriba.
-- [ ] **Backlog siguiente confirmado: P-27 corte 1 de 5 — dominio y contratos.** Solo después de
-  cerrar P-26, leer `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
-  `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Añadir flag de campaña OFF, estado/objeto de
-  aclaración pendiente, motivo `finParticipacion`, DTO/API y round-trip Cosmos. En ese corte no
-  conectar todavía el clasificador al orquestador.
+- [x] **(HECHO 2026-08-02, Codex — backend verde 658: 593 unit + 65 integración; build Release y
+  format limpios) P-27 corte 1 de 5 — dominio y contratos.** Opt-in de campaña OFF y round-trip
+  Cosmos/API/duplicado; estado `esperandoConfirmacionSalida`, objeto pendiente sin texto y motivo
+  `finParticipacion`, todos aditivos y con compatibilidad histórica. Sin clasificador ni cambios en el
+  orquestador. Siguiente: corte 2, puerto y clasificador LLM estricto.
+- [x] **(HECHO 2026-08-02, Codex — backend verde 671: 606 unit + 65 integración; build Release y
+  format limpios) P-27 corte 2 de 5 — clasificador LLM aislado.** Puerto y salida cerrada, JSON
+  estrictamente validado, datos delimitados, límite de longitud y fallback seguro. Sin invocación desde
+  orquestador ni cambio de flujo. Siguiente: corte 3, política e integración server-side.
+- [x] **(HECHO 2026-08-02, Codex — backend verde 681: 616 unit + 65 integración; build Release y
+  format limpios) P-27 corte 3 de 5 — política e integración server-side.** Alias de salida y candidato
+  LLM validado por el servidor antes de consolidar/evaluar en hilo simple, I-19/P-25 e I-18; sin aporte,
+  versión, evaluación ni Markdown nuevo al salir. Siguiente: corte 4, aclaración 1/2/3 y portal.
+- [x] **(HECHO 2026-08-02, Codex — backend verde 687: 622 unit + 65 integración; portal 33/33,
+  prettier/tsc/build limpios) P-27 corte 4 de 5 — aclaración, rollback y portal.** Menú persistido
+  1/2/3, un único reintento inválido, restauración segura al apagar gates y opt-in accesible por campaña;
+  admin edita y visor solo lee. Siguiente: corte 5, cupos/telemetría/E2E/variaciones/QAS/cierre.
 - [ ] **Validar operativamente I-19/I-20/P-24/P-25 antes de desplegar.** Requiere humano y presupuesto:
   corrido D5 real contra staging con el golden set, UAT de idea única y varias ideas, y revisión de
   costo/latencia para consolidación, evaluación y redacción. Comprobar especialmente que “vamos a
@@ -679,7 +751,7 @@
 | P-24 | Evaluación implícita al solicitar mejora | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 579/579 verde | Una petición corta de mejorar una propuesta confirma implícitamente la versión completa, la evalúa y abre coaching bajo umbral en hilo simple y cola multi-idea. No crea aporte/version nueva ni reduce `MaxRepreguntas`; lista configurable y auditoría diferenciada. |
 | P-25 | Coaching directo sin confirmación repetitiva | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 583/583 verde | Cada aporte sustantivo se consolida y evalúa completo en el mismo turno; solo una ambigüedad real pide aclaración. Hilo simple y cola multi-idea cubiertos; rollback global disponible. |
 | P-26 | Participación continua y selección de campaña/pregunta | ESPECIFICADA; código 0/6 | sin commit aún | verificación documental pendiente de cierre | Flag por campaña default OFF, aporte raíz auditable, afinidad y selección 24 h, ciclos independientes y cupos móviles; próximo corte: dominio/contratos. |
-| P-27 | Clasificación flexible de intenciones de control | ESPECIFICADA; código 0/5 | sin commit | validación documental | Alias deterministas corrigen el bug; clasificador LLM opcional propone una intención tipada y el servidor ejecuta. Flags OFF, aclaración 1/2/3, cupos/telemetría/portal y rollback definidos. Va después de P-26. |
+| P-27 | Clasificación flexible de intenciones de control | Cortes 1–4/5 DONE local | `255c4cb`, `708f473`, `73d22dd`, `ed76ccc` | backend 687/687 + portal 33/33, build/format verdes | Contratos, clasificador, política, menú persistido, rollback y portal accesible. Siguiente: cupos, telemetría, E2E, variaciones, QAS y cierre. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -973,3 +1045,30 @@
   ids/estado/cola/cierre siempre server-side. Se sincronizaron contratos `03/04/05/08/10/11/13`,
   Reglas, Supuestos, índice, TODO, QAS y prompt de continuidad. Sin cambios de código ni build/test.
   Orden: completar P-26 y luego P-27 corte 1 de 5; sin push, despliegue ni configuración remota.
+- 2026-08-02 - Codex - **P-27 corte 1/5 DONE local: dominio y contratos.** Rol:
+  Arquitecto/Backend/AppSec/SDET. Se añadió el opt-in por campaña OFF con round-trip Cosmos/API y
+  duplicado; estado `esperandoConfirmacionSalida`, objeto pendiente sin texto ni PII y motivo
+  `finParticipacion`, preservando documentos históricos. Sin clasificador ni orquestación. Verificado:
+  build Release `-warnaserror`, 658 pruebas backend no calibración y `dotnet format` verdes. Commit
+  local `255c4cb`. Handoff: corte 2, clasificador LLM estricto aislado; sin push, despliegue ni
+  configuración remota.
+- 2026-08-02 - Codex - **P-27 corte 2/5 DONE local: clasificador LLM aislado.** Rol:
+  Arquitecto/Backend/AppSec/SDET. Puerto interno con salida enum estricta, texto delimitado como dato,
+  límite 160, ConfigLLM/ILlmClient reutilizados y fallback para contrato, proveedor o configuración;
+  sin conexión al orquestador. Verificado: build Release, 671 pruebas backend no calibración, format y
+  diff limpios. Commit local `708f473`. Handoff: corte 3, política e integración server-side; sin push,
+  despliegue ni configuración remota.
+- 2026-08-02 - Codex - **P-27 corte 3/5 DONE local: política server-side e integración.** Rol:
+  Arquitecto/Backend/AppSec/SDET. Alias inequívocos sin LLM y candidato estricto con ambos opt-ins se
+  resuelven antes de consolidar/evaluar, después de selección, rechazo y reapertura, en hilo simple,
+  I-19/P-25 e I-18. Salir conserva el mensaje como auditoría y evita aporte, versión, evaluación y
+  Markdown nuevo; `finalizarParticipacion` no abre otra unidad. Verificado: build Release, 681 pruebas
+  backend no calibración, format y diff limpios. Commit local `73d22dd`. Handoff: corte 4, menú 1/2/3, rollback de gates y portal;
+  sin push, despliegue ni configuración remota.
+- 2026-08-02 - Codex - **P-27 corte 4/5 DONE local: aclaración, rollback y portal.** Rol:
+  Arquitecto/Backend/Frontend/AppSec/SDET. `ambigua` abre el menú persistido 1/2/3 sin evaluación;
+  opción válida o equivalente aplica la transición server-side, el primer inválido repite y el segundo
+  vuelve seguro al aporte. Apagar global o campaña limpia una aclaración pendiente. El portal mantiene
+  el opt-in en CRUD con ayuda, aviso y permisos admin/visor. Verificado: build Release, 687 pruebas
+  backend no calibración, portal 33/33, prettier/tsc/build, format y diff limpios. Commit local `ed76ccc`. Handoff: corte 5,
+  cupos, telemetría, E2E, variaciones, QAS y cierre; sin push, despliegue ni configuración remota.
