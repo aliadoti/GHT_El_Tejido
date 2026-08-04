@@ -35,6 +35,15 @@ public interface IOrquestadorConversacion
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-28: envía la entrada humana sin crear hilo ni tratar el saludo como una idea. El alcance ya
+    /// fue resuelto de forma determinista por P-26.
+    /// </summary>
+    Task EnviarDespertarProactivoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// I-18: envia el turno ya evaluado de la idea activa que el barrido por tiempo acaba de activar.
     /// La fachada conserva una sola ruta para enviar y persistir mensajes salientes.
     /// </summary>

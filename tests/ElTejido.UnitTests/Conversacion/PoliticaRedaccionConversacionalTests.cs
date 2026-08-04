@@ -35,6 +35,15 @@ public sealed class PoliticaRedaccionConversacionalTests
     }
 
     [Fact]
+    public void P28_PromptDeReactivacion_PrevaleceParaEseActo()
+    {
+        var pregunta = Pregunta("p_1", new() { ["reactivacion"] = "pr_reactivar" });
+        var campania = Campania(pregunta, new() { ["conversacion"] = "pr_voz" });
+
+        Construir().ResolverPromptRef(campania, pregunta, ActoConversacional.Reactivar).Should().Be("pr_reactivar");
+    }
+
+    [Fact]
     public void SinPromptDeVoz_CaeAlDeRetroSinRomperCampaniasActuales()
     {
         // Una campaña configurada hoy solo tiene `retro`: debe seguir funcionando y guiar el tono (§5).
@@ -85,6 +94,7 @@ public sealed class PoliticaRedaccionConversacionalTests
     [InlineData(ActoConversacional.Mejorar, true)]
     [InlineData(ActoConversacional.Aclarar, true)]
     [InlineData(ActoConversacional.Reabrir, true)]
+    [InlineData(ActoConversacional.Reactivar, true)]
     [InlineData(ActoConversacional.Transicionar, false)]
     [InlineData(ActoConversacional.Cerrar, false)]
     public void SoloLosActosQueLoExigenAdmitenPregunta(ActoConversacional acto, bool admite)

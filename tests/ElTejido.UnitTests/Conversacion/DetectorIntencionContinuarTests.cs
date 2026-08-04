@@ -15,6 +15,7 @@ public sealed class DetectorIntencionContinuarTests
     [InlineData("Así está bien")] // con acentos y mayuscula
     [InlineData("ok, así está bien, sigamos")]
     [InlineData("ya estoy conforme, gracias")]
+    [InlineData("Creo que ya está bien")]
     public void DeseaContinuar_FrasesDeContinuar_DetectaIntencion(string texto)
     {
         _detector.DeseaContinuar(texto).Should().BeTrue();
@@ -47,6 +48,18 @@ public sealed class DetectorIntencionContinuarTests
 
         detector.DeseaContinuar("No quiero mejorar").Should().BeTrue();
         detector.DeseaContinuar("la verdad no quiero mejorar mi respuesta").Should().BeFalse();
+    }
+
+    [Fact]
+    public void RechazoGuardado_NoConfundeUnaSalidaQueEmpiezaPorNo()
+    {
+        var detector = new DetectorIntencionContinuar(
+            DetectorIntencionContinuar.FrasesRechazoGuardadoPorDefecto,
+            maxCaracteres: 40);
+
+        detector.Coincide("no").Should().BeTrue();
+        detector.Coincide("no más").Should().BeFalse();
+        detector.Coincide("no quiero continuar").Should().BeFalse();
     }
 
     [Theory]

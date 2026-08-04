@@ -66,6 +66,44 @@ public sealed class RepositoriosSeguridadCosmosTests
         create.Document.Resultado.Should().Be("rechazado");
     }
 
+    [Fact]
+    public async Task ClasificacionesIntencionControl_CuentanLlamadasYTokensPorCampania()
+    {
+        var container = new FakeSecurityCosmosContainer();
+        var repository = new RepositorioLogSeguridadCosmos(container);
+        var fecha = new DateTimeOffset(2026, 8, 4, 15, 6, 0, TimeSpan.Zero);
+
+        await repository.RegistrarAsync(CrearClasificacion("log_1", "c_1", "u_1", 12, 8, fecha), CancellationToken.None);
+        await repository.RegistrarAsync(CrearClasificacion("log_2", "c_1", "u_1", 7, 3, fecha.AddMinutes(1)), CancellationToken.None);
+        await repository.RegistrarAsync(CrearClasificacion("log_3", "c_1", "u_2", 9, 1, fecha.AddMinutes(2)), CancellationToken.None);
+
+        (await repository.ContarClasificacionesIntencionControlUsuarioAsync("c_1", "u_1", fecha, CancellationToken.None))
+            .Should().Be(2);
+        (await repository.SumarTokensClasificacionesIntencionControlCampaniaAsync("c_1", CancellationToken.None))
+            .Should().Be(40);
+    }
+
+    private static LogSeguridad CrearClasificacion(
+        string id,
+        string campaniaId,
+        string usuarioId,
+        int promptTokens,
+        int completionTokens,
+        DateTimeOffset fecha)
+        => LogSeguridad.Crear(
+            id,
+            TipoEventoSeguridad.ClasificacionIntencionControl,
+            usuarioId,
+            numero: null,
+            resultado: "clasificada",
+            detalle: "origen:llm;resultado:clasificada;intencion:aportar;estado:esperandoRepregunta;motivo:ninguno",
+            correlationId: "corr_1",
+            timestamp: fecha,
+            campaniaId: campaniaId,
+            promptTokens: promptTokens,
+            completionTokens: completionTokens,
+            esLlamadaLlm: true);
+
     private static CodigoAuthAdmin CrearCodigo()
     {
         var creado = new DateTimeOffset(2026, 6, 12, 15, 4, 0, TimeSpan.Zero);
@@ -116,5 +154,26 @@ public sealed class RepositoriosSeguridadCosmosTests
             LogCreates.Add((document, partitionKey));
             return Task.CompletedTask;
         }
+
+        public Task<int> ContarClasificacionesIntencionControlUsuarioAsync(
+            string campaniaId,
+            string usuarioId,
+            DateTimeOffset? desde,
+            CancellationToken cancellationToken)
+            => Task.FromResult(LogCreates.Count(log =>
+                log.Document.TipoEvento == "clasificacionIntencionControl"
+                && log.Document.EsLlamadaLlm
+                && log.Document.CampaniaId == campaniaId
+                && log.Document.UsuarioId == usuarioId
+                && (desde is null || log.Document.Timestamp >= desde.Value)));
+
+        public Task<long> SumarTokensClasificacionesIntencionControlCampaniaAsync(
+            string campaniaId,
+            CancellationToken cancellationToken)
+            => Task.FromResult(LogCreates.Where(log =>
+                    log.Document.TipoEvento == "clasificacionIntencionControl"
+                    && log.Document.EsLlamadaLlm
+                    && log.Document.CampaniaId == campaniaId)
+                .Sum(log => (long)log.Document.PromptTokens + log.Document.CompletionTokens));
     }
 }

@@ -30,7 +30,8 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
             [
                 new IntentoSeleccion("wamid.sel1", TipoIntentoSeleccion.Campania, ResultadoIntentoSeleccion.Invalido, Ahora.AddMinutes(5)),
             ],
-            actualizadoEn: Ahora.AddMinutes(5));
+            actualizadoEn: Ahora.AddMinutes(5),
+            esEntradaProactiva: true);
 
         var documento = EnrutamientoAporteCosmosDocument.FromDomain(enrutamiento);
         var reconstruido = documento.ToDomain();
@@ -54,6 +55,7 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
         reconstruido.ActualizadoEn.Should().Be(Ahora.AddMinutes(5));
         reconstruido.VenceEn.Should().Be(Ahora.AddHours(24));
         reconstruido.ProcesadoEn.Should().BeNull();
+        reconstruido.EsEntradaProactiva.Should().BeTrue();
     }
 
     [Theory]

@@ -67,6 +67,9 @@ internal sealed class EnrutamientoAporteCosmosDocument
     [JsonProperty("procesadoEn")]
     public DateTimeOffset? ProcesadoEn { get; init; }
 
+    [JsonProperty("esEntradaProactiva")]
+    public bool EsEntradaProactiva { get; init; }
+
     public static EnrutamientoAporteCosmosDocument FromDomain(EnrutamientoAporte enrutamiento)
         => new()
         {
@@ -100,6 +103,7 @@ internal sealed class EnrutamientoAporteCosmosDocument
             ActualizadoEn = enrutamiento.ActualizadoEn,
             VenceEn = enrutamiento.VenceEn,
             ProcesadoEn = enrutamiento.ProcesadoEn,
+            EsEntradaProactiva = enrutamiento.EsEntradaProactiva,
         };
 
     public EnrutamientoAporte ToDomain()
@@ -122,7 +126,8 @@ internal sealed class EnrutamientoAporteCosmosDocument
                 i.Fecha)),
             ActualizadoEn,
             VenceEn,
-            ProcesadoEn);
+            ProcesadoEn,
+            EsEntradaProactiva);
 
     private static string MapearEstado(EstadoEnrutamientoAporte estado)
         => estado switch

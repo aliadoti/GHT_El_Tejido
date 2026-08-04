@@ -27,4 +27,22 @@ public sealed class RepositorioLogSeguridadCosmos : IRepositorioLogSeguridad
         var document = LogSeguridadCosmosDocument.FromDomain(log);
         await _container.CreateLogAsync(document, document.Pk, cancellationToken);
     }
+
+    public Task<int> ContarClasificacionesIntencionControlUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        CancellationToken cancellationToken)
+        => _container.ContarClasificacionesIntencionControlUsuarioAsync(campaniaId, usuarioId, null, cancellationToken);
+
+    public Task<int> ContarClasificacionesIntencionControlUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset desde,
+        CancellationToken cancellationToken)
+        => _container.ContarClasificacionesIntencionControlUsuarioAsync(campaniaId, usuarioId, desde, cancellationToken);
+
+    public Task<long> SumarTokensClasificacionesIntencionControlCampaniaAsync(
+        string campaniaId,
+        CancellationToken cancellationToken)
+        => _container.SumarTokensClasificacionesIntencionControlCampaniaAsync(campaniaId, cancellationToken);
 }

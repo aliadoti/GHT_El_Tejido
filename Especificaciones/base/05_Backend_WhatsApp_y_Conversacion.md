@@ -125,6 +125,8 @@ Estados de `Conversacion.estadoMaquina` (`03 §3.6`):
 ProcesarMensajeEntranteAsync:
 0. P-26, antes de entrar al orquestador:
    - resolver una afinidad vigente hacia una idea abierta, o calcular campañas elegibles;
+   - P-28, con su kill-switch activo y solo para saludo/inicio breve sin afinidad ni trabajo pendiente,
+     resuelve ese alcance y envía bienvenida sin crear conversación ni tratar el saludo como aporte;
    - con 0 opciones, rechazo neutral; con 1, seleccionar; con N, conservar el aporte y pedir campaña;
    - dentro de la campaña, seleccionar automáticamente una pregunta elegible o pedirla si hay N;
    - revalidar campaña/asociación/pregunta y entregar el aporte original exactamente una vez.
@@ -291,6 +293,11 @@ anterior, pero solo con `Campania.estado=activa`. La resolución previa al orque
 6. la afinidad dura mientras se trabaja la idea y como máximo 24 horas;
 7. un nuevo aporte después del cierre crea otra `Conversacion`/`ideaId`; una frase explícita de
    reapertura conserva el `ideaId` y reutiliza I-19.
+
+P-28 reutiliza ese mismo menú cuando un saludo debe elegir entre varias campañas: el
+`EnrutamientoAporte.esEntradaProactiva` se conserva solo para la selección e idempotencia y, al
+resolverla, pasa a `completado` sin entregar texto al orquestador. El siguiente aporte sustantivo entra
+por la ruta P-26 normal.
 
 El LLM no elige campaña ni pregunta. Las opciones se vuelven a validar al seleccionar; una campaña
 cerrada entre la oferta y la selección deja de ser elegible. Apagar `participacionContinua` deja

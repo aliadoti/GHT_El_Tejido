@@ -371,6 +371,24 @@ se encienden por campaña.
    (no se cuelga, no gasta de más).
 **Algo va mal si:** sigue respondiendo/evaluando sin límite.
 
+### 🧭 P-27 — Entender solicitudes naturales de parar o avanzar
+**Qué es:** una ayuda opcional para interpretar una frase corta cuando el participante está mejorando
+una idea. El modelo propone una etiqueta; el sistema decide siempre qué cerrar.
+
+1. En una campaña de prueba, activa el checkbox **“Interpretar solicitudes de parar o avanzar escritas
+   libremente”** y el interruptor global correspondiente. Lleva una idea a la pregunta de mejora.
+2. Escribe “quiero parar aquí”, “stop now” y “no más”. **Deberías ver:** se cierra solo la idea o la
+   participación según la frase, sin guardar esa orden como contenido ni pedir otra mejora.
+3. En otro intento escribe “I think I should stop for today” y “ya no sé si seguir / I need a break”.
+   **Deberías ver:** cierre seguro o el menú 1/2/3; nunca un cierre de campaña.
+4. Escribe “hay que parar la máquina durante el mantenimiento”. **Deberías ver:** se trata como aporte
+   de la idea, no como orden de salida.
+5. Con cupos de llamada o presupuesto bajos, intenta una frase libre. **Deberías ver:** no llama al
+   clasificador; conserva el comportamiento seguro y deja trazabilidad técnica sin texto del mensaje.
+
+**Algo va mal si:** una frase de contenido cierra algo, la orden se evalúa como idea, aparece un
+puntaje/rúbrica en la respuesta, se registra el texto libre en telemetría o el modelo cierra una campaña.
+
 ### ✅ Salud del sistema (lo que quedó de P-09)
 **Qué es:** una comprobación simple de que el sistema está "vivo".
 1. Pídele al equipo la dirección de **estado de salud** del sistema (o míralo en el panel de Azure).
@@ -381,15 +399,14 @@ se encienden por campaña.
 
 ## D. Aún no se prueba (por ahora)
 
-- 🧭 **P-27 — Entender solicitudes naturales de parar o avanzar:** la especificación está lista, pero
-  el código todavía no. Cuando se implemente, la prueba será: (1) activar en una campaña de prueba
-  **“Interpretar solicitudes de parar o avanzar escritas libremente”**; (2) durante una mejora escribir
-  “quiero parar aquí”, “stop now” y “quiero pasar a otra idea”; (3) comprobar que la orden no queda
-  guardada ni evaluada como parte de la idea; (4) probar una frase de contenido como “hay que parar la
-  máquina durante el mantenimiento” y verificar que sí continúa como aporte; y (5) ante una expresión
-  dudosa, comprobar que aparecen opciones 1/2/3. **Algo va mal si:** el coach repite la pregunta tras
-  una salida clara, cierra por una frase de contenido, el modelo decide por fuera del estado del
-  servidor o una aclaración consume una oportunidad de mejora.
+- ✅ **P-28 — Volver a saludar antes de una idea nueva:** **implementada localmente (3/3); viene
+  apagada.** Pide al equipo que la active solo en una prueba. Con una persona que ya terminó sus
+  ideas en una campaña continua, escribe **“Hola”**. Debe llegar una bienvenida y no debe aparecer
+  una idea nueva en Resultados. Después envía una propuesta concreta: debe abrirse una idea nueva,
+  separada de la anterior. Si esa persona participa en dos campañas elegibles, primero debe aparecer
+  una lista para escoger; al elegir, llega la bienvenida, pero el saludo no se guarda como aporte.
+  Apaga la función al terminar. **Algo va mal si:** el saludo se evalúa o aparece como idea, escoge una
+  campaña sin preguntar, mezcla la idea nueva con la cerrada, o responde a alguien no autorizado.
 - ✅ **P-26 — Volver después con ideas nuevas:** **implementada (6/6 cortes, local).** Prueba:
   (1) en Campañas → Configuración, activar **“Permitir nuevas ideas después de finalizar”** (bloque
   propio, separado del estado de la campaña); (2) terminar una idea y enviar otra: debe comenzar

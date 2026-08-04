@@ -1,6 +1,7 @@
 # P-27 — Clasificación flexible de intenciones de control
 
-**Estado:** ESPECIFICADA — lista para implementación por cortes; **sin código implementado**.  
+**Estado:** **IMPLEMENTADA localmente (5/5, 2026-08-04); activación operativa pendiente.** Ambos
+opt-ins permanecen apagados hasta D5, UAT, revisión de costo/latencia y decisión formal de flags.
 **Tipo:** corrección evolutiva de I-18/I-19/P-25.  
 **Prioridad:** alta; ejecutar después de P-26 y antes de activar estos flujos en UAT/producción.  
 **Áreas afectadas:** conversación, evaluación LLM, campañas/configuración, Cosmos, portal,
@@ -478,8 +479,12 @@ Nunca registra el mensaje, salida cruda, nombre, teléfono, idea o explicación 
 | 4 | Aclaración 1/2/3, portal accesible y rollback de gates. | Reinicio/round-trip, opciones válidas/invalidas, admin/visor y regresión P-16/P-18/P-20/P-22. |
 | 5 | Cupos, telemetría, E2E simulada, banco de variaciones, QAS y cierre documental. | Presupuesto/ventana P-26, logs sin PII, flujo completo, build/test/format/frontend/diff. |
 
-P-27 comienza después de cerrar los seis cortes de P-26. Cada corte actualiza `TODO.md` y
-`AVANCES.md`. No se activa, despliega ni modifica configuración remota sin instrucción posterior.
+P-27 comenzó después de cerrar los seis cortes de P-26. Los cortes 1–4 quedaron en los commits
+`255c4cb`, `708f473`, `73d22dd` y `ed76ccc`; el corte 5 completa localmente la contabilización
+persistente de llamadas/tokens, la ventana móvil P-26, la E2E simulada, QAS y el banco de
+variaciones. Cada clasificación que llega al clasificador LLM consume una llamada, incluso si
+termina en fallback sin uso de tokens; las rutas deterministas y las omisiones previas no la
+consumen. No se activa, despliega ni modifica configuración remota sin instrucción posterior.
 
 ---
 
@@ -492,4 +497,3 @@ P-27 comienza después de cerrar los seis cortes de P-26. Cada corte actualiza `
 4. Una aclaración pendiente vuelve de forma segura a `esperandoRepregunta`; no se pierde la idea.
 5. Los estados/motivos aditivos ya persistidos siguen siendo legibles.
 6. No se borran mensajes, ideas, versiones, evaluaciones ni telemetría.
-

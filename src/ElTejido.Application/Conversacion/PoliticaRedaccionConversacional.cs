@@ -15,6 +15,9 @@ public sealed class PoliticaRedaccionConversacional
     /// <summary>Clave de respaldo: si no hay prompt de voz, el de retro guía el tono (§5).</summary>
     public const string TipoPromptRespaldo = "retro";
 
+    /// <summary>P-28: voz específica del saludo de reactivación, opcional y con fallback seguro.</summary>
+    public const string TipoPromptReactivacion = "reactivacion";
+
     private readonly bool _habilitadaGlobal;
     private readonly int _maxCaracteres;
 
@@ -39,7 +42,17 @@ public sealed class PoliticaRedaccionConversacional
     /// <c>null</c> cuando ninguna referencia existe: el redactor opera solo con sus instrucciones de
     /// seguridad y las campañas actuales siguen funcionando igual.
     /// </summary>
+    public string? ResolverPromptRef(Campania campania, Pregunta pregunta, ActoConversacional acto)
+        => acto == ActoConversacional.Reactivar
+            ? Primero(pregunta.PromptRefs, TipoPromptReactivacion)
+              ?? Primero(campania.PromptRefs, TipoPromptReactivacion)
+              ?? ResolverPromptRefBase(campania, pregunta)
+            : ResolverPromptRefBase(campania, pregunta);
+
     public string? ResolverPromptRef(Campania campania, Pregunta pregunta)
+        => ResolverPromptRef(campania, pregunta, ActoConversacional.Mejorar);
+
+    private static string? ResolverPromptRefBase(Campania campania, Pregunta pregunta)
         => Primero(pregunta.PromptRefs, TipoPromptConversacion)
             ?? Primero(campania.PromptRefs, TipoPromptConversacion)
             ?? Primero(pregunta.PromptRefs, TipoPromptRespaldo)
@@ -49,9 +62,15 @@ public sealed class PoliticaRedaccionConversacional
     /// ¿El prompt efectivo es el de voz propio de I-20, o se cayó al respaldo de retro? Permite
     /// distinguir en telemetría una campaña ya configurada de una que hereda el tono (§5).
     /// </summary>
-    public bool UsaPromptDeVoz(Campania campania, Pregunta pregunta)
-        => Primero(pregunta.PromptRefs, TipoPromptConversacion) is not null
+    public bool UsaPromptDeVoz(Campania campania, Pregunta pregunta, ActoConversacional acto)
+        => acto == ActoConversacional.Reactivar
+            ? Primero(pregunta.PromptRefs, TipoPromptReactivacion) is not null
+              || Primero(campania.PromptRefs, TipoPromptReactivacion) is not null
+            : Primero(pregunta.PromptRefs, TipoPromptConversacion) is not null
             || Primero(campania.PromptRefs, TipoPromptConversacion) is not null;
+
+    public bool UsaPromptDeVoz(Campania campania, Pregunta pregunta)
+        => UsaPromptDeVoz(campania, pregunta, ActoConversacional.Mejorar);
 
     /// <summary>
     /// Actos que muestran una pregunta al participante (§3/§4.1). Los demás solo llevan puente: así el
@@ -61,7 +80,8 @@ public sealed class PoliticaRedaccionConversacional
         => acto is ActoConversacional.Confirmar
             or ActoConversacional.Mejorar
             or ActoConversacional.Aclarar
-            or ActoConversacional.Reabrir;
+            or ActoConversacional.Reabrir
+            or ActoConversacional.Reactivar;
 
     private static string? Primero(IReadOnlyDictionary<string, string>? refs, string tipo)
         => refs is not null && refs.TryGetValue(tipo, out var referencia) && !string.IsNullOrWhiteSpace(referencia)

@@ -58,6 +58,21 @@ public sealed class OpcionesConversacion
     public bool ClasificacionIntencionControl { get; set; }
 
     /// <summary>
+    /// P-28: kill-switch global para contestar un saludo/inicio breve cuando no existe flujo ni
+    /// afinidad vigente. Nace apagado; un aporte sustantivo sigue entrando directamente por P-26.
+    /// </summary>
+    public bool DespertarProactivoHabilitado { get; set; }
+
+    /// <summary>P-28: longitud máxima para reconocer un saludo/inicio de forma determinista.</summary>
+    public int MaxCaracteresDespertarProactivo { get; set; } = 80;
+
+    /// <summary>
+    /// P-28: vocabulario breve de saludo/inicio. Vacío usa
+    /// <see cref="DetectorEntradaProactiva.FrasesPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesDespertarProactivo { get; set; } = new List<string>();
+
+    /// <summary>
     /// P-27: longitud máxima del texto normalizado elegible para clasificación flexible. Un valor
     /// menor o igual a cero deshabilita la ruta; el orquestador decidirá la elegibilidad final.
     /// </summary>
@@ -228,6 +243,9 @@ public sealed class OpcionesMensajesConversacion
     public const string SaludoSiguientePreguntaDefault =
         "Continuemos con la siguiente pregunta:";
 
+    public const string SaludoReactivacionDefault =
+        "¡Hola! Estoy aquí para acompañarte a crear una nueva idea. Cuéntame qué quieres proponer.";
+
     public const string InvitacionMejoraDefault =
         "Si quieres, puedes enviarme una version mejorada de tu respuesta con base en esta "
         + "retroalimentacion y la tomare en cuenta.";
@@ -283,6 +301,9 @@ public sealed class OpcionesMensajesConversacion
     public string SaludoPrimerContacto { get; set; } = SaludoPrimerContactoDefault;
 
     public string SaludoSiguientePregunta { get; set; } = SaludoSiguientePreguntaDefault;
+
+    /// <summary>P-28: respaldo si no se puede redactar el saludo de reactivación.</summary>
+    public string SaludoReactivacion { get; set; } = SaludoReactivacionDefault;
 
     public string InvitacionMejora { get; set; } = InvitacionMejoraDefault;
 

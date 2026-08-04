@@ -199,6 +199,8 @@
   },
   "active": "8cc6b5c552480c8c",
   "lastOpenFiles": [
+    "src/ElTejido.Application/Conversacion/DetectorEntradaProactiva.cs",
+    "QAS/09_Banco_Variaciones_P27_Intenciones_Control.md",
     "Especificaciones/Iniciativas/TODO.md",
     "src/ElTejido.Api/wwwroot/chunk-DGLm3oD3.js",
     "src/ElTejido.Api/wwwroot/chunk-DLC53iA_.js",
@@ -233,8 +235,6 @@
     "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/P-15_Refactor_Orquestador_Conversacional.md",
     "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/P-14_Lectura_Rubricas_Prompts.md",
     "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/P-13_Umbral_Cierre_Por_Campania.md",
-    "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/P-11_Informe_Consolidado.md",
-    "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/P-10_Guardrails_Cupos_Costo.md",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",
     "src/ElTejido.Api/wwwroot/brand/eltejido-logo.png",
     "src/ElTejido.Web/public/brand/eltejido-logo.png",

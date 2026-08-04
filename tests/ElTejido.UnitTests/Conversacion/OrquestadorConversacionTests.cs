@@ -80,6 +80,8 @@ public sealed class OrquestadorConversacionTests
     [InlineData("Quiero parar aquí")]
     [InlineData("quiero pasar a otra idea")]
     [InlineData("stop now")]
+    [InlineData("no quiero continuar")]
+    [InlineData("no más")]
     public async Task P27_AliasDeSalidaEnRepregunta_NoSeGuardaNiEvaluaComoAporte(string texto)
     {
         await _conversaciones.GuardarConversacionAsync(
@@ -121,6 +123,57 @@ public sealed class OrquestadorConversacionTests
                 && log.Resultado == "ambigua"
                 && log.Detalle!.Contains("intencion:ninguna", StringComparison.Ordinal)
                 && !log.Detalle.Contains("No sé qué hacer", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P27_CupoYaConsumidoPorClasificacion_OmiteLlmYRegistraLaRazonSinPii()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        _logSeguridad.ContarClasificacionesIntencionControlUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(1);
+        await PrepararConversacionEnRepreguntaAsync();
+
+        await Construir(
+                new OpcionesConversacion { ClasificacionIntencionControl = true, CuposHabilitados = true },
+                clasificador: clasificador)
+            .ProcesarMensajeEntranteAsync(
+                ParticipanteConCupos(10, 1, clasificacionIntencionControl: true),
+                Mensaje("No sé qué hacer"),
+                CancellationToken.None);
+
+        await clasificador.DidNotReceive().ClasificarAsync(
+            Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ClasificacionIntencionControl
+                && log.Resultado == "omitida"
+                && log.Detalle!.Contains("motivo:cupo_llamadas_llm_usuario", StringComparison.Ordinal)
+                && !log.Detalle.Contains("No sé qué hacer", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P27_PresupuestoYaConsumidoPorClasificacion_OmiteLlmSinCerrarPorElModelo()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        _logSeguridad.SumarTokensClasificacionesIntencionControlCampaniaAsync("c_1", Arg.Any<CancellationToken>())
+            .Returns(10L);
+        await PrepararConversacionEnRepreguntaAsync();
+
+        await Construir(
+                new OpcionesConversacion { ClasificacionIntencionControl = true, CuposHabilitados = true },
+                clasificador: clasificador)
+            .ProcesarMensajeEntranteAsync(
+                ParticipanteConCupos(10, 2, presupuestoTokens: 10, clasificacionIntencionControl: true),
+                Mensaje("Could we pause here?"),
+                CancellationToken.None);
+
+        await clasificador.DidNotReceive().ClasificarAsync(
+            Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.Resultado == "omitida"
+                && log.Detalle!.Contains("motivo:presupuesto_tokens_campania", StringComparison.Ordinal)
+                && !log.Detalle.Contains("Could we pause here?", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
     }
 
@@ -1186,6 +1239,36 @@ public sealed class OrquestadorConversacionTests
             Arg.Is<LogSeguridad>(l => l.TipoEvento == TipoEventoSeguridad.ClasificacionMadurez
                 && l.Detalle!.Contains("motivo:rechazo_guardado", StringComparison.Ordinal)),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Procesar_NoMasTrasIdeaMadura_CierraParticipacionSinRechazarElGuardado()
+    {
+        var guardadas = new List<Respuesta>();
+        _respuestas.GuardarRespuestaAsync(
+            Arg.Do<Respuesta>(respuesta =>
+            {
+                guardadas.RemoveAll(guardada => guardada.Id == respuesta.Id);
+                guardadas.Add(respuesta);
+            }),
+            Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _respuestas.ListarRespuestasAsync("c_1", Arg.Any<CancellationToken>()).Returns(_ => guardadas.ToArray());
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "Profundiza mas", calificacionTotal: 4m)));
+        await PrepararConversacionAsync();
+        var participante = Participante();
+
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("Mi idea madura"), CancellationToken.None);
+        await Construir().ProcesarMensajeEntranteAsync(participante, Mensaje("no más"), CancellationToken.None);
+
+        guardadas.Should().ContainSingle(respuesta => respuesta.NivelMadurez == NivelMadurez.Maduro);
+        await _evaluador.Received(1).EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("no la guardo como definitiva", StringComparison.Ordinal)),
+            Arg.Any<TipoEnvioMensaje>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
     }
 
     [Fact]
@@ -2642,7 +2725,8 @@ public sealed class OrquestadorConversacionTests
         int maxMensajesPorUsuario,
         int maxLlamadasLlm,
         bool dosPreguntas = false,
-        int presupuestoTokens = 0)
+        int presupuestoTokens = 0,
+        bool clasificacionIntencionControl = false)
     {
         var pregunta1 = CrearPregunta("p_1", 1, 1);
         var preguntas = dosPreguntas
@@ -2650,7 +2734,9 @@ public sealed class OrquestadorConversacionTests
             : new[] { pregunta1 };
         var campania = CrearCampania(
             preguntas,
-            limites: LimitesSeguridad.Crear(1500, maxMensajesPorUsuario, maxLlamadasLlm, presupuestoTokens));
+            limites: LimitesSeguridad.Crear(1500, maxMensajesPorUsuario, maxLlamadasLlm, presupuestoTokens),
+            configConversacional: ConfigConversacional.Crear(
+                1, "Gracias por participar.", clasificacionIntencionControl: clasificacionIntencionControl));
         var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta1);

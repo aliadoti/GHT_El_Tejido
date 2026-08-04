@@ -72,6 +72,70 @@ public sealed class ServicioEnrutamientoParticipacionTests
     }
 
     [Fact]
+    public async Task P28_SaludoSinFlujoYContinuidad_DespiertaSinGuardarAporteNiCrearMenu()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+
+        var resultado = await Servicio(despertarProactivo: true)
+            .ResolverAsync(_usuario, [candidato], Mensaje("wamid.hola", "Hola"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.DespertarProactivo>()
+            .Which.Candidato.Campania.Id.Should().Be("c_1");
+        _enrutamientos.Documentos.Should().BeEmpty("el saludo no es un aporte raíz");
+        _enviados.Should().BeEmpty("el orquestador compone el saludo después de la decisión");
+    }
+
+    [Fact]
+    public async Task P28_AporteSustantivoSinFlujo_NoEsSecuestradoPorElDespertar()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+
+        var resultado = await Servicio(despertarProactivo: true)
+            .ResolverAsync(_usuario, [candidato], Mensaje("wamid.idea", "Propongo cambiar el proceso de atención."), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>()
+            .Which.Contexto.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task P28_FlagApagado_ConservaLaRutaP26ParaElSaludo()
+    {
+        var candidato = Candidato("c_1", participacionContinua: true);
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+
+        var resultado = await Servicio()
+            .ResolverAsync(_usuario, [candidato], Mensaje("wamid.hola", "Hola"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>();
+    }
+
+    [Fact]
+    public async Task P28_VariasCampanias_SeleccionaYDespiertaSinEntregarElSaludoComoAporte()
+    {
+        var candidatos = new[]
+        {
+            Candidato("c_1", nombre: "Alfa", participacionContinua: true),
+            Candidato("c_2", nombre: "Beta", participacionContinua: true),
+        };
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        _conversaciones.Agregar(ConversacionCerrada("c_2", "p_1"));
+        var servicio = Servicio(despertarProactivo: true);
+
+        var ofrecido = await servicio.ResolverAsync(_usuario, candidatos, Mensaje("wamid.hola", "Hola"), CancellationToken.None);
+        var resuelto = await servicio.ResolverAsync(_usuario, candidatos, Mensaje("wamid.elegir", "2"), CancellationToken.None);
+
+        ofrecido.Should().BeOfType<ResultadoEnrutamiento.SeleccionPendiente>();
+        var despertar = resuelto.Should().BeOfType<ResultadoEnrutamiento.DespertarProactivo>().Which;
+        despertar.Candidato.Campania.Id.Should().Be("c_2");
+        var ruta = _enrutamientos.Documentos.Should().ContainSingle().Which;
+        ruta.EsEntradaProactiva.Should().BeTrue();
+        ruta.Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
+        ruta.ProcesadoEn.Should().BeNull("un saludo no se entrega como aporte");
+    }
+
+    [Fact]
     public async Task Resolver_UnaSolaElegible_ContinuaSinMenuNiPersistencia()
     {
         var candidato = Candidato("c_1");
@@ -489,7 +553,7 @@ public sealed class ServicioEnrutamientoParticipacionTests
                 .MarcarEnIdea(conversacionId, Ahora),
             CancellationToken.None);
 
-    private ServicioEnrutamientoParticipacion Servicio(TimeProvider? reloj = null)
+    private ServicioEnrutamientoParticipacion Servicio(TimeProvider? reloj = null, bool despertarProactivo = false)
     {
         var logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
         logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(_logs.Add), Arg.Any<CancellationToken>())
@@ -500,7 +564,7 @@ public sealed class ServicioEnrutamientoParticipacionTests
             _gateway,
             logSeguridad,
             Substitute.For<IProveedorCorrelacion>(),
-            new OpcionesConversacion(),
+            new OpcionesConversacion { DespertarProactivoHabilitado = despertarProactivo },
             reloj ?? new RelojFijo(Ahora));
     }
 

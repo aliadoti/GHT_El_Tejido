@@ -144,6 +144,41 @@ public sealed class ParticipacionContinuaP26E2EIntegrationTests
             .Should().Be(1, "nunca se abren dos ciclos/afinidades activas por accidente");
     }
 
+    /// <summary>
+    /// P-28 corte 3: el saludo de reingreso entra por webhook, abre la ventana de servicio y recibe
+    /// una bienvenida, pero no abre ni altera una idea. El aporte posterior sigue siendo la raiz del
+    /// ciclo nuevo P-26.
+    /// </summary>
+    [Fact]
+    public async Task P28_SaludoSinFlujo_EnviaBienvenidaSinCrearIdea_YAportePosteriorAbreCicloP26()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        conversaciones.Sembrar(
+            DominioConversacion
+                .Iniciar("conv_previa", "c_alfa", "u_1", "p_1", "whatsapp", null, Epoca)
+                .Cerrar(Epoca.AddMinutes(1)));
+        using var fabrica = Construir(
+            gateway,
+            conversaciones,
+            unaSolaCampania: true,
+            unaSolaPregunta: true,
+            despertarProactivo: true);
+        using var client = fabrica.CreateClient();
+
+        await EnviarAsync(client, "wamid.p28.saludo", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Any(e => e.Tipo == TipoEnvioMensaje.Inicial));
+
+        gateway.Enviados.Last().Texto.Should().Contain("nueva idea");
+        conversaciones.Todas.Should().ContainSingle().Which.Estado.Should().Be(EstadoConversacion.Cerrada);
+
+        await EnviarAsync(client, "wamid.p28.aporte", "Propongo una red de mentoria entre equipos");
+        await EsperarAsync(() => conversaciones.Todas.Any(c => c.CicloParticipacion == 2));
+
+        var cicloNuevo = conversaciones.Todas.Single(c => c.CicloParticipacion == 2);
+        cicloNuevo.OrigenAporteMessageId.Should().Be("wamid.p28.aporte");
+    }
+
     private static async Task EnviarAsync(HttpClient client, string wamid, string texto)
     {
         var cuerpo =
@@ -170,7 +205,8 @@ public sealed class ParticipacionContinuaP26E2EIntegrationTests
         GatewayDePrueba gateway,
         ConversacionesFake conversaciones,
         bool unaSolaCampania = false,
-        bool unaSolaPregunta = false)
+        bool unaSolaPregunta = false,
+        bool despertarProactivo = false)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
         dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
@@ -197,6 +233,7 @@ public sealed class ParticipacionContinuaP26E2EIntegrationTests
                     // Ruta canónica simple: I-19 tiene su propia batería de pruebas.
                     ["Conversacion:ConsolidacionProgresivaHabilitada"] = "false",
                     ["Conversacion:ConfirmacionExplicitaIdeasHabilitada"] = "true",
+                    ["Conversacion:DespertarProactivoHabilitado"] = despertarProactivo.ToString(),
                 }));
 
             builder.ConfigureTestServices(services =>

@@ -4,6 +4,49 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-04 por Codex (Arquitecto/Backend/SDET): **P-28 completa local (3/3).**
+  Con `Conversacion:DespertarProactivoHabilitado=false` por defecto, un saludo breve sin afinidad ni
+  trabajo pendiente no se guarda como aporte ni abre conversación; con el flag encendido, una campaña
+  se resuelve directa y varias usan el menú P-26. En el segundo caso `esEntradaProactiva` conserva solo
+  la selección idempotente y termina `completado`, sin `procesadoEn`, hilo ni idea. La bienvenida usa
+  redacción I-20 con fallback y deja `despertarProactivo` sin texto. Los aportes sustantivos no se
+  secuestran y siguen abriendo su ciclo P-26. **Verificado:** build Release `-warnaserror` 0/0,
+  **706** pruebas backend no calibración (639 unitarias + 67 integración),
+  `dotnet format --verify-no-changes` y `git diff --check` limpios. QAS, contratos,
+  reglas, `TODO.md` e índice actualizados. Sin push, despliegue ni configuración remota. **Siguiente
+  ejecutable: P-29 corte 1/2** — enganchar el aviso humano al cierre por inactividad existente, sin
+  recrear temporizador, umbral ni estado.
+- Ultima actualizacion: 2026-08-04 por Codex (Arquitecto/Backend/AppSec/SDET): **P-27 corte 5 de 5 —
+  COMPLETA local.** La clasificación de control ahora deja en `LogSeguridad` su campaña, tokens y
+  marca de invocación LLM, sin texto entrante ni PII; esas invocaciones se suman al cupo del usuario,
+  al presupuesto de campaña y a la ventana móvil P-26. Las rutas deterministas y una omisión previa
+  por cupo no consumen; un fallback tras invocar el clasificador sí cuenta aunque no tenga tokens.
+  Se añadió E2E webhook→coaching→salida libre→cierre, pruebas de cupo/presupuesto/Cosmos y banco de
+  variaciones ES/EN/mixto en QAS. **Verificado:** build Release `-warnaserror` 0/0, **698** pruebas
+  backend no calibracion (632 unitarias + 66 de integracion) y `dotnet format --verify-no-changes`
+  limpios. Los opt-ins global y por campaña permanecen OFF; sin push, despliegue ni configuración
+  remota. **Siguiente ejecutable: P-28 corte 1/3.**
+- Ultima actualizacion: 2026-08-04 por Codex (Backend/SDET): **correccion puntual P-27 a partir de Fast Test.**
+  “Creo que ya esta bien” ya termina la mejora de la idea; “no quiero continuar” y “no mas” terminan
+  la participacion actual de forma determinista, incluso con los flags flexibles apagados. El alias
+  aislado “no” sigue rechazando guardar, pero ya no coincide dentro de esas salidas: se conserva la
+  idea madura y el cierre usa solo el agradecimiento normal, nunca “no la guardo como definitiva”.
+  La clasificacion de control sigue siendo exclusiva del servidor. **Verificado:** build Release
+  `-warnaserror` 0/0, **694** pruebas backend no calibracion (629 unitarias + 65 de integracion),
+  `dotnet format --verify-no-changes` y `git diff --check` limpios. Pendiente el corte 5 de P-27
+  (cupos, E2E, variaciones, QAS y cierre documental). Sin push,
+  despliegue ni configuracion remota.
+- Ultima actualizacion: 2026-08-04 por Codex (Analista/Arquitecto): **matriz canónica de cierres y
+  corrección documental de P-26/P-28/P-29/P-30.** La regla única distingue cierre de idea, fin de
+  participación, inactividad de sesión y cierre administrativo: el umbral finaliza la idea, no la
+  campaña. **P-26 ya está completa local (6/6)** y crea ciclos nuevos para aportes sustantivos
+  elegibles; por eso **P-28** queda solo como entrada humana para saludo/inicio no sustantivo,
+  **P-29** solo como mensaje humano posterior al cierre determinista por inactividad de I-17/I-19,
+  y **P-30** como selector histórico que amplía la reapertura reciente de I-19/P-26. Se corrigieron
+  `Reglas_Conversacion_y_Participacion.md`, `SUPUESTOS.md`, el índice, `TODO.md` y las cuatro specs;
+  no se modificó código, configuración remota ni estado de flags. **Próximo ejecutable sin cambio:**
+  P-27 corte 5. **Verificado documentalmente:** `git diff --check` y búsqueda dirigida sin la errata
+  `Conversacion.motivoCierre` ni el contador inexistente `Conversacion.reaperturas`.
 - Ultima actualizacion: 2026-08-02 por Codex (Arquitecto/Backend/Frontend/AppSec/SDET): **P-27 corte 4 de 5 —
   aclaración 1/2/3, rollback y portal DONE local.** Ante `ambigua`, el servidor persiste
   `esperandoConfirmacionSalida` sin texto/PII, muestra el menú determinista y nunca llama al
@@ -52,18 +95,19 @@
 - Ultima actualizacion: 2026-07-31 (Arquitecto/Analista): **`P-28`, `P-29` y `P-30` ESPECIFICADAS
   — código pendiente.** Provienen de la reunión con Felipe Arango (GHT) del 2026-07-31 y de los
   requerimientos de negocio REQ-012/013/014. **`P-28` Despertar proactivo del coach:** el participante
-  inicia o reactiva la conversación aunque no haya flujo activo (primer contacto y reanudar tras
-  timeout); prerrequisito real de las campañas continuas (P-26); kill-switch
+  inicia o reactiva la conversación aunque no haya flujo activo; **alcance corregido el 2026-08-04:**
+  solo saludo/inicio no sustantivo, no prerrequisito técnico de P-26; kill-switch
   `Conversacion:DespertarProactivoHabilitado` OFF. **`P-29` Cierre conversacional por tiempo:** **reutiliza** el
   cierre por inactividad ya implementado en I-17 §7 (`ServicioExpiracionConversaciones` + umbral
-  `MinutosInactividadSesion`) y solo añade el mensaje de pausa por LLM con fallback y el valor aditivo
-  `motivoCierre="inactividad"` (junto al `"umbral"` existente) que deja la idea reanudable; kill-switch
+  `MinutosInactividadSesion`) y **alcance corregido el 2026-08-04:** solo añade el mensaje de pausa por
+  LLM con fallback; el `motivoCierre="inactividad"` ya corresponde a `IdeaConsolidada`, no a
+  `Conversacion`; kill-switch
   `Conversacion:CierrePorTiempoHabilitado` OFF gobierna solo el aviso humano. **(Reconciliado 2026-08-03:
   no inventa campos de umbral; usa los de I-17.)** **`P-30` Retomar ideas del pasado:**
   el participante retoma cualquier idea previa sin importar el estado con lista determinista y reapertura
   I-19 (mismo `ideaId`); búsqueda semántica/vectorial fuera de alcance; kill-switch
   `Conversacion:RetomarIdeasHabilitado` OFF. Los tres son **aditivos, con defaults seguros** y se
-  coordinan (cierre → despertar → retomar). Specs:
+  se complementan sin duplicar capacidades ya entregadas. Specs:
   `Iniciativas/P-28_Despertar_Proactivo_Coach.md`, `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md`,
   `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`. **Orden sugerido:** entran después de P-27, sin alterar
   su prioridad. Sin código, push ni cambio remoto en esta entrada.
@@ -510,12 +554,17 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`P-27` corte 5 de 5 — cupos, telemetría, E2E simulada, banco de variaciones, QAS y cierre.**
-  Leer `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
-  `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Contar la clasificación para los cupos y la
-  ventana P-26, emitir `clasificacionIntencionControl` sin texto/PII, cubrir webhook→coaching→salida
-  en simulación, variaciones español/inglés/mixtas, QAS en lenguaje simple y cerrar documentación.
-  Mantener ambos gates OFF y no desplegar ni cambiar configuración remota.
+- [ ] **`P-29` corte 1 de 2 — aviso humano tras el cierre por inactividad existente.**
+  Leer `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md` y
+  `SUPUESTOS.md#cierre-por-tiempo-p29`. No crear temporizador, umbral, estado ni motivo nuevos;
+  mantener `Conversacion:CierrePorTiempoHabilitado=false` y la transición en el servidor.
+- [x] **(HECHO 2026-08-04, Codex — backend 706: 639 unit + 67 integración; build/format/diff limpios)
+  P-28 corte 3 de 3 — selección multi-campaña, E2E simulada, QAS y cierre.**
+  El saludo permanece fuera del ciclo de ideas incluso al requerir menú; contratos, reglas y
+  observabilidad actualizados. Ver "Estado global" arriba.
+- [x] **(HECHO 2026-08-04, Codex — backend 698: 632 unit + 66 integración; build/format limpios)
+  P-27 corte 5 de 5 — cupos, telemetría, E2E simulada, banco de variaciones, QAS y cierre.**
+  Consumo durable sin PII, ventana P-26, E2E de webhook y QAS completados; ver Estado global.
 - [x] **(HECHO 2026-07-31, Claude Fable 5 — backend verde 654: 590 unit + 64 integración; portal
   30/30; format y diff limpios) P-26 corte 6 de 6 — observabilidad, E2E simulada, QA y cierre.**
   Acciones `cicloNuevo`/`reapertura` y `latenciaMs` completan las métricas §10; E2E del criterio 16
@@ -750,8 +799,9 @@
 | I-20 | Redacción conversacional fluida y Markdown ejecutivo | DONE local; D5/UAT/costo pendiente | `6a6d0b8` (spec), `242b0f4` (1), `4697de3` (2), `afcceaf`+`045b199` (3), `c813cda` (4) | backend 573 verdes | Puerto, política y redactor con guardas, composición por acto, respaldo determinista, cupos/telemetría y Markdown con umbral/origen/escala. Corte 5 con E2E de redactor inyectado completo; queda validación operativa. |
 | P-24 | Evaluación implícita al solicitar mejora | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 579/579 verde | Una petición corta de mejorar una propuesta confirma implícitamente la versión completa, la evalúa y abre coaching bajo umbral en hilo simple y cola multi-idea. No crea aporte/version nueva ni reduce `MaxRepreguntas`; lista configurable y auditoría diferenciada. |
 | P-25 | Coaching directo sin confirmación repetitiva | DONE local; D5/UAT/costo pendiente | sin commit aún | backend 583/583 verde | Cada aporte sustantivo se consolida y evalúa completo en el mismo turno; solo una ambigüedad real pide aclaración. Hilo simple y cola multi-idea cubiertos; rollback global disponible. |
-| P-26 | Participación continua y selección de campaña/pregunta | ESPECIFICADA; código 0/6 | sin commit aún | verificación documental pendiente de cierre | Flag por campaña default OFF, aporte raíz auditable, afinidad y selección 24 h, ciclos independientes y cupos móviles; próximo corte: dominio/contratos. |
-| P-27 | Clasificación flexible de intenciones de control | Cortes 1–4/5 DONE local | `255c4cb`, `708f473`, `73d22dd`, `ed76ccc` | backend 687/687 + portal 33/33, build/format verdes | Contratos, clasificador, política, menú persistido, rollback y portal accesible. Siguiente: cupos, telemetría, E2E, variaciones, QAS y cierre. |
+| P-26 | Participación continua y selección de campaña/pregunta | DONE local 6/6; D5/UAT/costo pendiente | commits históricos P-26 | backend 654/654 + portal 30/30 al cierre | Flag por campaña default OFF, aporte raíz auditable, afinidad y selección 24 h, ciclos independientes y cupos móviles. |
+| P-27 | Clasificación flexible de intenciones de control | DONE local 5/5; D5/UAT/costo pendiente | `255c4cb`, `708f473`, `73d22dd`, `ed76ccc` + cambios locales corte 5 | backend 698/698, build/format verdes | Alias, clasificador/política server-side, menú persistido, rollback, portal y cupos/tokens persistentes sin PII. |
+| P-28 | Despertar proactivo del coach | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 706/706, build/format/diff verdes | Saludo/inicio con flag global OFF, selección P-26 sin convertirlo en aporte, redacción/fallback, telemetría sin texto, Cosmos, E2E y QAS. Siguiente: P-29 corte 1. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 

@@ -150,6 +150,17 @@ public sealed class ProcesadorWebhookEntrante
 
                 return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
 
+            case ResultadoEnrutamiento.DespertarProactivo despertar:
+                await _orquestador.EnviarDespertarProactivoAsync(
+                    new ParticipanteResuelto(
+                        autorizado.Usuario,
+                        despertar.Candidato.Campania,
+                        despertar.Candidato.Participante,
+                        despertar.Candidato.PreguntaVigente),
+                    mensaje,
+                    cancellationToken);
+                return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
+
             case ResultadoEnrutamiento.ContinuarConversacion continuar:
                 var candidato = continuar.Candidato;
                 var participante = new ParticipanteResuelto(

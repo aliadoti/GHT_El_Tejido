@@ -12,6 +12,8 @@ public sealed class PoliticaIntencionControlTests
     [InlineData("Quiero parar aquí", DecisionIntencionControl.FinalizarIdea)]
     [InlineData("quiero pasar a otra idea", DecisionIntencionControl.FinalizarIdea)]
     [InlineData("stop now", DecisionIntencionControl.FinalizarParticipacion)]
+    [InlineData("no quiero continuar", DecisionIntencionControl.FinalizarParticipacion)]
+    [InlineData("no más", DecisionIntencionControl.FinalizarParticipacion)]
     public void Resolver_AliasInequivoco_TransicionaSinNecesitarLlm(string texto, DecisionIntencionControl esperado)
     {
         var decision = _politica.Resolver(EstadoMaquinaConversacion.EsperandoRepregunta, hayUnidadActiva: true, texto);

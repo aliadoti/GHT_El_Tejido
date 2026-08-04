@@ -46,6 +46,7 @@ public sealed class DetectorIntencionContinuar
         "estoy conforme",
         "ya estoy conforme",
         "ya quedo",
+        "creo que ya esta bien",
         "no quiero mejorar",
     };
 
@@ -69,6 +70,8 @@ public sealed class DetectorIntencionContinuar
         "quiero parar por hoy",
         "parar por hoy",
         "finalizar participacion",
+        "no quiero continuar",
+        "no mas",
     };
 
     /// <summary>
@@ -186,7 +189,10 @@ public sealed class DetectorIntencionContinuar
                 return true;
             }
 
-            if (esCorto && ContienePalabraCompleta(normalizado, frase))
+            // "no" es un rechazo válido solamente cuando es el mensaje completo. Si se buscara como
+            // subfrase, expresiones de salida como "no más" o "no quiero continuar" se interpretarían
+            // erróneamente como rechazo de guardado y podrían degradar una idea madura.
+            if (esCorto && frase.Length > 2 && ContienePalabraCompleta(normalizado, frase))
             {
                 return true;
             }

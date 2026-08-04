@@ -640,7 +640,47 @@ internal sealed class RepositorioCodigosAuthMemoria : IRepositorioCodigosAuth
 
 internal sealed class RepositorioLogSeguridadMemoria : IRepositorioLogSeguridad
 {
-    public Task RegistrarAsync(LogSeguridad log, CancellationToken cancellationToken) => Task.CompletedTask;
+    private readonly ConcurrentBag<LogSeguridad> _logs = [];
+
+    public Task RegistrarAsync(LogSeguridad log, CancellationToken cancellationToken)
+    {
+        _logs.Add(log);
+        return Task.CompletedTask;
+    }
+
+    public Task<int> ContarClasificacionesIntencionControlUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        CancellationToken cancellationToken)
+        => ContarClasificacionesIntencionControlUsuarioAsync(campaniaId, usuarioId, desde: null, cancellationToken);
+
+    public Task<int> ContarClasificacionesIntencionControlUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset desde,
+        CancellationToken cancellationToken)
+        => ContarClasificacionesIntencionControlUsuarioAsync(campaniaId, usuarioId, (DateTimeOffset?)desde, cancellationToken);
+
+    public Task<long> SumarTokensClasificacionesIntencionControlCampaniaAsync(
+        string campaniaId,
+        CancellationToken cancellationToken)
+        => Task.FromResult(_logs.Where(log =>
+                log.TipoEvento == TipoEventoSeguridad.ClasificacionIntencionControl
+                && log.EsLlamadaLlm
+                && log.CampaniaId == campaniaId)
+            .Sum(log => (long)log.PromptTokens + log.CompletionTokens));
+
+    private Task<int> ContarClasificacionesIntencionControlUsuarioAsync(
+        string campaniaId,
+        string usuarioId,
+        DateTimeOffset? desde,
+        CancellationToken cancellationToken)
+        => Task.FromResult(_logs.Count(log =>
+            log.TipoEvento == TipoEventoSeguridad.ClasificacionIntencionControl
+            && log.EsLlamadaLlm
+            && log.CampaniaId == campaniaId
+            && log.UsuarioId == usuarioId
+            && (desde is null || log.Timestamp >= desde.Value)));
 }
 
 internal sealed class RegistroWebhookDedupeMemoria : IRegistroWebhookDedupe

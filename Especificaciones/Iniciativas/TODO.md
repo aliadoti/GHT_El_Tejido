@@ -9,25 +9,32 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **INICIATIVA OBJETIVO 2026-08-02 — `P-27` cortes 1–4/5 COMPLETOS local; corte 5 pendiente.**
-> **P-26 quedó COMPLETA local, así que el backlog rota aquí.** Corrige el bug de I-18 por el que
-> “quiero parar aquí”, “stop now” o “quiero pasar a otra idea” se procesan como contenido. Añade
-> alias deterministas y, detrás de flags OFF, un clasificador LLM que solo propone
-> `aportar|finalizarIdea|finalizarParticipacion|ambigua`; el servidor valida y ejecuta. **Debe quedar
-> lista antes de activar I-18/P-26 en UAT/producción.** Spec:
-> `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`. Los cortes 1–4 ya entregan
-> contratos, clasificador estricto, política server-side, menú persistido 1/2/3, rollback y portal.
-> Alias inequívocos funcionan con flags OFF. Backend **687/687**, portal **33/33**, build, formato y
-> producción verdes. Siguiente: corte 5, cupos y telemetría, E2E simulada, banco de variaciones, QAS
-> y cierre documental.
+> **INICIATIVA OBJETIVO 2026-08-04 — `P-29` corte 1 de 2.**
+> **P-27 quedó COMPLETA local (5/5).** Corrige las salidas naturales con alias deterministas y, detrás
+> de flags OFF, un clasificador LLM cuya etiqueta es validada y ejecutada exclusivamente por el
+> servidor. El corte final incorpora consumo persistente de llamada/token, ventana móvil P-26, E2E,
+> banco de variaciones y QAS. Backend **698/698** (632 unitarias + 66 de integración), build y formato
+> verdes; no hubo push, despliegue ni configuración remota. Sigue pendiente la activación operativa
+> (D5, UAT, costo/latencia y decisión de flags).
 >
-> **BACKLOG NUEVO 2026-07-31 (reunión con Felipe Arango, GHT) — `P-28`, `P-29` y `P-30`
-> ESPECIFICADAS; código pendiente (3 cortes c/u), entran DESPUÉS de P-27.** Vienen de REQ-012/013/014.
-> `P-28` despertar proactivo (el participante inicia/reactiva la conversación aunque no haya flujo
-> activo; prerrequisito de campañas continuas); `P-29` cierre por tiempo (disparo determinístico +
-> mensaje de pausa por LLM con fallback; deja la idea reanudable, extiende I-17 §7); `P-30` retomar
-> ideas del pasado sin importar el estado (extiende la reapertura de I-19). Los tres aditivos, con
-> kill-switch global OFF por defecto. Specs: `Iniciativas/P-28_Despertar_Proactivo_Coach.md`,
+> **`P-28` quedó COMPLETA local (3/3).** Saludo/inicio breve sin flujo, selección P-26 cuando hay
+> varias campañas, bienvenida LLM con fallback, telemetría sin texto y E2E simulada. El saludo nunca
+> crea una idea; el aporte posterior sigue por P-26. `Conversacion:DespertarProactivoHabilitado=false`
+> permanece apagado; sin push, despliegue ni configuración remota.
+>
+> **Siguiente ejecutable: `P-29` corte 1/2 — enganchar el aviso humano al cierre por inactividad ya
+> existente.** No crear temporizador, umbral ni estado nuevos; mantener
+> `Conversacion:CierrePorTiempoHabilitado=false`. Spec:
+> `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md` y supuesto
+> `SUPUESTOS.md#cierre-por-tiempo-p29`.
+>
+> **BACKLOG ACOTADO 2026-08-04 — `P-28` está completa; `P-29` es el siguiente y `P-30` queda especificada.**
+> Vienen de REQ-012/013/014 y cubren vacíos, no capacidades ya entregadas:
+> `P-28` entrega entrada humana para saludo/inicio no sustantivo sin flujo (el aporte sustantivo inicia
+> ciclo directo por P-26); `P-29` solo mensaje humano de pausa tras el cierre determinista por
+> inactividad ya existente en I-17/I-19; `P-30` selector histórico por participante, campaña y
+> pregunta que amplía la reapertura reciente I-19/P-26. Los tres aditivos, con kill-switch global OFF
+> por defecto. Specs: `Iniciativas/P-28_Despertar_Proactivo_Coach.md`,
 > `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md`, `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`;
 > decisiones en `SUPUESTOS.md#despertar-proactivo-p28`, `#cierre-por-tiempo-p29`, `#retomar-ideas-p30`.
 >
@@ -64,10 +71,8 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > (default OFF), ayuda asociada por `aria-describedby`, aviso en `role="status"` al apagarlo y
 > round-trip completo del flag; admin edita y el visor no puede guardar. Backend **648/648**, portal
 > **30/30**, prettier/tsc/build de producción limpios (Node 24.18.0); sin push.
-> **Próximo trabajo ejecutable: `P-27` corte 5 de 5 — cupos, telemetría, E2E simulada, banco de
-> variaciones, QAS y cierre documental. No
-> implementar desde resúmenes: leer la spec completa y
-> `SUPUESTOS.md#clasificacion-intenciones-control-p27`.**
+> **Trabajo ejecutable actual: `P-29` corte 1 de 2 — mensaje de pausa posterior al cierre de I-17.
+> Leer la spec completa y `SUPUESTOS.md#cierre-por-tiempo-p29`; no reimplementar el temporizador.**
 >
 > **ESTADO VIGENTE 2026-07-29 — `P-25` DONE LOCAL.** Cada aporte sustantivo se consolida, confirma
 > internamente y evalúa completo en el mismo turno; el coach responde con retroalimentación de rúbrica y
@@ -98,11 +103,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: completar `P-27` (cortes 1–4/5 DONE local) — `P-26` quedó COMPLETA local (6/6).**
-El siguiente agente comienza por el corte 5 de P-27 (cupo, telemetría, E2E, variaciones y cierre) y mantiene
-la validación operativa de I-19/I-20/P-24/P-25/P-26 como pendiente paralela, sin desplegar ni
-modificar configuración remota. **P-27 debe quedar lista antes de activar I-18/P-26 en UAT o
-producción.**
+**Iniciativa objetivo vigente: `P-29` corte 1/2 — P-28 quedó COMPLETA local (3/3).**
+El siguiente agente engancha solo el aviso humano posterior al cierre por inactividad existente,
+manteniendo la validación operativa de I-19/I-20/P-24/P-25/P-26/P-27/P-28 como pendiente paralela,
+sin desplegar ni modificar configuración remota.
 
 ---
 
@@ -222,18 +226,21 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 29 | **`I-20` redacción conversacional fluida y Markdown ejecutivo** | **DONE local** | **Codex / Claude** | **Cortes 1-5 DONE local 2026-07-28:** redactor por acto, guardas, composición servidor, cupos/telemetría y Markdown con umbral/origen/escala; E2E con redactor inyectado. Pendiente operativo: D5/UAT/costo. |
 | 30 | **`P-24` evaluación implícita al solicitar mejora** | **DONE local** | **Codex** | **Corregido 2026-07-29:** “Vamos a mejorarla” confirma implícitamente la versión propuesta, la evalúa completa y abre coaching bajo umbral en hilo simple o cola multi-idea. No crea aporte/version nueva, no reduce `MaxRepreguntas`, ni cambia contratos/remoto. Backend 579/579 verde. |
 | 31 | **`P-25` coaching directo sin confirmación repetitiva** | **DONE local** | **Codex** | Cada aporte sustantivo confirma automáticamente su versión consolidada y la evalúa completa en el mismo turno; respuesta natural con una sola pregunta de coaching. Rollback global disponible; backend 583/583 verde. |
-| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Claude** | **DONE local 2026-07-31 (6/6 cortes; backend 654/654, portal 30/30; flag OFF por defecto). Pendiente operativo: D5/UAT/costo.** Detalle de cortes: **1/6 a 5/6** (1: dominio/contratos; 2: resolución multi-campaña determinista, aporte conservado + menú numerado, selección validada/revalidada, expiración 24 h, entrega única y telemetría; 3: menú/selección de pregunta, afinidad de coaching sin menús, cambio explícito de campaña y ciclos nuevos con id determinista; 4: reapertura explícita que conserva `ideaId` sin abrir ciclo y cupos por participante en ventana móvil de 24 h; 5: portal con fieldset propio, checkbox, ayuda y aviso al apagar, admin/visor; backend 648/648 y portal 30/30 verdes). Siguiente: corte 6 — observabilidad, E2E simulada, QA y cierre. Default `false`; solo campañas activas. |
-| 33 | **`P-27` clasificación flexible de intenciones de control** | **INMEDIATA (P-26 cerrada)** | **Siguiente agente** | **Cortes 1–4/5 DONE local 2026-08-02:** contratos, clasificador, política, menú persistido, rollback y portal accesible; backend 687/687 + portal 33/33, build/format verdes; commit `ed76ccc`. **Siguiente: corte 5/5**, cupos, telemetría, E2E, variaciones, QAS y cierre. |
+| 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Claude** | **DONE local 2026-07-31 (6/6 cortes; backend 654/654, portal 30/30; flag OFF por defecto). Pendiente operativo: D5/UAT/costo.** Entregó dominio/contratos, resolución multi-campaña y pregunta, aporte preservado, afinidad, ciclos nuevos deterministas, reapertura reciente que conserva `ideaId`, cupos, portal, observabilidad, E2E simulada, QA y cierre. P-28/P-29/P-30 son extensiones acotadas, no cortes faltantes. Default `false`; solo campañas activas. |
+| 33 | **`P-27` clasificación flexible de intenciones de control** | **DONE local 2026-08-04 (5/5)** | Codex | Alias, clasificador y política server-side, menú persistido, rollback, portal y contabilidad durable de llamadas/tokens P-27. Backend 698/698, build/format verdes; flags global/campaña OFF y activación D5/UAT/costo pendiente. |
+| 34 | **`P-28` despertar proactivo del coach** | **DONE local 2026-08-04 (3/3)** | Codex | Saludo breve con flag global OFF, vocabulario determinista, redacción/fallback, selección P-26 sin convertir saludo en aporte, telemetría sin texto, Cosmos/E2E/QAS. Siguiente: P-29 corte 1. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **Backlog posterior; no es el siguiente cambio** | Pendiente | Ejecutar solo después de los requerimientos que se prioricen tras P-27. Las listas `FrasesFinalizarIdeaPorDefecto` y `FrasesFinalizarParticipacionPorDefecto` están hoy compiladas en `DetectorIntencionContinuar`. Extraerlas a configuración global versionada (`Conversacion:FrasesFinalizarIdea` y `Conversacion:FrasesFinalizarParticipacion`) con fallback seguro a los valores actuales, validación tras normalizar (sin vacíos, duplicados ni listas fuera de límite), historial/rollback y pruebas de regresión. No permitir edición libre por campaña, no modificar los alias vigentes ni activar P-27 como parte de esta deuda. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
 
-**Dependencias duras (actualizada 2026-07-31):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
+**Dependencias duras (actualizada 2026-08-04):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
 `I-18 + I-05 + P-23` → `I-19` **DONE local** → `I-20/P-24/P-25` **DONE local** → `P-26`
-**DONE local (6/6)** → `P-27` **ESPECIFICADA, 0/5 (objetivo vigente)**. I-12 sigue bloqueada por
-seeds, pero no bloquea P-27: campo vacío degrada limpio. D5/UAT/costo arbitran el despliegue y la
-activación del clasificador, no el inicio del código.
+**DONE local (6/6)** → `P-27` **DONE local (5/5)** → `P-28` **DONE local (3/3)** → `P-29`
+**objetivo vigente (corte 1/2)**. P-28 complementa saludos/inicios no sustantivos, P-29 el mensaje humano de pausa y P-30 el selector
+histórico; ninguna es requisito técnico para P-26. I-12 sigue bloqueada por seeds, pero no bloquea
+P-27: campo vacío degrada limpio. D5/UAT/costo arbitran el despliegue y la activación del clasificador,
+no el inicio del código.
 
 > **Excepción I-19 confirmada por el usuario:** la consolidación no tiene opt-in por campaña y se
 > activa para todas. Solo conserva un kill-switch global de emergencia, default `true`.
@@ -278,16 +285,14 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Implementar `P-27` corte 5 de 5 — cupos, telemetría, E2E, variaciones, QAS y cierre documental.** Leer completa
-   `P-27_Clasificacion_Flexible_Intenciones_Control.md` y
-   `SUPUESTOS.md#clasificacion-intenciones-control-p27`. Contar las llamadas de clasificación en los
-   cupos y ventana P-26, emitir telemetría sin texto/PII y completar la E2E simulada, variaciones y QAS.
-   Mantener los flags OFF; el menú 1/2/3, rollback y portal ya están hechos.
+1. **Implementar `P-29` corte 1 de 2 — aviso humano tras el cierre por inactividad existente.** Leer
+   completa `P-29_Cierre_Conversacional_Por_Tiempo.md` y `SUPUESTOS.md#cierre-por-tiempo-p29`.
+   No crear temporizador, umbral, estado ni motivo nuevos; mantener el kill-switch global OFF y la
+   decisión/transición en el servidor.
 
-2. **Backlog siguiente: P-27 corte 5** (cierre operativo detrás de flags OFF:
-   cupos/telemetría, E2E, variaciones y QA). **Pendiente operativo transversal, no de
-   código:** D5 real, UAT y costo de I-19/I-20/P-24/P-25/**P-26** antes de activar nada en
-   UAT/producción; P-26 quedó completa con su flag apagado por defecto.
+2. **Backlog posterior: P-30.** **Pendiente operativo transversal, no de código:** D5 real,
+   UAT y costo de I-19/I-20/P-24/P-25/P-26/**P-27** antes de activar nada en UAT/producción; sus flags
+   permanecen apagados por defecto.
 3. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 4. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
 5. **La aprobación expresa de P-26 y P-27 ya existe.** Implementa cada iniciativa en el orden y cortes

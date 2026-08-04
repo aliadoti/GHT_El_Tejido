@@ -363,6 +363,54 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, cancellationToken);
     }
 
+    /// <summary>
+    /// P-28: la entrada se emite sobre el mensaje entrante que abre la ventana de WhatsApp, pero no
+    /// crea conversación ni idea. Así el siguiente aporte sustantivo vuelve a P-26 y no hereda el
+    /// saludo como si fuera contenido.
+    /// </summary>
+    public async Task EnviarDespertarProactivoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        CancellationToken cancellationToken)
+    {
+        var ahora = _tiempo.GetUtcNow();
+        var usuario = participante.Usuario;
+        var campania = participante.Campania;
+        var respaldo = TextoConfigurado(
+            _mensajes.SaludoReactivacion,
+            OpcionesMensajesConversacion.SaludoReactivacionDefault);
+        var texto = await ComponerTurnoAsync(
+            campania,
+            participante.PreguntaVigente,
+            usuario.Id,
+            usuario.WhatsappNormalizado,
+            ActoConversacional.Reactivar,
+            respaldo,
+            ahora,
+            cancellationToken);
+
+        var resultado = await _gateway.EnviarTextoAsync(
+            usuario.WhatsappNormalizado.Valor,
+            texto,
+            TipoEnvioMensaje.Inicial,
+            cancellationToken,
+            mensaje.PhoneNumberIdDestino);
+        await _participantes.RegistrarEnvioAsync(
+            EnvioMensaje.Crear(
+                "env_" + Guid.NewGuid().ToString("N"),
+                campania.Id,
+                usuario.Id,
+                mensajeInicialId: null,
+                usuario.WhatsappNormalizado,
+                resultado.Exito ? EstadoEnvio.Enviado : EstadoEnvio.Error,
+                TipoEnvioMensaje.Inicial,
+                resultado.WhatsappMessageId,
+                ahora,
+                resultado.Error),
+            cancellationToken);
+        await RegistrarDespertarProactivoAsync(usuario, resultado.Exito ? "reactivacion" : "errorEnvio", ahora, cancellationToken);
+    }
+
     private async Task ProcesarEnHiloAsync(
         HiloTrabajo hilo,
         ParticipanteResuelto participante,
@@ -951,7 +999,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     /// <summary>
     /// Techo determinista alcanzado (10 §2 / D2), o <c>null</c> si todavía hay margen: tope de turnos
-    /// del hilo, cupo de llamadas LLM del usuario —que con I-19 incluye las consolidaciones— y
+    /// del hilo, cupo de llamadas LLM del usuario —que incluye consolidaciones I-19 y clasificaciones P-27— y
     /// presupuesto de tokens de la campaña. Los cupos siguen gateados por <c>CuposHabilitados</c>.
     /// </summary>
     private async Task<string?> MotivoTechoAlcanzadoAsync(
@@ -971,6 +1019,22 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return null;
         }
 
+        if (await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, ahora, cancellationToken))
+        {
+            return "cupo_llamadas_llm_usuario";
+        }
+
+        return await PresupuestoTokensExcedidoAsync(campania, cancellationToken)
+            ? "presupuesto_tokens_campania"
+            : null;
+    }
+
+    private async Task<string?> MotivoCupoLlmAsync(
+        Campania campania,
+        string usuarioId,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
         if (await CupoLlamadasLlmExcedidoAsync(campania, usuarioId, ahora, cancellationToken))
         {
             return "cupo_llamadas_llm_usuario";
@@ -1064,7 +1128,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         if (determinista is DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion)
         {
             await RegistrarClasificacionIntencionControlAsync(
-                usuario, estadoPrevio, "determinista", "clasificada", determinista, null, "ninguno", ahora,
+                campania.Id, usuario, estadoPrevio, "determinista", "clasificada", determinista, null, "ninguno", false, ahora,
                 cancellationToken);
             return determinista;
         }
@@ -1073,8 +1137,6 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             || !campania.ConfigConversacional.ClasificacionIntencionControl
             || _clasificadorIntencionControl is null
             || !PoliticaIntencionControl.EsElegible(estadoPrevio, hayUnidadActiva)
-            || (_cuposHabilitados && (await CupoLlamadasLlmExcedidoAsync(campania, usuario.Id, ahora, cancellationToken)
-                || await PresupuestoTokensExcedidoAsync(campania, cancellationToken)))
             || string.IsNullOrWhiteSpace(campania.ConfigLlmRef))
         {
             return DecisionIntencionControl.Aportar;
@@ -1083,6 +1145,17 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var configLlm = await _configuracion.ObtenerConfigLlmAsync(campania.ConfigLlmRef, cancellationToken);
         if (configLlm is null || configLlm.Estado != EstadoRegistro.Activo)
         {
+            return DecisionIntencionControl.Aportar;
+        }
+
+        var motivoCupo = _cuposHabilitados
+            ? await MotivoCupoLlmAsync(campania, usuario.Id, ahora, cancellationToken)
+            : null;
+        if (motivoCupo is not null)
+        {
+            await RegistrarClasificacionIntencionControlAsync(
+                campania.Id, usuario, estadoPrevio, "llm", "omitida", null, null, motivoCupo, false, ahora,
+                cancellationToken);
             return DecisionIntencionControl.Aportar;
         }
 
@@ -1097,6 +1170,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             var decision = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva, texto, exito.Intencion);
             await RegistrarClasificacionIntencionControlAsync(
+                campania.Id,
                 usuario,
                 estadoPrevio,
                 "llm",
@@ -1104,6 +1178,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 decision,
                 exito.Uso,
                 "ninguno",
+                true,
                 ahora,
                 cancellationToken);
             return decision;
@@ -1111,12 +1186,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var fallback = (ResultadoClasificacionIntencionControl.Fallback)resultado;
         await RegistrarClasificacionIntencionControlAsync(
-            usuario, estadoPrevio, "llm", "fallback", null, fallback.Uso, fallback.Motivo, ahora,
+            campania.Id, usuario, estadoPrevio, "llm", "fallback", null, fallback.Uso, fallback.Motivo, true, ahora,
             cancellationToken);
         return DecisionIntencionControl.Aportar;
     }
 
     private Task RegistrarClasificacionIntencionControlAsync(
+        string campaniaId,
         Usuario usuario,
         EstadoMaquinaConversacion estado,
         string origen,
@@ -1124,6 +1200,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DecisionIntencionControl? intencion,
         UsoTokensLlm? uso,
         string motivo,
+        bool esLlamadaLlm,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
@@ -1146,7 +1223,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 resultado,
                 detalle,
                 _correlacion.CorrelationIdActual,
-                ahora),
+                ahora,
+                campaniaId,
+                uso?.PromptTokens ?? 0,
+                uso?.CompletionTokens ?? 0,
+                esLlamadaLlm),
             cancellationToken);
     }
 
@@ -1968,7 +2049,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return respaldo;
         }
 
-        var promptRef = _redaccion.ResolverPromptRef(campania, pregunta);
+        var promptRef = _redaccion.ResolverPromptRef(campania, pregunta, acto);
         var prompt = string.IsNullOrWhiteSpace(promptRef)
             ? null
             : await _configuracion.ObtenerUltimoPromptAsync(promptRef, cancellationToken);
@@ -1992,7 +2073,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var resultado = await _redactorTurno.RedactarAsync(contexto, cancellationToken);
         await RegistrarRedaccionAsync(
-            usuarioId, numeroUsuario, acto, resultado, _redaccion.UsaPromptDeVoz(campania, pregunta),
+            usuarioId, numeroUsuario, acto, resultado, _redaccion.UsaPromptDeVoz(campania, pregunta, acto),
             ahora, cancellationToken);
 
         if (resultado is not ResultadoRedaccionTurno.Exito redactado)
@@ -3971,8 +4052,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     /// <summary>
     /// ¿El usuario ya consumio su cupo de llamadas al LLM en la campania?
-    /// (<c>Campania.ConfigSeguridad.MaxLlamadasLlmPorUsuario</c>, 10 §2). Cada llamada persiste una
-    /// <c>Evaluacion</c> (valida o fallback), asi que el conteo de evaluaciones es el contador.
+    /// (<c>Campania.ConfigSeguridad.MaxLlamadasLlmPorUsuario</c>, 10 §2). Evaluación, consolidación y
+    /// clasificación P-27 dejan un rastro persistente propio, por lo que las tres clases consumen el
+    /// mismo cupo sin documentos contadores nuevos.
     /// </summary>
     private async Task<bool> CupoLlamadasLlmExcedidoAsync(
         Campania campania,
@@ -3987,7 +4069,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         // P-26 §9: misma ventana movil que el cupo de mensajes cuando la campania es continua; las
-        // clases de llamada contabilizadas (evaluacion + consolidacion) no cambian.
+        // clases de llamada contabilizadas (evaluacion, consolidacion y clasificacion P-27) no cambian.
         var desde = VentanaCuposDesde(campania, ahora);
         var evaluaciones = desde is null
             ? await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
@@ -3999,7 +4081,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ? await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
                 : await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken)
             : 0;
-        return evaluaciones + consolidaciones >= maximo;
+        var clasificaciones = desde is null
+            ? await _logSeguridad.ContarClasificacionesIntencionControlUsuarioAsync(campania.Id, usuarioId, cancellationToken)
+            : await _logSeguridad.ContarClasificacionesIntencionControlUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken);
+        return evaluaciones + consolidaciones + clasificaciones >= maximo;
     }
 
     /// <summary>
@@ -4016,7 +4101,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// <summary>
     /// P-10 — ¿La campania ya consumio su presupuesto de tokens LLM?
     /// (<c>Campania.ConfigSeguridad.PresupuestoTokensCampania</c>, 10 §2). El acumulado se deriva de la
-    /// suma de tokens de las evaluaciones (sin documentos contadores nuevos). 0 = desactivado.
+    /// suma de tokens de evaluaciones y de clasificaciones P-27 (sin documentos contadores nuevos).
+    /// 0 = desactivado.
     /// </summary>
     private async Task<bool> PresupuestoTokensExcedidoAsync(Campania campania, CancellationToken cancellationToken)
     {
@@ -4026,7 +4112,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return false;
         }
 
-        var consumidos = await _respuestas.SumarTokensCampaniaAsync(campania.Id, cancellationToken);
+        var consumidos = await _respuestas.SumarTokensCampaniaAsync(campania.Id, cancellationToken)
+                         + await _logSeguridad.SumarTokensClasificacionesIntencionControlCampaniaAsync(campania.Id, cancellationToken);
         return consumidos >= presupuesto;
     }
 
@@ -4066,6 +4153,23 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 usuario.WhatsappNormalizado.Valor,
                 accion,
                 detalle,
+                _correlacion.CorrelationIdActual,
+                ahora),
+            cancellationToken);
+
+    private Task RegistrarDespertarProactivoAsync(
+        Usuario usuario,
+        string resultado,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.DespertarProactivo,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                resultado,
+                "accion:reactivacion",
                 _correlacion.CorrelationIdActual,
                 ahora),
             cancellationToken);

@@ -62,4 +62,7 @@ public enum TipoEventoSeguridad
     // P-27 (10 §6.2): clasificación de intención de control. Solo resultado técnico, intención
     // validada, estado y tokens; nunca el texto del participante ni la salida cruda del modelo.
     ClasificacionIntencionControl,
+
+    // P-28: entrada humana ante saludo/inicio breve sin flujo. Sin texto ni PII adicional.
+    DespertarProactivo,
 }

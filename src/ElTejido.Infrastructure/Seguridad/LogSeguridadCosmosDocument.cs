@@ -35,6 +35,18 @@ internal sealed class LogSeguridadCosmosDocument
     [JsonProperty("correlationId", NullValueHandling = NullValueHandling.Ignore)]
     public string? CorrelationId { get; init; }
 
+    [JsonProperty("campaniaId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? CampaniaId { get; init; }
+
+    [JsonProperty("promptTokens")]
+    public int PromptTokens { get; init; }
+
+    [JsonProperty("completionTokens")]
+    public int CompletionTokens { get; init; }
+
+    [JsonProperty("esLlamadaLlm")]
+    public bool EsLlamadaLlm { get; init; }
+
     [JsonProperty("timestamp")]
     public DateTimeOffset Timestamp { get; init; }
 
@@ -51,6 +63,10 @@ internal sealed class LogSeguridadCosmosDocument
             Resultado = log.Resultado,
             Detalle = log.Detalle,
             CorrelationId = log.CorrelationId,
+            CampaniaId = log.CampaniaId,
+            PromptTokens = log.PromptTokens,
+            CompletionTokens = log.CompletionTokens,
+            EsLlamadaLlm = log.EsLlamadaLlm,
             Timestamp = log.Timestamp,
         };
     }
@@ -81,6 +97,7 @@ internal sealed class LogSeguridadCosmosDocument
             TipoEventoSeguridad.RedaccionConversacional => "redaccionConversacional",
             TipoEventoSeguridad.EnrutamientoParticipacion => "enrutamientoParticipacion",
             TipoEventoSeguridad.ClasificacionIntencionControl => "clasificacionIntencionControl",
+            TipoEventoSeguridad.DespertarProactivo => "despertarProactivo",
             _ => throw new InvalidOperationException($"Tipo de evento de seguridad no soportado: {tipo}."),
         };
     }

@@ -248,6 +248,55 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         respuestas.Ideas.Values.Should().ContainSingle().Which.VersionConfirmadaRef.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task P27_WebhookCoaching_ClasificaSalidaFlexibleYCierraSinEvaluarlaComoAporte()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        var logs = Substitute.For<IRepositorioLogSeguridad>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.FinalizarParticipacion, UsoTokensLlm.Crear(12, 5)));
+
+        using var fabrica = Construir(
+            gateway,
+            conversaciones,
+            respuestas,
+            contextos,
+            compilaciones,
+            confirmacionExplicitaIdeas: false,
+            clasificador: clasificador,
+            logSeguridad: logs,
+            clasificacionIntencionControl: true,
+            evaluacion: CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Qué cambiarías?", calificacionTotal: 1m));
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.P27.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(client, "wamid.P27.2", "Mi idea reduce desperdicio en bodega");
+        await EsperarAsync(() => conversaciones.Ultima?.EstadoMaquina == EstadoMaquinaConversacion.EsperandoRepregunta);
+        conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
+        await EnviarEntranteAsync(client, "wamid.P27.3", "I think I should stop for today");
+        await EsperarAsync(() => conversaciones.Ultima?.Estado == EstadoConversacion.Cerrada);
+
+        await clasificador.Received(1).ClasificarAsync(
+            Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>());
+        contextos.Should().ContainSingle();
+        gateway.Enviados.Should().Contain(enviado => enviado.Tipo == TipoEnvioMensaje.Cierre);
+        await logs.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ClasificacionIntencionControl
+                && log.Resultado == "clasificada"
+                && log.CampaniaId == "c_1"
+                && log.EsLlamadaLlm
+                && log.PromptTokens == 12
+                && log.CompletionTokens == 5
+                && !log.Detalle!.Contains("I think I should stop for today", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
     private static async Task EnviarEntranteAsync(HttpClient client, string wamid, string texto)
     {
         var cuerpo =
@@ -265,12 +314,16 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion> contextos,
         System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion> compilaciones,
         IRedactorTurnoConversacional? redactor = null,
-        bool confirmacionExplicitaIdeas = true)
+        bool confirmacionExplicitaIdeas = true,
+        IClasificadorIntencionControl? clasificador = null,
+        IRepositorioLogSeguridad? logSeguridad = null,
+        bool clasificacionIntencionControl = false,
+        DominioEvaluacion? evaluacion = null)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
         dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        var resolutor = new ResolutorFake(CrearParticipante());
+        var resolutor = new ResolutorFake(CrearParticipante(clasificacionIntencionControl));
 
         var configuracion = Substitute.For<IRepositorioConfiguracion>();
         configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
@@ -279,7 +332,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
         var evaluador = Substitute.For<IEvaluadorLlm>();
         evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contextos.Enqueue), Arg.Any<CancellationToken>())
-            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion()));
+            .Returns(new ResultadoEvaluacion.Exito(evaluacion ?? CrearEvaluacion()));
 
         // Consolidador determinista: acumula sin inventar, como haría el LLM en el camino feliz.
         var consolidador = Substitute.For<IConsolidadorIdeas>();
@@ -308,6 +361,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                     ["Secretos:wa-appsec"] = AppSecret,
                     ["Conversacion:ConfirmacionExplicitaIdeasHabilitada"] =
                         confirmacionExplicitaIdeas.ToString(),
+                    ["Conversacion:ClasificacionIntencionControl"] = clasificacionIntencionControl.ToString(),
                 }));
 
             builder.ConfigureTestServices(services =>
@@ -322,11 +376,15 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                 services.AddSingleton<IRepositorioRespuestas>(respuestas);
                 services.AddSingleton(Substitute.For<IRepositorioParticipantes>());
                 services.AddSingleton(compilador);
-                services.AddSingleton(Substitute.For<IRepositorioLogSeguridad>());
+                services.AddSingleton(logSeguridad ?? Substitute.For<IRepositorioLogSeguridad>());
                 services.AddSingleton(Substitute.For<IProveedorCorrelacion>());
                 if (redactor is not null)
                 {
                     services.AddSingleton(redactor);
+                }
+                if (clasificador is not null)
+                {
+                    services.AddSingleton(clasificador);
                 }
                 services.AddScoped<IOrquestadorConversacion, OrquestadorConversacion>();
                 services.AddScoped<ProcesadorWebhookEntrante>();
@@ -394,7 +452,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         }
     }
 
-    private static ParticipanteResuelto CrearParticipante()
+    private static ParticipanteResuelto CrearParticipante(bool clasificacionIntencionControl = false)
     {
         var pregunta = Pregunta.Crear(
             "p_1", "Idea para ingresos", "Se concreto", "ingresos", 1, EstadoRegistro.Activo,
@@ -403,7 +461,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         var campania = Campania.Crear(
             "c_1", "Campania", "Descripcion", "Objetivo", EstadoCampania.Activa, null, new[] { pregunta },
             "rub_1", new Dictionary<string, string> { ["evaluar"] = "pr_eval" }, "llm_1",
-            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta), ConfigConversacional.Crear(1, "Gracias por participar."),
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            ConfigConversacional.Crear(1, "Gracias por participar.", clasificacionIntencionControl: clasificacionIntencionControl),
             LimitesSeguridad.Crear(1500, 10, 2), null, Epoca, Epoca);
 
         var usuario = Usuario.Crear(
@@ -428,13 +487,16 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         => ConfigLlm.Crear("llm_1", "Azure", "AzureOpenAI", "gpt-4o-mini", "https://x", "llm-key", null,
             LimitesTokensLlm.Crear(6000, 800), 30, 2, EstadoRegistro.Activo, Epoca, Epoca);
 
-    private static DominioEvaluacion CrearEvaluacion()
+    private static DominioEvaluacion CrearEvaluacion(
+        RecomendacionEvaluacion recomendacion = RecomendacionEvaluacion.Cerrar,
+        string? repregunta = null,
+        decimal calificacionTotal = 4m)
         => DominioEvaluacion.Crear(
             "eval_1", "c_1", "resp_1", "u_1", "p_1", "rub_1", 1, "pr_eval", 1, "llm_1",
             new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
             new Dictionary<string, decimal> { ["claridad"] = 1m },
-            new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
-            4m, "explica", "Buena idea", RecomendacionEvaluacion.Cerrar, null,
+            new[] { CalificacionCriterio.Crear("claridad", calificacionTotal, "clara") },
+            calificacionTotal, "explica", "Buena idea", recomendacion, repregunta,
             new[] { "tema" }, new[] { "ent" }, false, Epoca);
 
     /// <summary>Repositorio en memoria mínimo para el recorrido I-19 (ideas, versiones y evaluaciones).</summary>

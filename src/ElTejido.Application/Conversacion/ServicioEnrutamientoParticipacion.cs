@@ -74,6 +74,13 @@ public abstract record ResultadoEnrutamiento
         CandidatoCampania Candidato,
         DominioConversacion? ConversacionAbierta) : ResultadoEnrutamiento;
 
+    /// <summary>
+    /// P-28: saludo/inicio breve sin flujo. El alcance ya fue validado, pero no se crea una
+    /// conversación ni se interpreta el saludo como aporte; el siguiente texto sustantivo vuelve a
+    /// resolver P-26.
+    /// </summary>
+    public sealed record DespertarProactivo(CandidatoCampania Candidato) : ResultadoEnrutamiento;
+
     /// <summary>Ninguna campania elegible: rechazo neutral vigente (silencio, comportamiento actual).</summary>
     public sealed record SinElegibles() : ResultadoEnrutamiento;
 }
@@ -89,6 +96,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     private readonly IProveedorCorrelacion _correlacion;
     private readonly OpcionesMensajesConversacion _mensajes;
     private readonly DetectorIntencionContinuar _cambioCampania;
+    private readonly DetectorEntradaProactiva _entradaProactiva;
+    private readonly bool _despertarProactivoHabilitado;
     private readonly TimeProvider _tiempo;
 
     public ServicioEnrutamientoParticipacion(
@@ -111,6 +120,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 ? opciones.FrasesCambiarCampania
                 : DetectorIntencionContinuar.FrasesCambiarCampaniaPorDefecto,
             opciones.MaxCaracteresIntencionContinuar);
+        _entradaProactiva = new DetectorEntradaProactiva(
+            opciones.FrasesDespertarProactivo is { Count: > 0 }
+                ? opciones.FrasesDespertarProactivo
+                : DetectorEntradaProactiva.FrasesPorDefecto,
+            opciones.MaxCaracteresDespertarProactivo);
+        _despertarProactivoHabilitado = opciones.DespertarProactivoHabilitado;
         _tiempo = tiempo;
     }
 
@@ -167,6 +182,17 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         if (elegibles.Count == 0)
         {
             return new ResultadoEnrutamiento.SinElegibles();
+        }
+
+        // P-28: solo después de descartar selección pendiente/afinidad y trabajo pendiente. El saludo
+        // no abre una conversación ni se guarda como aporte raíz; el siguiente texto real vuelve a P-26.
+        if (_despertarProactivoHabilitado
+            && !elegibles.Any(e => e.TrabajoPendiente)
+            && _entradaProactiva.Coincide(mensaje.Texto))
+        {
+            return elegibles.Count == 1
+                ? new ResultadoEnrutamiento.DespertarProactivo(elegibles[0].Candidato)
+                : await ConservarYOfrecerAsync(usuario, elegibles, mensaje, ahora, cancellationToken, esEntradaProactiva: true);
         }
 
         if (elegibles.Count == 1)
@@ -389,6 +415,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             return new ResultadoEnrutamiento.CambioCampaniaAplicado(candidato, abierta);
         }
 
+        if (enrutamiento.EsEntradaProactiva)
+        {
+            await _enrutamientos.GuardarAsync(enrutamiento.CompletarEntradaProactiva(ahora), cancellationToken);
+            return new ResultadoEnrutamiento.DespertarProactivo(candidato);
+        }
+
         return new ResultadoEnrutamiento.ContinuarConversacion(
             candidato,
             MensajeOriginal(enrutamiento, mensajeSeleccion, ahora),
@@ -448,7 +480,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         IReadOnlyList<CampaniaElegible> elegibles,
         MensajeEntrante mensaje,
         DateTimeOffset ahora,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool esEntradaProactiva = false)
     {
         // Reintento interno con el mismo mensaje raiz: el id determinista reutiliza el documento y no
         // se ofrece un segundo menu ni se pierde la auditoria previa (§5.5).
@@ -466,7 +499,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             EstadoEnrutamientoAporte.SeleccionCampania,
             ahora,
             phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
-            campaniasOfrecidas: Opciones(elegibles));
+            campaniasOfrecidas: Opciones(elegibles),
+            esEntradaProactiva: esEntradaProactiva);
 
         // §11: primero se conserva el aporte; si Cosmos falla no se muestra un menu que pueda perderlo.
         await _enrutamientos.GuardarAsync(enrutamiento, cancellationToken);

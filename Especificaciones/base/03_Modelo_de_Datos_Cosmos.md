@@ -308,6 +308,7 @@ aporte a una campaña real.
   "phoneNumberIdDestino": "123456789",
   "textoOriginal": "Se me ocurrió crear...",
   "estado": "seleccionCampania",
+  "esEntradaProactiva": false,
   "campaniasOfrecidas": [
     { "campaniaId": "c_1", "nombreSnapshot": "Innovación comercial", "orden": 1 }
   ],
@@ -342,6 +343,10 @@ aporte a una campaña real.
   original debe permanecer auditable.
 - `textoOriginal` pertenece al plano de negocio y recibe los mismos controles de acceso/retención que
   `Mensaje`; nunca se copia a telemetría técnica.
+- `esEntradaProactiva` (**P-28**, aditivo, opcional; ausente = `false`) marca que el texto original
+  fue un saludo/inicio no sustantivo. Si requiere menú, evita que el saludo se entregue como aporte al
+  resolver la selección: el mismo documento pasa de `listo` a `completado`, sin `procesadoEn`,
+  `Conversacion` ni `Respuesta` nuevos.
 
 ### 3.7 `Mensaje` (contenedor `conversations`) — `REQ §28.3`
 
@@ -659,6 +664,10 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "resultado": "rechazado",
   "detalle": "codigo invalido",
   "correlationId": "corr_...",
+  "campaniaId": null,
+  "promptTokens": 0,
+  "completionTokens": 0,
+  "esLlamadaLlm": false,
   "timestamp": "2026-06-12T15:06:00Z"
 }
 ```
@@ -673,6 +682,10 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 - `redaccionConversacional` (I-20, **aditivo** al final del enum): una entrada por llamada al redactor
   de turnos (`accion:<acto>`, `resultado=redactado|respaldo`, `motivo` técnico al degradar, `promptVoz`
   y tokens de esa llamada). **Nunca** incluye el texto redactado ni el rechazado. Ver `10 §6.2`.
+- `clasificacionIntencionControl` (P-27, **aditivo**): conserva `campaniaId` interno, tokens tipados y
+  `esLlamadaLlm`. Solo las entradas con este último valor en `true` consumen cupo por usuario y
+  presupuesto de campaña; incluye intentos que terminan en fallback, pero no los alias deterministas ni
+  una omisión previa por cupo. No guarda el texto entrante ni la salida cruda del modelo.
 - **Sin** códigos, secretos ni PII innecesaria.
 
 ### 3.16 `WebhookDedupe` (contenedor `leases`) — idempotencia

@@ -152,6 +152,7 @@ public sealed class RedactorTurnoConversacional : IRedactorTurnoConversacional
             ActoConversacional.Aclarar => "pedir una aclaración breve porque el último mensaje fue ambiguo.",
             ActoConversacional.Reabrir => "retomar una idea anterior e invitar a cambiarla o completarla.",
             ActoConversacional.Cerrar => "cerrar con un agradecimiento breve.",
+            ActoConversacional.Reactivar => "saludar a una persona sin flujo e invitarla a compartir una nueva idea, sin afirmar que ya existe una idea o una conversación activa.",
             _ => "redactar el turno indicado.",
         };
 

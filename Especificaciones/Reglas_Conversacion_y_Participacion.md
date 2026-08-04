@@ -3,7 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-07-29 (P-25: coaching directo sin confirmación repetitiva).
+> y `09` (Markdown). Última revisión: 2026-08-04 (P-28 implementada localmente; matriz canónica de cierres preservada).
 
 ## 1. Visión general del flujo
 
@@ -20,8 +20,10 @@ Participante                         El Tejido
      │  ◄──── Retro + CIERRE ──────────── │  (Markdown canónico por idea)
 ```
 
-Una **conversación** es el hilo de un trío `(participante, campaña, pregunta)`. Su id es determinista
-(`conv_<campaniaId>_<usuarioId>_<preguntaId>`): hay **una por trío** en el MVP.
+Una **conversación** es el hilo de `(participante, campaña, pregunta, ciclo)`. El primer ciclo conserva
+el id histórico `conv_<campaniaId>_<usuarioId>_<preguntaId>`; una campaña continua puede abrir ciclos
+posteriores con id determinista derivado del aporte raíz. Esto evita mezclar ideas ya cerradas con una
+idea nueva.
 
 ## 2. Reglas detalladas
 
@@ -138,7 +140,7 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
    compara como `CalificacionTotal >= Min + Umbral * (Max - Min)`.
 2. **Continuar por intencion del participante (salida conversacional).** Estando en `esperandoRepregunta`
    (ya se ofrecio una mejora), si el participante responde con una frase de conformidad
-   (`Conversacion:FrasesContinuar`, p. ej. *"asi esta bien"*, *"sigamos"*, *"listo"*), el mensaje **se
+   (`Conversacion:FrasesContinuar`, p. ej. *"asi esta bien"*, *"creo que ya esta bien"*, *"sigamos"*, *"listo"*), el mensaje **se
    registra como `recibida`, no se evalua**, el sistema antepone un acuse calido
    (`Conversacion:Mensajes:AcuseContinuar`) al `MensajeCierre` y avanza. La deteccion es **hibrida
    determinista**: igualdad exacta con una frase, o contencion de la frase solo si el mensaje es corto
@@ -153,13 +155,15 @@ valida compila su propio Markdown; el ultimo intento evaluado es el definitivo.
    sistema **degrada esa(s) respuesta(s) de madura a incubacion** (regenera su Markdown y registra
    telemetria), **no evalua** el mensaje, antepone el acuse `Conversacion:Mensajes:AcuseRechazoGuardado` al
    `MensajeCierre` y cierra. Si no hay ninguna idea madura que rechazar, el mensaje cae al flujo normal (se
-    evalua), para no cortar al participante por una negacion sin contexto de guardado. La degradacion nunca
+    evalua), para no cortar al participante por una negacion sin contexto de guardado. El alias de una sola
+    palabra *"no"* solo coincide si es todo el mensaje: *"no mas"* y *"no quiero continuar"* son salidas,
+    no rechazos de guardado. La degradacion nunca
     promueve (idempotente) y no toca contratos compartidos.
 
 ### 2.3.1 Intenciones de parar o avanzar escritas libremente (P-27, especificada)
 
 P-27 corrige primero el detector determinista con alias inequívocos como “quiero parar aquí”, “stop
-now” y “quiero pasar a otra idea”. Esta corrección no depende del LLM. Para expresiones cortas que no
+now”, “no quiero continuar”, “no más” y “quiero pasar a otra idea”. Esta corrección no depende del LLM. Para expresiones cortas que no
 coincidan con el catálogo y solo cuando el servidor ya espera una mejora o una aclaración, una función
 opcional puede proponer una de cuatro intenciones cerradas:
 `aportar|finalizarIdea|finalizarParticipacion|ambigua`.
@@ -177,6 +181,24 @@ cupo, el servidor no cierra nada y conserva el mensaje como aporte. Ver
 `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md`.
 
 ### 2.4 Cierre y Markdown
+Para que “cierre” no sea ambiguo, estas son las reglas canónicas:
+
+| Evento | Qué cierra | Resultado | Siguiente paso |
+|---|---|---|---|
+| La versión alcanza el umbral | La **idea activa** | `madura`, pendiente de curaduría | Siguiente idea; si no hay, siguiente pregunta |
+| “Así está bien” / finalizar idea | La **idea activa** | `pendiente` si no era madura | Siguiente idea; si no hay, siguiente pregunta |
+| “No lo guardes” | La **idea activa** | `rechazada` y auditable | Siguiente idea; si no hay, siguiente pregunta |
+| Tope, fallback o tiempo por idea | La **idea activa** | `pendiente` | Siguiente idea; si no hay, siguiente pregunta |
+| Finalizar participación | Cola/hilo actual | Conserva las ideas ya cerradas y finaliza las abiertas de forma segura | No abre otra pregunta ni otro ciclo |
+| Inactividad de sesión | Conversación abierta | Ideas abiertas quedan `pendiente` con motivo `inactividad` | Queda cerrada; P-29 solo añadirá el aviso humano |
+| Cierre administrativo de campaña | Toda interacción de esa campaña | Conserva trazabilidad | No recibe ni reabre aportes |
+
+**Finalizar una idea no finaliza la participación; finalizar la participación no cierra la campaña.**
+El umbral se denomina históricamente `umbralCierreAnticipado`, pero en el flujo canónico I-19 su
+efecto de negocio es la **finalización por madurez de la idea**. El kill-switch
+`CierreAnticipadoHabilitado` conserva el atajo del flujo legado; no autoriza al LLM a cerrar ni cambia
+la clasificación server-side de madurez.
+
 En I-19, el cierre deja una única idea como `madura`, `pendiente` o `rechazada` y compila su Markdown
 canónico. Una idea madura queda `pendiente` de curaduría experta; no se publica ni prioriza
 automáticamente. Una conversación cerrada no acepta contenido nuevo como otra respuesta independiente,
@@ -381,6 +403,30 @@ La selección acepta número o nombre/texto exacto no ambiguo y se vuelve a vali
 asociación y pregunta. El LLM no elige el alcance. Apagar el interruptor deja terminar una idea ya
 activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción. Ver P-26.
 
+### 2.11 Reingreso, pausa y retomar una idea (P-28 implementada; P-29/P-30 especificadas)
+
+Estas iniciativas no crean otra variante de participación continua. Completan vacíos concretos sobre
+la base ya implementada:
+
+1. **P-28 — reingreso:** con `Conversacion:DespertarProactivoHabilitado=true`, si no hay afinidad ni
+   trabajo pendiente y el mensaje es un saludo o una petición determinista de iniciar/continuar,
+   presenta una bienvenida breve. Una campaña se resuelve automáticamente; varias usan el menú P-26 y
+   el saludo queda marcado como entrada, no como aporte. Al escoger, ese registro se completa sin crear
+   conversación, idea ni respuesta. Un aporte sustantivo nuevo no espera este saludo: P-26 resuelve
+   alcance y abre el ciclo nuevo directamente. P-28 no es requisito técnico para que una campaña
+   continua reciba una idea nueva.
+2. **P-29 — pausa por tiempo:** I-17/I-19 ya miden inactividad y cierran de forma idempotente. P-29
+   solo agrega un aviso de pausa, con fallback, cuando la ventana de WhatsApp lo permite; no crea otro
+   temporizador ni cambia el estado de la idea.
+3. **P-30 — retomar:** I-19/P-26 ya reabren explícitamente la idea reciente del alcance vigente y
+   conservan su `ideaId`. P-30 añade la lista determinista de ideas históricas del propio participante,
+   sin filtrar por estado, dentro de campaña y pregunta ya resueltas. “Sin importar el estado” nunca
+   permite ignorar autorización, campaña activa ni aislamiento entre preguntas.
+
+Ante un mensaje sin flujo activo, la precedencia final será: petición explícita de retomar → P-30;
+aporte sustantivo nuevo elegible → P-26; saludo/petición de entrada → P-28; sin elegibles → rechazo
+neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de esas transiciones aplicar.
+
 ## 3. Parámetros configurables
 
 | Parámetro | Dónde se configura | Default | Efecto |
@@ -398,6 +444,9 @@ activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción
 | `Conversacion:Mensajes:EncabezadoSeleccionCampania` / `:InstruccionSeleccionCampania` / `:AyudaSeleccionCampaniaInvalida` | App config / env `Conversacion__Mensajes__…` | (textos por defecto) | **P-26 §2.10** — encabezado e instrucción del menú numerado de campañas elegibles, y ayuda que antecede al menú tras una opción inválida. El menú solo muestra campañas autorizadas. |
 | `Conversacion:Mensajes:EncabezadoSeleccionPregunta` / `:InstruccionSeleccionPregunta` | App config / env `Conversacion__Mensajes__…` | (textos por defecto) | **P-26 §2.10** — encabezado e instrucción del menú numerado de preguntas dentro de la campaña ya elegida. Solo aparece con varias preguntas elegibles; con una sola se avanza automáticamente. |
 | `Conversacion:FrasesCambiarCampania` | App config / env `Conversacion__FrasesCambiarCampania__0`, `...__1` | (lista compilada) | **P-26 §2.10** — frases con las que el participante pide explícitamente cambiar de campaña ("otra campaña"). Suspenden la afinidad vigente **sin cerrar ni rechazar** la idea y recalculan las opciones. Vacío = usa la lista por defecto. |
+| `Conversacion:DespertarProactivoHabilitado` | App config / env `Conversacion__DespertarProactivoHabilitado` | `false` | **P-28** — habilita la bienvenida para saludo/inicio breve sin flujo; OFF conserva P-26 para aportes sustantivos. |
+| `Conversacion:MaxCaracteresDespertarProactivo` / `:FrasesDespertarProactivo` | App config / env `Conversacion__…` | `80` / lista compilada | **P-28** — límite y vocabulario deterministas; texto largo o no coincidente se trata por la ruta normal. |
+| `Conversacion:Mensajes:SaludoReactivacion` | App config / env `Conversacion__Mensajes__SaludoReactivacion` | texto de respaldo | **P-28** — texto seguro si la redacción LLM del acto de reactivación no está disponible o es inválida. |
 | `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
 | `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
 | `Conversacion:Mensajes:AcuseContinuar` | App config / env `Conversacion__Mensajes__AcuseContinuar` | "¡Perfecto, sigamos!" | Acuse que antecede al cierre cuando el participante pide continuar. |
@@ -461,6 +510,9 @@ activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción
   `madura|pendiente|rechazada`. Una idea madura recibe `estadoCuraduria=pendiente`.
 - **Enrutamiento P-26:** `seleccionCampania|seleccionPregunta|listo → enIdea → completado`;
   puede terminar `expirado|cancelado`. Cada ciclo nuevo crea otra conversación.
+- **Entrada P-28:** un `EnrutamientoAporte` marcado `esEntradaProactiva` puede recorrer el mismo menú
+  P-26, pero al resolverlo hace `listo → completado` y envía solo bienvenida: no llega a `enIdea` ni
+  crea conversación.
 - **Aclaración P-27 (opcional):** `esperandoRepregunta → esperandoConfirmacionSalida →
   esperandoRepregunta|cerrada`; las opciones 1/2/3 son deterministas y no consumen una repregunta.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).

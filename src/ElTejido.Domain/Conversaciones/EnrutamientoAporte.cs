@@ -32,7 +32,8 @@ public sealed class EnrutamientoAporte
         DateTimeOffset creadoEn,
         DateTimeOffset actualizadoEn,
         DateTimeOffset venceEn,
-        DateTimeOffset? procesadoEn)
+        DateTimeOffset? procesadoEn,
+        bool esEntradaProactiva)
     {
         Id = id;
         UsuarioId = usuarioId;
@@ -50,6 +51,7 @@ public sealed class EnrutamientoAporte
         ActualizadoEn = actualizadoEn;
         VenceEn = venceEn;
         ProcesadoEn = procesadoEn;
+        EsEntradaProactiva = esEntradaProactiva;
     }
 
     public string Id { get; }
@@ -92,6 +94,9 @@ public sealed class EnrutamientoAporte
     /// <summary>Instante en el que el aporte original quedo persistido en la conversacion resuelta.</summary>
     public DateTimeOffset? ProcesadoEn { get; }
 
+    /// <summary>P-28: la raíz es un saludo y nunca se entrega al orquestador como aporte.</summary>
+    public bool EsEntradaProactiva { get; }
+
     /// <summary>Particion interna reservada del contenedor <c>conversations</c> para este usuario.</summary>
     public string ParticionRouting => ParticionRoutingDe(UsuarioId);
 
@@ -123,7 +128,8 @@ public sealed class EnrutamientoAporte
         IEnumerable<IntentoSeleccion>? intentosSeleccion = null,
         DateTimeOffset? actualizadoEn = null,
         DateTimeOffset? venceEn = null,
-        DateTimeOffset? procesadoEn = null)
+        DateTimeOffset? procesadoEn = null,
+        bool esEntradaProactiva = false)
     {
         var usuario = DomainGuards.Required(usuarioId, nameof(usuarioId));
         var mensaje = DomainGuards.Required(whatsappMessageId, nameof(whatsappMessageId));
@@ -145,7 +151,8 @@ public sealed class EnrutamientoAporte
             creado,
             (actualizadoEn ?? creado).ToUniversalTime(),
             (venceEn ?? creado.AddHours(HorasVigencia)).ToUniversalTime(),
-            procesadoEn?.ToUniversalTime());
+            procesadoEn?.ToUniversalTime(),
+            esEntradaProactiva);
     }
 
     /// <summary>¿La seleccion pendiente ya vencio logicamente? Solo aplica a los estados de seleccion.</summary>
@@ -233,6 +240,13 @@ public sealed class EnrutamientoAporte
         return With(estado: EstadoEnrutamientoAporte.Completado, actualizadoEn: ahora);
     }
 
+    /// <summary>P-28: termina la selección sin crear afinidad ni procesar el saludo como idea.</summary>
+    public EnrutamientoAporte CompletarEntradaProactiva(DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.Listo, "completar la entrada proactiva");
+        return With(estado: EstadoEnrutamientoAporte.Completado, actualizadoEn: ahora);
+    }
+
     /// <summary>Vencimiento logico: el texto permanece auditable pero ya no se procesa automaticamente.</summary>
     public EnrutamientoAporte Expirar(DateTimeOffset ahora)
         => With(estado: EstadoEnrutamientoAporte.Expirado, actualizadoEn: ahora);
@@ -278,7 +292,8 @@ public sealed class EnrutamientoAporte
             CreadoEn,
             (actualizadoEn ?? ActualizadoEn).ToUniversalTime(),
             VenceEn,
-            (procesadoEn ?? ProcesadoEn)?.ToUniversalTime());
+            (procesadoEn ?? ProcesadoEn)?.ToUniversalTime(),
+            EsEntradaProactiva);
 }
 
 /// <summary>Estados del enrutamiento (03 §3.6.1). El vencimiento y las transiciones son server-side.</summary>

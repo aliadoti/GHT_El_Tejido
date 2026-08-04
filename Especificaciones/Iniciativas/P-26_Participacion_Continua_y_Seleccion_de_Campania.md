@@ -1,6 +1,8 @@
 # P-26 — Participación continua y selección de campaña/pregunta
 
-**Estado:** ESPECIFICADA — lista para implementación por cortes; **sin código implementado**.  
+**Estado:** **IMPLEMENTADA localmente (6/6, 2026-07-31); activación operativa pendiente.** El
+interruptor por campaña nace apagado y requiere D5, UAT, revisión de costo y el cierre de P-27 antes
+de activarse en UAT o producción.
 **Fecha de decisión:** 2026-07-29.  
 **Áreas afectadas:** dominio de campañas, resolución de participante, webhook, orquestador,
 persistencia Cosmos, guardrails, API administrativa, portal y pruebas E2E simuladas.  
@@ -77,6 +79,12 @@ nuevos mensajes.
 - Integración final con repositorio de conocimiento, priorización/implementación o actas.
 - Recordatorios proactivos fuera de la ventana de servicio de WhatsApp.
 - Un LLM que elija la campaña, la pregunta o el estado del flujo.
+- El saludo/elección humana cuando el participante vuelve sin un aporte sustantivo: es el vacío
+  específico de P-28. P-26 ya procesa directamente un aporte sustantivo nuevo.
+- El aviso humano al expirar una conversación: el cierre determinístico ya existe en I-17/I-19 y el
+  mensaje de pausa es el único vacío de P-29.
+- La lista de ideas de ciclos históricos para escoger cualquiera de ellas: P-26 conserva la
+  reapertura explícita vigente; P-30 la amplía sin duplicarla.
 
 ### 3.3 Preparación para la visión de mediano plazo
 
@@ -235,7 +243,7 @@ Si un mensaje raíz contiene varias ideas y están activos I-06/I-18, esas ideas
 mismo ciclo y se trabajan una por una. El siguiente aporte recibido después de cerrar la cola crea un
 ciclo nuevo.
 
-### 5.8 Reapertura de una idea anterior
+### 5.8 Reapertura vigente de una idea anterior
 
 Frases explícitas como “quiero complementar la anterior” no crean una idea nueva:
 
@@ -247,6 +255,8 @@ Frases explícitas como “quiero complementar la anterior” no crean una idea 
 
 Si no existe afinidad o la idea pertenece a otra campaña/pregunta, el sistema solicita primero el
 alcance y después aplica la selección de idea. Nunca mezcla ideas de campañas o preguntas distintas.
+Esta capacidad cubre la idea cerrada reciente en el alcance resuelto; **no** promete todavía listar
+cualquier idea de ciclos históricos o de cualquier estado. Esa ampliación es P-30.
 
 ### 5.9 Cambio del interruptor
 
@@ -478,19 +488,20 @@ P-26 cambia la ventana únicamente donde la continuidad haría inviables los lí
 
 ---
 
-## 13. Plan de implementación por cortes
+## 13. Registro de implementación local
 
 | Corte | Entrega verificable | Pruebas mínimas |
 |---|---|---|
-| 1 | Dominio y contratos: flag, DTO/API, campos de conversación y `EnrutamientoAporte`. | Serialización histórica/default, CRUD/duplicado de campaña, repositorio Cosmos. |
-| 2 | Resolución multi-campaña y persistencia del aporte/selección. | 0/1/N campañas, número/nombre/ambigüedad, expiración, revalidación e idempotencia. |
-| 3 | Selección de pregunta, afinidad y ciclos nuevos. | 1/N preguntas, coaching sin menú, segundo ciclo independiente, cambio explícito. |
-| 4 | Reapertura entre alcances y cupos móviles de 24 horas. | Idea nueva vs. reapertura, bordes de ventana, presupuesto acumulado. |
-| 5 | Portal de creación/edición y accesibilidad. | Admin/visor, texto de ayuda, round-trip y regresión P-16/P-18/P-20/P-22. |
-| 6 | Observabilidad, E2E simulada, QA y cierre documental. | Flujo completo, concurrencia/reintento, seguridad, build/test/format/frontend/diff. |
+| 1 | Dominio, contratos y `EnrutamientoAporte`. | Histórico/default, CRUD/duplicado y Cosmos. |
+| 2 | Resolución multi-campaña y aporte conservado. | 0/1/N, selección, revalidación, expiración e idempotencia. |
+| 3 | Pregunta, afinidad y ciclos nuevos. | 1/N preguntas, coaching sin menú, segundo ciclo y cambio explícito. |
+| 4 | Reapertura vigente y cupos móviles de 24 horas. | Idea nueva vs. reapertura, bordes de ventana y presupuesto acumulado. |
+| 5 | Portal accesible. | Admin/visor, ayuda, round-trip y regresión de campañas. |
+| 6 | Observabilidad, E2E simulada, QA y cierre documental. | Flujo completo, concurrencia/reintento, seguridad, backend, portal y diff. |
 
-Cada corte debe dejar `TODO.md` y `AVANCES.md` actualizados. No desplegar ni cambiar configuración
-remota sin una instrucción posterior del usuario.
+Los seis cortes están en `main` (`0e07527` a `da899ce`). No desplegar ni cambiar configuración remota
+sin una instrucción posterior del usuario. Los vacíos P-28/P-29/P-30 se implementarán como extensiones
+puntuales de esta base, no como otra participación continua.
 
 ---
 

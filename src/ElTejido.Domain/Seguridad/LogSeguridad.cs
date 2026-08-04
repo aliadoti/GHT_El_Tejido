@@ -16,7 +16,11 @@ public sealed class LogSeguridad
         string resultado,
         string? detalle,
         string? correlationId,
-        DateTimeOffset timestamp)
+        DateTimeOffset timestamp,
+        string? campaniaId,
+        int promptTokens,
+        int completionTokens,
+        bool esLlamadaLlm)
     {
         Id = id;
         TipoEvento = tipoEvento;
@@ -26,6 +30,10 @@ public sealed class LogSeguridad
         Detalle = detalle;
         CorrelationId = correlationId;
         Timestamp = timestamp;
+        CampaniaId = campaniaId;
+        PromptTokens = promptTokens;
+        CompletionTokens = completionTokens;
+        EsLlamadaLlm = esLlamadaLlm;
     }
 
     public string Id { get; }
@@ -44,6 +52,18 @@ public sealed class LogSeguridad
 
     public DateTimeOffset Timestamp { get; }
 
+    /// <summary>Identificador interno de campaña para cuotas y agregados técnicos; no es PII.</summary>
+    public string? CampaniaId { get; }
+
+    /// <summary>Tokens del prompt, cuando el evento representa una llamada LLM.</summary>
+    public int PromptTokens { get; }
+
+    /// <summary>Tokens de completitud, cuando el evento representa una llamada LLM.</summary>
+    public int CompletionTokens { get; }
+
+    /// <summary>Indica una invocación efectiva al proveedor, incluso si terminó en fallback.</summary>
+    public bool EsLlamadaLlm { get; }
+
     public static LogSeguridad Crear(
         string id,
         TipoEventoSeguridad tipoEvento,
@@ -52,7 +72,11 @@ public sealed class LogSeguridad
         string resultado,
         string? detalle,
         string? correlationId,
-        DateTimeOffset timestamp)
+        DateTimeOffset timestamp,
+        string? campaniaId = null,
+        int promptTokens = 0,
+        int completionTokens = 0,
+        bool esLlamadaLlm = false)
     {
         return new LogSeguridad(
             DomainGuards.Required(id, nameof(id)),
@@ -62,6 +86,10 @@ public sealed class LogSeguridad
             DomainGuards.Required(resultado, nameof(resultado)),
             string.IsNullOrWhiteSpace(detalle) ? null : detalle.Trim(),
             string.IsNullOrWhiteSpace(correlationId) ? null : correlationId.Trim(),
-            timestamp.ToUniversalTime());
+            timestamp.ToUniversalTime(),
+            string.IsNullOrWhiteSpace(campaniaId) ? null : campaniaId.Trim(),
+            Math.Max(0, promptTokens),
+            Math.Max(0, completionTokens),
+            esLlamadaLlm);
     }
 }

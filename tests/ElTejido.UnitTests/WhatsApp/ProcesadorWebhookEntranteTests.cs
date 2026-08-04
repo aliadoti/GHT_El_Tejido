@@ -92,6 +92,23 @@ public sealed class ProcesadorWebhookEntranteTests
     }
 
     [Fact]
+    public async Task P28_DespertarResuelto_EnviaEntradaAlOrquestadorSinProcesarAporte()
+    {
+        var candidato = AutorizarConCandidato("Hola");
+        _enrutamiento.ResolverAsync(Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(), Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEnrutamiento.DespertarProactivo(candidato));
+
+        var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.Procesado);
+        await _orquestador.Received(1).EnviarDespertarProactivoAsync(
+            Arg.Is<ParticipanteResuelto>(p => p.Campania.Id == "c_1"),
+            Arg.Is<MensajeEntrante>(m => m.Texto == "Hola"),
+            Arg.Any<CancellationToken>());
+        await _orquestador.DidNotReceiveWithAnyArgs().ProcesarAporteEnrutadoAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
     public async Task Procesar_AporteConservado_ConfirmaProcesadoTrasElOrquestador()
     {
         var candidato = AutorizarConCandidato();

@@ -45,6 +45,9 @@ public enum ActoConversacional
 
     /// <summary>Cerrar el hilo o la idea con el acuse que corresponda.</summary>
     Cerrar,
+
+    /// <summary>P-28: dar la bienvenida a una persona sin flujo, sin crear ni reabrir una idea.</summary>
+    Reactivar,
 }
 
 /// <summary>
@@ -74,7 +77,7 @@ public sealed record ContextoRedaccionTurno(
     public IReadOnlyList<string> HistorialIdea { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// Prompt efectivo de voz (`promptRefs.conversacion` → `retro`, §5). Ausente = solo las
+    /// Prompt efectivo de voz (`promptRefs.reactivacion` para P-28; si no, `conversacion` → `retro`, §5). Ausente = solo las
     /// instrucciones de seguridad del redactor, sin romper campañas ya configuradas.
     /// </summary>
     public Prompt? PromptSnapshot { get; init; }

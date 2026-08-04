@@ -22,13 +22,14 @@ Servicio `IGuardrails` consumido por el Gateway (`05`) y la Evaluación (`08`). 
 | Máx. historial conversacional enviado | últimos N turnos / tope de tokens | Acotar. |
 | Máx. repreguntas | 1 (MVP) | No enviar más; cerrar. |
 | Máx. mensajes por usuario/campaña | 10 | `429`/rechazo controlado; registrar. En campañas P-26 continuas se cuentan en ventana móvil de 24 h; en las demás conservan el acumulado vigente. |
-| Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. En campañas P-26 continuas se cuentan en ventana móvil de 24 h; el universo de llamadas cobradas no cambia. |
+| Máx. llamadas LLM por usuario/campaña | 2 (1 inicial + 1 repregunta) | No llamar; cerrar/fallback. En campañas P-26 continuas se cuentan en ventana móvil de 24 h; incluye evaluación, consolidación y clasificación P-27 efectivamente invocada. |
 | **Presupuesto de tokens LLM por campaña (P-10)** | `Campania.configSeguridad.presupuestoTokensCampania` (0 = off) | Con `Conversacion:CuposHabilitados` activo, al alcanzarlo se cierra elegante (cupo LLM agotado) y `LogSeguridad(rateLimit, "presupuesto_tokens_campania")`. Metering: cada llamada emite log de tokens con `campaniaId` (sin secretos) para alerta al 80% en App Insights. |
 | **Segmentación multi-idea (I-06)** | `Conversacion:SegmentacionIdeas=true`, `MaxIdeasPorMensaje=5`, `LongitudMinimaIdea=30` | Solo se aplica si la campaña tiene `configConversacional.segmentacionIdeas=true`. Salida inválida/0 ideas -> fallback 1-idea. Excedentes -> procesar primeras N. Cada intento emite `LogSeguridad(segmentacionIdeas)` con conteos, fallback, truncamiento y tokens, sin texto. |
 | **Coaching secuencial por idea (I-18)** | Kill-switch `Conversacion:CoachingSecuencialIdeas=true`; campaña `coachingSecuencialIdeas=false`; `MinutosCoachingPorIdea=0` | Solo opera con I-06 efectivo. `MaxRepreguntas` es por idea, pero siguen aplicando cupos por usuario, presupuesto y `MaxTurnosPorHilo`. Al exceder tiempo/límite, finaliza la idea y avanza; evento sin texto ni PII. |
 | **Consolidación progresiva (I-19)** | Kill-switch global `Conversacion:ConsolidacionProgresivaHabilitada=true`; sin opt-in por campaña | Activa para todas las campañas. Cada consolidación cuenta como llamada LLM. Al apagar el kill-switch, conserva aportes nuevos como pendientes y evita evaluarlos aisladamente. |
 | **Participación continua (P-26)** | `Campania.configConversacional.participacionContinua=false` | Solo con campaña `activa`. Habilita ciclos nuevos, enrutamiento por campaña/pregunta y cupos móviles de 24 h. El aporte pendiente se conserva en el plano de negocio; estado cerrado prevalece. |
 | **Clasificación de intención de control (P-27)** | Kill-switch `Conversacion:ClasificacionIntencionControl=false`; campaña `clasificacionIntencionControl=false`; `MaxCaracteresClasificacionIntencionControl=160` | Alias inequívocos se resuelven sin LLM. La llamada flexible solo propone un enum y cuenta en cupos/presupuesto. Salida inválida/fallo nunca cierra: degrada a aporte. El servidor valida toda transición. |
+| **Despertar proactivo (P-28)** | Kill-switch `Conversacion:DespertarProactivoHabilitado=false`; vocabulario y máximo globales | Solo un saludo/inicio breve sin afinidad ni trabajo pendiente recibe bienvenida. El servidor resuelve alcance y estado; el LLM solo redacta con fallback. Nunca crea una idea desde el saludo ni registra su texto en telemetría. |
 | Timeout LLM | 30 s | Reintentar (hasta `maxReintentos`), luego fallback. |
 | Máx. reintentos LLM | 2 | Fallback seguro. |
 | Rate limit por número WhatsApp (P-10) | `Seguridad:RateNumeroWhatsAppPorMinuto` (0 = off) | Ventana deslizante en memoria aplicada antes de resolver el participante; al exceder, **descarte silencioso** + `LogSeguridad(rateLimit, "rate_numero")`. |
@@ -98,7 +99,7 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27), `despertarProactivo` (P-28). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.
@@ -117,7 +118,15 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
   `origen:<determinista|llm>`, `resultado:<clasificada|ambigua|fallback|omitida>`,
   `intencion:<aportar|finalizarIdea|finalizarParticipacion|ninguna>`, estado, tokens y motivo técnico.
   Nunca incluye mensaje, salida cruda, razonamiento, idea ni texto visible. Permite medir falsos
-  cierres en UAT, aclaraciones, fallback y costo/latencia antes de activar.
+  cierres en UAT, aclaraciones, fallback y costo/latencia antes de activar. Para las consultas de
+  cupo/presupuesto persiste además `campaniaId`, `promptTokens`, `completionTokens` y
+  `esLlamadaLlm`: solo una llamada real al clasificador (también si termina en fallback) consume; los
+  alias deterministas y las omisiones por cupo quedan auditados, pero no cobran otra llamada.
+
+- **`despertarProactivo` (P-28):** registra solo el resultado `reactivacion|errorEnvio`,
+  `detalle=accion:reactivacion`, identificadores internos y `correlationId`. No incluye el saludo,
+  el texto de bienvenida, nombres de campañas ni una idea; permite medir entradas humanas y fallos
+  de entrega sin ampliar el plano de datos personales.
 
 - **`consolidacionProgresivaIdeas` (I-19):** transiciones
   `propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback`, con índice, versión, estado y
