@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Especificaciones/Iniciativas/TODO.md",
+                "file": "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "TODO"
+              "title": "P-26_Participacion_Continua_y_Seleccion_de_Campania"
             }
           },
           {
@@ -92,7 +92,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 341.5
+    "width": 512.5
   },
   "right": {
     "id": "1e371abced1fb1bf",
@@ -199,17 +199,17 @@
   },
   "active": "8cc6b5c552480c8c",
   "lastOpenFiles": [
-    "Especificaciones/Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md.tmp.87632.da81a91e9edf",
-    "Especificaciones/AVANCES.md.tmp.87632.1b20d2bd51b1",
-    "Especificaciones/Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md.tmp.87632.eb592f1ec6d1",
-    "Especificaciones/Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md.tmp.87632.4b378133bb7e",
-    "Especificaciones/Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md.tmp.87632.8d2c303a6da7",
-    "src/ElTejido.Api/wwwroot/chunk-CToFmh5O.js",
-    "src/ElTejido.Api/wwwroot/chunk-BPiba0RL.js",
-    "src/ElTejido.Api/wwwroot/chunk-l5ApXnoS.js",
-    "src/ElTejido.Api/wwwroot/chunk-DDcq7llf.js",
-    "src/ElTejido.Api/wwwroot/chunk-BjNvSt0C.js",
-    "src/ElTejido.Api/wwwroot/chunk-Cga2y2-0.js",
+    "Especificaciones/Iniciativas/TODO.md",
+    "src/ElTejido.Api/wwwroot/chunk-DGLm3oD3.js",
+    "src/ElTejido.Api/wwwroot/chunk-DLC53iA_.js",
+    "src/ElTejido.Api/wwwroot/chunk-BbEOf286.js",
+    "src/ElTejido.Api/wwwroot/chunk-PIAs6HDN.js",
+    "src/ElTejido.Api/wwwroot/chunk-DjTE46zc.js",
+    "src/ElTejido.Api/wwwroot/chunk-C6wUoKwX.js",
+    "src/ElTejido.Api/wwwroot/chunk-Qce-D2VE.js",
+    "src/ElTejido.Api/wwwroot/chunk-CeaCjPSh.js",
+    "src/ElTejido.Api/wwwroot/chunk-B_2d1iiW.js",
+    "src/ElTejido.Api/wwwroot/chunk-BDbH8fQ4.js",
     "Requeriments/GHT_banco_de_ideas_req_inicial.md",
     "Especificaciones/Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md",
     "Especificaciones/Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md",

@@ -133,9 +133,13 @@ crean participantes repetidos.
    **"Reiniciar datos"** de toda la campaña.
 2. Confirma la acción.
 3. **Deberías ver:** que desaparecen las respuestas/resultados de ese participante, **pero la campaña,
-   sus preguntas y los usuarios siguen ahí**.
-4. Escribe de nuevo como ese participante: el sistema te vuelve a saludar y hacer la pregunta desde cero.
-**Algo va mal si:** se borra la campaña o su configuración, o si el participante no puede volver a empezar.
+   sus preguntas y los usuarios siguen ahí**. En la sección **Participantes**, su estado de envío debe
+   quedar como **pendiente**.
+4. Abre **Envíos** y envía de nuevo la campaña a esa persona. Debe quedar disponible para seleccionarla
+   y recibir el mensaje inicial otra vez.
+5. Escribe de nuevo como ese participante: el sistema te vuelve a saludar y hacer la pregunta desde cero.
+**Algo va mal si:** se borra la campaña o su configuración, el envío permanece como “enviado”, o el
+participante no puede volver a empezar.
 
 ### ✅ I-16 — La calificación correcta queda en el resumen
 **Qué es:** un arreglo para que el resumen final (Markdown) muestre **la última** calificación, no una vieja.

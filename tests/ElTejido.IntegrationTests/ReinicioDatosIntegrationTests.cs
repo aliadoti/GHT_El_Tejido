@@ -43,7 +43,7 @@ public sealed class ReinicioDatosIntegrationTests
         await SembrarAsync(fabrica, "c_1", "u_1");
 
         using var respuesta = await EnviarJsonAsync(
-            client, HttpMethod.Post, "/api/admin/campanias/c_1/participantes/u_1/reiniciar", new { reiniciarEnvios = false });
+            client, HttpMethod.Post, "/api/admin/campanias/c_1/participantes/u_1/reiniciar", new { reiniciarEnvios = true });
 
         respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await respuesta.Content.ReadAsStringAsync();
@@ -58,6 +58,8 @@ public sealed class ReinicioDatosIntegrationTests
         (await conversaciones.ListarConversacionesAsync("c_1", CancellationToken.None)).Should().BeEmpty();
         var participante = await participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", CancellationToken.None);
         participante!.EstadoRespuesta.Should().Be(EstadoRespuestaParticipante.SinRespuesta);
+        participante.EstadoEnvio.Should().Be(EstadoEnvio.Pendiente);
+        participante.FechaPrimerEnvio.Should().BeNull();
     }
 
     [Fact]

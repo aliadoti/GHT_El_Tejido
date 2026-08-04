@@ -2,6 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 
 import { AdminApiService } from '../core/admin-api.service';
 import { ApiClient } from '../core/api-client.service';
@@ -10,6 +11,7 @@ import {
   Campania,
   ConfigLlm,
   PagedResult,
+  ParticipanteCampania,
   PromptConfig,
   ReporteCargaMasiva,
   Respuesta,
@@ -20,6 +22,7 @@ import {
 import { authInterceptor } from '../core/auth.interceptor';
 import { AuthService } from '../core/auth.service';
 import { ConfigLlmPage } from '../features/config-llm/config-llm.page';
+import { CampaniasPage } from '../features/campanias/campanias.page';
 import { PromptsPage } from '../features/prompts/prompts.page';
 import { RubricasPage } from '../features/rubricas/rubricas.page';
 import { UsuariosPage } from '../features/usuarios/usuarios.page';
@@ -50,7 +53,10 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    vi.restoreAllMocks();
+  });
 
   /** Realiza el intercambio OTP completo y deja una sesion admin con CSRF activa. */
   function autenticarComoAdmin(auth: AuthService, rol = 'admin'): void {
@@ -408,6 +414,62 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     expect(preguntaActualizada?.maxRepreguntas).toBe(1);
   });
 
+  it('P-03: ambos reinicios del portal dejan el envio pendiente para una nueva prueba', () => {
+    const auth = TestBed.inject(AuthService);
+    autenticarComoAdmin(auth);
+
+    const fixture = TestBed.createComponent(CampaniasPage);
+    http
+      .expectOne((r) => r.url === '/api/admin/campanias' && r.method === 'GET')
+      .flush({ items: [campania('c_1', 'llm_1')], page: 1, pageSize: 50, total: 1 });
+    responderListaRubricas([]);
+    responderListaConfigsLlm([]);
+    responderListaPrompts([]);
+    responderListaUsuarios([usuario('u_1', 'Ana')]);
+
+    const comp = fixture.componentInstance as unknown as {
+      reiniciarParticipante: (campaniaId: string, participante: ParticipanteCampania) => void;
+      reiniciarDatosCampania: (campania: Campania) => void;
+    };
+    const participante: ParticipanteCampania = {
+      id: 'pc_1',
+      campaniaId: 'c_1',
+      usuarioId: 'u_1',
+      whatsappNormalizado: '573001112233',
+      estado: 'activo',
+      estadoEnvio: 'enviado',
+      estadoRespuesta: 'respondio',
+      fechaInclusion: '2026-08-04T00:00:00Z',
+      fechaPrimerEnvio: '2026-08-04T00:00:00Z',
+    };
+    const reporte = {
+      conversaciones: 1,
+      mensajes: 1,
+      respuestas: 1,
+      evaluaciones: 1,
+      artefactos: 1,
+      blobsBorrados: 1,
+      blobsFallidos: 0,
+      participantesReseteados: 1,
+    };
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    comp.reiniciarParticipante('c_1', participante);
+    const reinicioParticipante = http.expectOne(
+      '/api/admin/campanias/c_1/participantes/u_1/reiniciar',
+    );
+    expect(reinicioParticipante.request.body).toEqual({ reiniciarEnvios: true });
+    reinicioParticipante.flush(reporte);
+    http.expectOne('/api/admin/campanias/c_1/participantes').flush([]);
+
+    vi.spyOn(window, 'prompt').mockReturnValue('Ideas 2026');
+    comp.reiniciarDatosCampania(campania('c_1', 'llm_1'));
+    const reinicioCampania = http.expectOne('/api/admin/campanias/c_1/reiniciar-datos');
+    expect(reinicioCampania.request.body).toEqual({ reiniciarEnvios: true });
+    reinicioCampania.flush(reporte);
+    http.expectOne('/api/admin/campanias/c_1/participantes').flush([]);
+  });
+
   // --- helpers de datos / respuestas mock -----------------------------------
 
   function responderListaUsuarios(items: UsuarioAdmin[]): void {
@@ -436,6 +498,17 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     http
       .expectOne((r) => r.url === '/api/admin/rubricas' && r.method === 'GET')
       .flush({ items, page: 1, pageSize: 50, total: items.length } satisfies PagedResult<Rubrica>);
+  }
+
+  function responderListaConfigsLlm(items: ConfigLlm[]): void {
+    http
+      .expectOne((r) => r.url === '/api/admin/config-llm' && r.method === 'GET')
+      .flush({
+        items,
+        page: 1,
+        pageSize: 100,
+        total: items.length,
+      } satisfies PagedResult<ConfigLlm>);
   }
 
   function responderListaPrompts(items: PromptConfig[]): void {

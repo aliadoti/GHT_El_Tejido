@@ -94,7 +94,9 @@ Ana Pérez,573001112201,Ventas,ACME,duplicada
 
 ## 6. Procedimiento de reinicio entre corridas (P-03) — **sin tocar Cosmos**
 
-**Regla:** reiniciar **antes de repetir** cualquier caso, para reproducir el cold-start real.
+**Regla:** reiniciar **antes de repetir** cualquier caso, para reproducir el cold-start real. Desde
+los botones del portal, el reinicio también deja el envío en **pendiente**, listo para volver a
+enviar la campaña.
 
 ### 6.1 Reinicio por participante (rápido, para 1 caso)
 ```
@@ -104,7 +106,9 @@ Body (opcional): { "reiniciarEnvios": false }
 ```
 - Borra conversaciones/respuestas/evaluaciones/Markdown **solo** de ese participante en esa campaña.
 - Conserva campaña, config, usuarios y su asociación.
-- Con `reiniciarEnvios:true` además resetea `estadoEnvio=Pendiente` (permite re-disparar el envío inicial desde `Envios`).
+- En el **portal**, este reinicio envía `reiniciarEnvios:true`: resetea
+  `estadoEnvio=Pendiente` y permite re-disparar el envío inicial desde **Envíos**. La API conserva
+  la opción `false` solo para soporte que no quiera reenviar.
 - Respuesta = reporte de conteos: `{ conversaciones, mensajes, respuestas, evaluaciones, artefactos, blobsBorrados, blobsFallidos, participantesReseteados }`.
 
 ### 6.2 Reinicio por campaña (barrido entre bloques de casos)
@@ -113,11 +117,16 @@ POST /api/admin/campanias/{CAMP-QA}/reiniciar-datos
 Header: X-CSRF-Token
 Body (opcional): { "usuarioIds": [], "reiniciarEnvios": false }   // vacío = todos
 ```
-- Reinicia **todos** los participantes de la campaña (o el subconjunto en `usuarioIds`).
+- Reinicia **todos** los participantes de la campaña (o el subconjunto en `usuarioIds`). En el
+  **portal** también deja sus envíos en **pendiente**.
 - En el **portal**: botón "Reiniciar datos de prueba" en el detalle de campaña; exige **confirmación fuerte** (escribir el nombre de la campaña).
 
 ### 6.3 Verificación del reinicio
-Tras reiniciar: en `Resultados` de `CAMP-QA` no deben aparecer registros viejos; el siguiente webhook entrante del participante debe recibir la **pregunta vigente** (cold-start). Queda `LogSeguridad(AccionAdministrativa)` con los conteos.
+Tras reiniciar: en `Resultados` de `CAMP-QA` no deben aparecer registros viejos; en
+**Participantes** el estado de envío debe verse como **pendiente**, y desde **Envíos** se debe poder
+seleccionar al participante y enviar de nuevo el mensaje inicial. El siguiente webhook entrante del
+participante debe recibir la **pregunta vigente** (cold-start). Queda `LogSeguridad(AccionAdministrativa)`
+con los conteos.
 
 ### 6.4 Idempotencia
 Reinvocar sobre datos ya limpios devuelve **conteos en 0** sin error. Útil para confirmar que quedó limpio.

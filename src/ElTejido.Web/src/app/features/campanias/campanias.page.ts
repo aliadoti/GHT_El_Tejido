@@ -369,9 +369,13 @@ export class CampaniasPage {
   }
   protected reiniciarParticipante(campaniaId: string, participante: ParticipanteCampania): void {
     const nombre = this.nombresUsuarios().get(participante.usuarioId) ?? participante.usuarioId;
-    if (!window.confirm(`Reiniciar la conversacion de ${nombre}? Se borraran sus datos del flujo.`))
+    if (
+      !window.confirm(
+        `Reiniciar la conversacion de ${nombre}? Se borraran sus datos del flujo y quedara pendiente para un nuevo envio.`,
+      )
+    )
       return;
-    this.api.reiniciarParticipante(campaniaId, participante.usuarioId, false).subscribe({
+    this.api.reiniciarParticipante(campaniaId, participante.usuarioId, true).subscribe({
       next: (reporte) => {
         this.loadParticipantes(campaniaId);
         this.notificaciones.exito(
@@ -390,7 +394,7 @@ export class CampaniasPage {
       this.notificaciones.error('El nombre no coincide; no se reinicio nada.');
       return;
     }
-    this.api.reiniciarDatosCampania(campania.id, { reiniciarEnvios: false }).subscribe({
+    this.api.reiniciarDatosCampania(campania.id, { reiniciarEnvios: true }).subscribe({
       next: (reporte) => {
         this.loadParticipantes(campania.id);
         this.notificaciones.exito(

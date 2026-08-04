@@ -863,7 +863,8 @@ export class PreguntasPanel implements OnChanges {
     @if (esAdmin() && participantes().length > 0) {
       <p class="muted">
         Reinicio de datos de prueba: borra conversaciones, respuestas, evaluaciones y Markdown;
-        conserva la campania, su configuracion y los usuarios.
+        conserva la campania, su configuracion y los usuarios, y deja los envios pendientes para
+        volver a enviar la campania.
       </p>
       <button type="button" class="ghost-button danger" (click)="reiniciarCampania.emit()">
         Reiniciar datos de prueba (toda la campania)

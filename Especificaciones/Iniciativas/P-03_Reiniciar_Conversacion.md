@@ -78,9 +78,12 @@ para que el humano confirme qué se limpió.
   quede deshabilitado (el endpoint responde 409 con regla de negocio). El reinicio por
   participante puede permanecer habilitado (útil en soporte); decisión final en el acta.
 - **Portal:** botón "Reiniciar datos de prueba" en el detalle de campaña y "Reiniciar
-  conversación" por participante en Envíos → Estado por participante. El masivo exige
+  conversación" por participante en Envíos → Estado por participante. Ambos envían
+  `reiniciarEnvios=true`: además de borrar el flujo, dejan `estadoEnvio=pendiente` y
+  `fechaPrimerEnvio=null` para que la campaña se pueda enviar de nuevo en pruebas. El masivo exige
   **confirmación fuerte** (escribir el nombre de la campaña en el modal); ambos muestran el
-  reporte de conteos en un toast/panel.
+  reporte de conteos en un toast/panel. La API conserva la opción explícita para soporte que solo
+  requiera reiniciar la conversación.
 - Sin PII en logs (solo ids y conteos). Nada se revela al participante.
 
 ## 4. Contratos y configuración

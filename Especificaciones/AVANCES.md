@@ -1072,3 +1072,12 @@
   el opt-in en CRUD con ayuda, aviso y permisos admin/visor. Verificado: build Release, 687 pruebas
   backend no calibración, portal 33/33, prettier/tsc/build, format y diff limpios. Commit local `ed76ccc`. Handoff: corte 5,
   cupos, telemetría, E2E, variaciones, QAS y cierre; sin push, despliegue ni configuración remota.
+- 2026-08-04 - Codex - **Corrección P-03: reiniciar desde el portal vuelve a habilitar el envío para pruebas.**
+  Rol: Frontend/Backend/SDET. Los botones de reinicio por participante y por campaña enviaban
+  erróneamente `reiniciarEnvios=false`, por lo que el flujo se borraba pero `estadoEnvio` permanecía
+  `enviado`. Ahora ambos envían `true`; el participante queda en `pendiente` y
+  `fechaPrimerEnvio=null`, listo para seleccionarse y recibir de nuevo el mensaje inicial en
+  **Envíos**. La API conserva su opción explícita para soporte que requiera borrar la conversación
+  sin reenviar. Se actualizó la especificación P-03 y las guías QAS. Verificado: build de producción
+  Angular, E2E focalizada del portal 10/10 e integración P-03 3/3; `git diff --check` limpio. Sin
+  push, despliegue ni configuración remota.
