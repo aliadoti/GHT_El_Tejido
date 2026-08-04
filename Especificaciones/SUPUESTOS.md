@@ -975,6 +975,7 @@
   - Kill-switch global `Conversacion:CierrePorTiempoHabilitado` (default false) gobierna **solo el mensaje de pausa**; apagado, el cierre por inactividad de I-17 sigue operando sin el aviso humano.
 - Alternativa(s) descartada(s): evaluar forzadamente la versión incompleta al cerrar; reenviar recordatorios; forzar HSM fuera de ventana (P-08).
 - Impacto / reversibilidad: aditivo; kill-switch OFF conserva el cierre de I-17/I-19 y omite solo el aviso humano. Se coordina con P-28 (entrada) y P-30 (retomar).
+- Estado de implementación (2026-08-04, corte 1/2): kill-switch, `promptRefs.cierre` (acto `Pausar`, precedencia pregunta → campaña → voz general), respaldo `Conversacion:Mensajes:PausaPorInactividad` y enganche de aviso único en `ServicioExpiracionConversaciones` → `IOrquestadorConversacion.EnviarPausaPorInactividadAsync`. El aviso se omite fuera de la ventana de 24 h y con campaña no activa; el hilo ya está cerrado al enviarse, así que el barrido siguiente no lo repite. Corte 2 pendiente: redacción LLM con fallback, telemetría `cierrePorInactividad`, E2E y QAS.
 - Spec: `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md`.
 
 ### retomar-ideas-p30 - Selector histórico de ideas del participante

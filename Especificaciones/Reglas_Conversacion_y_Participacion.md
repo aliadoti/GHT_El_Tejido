@@ -403,7 +403,7 @@ La selección acepta número o nombre/texto exacto no ambiguo y se vuelve a vali
 asociación y pregunta. El LLM no elige el alcance. Apagar el interruptor deja terminar una idea ya
 activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción. Ver P-26.
 
-### 2.11 Reingreso, pausa y retomar una idea (P-28 implementada; P-29/P-30 especificadas)
+### 2.11 Reingreso, pausa y retomar una idea (P-28 implementada; P-29 corte 1/2; P-30 especificada)
 
 Estas iniciativas no crean otra variante de participación continua. Completan vacíos concretos sobre
 la base ya implementada:
@@ -417,7 +417,11 @@ la base ya implementada:
    continua reciba una idea nueva.
 2. **P-29 — pausa por tiempo:** I-17/I-19 ya miden inactividad y cierran de forma idempotente. P-29
    solo agrega un aviso de pausa, con fallback, cuando la ventana de WhatsApp lo permite; no crea otro
-   temporizador ni cambia el estado de la idea.
+   temporizador ni cambia el estado de la idea. Con
+   `Conversacion:CierrePorTiempoHabilitado=true`, cada hilo que el barrido acaba de cerrar recibe **un
+   solo** aviso: el hilo ya quedó cerrado, así que el barrido siguiente no vuelve a listarlo. Si la
+   ventana de 24 h venció o la campaña se cerró administrativamente, el aviso se omite y el cierre se
+   conserva igual. Apagado, el cierre por inactividad opera exactamente como hoy.
 3. **P-30 — retomar:** I-19/P-26 ya reabren explícitamente la idea reciente del alcance vigente y
    conservan su `ideaId`. P-30 añade la lista determinista de ideas históricas del propio participante,
    sin filtrar por estado, dentro de campaña y pregunta ya resueltas. “Sin importar el estado” nunca
@@ -447,6 +451,9 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 | `Conversacion:DespertarProactivoHabilitado` | App config / env `Conversacion__DespertarProactivoHabilitado` | `false` | **P-28** — habilita la bienvenida para saludo/inicio breve sin flujo; OFF conserva P-26 para aportes sustantivos. |
 | `Conversacion:MaxCaracteresDespertarProactivo` / `:FrasesDespertarProactivo` | App config / env `Conversacion__…` | `80` / lista compilada | **P-28** — límite y vocabulario deterministas; texto largo o no coincidente se trata por la ruta normal. |
 | `Conversacion:Mensajes:SaludoReactivacion` | App config / env `Conversacion__Mensajes__SaludoReactivacion` | texto de respaldo | **P-28** — texto seguro si la redacción LLM del acto de reactivación no está disponible o es inválida. |
+| `Conversacion:CierrePorTiempoHabilitado` | App config / env `Conversacion__CierrePorTiempoHabilitado` | `false` | **P-29** — habilita el aviso de pausa posterior al cierre por inactividad. Gobierna **solo el mensaje**: apagado, el cierre de I-17 sigue operando igual. No cambia umbral, estado ni motivo de cierre. |
+| `Conversacion:Mensajes:PausaPorInactividad` | App config / env `Conversacion__Mensajes__PausaPorInactividad` | texto de respaldo | **P-29** — texto determinista del aviso de pausa; también es el fallback cuando la redacción LLM no está disponible. Nunca menciona rúbrica ni puntajes. |
+| `promptRefs.cierre` (campaña / pregunta) | Portal admin (campaña/pregunta) | ausente | **P-29** — voz opcional del aviso de pausa; ausente, hereda la voz general del hilo (`conversacion` → `retro`) y, si tampoco existe, el texto de respaldo. |
 | `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
 | `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
 | `Conversacion:Mensajes:AcuseContinuar` | App config / env `Conversacion__Mensajes__AcuseContinuar` | "¡Perfecto, sigamos!" | Acuse que antecede al cierre cuando el participante pide continuar. |

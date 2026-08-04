@@ -237,6 +237,50 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             cancellationToken);
     }
 
+    /// <summary>
+    /// P-29 §5.2: el hilo ya fue cerrado por el barrido de inactividad (I-17 §7) y la idea abierta ya
+    /// quedo `pendiente` con motivo `inactividad`; aqui solo se humaniza ese cierre con un unico aviso.
+    /// No se evalua nada (I-19), no se reabre el hilo y no se toca `motivoCierre`.
+    /// </summary>
+    public async Task EnviarPausaPorInactividadAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        CancellationToken cancellationToken)
+    {
+        var ahora = _tiempo.GetUtcNow();
+
+        // P-29 §9: el cierre administrativo de la campaña prevalece y no se le agrega aviso; fuera de
+        // la ventana de servicio de 24 h se omite el texto libre (nunca se fuerza una plantilla HSM).
+        if (campania.Estado != EstadoCampania.Activa || !conversacion.VentanaAbierta(ahora))
+        {
+            return;
+        }
+
+        var participante = await _participantes.ObtenerParticipantePorUsuarioAsync(
+            campania.Id,
+            conversacion.UsuarioId,
+            cancellationToken);
+        if (participante is null)
+        {
+            return;
+        }
+
+        // Corte 1: respaldo determinista. El corte 2 enchufa el redactor (I-20) conservando este texto
+        // como fallback cuando el modelo falle o este apagado.
+        var texto = TextoConfigurado(
+            _mensajes.PausaPorInactividad,
+            OpcionesMensajesConversacion.PausaPorInactividadDefault);
+
+        await EnviarAsync(
+            conversacion,
+            participante.WhatsappNormalizado,
+            texto,
+            TipoEnvioMensaje.Cierre,
+            campania.ConfigConversacional.NumeroWhatsAppSaliente,
+            ahora,
+            cancellationToken);
+    }
+
     public async Task ProcesarMensajeEntranteAsync(
         ParticipanteResuelto participante,
         MensajeEntrante mensaje,

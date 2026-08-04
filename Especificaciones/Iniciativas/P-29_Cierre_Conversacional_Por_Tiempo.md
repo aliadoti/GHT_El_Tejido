@@ -1,6 +1,6 @@
 # P-29 — Cierre conversacional por tiempo (determinístico + no determinístico)
 
-**Estado:** ESPECIFICADA — lista para implementación por cortes; **sin código implementado**.
+**Estado:** EN IMPLEMENTACIÓN — **corte 1 de 2 DONE local (2026-08-04)**; corte 2 pendiente.
 **Requerimiento de negocio:** `Client_partner/.../Nuevas iniciativas/REQ-013_Cierre_conversacional_por_tiempo.md`.
 **Fecha de decisión:** 2026-07-31 (reunión con Felipe Arango, GHT).
 **Áreas afectadas:** orquestador conversacional, temporización/cierre por inactividad, persistencia
@@ -189,8 +189,24 @@ solo agrega un interruptor, prompt opcional y telemetría:
 
 | Corte | Entrega verificable | Pruebas mínimas |
 |---|---|---|
-| 1 | Kill-switch `CierrePorTiempoHabilitado`, `promptRefs.cierre` y enganche de envío único en el cierre existente. **No** se toca umbral, estado ni `motivoCierre`. | Round-trip config, P-29 OFF conserva el cierre I-17 y no duplica avisos. |
+| 1 | **DONE local 2026-08-04.** Kill-switch `CierrePorTiempoHabilitado`, `promptRefs.cierre` y enganche de envío único en el cierre existente. **No** se toca umbral, estado ni `motivoCierre`. | Round-trip config, P-29 OFF conserva el cierre I-17 y no duplica avisos. |
 | 2 | Mensaje de pausa LLM con fallback, telemetría, E2E, QA y cierre documental. | LLM/fallback, ventana vencida, concurrencia, respeto de I-19, build/test/format/diff. |
+
+### 11.1 Detalle del corte 1 (implementado)
+
+- `Conversacion:CierrePorTiempoHabilitado` (`bool`, default `false`) en `OpcionesConversacion` y en
+  `appsettings.json`; gobierna **solo** el aviso.
+- Acto `Pausar` y clave `promptRefs.cierre` en `PoliticaRedaccionConversacional`, con precedencia
+  pregunta → campaña → voz general (`conversacion` → `retro`). Un acto de pausa **no admite pregunta**.
+- Texto de respaldo determinista `Conversacion:Mensajes:PausaPorInactividad`.
+- `IOrquestadorConversacion.EnviarPausaPorInactividadAsync`: envía **un** mensaje sobre el hilo que el
+  barrido ya cerró, omitiéndolo si la ventana de 24 h venció o la campaña no está activa. No reabre el
+  hilo, no evalúa y no toca `motivoCierre`.
+- `ServicioExpiracionConversaciones` invoca el aviso solo tras cerrar por inactividad y solo con el
+  kill-switch encendido. El hilo queda cerrado antes del envío, de modo que el barrido siguiente no lo
+  vuelve a listar: no hay doble aviso ni doble cierre.
+- **Aún no incluido (corte 2):** llamada al redactor LLM, telemetría
+  `LogSeguridad(cierrePorInactividad)`, E2E simulada y QAS.
 
 Cada corte deja `TODO.md` y `AVANCES.md` actualizados. No desplegar sin instrucción posterior.
 

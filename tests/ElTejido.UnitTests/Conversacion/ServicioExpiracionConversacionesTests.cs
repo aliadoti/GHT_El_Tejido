@@ -211,6 +211,68 @@ public sealed class ServicioExpiracionConversacionesTests
     }
 
     [Fact]
+    public async Task P29_CierrePorTiempoHabilitado_AvisaUnaSolaVezPorHiloCerrado()
+    {
+        var campania = Campania("c_1");
+        SembrarCampanias(campania);
+        var conv1 = DominioConversacion.Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch);
+        var conv2 = DominioConversacion.Iniciar("conv_2", "c_1", "u_2", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch);
+        _conversaciones.ListarAbiertasInactivasAsync("c_1", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { conv1, conv2 });
+
+        await Construir(horas: 48, cierrePorTiempo: true).CerrarExpiradasAsync(CancellationToken.None);
+
+        // Un aviso por hilo, y siempre sobre el documento ya cerrado (P-29 §5.2/§5.3).
+        await _orquestador.Received(1).EnviarPausaPorInactividadAsync(
+            Arg.Is<DominioConversacion>(c => c.Id == "conv_1" && c.Estado == EstadoConversacion.Cerrada),
+            campania,
+            Arg.Any<CancellationToken>());
+        await _orquestador.Received(1).EnviarPausaPorInactividadAsync(
+            Arg.Is<DominioConversacion>(c => c.Id == "conv_2" && c.Estado == EstadoConversacion.Cerrada),
+            campania,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P29_KillSwitchApagado_ConservaElCierreDeI17SinAviso()
+    {
+        SembrarCampanias(Campania("c_1"));
+        var conversacion = DominioConversacion.Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch);
+        _conversaciones.ListarAbiertasInactivasAsync("c_1", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { conversacion });
+        var ideaAbierta = IdeaConsolidada.Crear("idea_1", "c_1", "u_1", "p_1", "conv_1", "resp_1", 1, DateTimeOffset.UnixEpoch)
+            .ConPropuesta("idea_1_v1", DateTimeOffset.UnixEpoch);
+        _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>()).Returns(new[] { ideaAbierta });
+        var guardadas = new List<IdeaConsolidada>();
+        _respuestas.GuardarIdeaConsolidadaAsync(Arg.Do<IdeaConsolidada>(idea => guardadas.Add(idea)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var cerradas = await Construir(horas: 48).CerrarExpiradasAsync(CancellationToken.None);
+
+        cerradas.Should().Be(1);
+        await _conversaciones.Received(1).GuardarConversacionAsync(
+            Arg.Is<DominioConversacion>(c => c.Estado == EstadoConversacion.Cerrada), Arg.Any<CancellationToken>());
+        guardadas.Should().ContainSingle(idea => idea.MotivoCierre == "inactividad");
+        await _orquestador.DidNotReceiveWithAnyArgs().EnviarPausaPorInactividadAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task P29_HiloYaCerrado_NoRepiteElAviso()
+    {
+        SembrarCampanias(Campania("c_1"));
+        var cerrada = DominioConversacion
+            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch)
+            .Cerrar(Ahora.AddMinutes(-1));
+        _conversaciones.ListarAbiertasInactivasAsync("c_1", Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { cerrada });
+
+        var transiciones = await Construir(horas: 48, cierrePorTiempo: true).CerrarExpiradasAsync(CancellationToken.None);
+
+        transiciones.Should().Be(0);
+        await _orquestador.DidNotReceiveWithAnyArgs().EnviarPausaPorInactividadAsync(default!, default!, default);
+    }
+
+    [Fact]
     public async Task CerrarExpiradas_Desactivada_NoConsultaNiCierra()
     {
         var servicio = Construir(coachingHabilitado: false);
@@ -250,7 +312,8 @@ public sealed class ServicioExpiracionConversacionesTests
     private ServicioExpiracionConversaciones Construir(
         int horas = 0,
         int minutos = 0,
-        bool coachingHabilitado = true)
+        bool coachingHabilitado = true,
+        bool cierrePorTiempo = false)
         => new(
             _conversaciones,
             _respuestas,
@@ -263,6 +326,7 @@ public sealed class ServicioExpiracionConversacionesTests
                 HorasExpiracionSinRespuesta = horas,
                 MinutosInactividadSesion = minutos,
                 CoachingSecuencialIdeas = coachingHabilitado,
+                CierrePorTiempoHabilitado = cierrePorTiempo,
             },
             new RelojFijo(Ahora));
 }

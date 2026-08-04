@@ -4,6 +4,23 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-04 por Claude Opus 5 (Arquitecto/Backend/SDET): **P-29 corte 1 de 2 —
+  aviso de pausa enganchado al cierre por inactividad existente.** No se creó temporizador, umbral,
+  estado ni motivo de cierre: el barrido `ServicioExpiracionConversaciones` (I-17 §7) sigue midiendo la
+  inactividad con `MinutosInactividadSesion` (campaña ?? global) y sigue dejando la idea abierta como
+  `pendiente` con `motivoCierre="inactividad"`. Lo nuevo es aditivo: kill-switch global
+  `Conversacion:CierrePorTiempoHabilitado` (default `false`), clave opcional `promptRefs.cierre` con su
+  acto `Pausar` en `PoliticaRedaccionConversacional` (precedencia pregunta → campaña → voz general
+  `conversacion`/`retro`; el acto **no admite pregunta**), texto de respaldo
+  `Conversacion:Mensajes:PausaPorInactividad` y
+  `IOrquestadorConversacion.EnviarPausaPorInactividadAsync`, que envía **un solo** aviso sobre el hilo ya
+  cerrado. Se omite el envío si la ventana de servicio de 24 h venció o si la campaña no está activa
+  (el cierre administrativo prevalece); nunca se fuerza HSM, no se reabre el hilo y no se evalúa nada.
+  Con el kill-switch apagado el cierre de I-17 opera exactamente igual que hoy. **Verificado:** build
+  Release `-warnaserror` 0/0, **716** pruebas backend no calibración (648 unitarias + 68 de
+  integración; +9 unitarias nuevas), `dotnet format --verify-no-changes` limpio. Sin push, despliegue ni
+  configuración remota. **Siguiente ejecutable: P-29 corte 2/2** — redacción LLM del aviso con fallback,
+  telemetría `LogSeguridad(cierrePorInactividad)`, E2E simulada, QAS y cierre documental.
 - Ultima actualizacion: 2026-08-04 por Codex (Arquitecto/Backend/SDET): **P-28 completa local (3/3).**
   Con `Conversacion:DespertarProactivoHabilitado=false` por defecto, un saludo breve sin afinidad ni
   trabajo pendiente no se guarda como aporte ni abre conversación; con el flag encendido, una campaña
@@ -554,10 +571,21 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`P-29` corte 1 de 2 — aviso humano tras el cierre por inactividad existente.**
-  Leer `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md` y
-  `SUPUESTOS.md#cierre-por-tiempo-p29`. No crear temporizador, umbral, estado ni motivo nuevos;
-  mantener `Conversacion:CierrePorTiempoHabilitado=false` y la transición en el servidor.
+- [ ] **`P-29` corte 2 de 2 — mensaje de pausa redactado por LLM, telemetría, E2E y QAS.**
+  El enganche ya existe (`EnviarPausaPorInactividadAsync`) y hoy envía el respaldo determinista
+  `Conversacion:Mensajes:PausaPorInactividad`. Falta: (1) componer el turno con el redactor I-20 usando
+  el acto `Pausar` y `promptRefs.cierre` —conservando ese texto como fallback ante fallo, modelo
+  apagado o cupo agotado—; (2) `LogSeguridad(cierrePorInactividad)` con
+  `accion=avisoEnviado|avisoOmitidoSinVentana|fallbackUsado`, `correlationId` e ids internos y **sin
+  texto del participante** (`10 §6`); (3) E2E simulada inactividad → aviso (LLM y fallback) → cierre
+  existente, con el reingreso posterior delegado a P-28/P-30/P-26; (4) QAS y cierre documental.
+  Mantener `Conversacion:CierrePorTiempoHabilitado=false` y no tocar temporizador, umbral, estado ni
+  `motivoCierre`. Spec: `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md` §11.1 y
+  `SUPUESTOS.md#cierre-por-tiempo-p29`.
+- [x] **(HECHO 2026-08-04, Claude Opus 5 — backend 716: 648 unit + 68 integración; build Release y
+  format limpios) P-29 corte 1 de 2 — kill-switch, `promptRefs.cierre` y aviso único.**
+  El aviso se engancha al cierre por inactividad ya existente de I-17/I-19, sin temporizador, umbral,
+  estado ni motivo nuevos; OFF conserva el cierre actual y no hay doble aviso. Ver "Estado global".
 - [x] **(HECHO 2026-08-04, Codex — backend 706: 639 unit + 67 integración; build/format/diff limpios)
   P-28 corte 3 de 3 — selección multi-campaña, E2E simulada, QAS y cierre.**
   El saludo permanece fuera del ciclo de ideas incluso al requerir menú; contratos, reglas y
@@ -802,6 +830,7 @@
 | P-26 | Participación continua y selección de campaña/pregunta | DONE local 6/6; D5/UAT/costo pendiente | commits históricos P-26 | backend 654/654 + portal 30/30 al cierre | Flag por campaña default OFF, aporte raíz auditable, afinidad y selección 24 h, ciclos independientes y cupos móviles. |
 | P-27 | Clasificación flexible de intenciones de control | DONE local 5/5; D5/UAT/costo pendiente | `255c4cb`, `708f473`, `73d22dd`, `ed76ccc` + cambios locales corte 5 | backend 698/698, build/format verdes | Alias, clasificador/política server-side, menú persistido, rollback, portal y cupos/tokens persistentes sin PII. |
 | P-28 | Despertar proactivo del coach | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 706/706, build/format/diff verdes | Saludo/inicio con flag global OFF, selección P-26 sin convertirlo en aporte, redacción/fallback, telemetría sin texto, Cosmos, E2E y QAS. Siguiente: P-29 corte 1. |
+| P-29 | Cierre conversacional por tiempo | WIP — corte 1/2 DONE local | cambios locales | backend 716/716 (648+68), build/format verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, respaldo determinista y aviso único sobre el cierre por inactividad de I-17/I-19; sin temporizador, umbral, estado ni motivo nuevos. Siguiente: corte 2 (LLM + fallback, telemetría, E2E, QAS). |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -929,6 +958,29 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-08-04 - Claude Opus 5 - **P-29 corte 1 de 2 — aviso de pausa enganchado al cierre por
+  inactividad existente (DONE local, sin push).** Rol: Arquitecto/Backend/SDET. REQ-013,
+  `Iniciativas/P-29_…` §5.1/§5.2/§7/§11, `SUPUESTOS.md#cierre-por-tiempo-p29`. **No se reimplementó
+  nada de I-17 §7:** el barrido, el umbral `MinutosInactividadSesion` (campaña ?? global) y el
+  `IdeaConsolidada.motivoCierre="inactividad"` quedaron intactos. Cambios aditivos: (1)
+  `OpcionesConversacion.CierrePorTiempoHabilitado` (default `false`) + entrada en `appsettings.json`;
+  (2) acto `ActoConversacional.Pausar` y clave `promptRefs.cierre` en
+  `PoliticaRedaccionConversacional` — la resolución de prompt propio por acto se generalizó
+  (`TipoPromptDelActo`) sin cambiar la precedencia vigente de P-28 ni la voz general, y `Pausar` **no**
+  admite pregunta; (3) respaldo `Conversacion:Mensajes:PausaPorInactividad`; (4)
+  `IOrquestadorConversacion.EnviarPausaPorInactividadAsync`, que envía un único texto sobre el hilo ya
+  cerrado, omite el envío libre fuera de la ventana de 24 h o con campaña no activa, y no reabre el
+  hilo ni evalúa (respeta I-19); (5) enganche en `ServicioExpiracionConversaciones` solo tras cerrar
+  por inactividad y solo con el kill-switch encendido. La idempotencia sale del propio flujo: el hilo
+  ya está `cerrada` cuando se envía, así que `ListarAbiertasInactivasAsync` no lo vuelve a listar.
+  Pruebas nuevas (9 unitarias): precedencia y fallback de `promptRefs.cierre`, `Pausar` sin pregunta,
+  aviso único por hilo cerrado, flag OFF conserva el cierre y el motivo `inactividad`, hilo ya cerrado
+  sin aviso, respaldo determinista enviado una vez sin tocar idea ni conversación, ventana vencida y
+  campaña cerrada administrativamente sin aviso. **Verificado:** build Release `-warnaserror` 0/0,
+  **716** pruebas backend no calibración (648 unitarias + 68 de integración),
+  `dotnet format --verify-no-changes` limpio. Flag OFF; sin push, despliegue ni configuración remota.
+  Pendiente corte 2: redacción LLM con fallback, telemetría `cierrePorInactividad`, E2E simulada y QAS.
 
 - 2026-07-29 - Codex - **P-25 coaching directo sin confirmación repetitiva — DONE local, sin push.**
   Rol: Arquitecto/Backend/SDET. La causa era de flujo, no solo de texto: I-19 obligaba a confirmar cada

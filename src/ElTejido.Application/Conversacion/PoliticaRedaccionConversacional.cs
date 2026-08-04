@@ -18,6 +18,9 @@ public sealed class PoliticaRedaccionConversacional
     /// <summary>P-28: voz específica del saludo de reactivación, opcional y con fallback seguro.</summary>
     public const string TipoPromptReactivacion = "reactivacion";
 
+    /// <summary>P-29 §7: voz específica del mensaje de pausa, opcional y con fallback determinista.</summary>
+    public const string TipoPromptCierre = "cierre";
+
     private readonly bool _habilitadaGlobal;
     private readonly int _maxCaracteres;
 
@@ -37,20 +40,36 @@ public sealed class PoliticaRedaccionConversacional
     public int MaxCaracteres => _maxCaracteres;
 
     /// <summary>
-    /// Prompt efectivo de voz con la precedencia de `03 §3.3`: `conversacion` de la **pregunta** →
-    /// `conversacion` de la **campaña** → `retro` de la pregunta → `retro` de la campaña. Devuelve
+    /// Prompt efectivo de voz con la precedencia de `03 §3.3`: la clave propia del acto (si la tiene)
+    /// en la **pregunta** → la misma clave en la **campaña** → `conversacion` de la pregunta →
+    /// `conversacion` de la campaña → `retro` de la pregunta → `retro` de la campaña. Devuelve
     /// <c>null</c> cuando ninguna referencia existe: el redactor opera solo con sus instrucciones de
     /// seguridad y las campañas actuales siguen funcionando igual.
     /// </summary>
     public string? ResolverPromptRef(Campania campania, Pregunta pregunta, ActoConversacional acto)
-        => acto == ActoConversacional.Reactivar
-            ? Primero(pregunta.PromptRefs, TipoPromptReactivacion)
-              ?? Primero(campania.PromptRefs, TipoPromptReactivacion)
-              ?? ResolverPromptRefBase(campania, pregunta)
-            : ResolverPromptRefBase(campania, pregunta);
+    {
+        var tipoPropio = TipoPromptDelActo(acto);
+        return tipoPropio is null
+            ? ResolverPromptRefBase(campania, pregunta)
+            : Primero(pregunta.PromptRefs, tipoPropio)
+                ?? Primero(campania.PromptRefs, tipoPropio)
+                ?? ResolverPromptRefBase(campania, pregunta);
+    }
 
     public string? ResolverPromptRef(Campania campania, Pregunta pregunta)
         => ResolverPromptRef(campania, pregunta, ActoConversacional.Mejorar);
+
+    /// <summary>
+    /// Clave de `promptRefs` propia del acto, cuando la tiene: `reactivacion` (P-28) y `cierre` (P-29).
+    /// El resto de actos comparte la voz general del hilo.
+    /// </summary>
+    private static string? TipoPromptDelActo(ActoConversacional acto)
+        => acto switch
+        {
+            ActoConversacional.Reactivar => TipoPromptReactivacion,
+            ActoConversacional.Pausar => TipoPromptCierre,
+            _ => null,
+        };
 
     private static string? ResolverPromptRefBase(Campania campania, Pregunta pregunta)
         => Primero(pregunta.PromptRefs, TipoPromptConversacion)
@@ -63,11 +82,11 @@ public sealed class PoliticaRedaccionConversacional
     /// distinguir en telemetría una campaña ya configurada de una que hereda el tono (§5).
     /// </summary>
     public bool UsaPromptDeVoz(Campania campania, Pregunta pregunta, ActoConversacional acto)
-        => acto == ActoConversacional.Reactivar
-            ? Primero(pregunta.PromptRefs, TipoPromptReactivacion) is not null
-              || Primero(campania.PromptRefs, TipoPromptReactivacion) is not null
-            : Primero(pregunta.PromptRefs, TipoPromptConversacion) is not null
-            || Primero(campania.PromptRefs, TipoPromptConversacion) is not null;
+    {
+        var tipo = TipoPromptDelActo(acto) ?? TipoPromptConversacion;
+        return Primero(pregunta.PromptRefs, tipo) is not null
+            || Primero(campania.PromptRefs, tipo) is not null;
+    }
 
     public bool UsaPromptDeVoz(Campania campania, Pregunta pregunta)
         => UsaPromptDeVoz(campania, pregunta, ActoConversacional.Mejorar);

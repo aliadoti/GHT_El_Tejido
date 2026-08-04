@@ -154,7 +154,17 @@ public sealed class ServicioExpiracionConversaciones
                 // I-19 §4.8: la inactividad finaliza como `pendiente` la idea abierta del hilo, con su
                 // última versión confirmada; una propuesta sin confirmar nunca puede madurar.
                 await CerrarIdeasAbiertasAsync(campania.Id, conversacion.Id, ahora, cancellationToken);
-                await _conversaciones.GuardarConversacionAsync(conversacion.Cerrar(ahora), cancellationToken);
+                var cerrada = conversacion.Cerrar(ahora);
+                await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
+
+                // P-29 §5.2: el cierre ya ocurrió; con el kill-switch encendido se humaniza con un
+                // único aviso de pausa. El hilo queda cerrado, así que el próximo barrido no lo vuelve
+                // a listar y no hay doble mensaje. Apagado, el cierre de I-17 opera igual que hoy.
+                if (_opciones.CierrePorTiempoHabilitado)
+                {
+                    await _orquestador.EnviarPausaPorInactividadAsync(cerrada, campania, cancellationToken);
+                }
+
                 cerradas++;
             }
         }

@@ -48,6 +48,12 @@ public enum ActoConversacional
 
     /// <summary>P-28: dar la bienvenida a una persona sin flujo, sin crear ni reabrir una idea.</summary>
     Reactivar,
+
+    /// <summary>
+    /// P-29 §5.2: avisar la pausa cuando el cierre por inactividad de I-17 §7 ya ocurrió. No decide el
+    /// cierre ni cambia estados: solo humaniza el hilo que el servidor ya cerró.
+    /// </summary>
+    Pausar,
 }
 
 /// <summary>

@@ -76,6 +76,61 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task P29_PausaPorInactividad_EnviaUnUnicoAvisoConElRespaldoDeterminista()
+    {
+        var participante = Participante();
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(participante.Participante);
+        var cerrada = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .Cerrar(Epoca);
+
+        await Construir().EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            OpcionesMensajesConversacion.PausaPorInactividadDefault,
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        // P-29 §5.3: el aviso no reabre el hilo ni toca la idea; solo humaniza el cierre ya hecho y
+        // deja trazabilidad del saliente.
+        await _respuestas.DidNotReceiveWithAnyArgs().GuardarIdeaConsolidadaAsync(default!, default);
+        _conversaciones.Ultima.Should().BeNull();
+        _conversaciones.MensajesGuardados.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task P29_VentanaDe24hVencida_NoFuerzaTextoLibre()
+    {
+        var participante = Participante();
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(participante.Participante);
+        var cerrada = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca.AddHours(-25))
+            .Cerrar(Epoca);
+
+        await Construir().EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
+
+        await _gateway.DidNotReceiveWithAnyArgs().EnviarTextoAsync(default!, default!, default, default, default);
+    }
+
+    [Fact]
+    public async Task P29_CampaniaCerradaAdministrativamente_NoAgregaAviso()
+    {
+        var participante = Participante(estadoCampania: EstadoCampania.Cerrada);
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(participante.Participante);
+        var cerrada = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .Cerrar(Epoca);
+
+        await Construir().EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
+
+        await _gateway.DidNotReceiveWithAnyArgs().EnviarTextoAsync(default!, default!, default, default, default);
+    }
+
     [Theory]
     [InlineData("Quiero parar aquí")]
     [InlineData("quiero pasar a otra idea")]

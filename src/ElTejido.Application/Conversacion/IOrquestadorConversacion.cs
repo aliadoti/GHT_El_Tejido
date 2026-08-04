@@ -44,6 +44,16 @@ public interface IOrquestadorConversacion
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-29 §5.2: avisa la pausa del hilo que el barrido de inactividad (I-17 §7) <b>ya cerro</b>. No
+    /// decide el cierre, no toca estados ni <c>motivoCierre</c> y envia un unico mensaje; fuera de la
+    /// ventana de servicio de 24 h se omite el envio libre.
+    /// </summary>
+    Task EnviarPausaPorInactividadAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// I-18: envia el turno ya evaluado de la idea activa que el barrido por tiempo acaba de activar.
     /// La fachada conserva una sola ruta para enviar y persistir mensajes salientes.
     /// </summary>

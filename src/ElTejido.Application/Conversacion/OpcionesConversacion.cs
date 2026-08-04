@@ -67,6 +67,13 @@ public sealed class OpcionesConversacion
     public int MaxCaracteresDespertarProactivo { get; set; } = 80;
 
     /// <summary>
+    /// P-29 (§7): kill-switch global del <b>mensaje de pausa</b> que humaniza el cierre por
+    /// inactividad. Nace apagado; con él en <c>false</c> el barrido de I-17 §7 sigue cerrando igual,
+    /// solo que sin aviso. No gobierna el temporizador, el umbral ni el <c>motivoCierre</c>.
+    /// </summary>
+    public bool CierrePorTiempoHabilitado { get; set; }
+
+    /// <summary>
     /// P-28: vocabulario breve de saludo/inicio. Vacío usa
     /// <see cref="DetectorEntradaProactiva.FrasesPorDefecto"/>.
     /// </summary>
@@ -246,6 +253,9 @@ public sealed class OpcionesMensajesConversacion
     public const string SaludoReactivacionDefault =
         "¡Hola! Estoy aquí para acompañarte a crear una nueva idea. Cuéntame qué quieres proponer.";
 
+    public const string PausaPorInactividadDefault =
+        "Demos una pausa por ahora. Cuando quieras seguimos: escríbeme y retomamos donde quedamos.";
+
     public const string InvitacionMejoraDefault =
         "Si quieres, puedes enviarme una version mejorada de tu respuesta con base en esta "
         + "retroalimentacion y la tomare en cuenta.";
@@ -304,6 +314,12 @@ public sealed class OpcionesMensajesConversacion
 
     /// <summary>P-28: respaldo si no se puede redactar el saludo de reactivación.</summary>
     public string SaludoReactivacion { get; set; } = SaludoReactivacionDefault;
+
+    /// <summary>
+    /// P-29 §5.2: respaldo determinista del mensaje de pausa que acompaña al cierre por inactividad.
+    /// Nunca menciona rúbrica ni puntajes y deja la puerta abierta a retomar.
+    /// </summary>
+    public string PausaPorInactividad { get; set; } = PausaPorInactividadDefault;
 
     public string InvitacionMejora { get; set; } = InvitacionMejoraDefault;
 

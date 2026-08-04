@@ -44,6 +44,31 @@ public sealed class PoliticaRedaccionConversacionalTests
     }
 
     [Fact]
+    public void P29_PromptDeCierre_PrevaleceParaElActoDePausa()
+    {
+        var pregunta = Pregunta("p_1", new() { ["cierre"] = "pr_cierre_pregunta" });
+        var campania = Campania(pregunta, new() { ["cierre"] = "pr_cierre_campania", ["conversacion"] = "pr_voz" });
+
+        var politica = Construir();
+
+        politica.ResolverPromptRef(campania, pregunta, ActoConversacional.Pausar).Should().Be("pr_cierre_pregunta");
+        politica.UsaPromptDeVoz(campania, pregunta, ActoConversacional.Pausar).Should().BeTrue();
+    }
+
+    [Fact]
+    public void P29_SinPromptDeCierre_UsaLaVozGeneralDelHilo()
+    {
+        // `promptRefs.cierre` es opcional (§7): sin él, la pausa hereda el tono ya configurado.
+        var pregunta = Pregunta("p_1", promptRefs: null);
+        var campania = Campania(pregunta, new() { ["conversacion"] = "pr_voz_campania" });
+
+        var politica = Construir();
+
+        politica.ResolverPromptRef(campania, pregunta, ActoConversacional.Pausar).Should().Be("pr_voz_campania");
+        politica.UsaPromptDeVoz(campania, pregunta, ActoConversacional.Pausar).Should().BeFalse();
+    }
+
+    [Fact]
     public void SinPromptDeVoz_CaeAlDeRetroSinRomperCampaniasActuales()
     {
         // Una campaña configurada hoy solo tiene `retro`: debe seguir funcionando y guiar el tono (§5).
@@ -97,6 +122,7 @@ public sealed class PoliticaRedaccionConversacionalTests
     [InlineData(ActoConversacional.Reactivar, true)]
     [InlineData(ActoConversacional.Transicionar, false)]
     [InlineData(ActoConversacional.Cerrar, false)]
+    [InlineData(ActoConversacional.Pausar, false)]
     public void SoloLosActosQueLoExigenAdmitenPregunta(ActoConversacional acto, bool admite)
     {
         // §4.1: como máximo una pregunta visible, y solo en el acto que la necesita.
