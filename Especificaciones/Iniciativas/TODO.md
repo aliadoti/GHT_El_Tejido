@@ -9,20 +9,24 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **INICIATIVA OBJETIVO 2026-08-04 — `P-29` corte 2 de 2 (Claude Opus 5 cerró el corte 1).**
-> **`P-29` corte 1/2 quedó DONE local.** Kill-switch global `Conversacion:CierrePorTiempoHabilitado`
+> **INICIATIVA OBJETIVO 2026-08-04 — `P-30` (Claude Opus 5 cerró `P-29` completa, 2/2).**
+> **`P-29` quedó COMPLETA local (2/2).** Kill-switch global `Conversacion:CierrePorTiempoHabilitado`
 > (default `false`), clave opcional `promptRefs.cierre` con su acto `Pausar`, respaldo determinista
 > `Conversacion:Mensajes:PausaPorInactividad` y `EnviarPausaPorInactividadAsync`: un único aviso sobre
-> el hilo que el barrido de I-17 §7 **ya cerró**, omitido fuera de la ventana de 24 h o con la campaña
-> no activa. No se creó temporizador, umbral, estado ni motivo de cierre, y con el flag apagado el
-> cierre por inactividad opera igual que hoy. Backend **716** (648 unitarias + 68 de integración),
-> build Release y `dotnet format` verdes; sin push, despliegue ni configuración remota.
+> el hilo que el barrido de I-17 §7 **ya cerró**, redactado por el LLM (I-20) con fallback al respaldo,
+> omitido fuera de la ventana de 24 h o con la campaña no activa. Telemetría
+> `cierrePorInactividad` (`avisoEnviado|fallbackUsado|avisoOmitidoSinVentana`) sin texto, E2E simulada
+> del recorrido completo y QAS. No se creó temporizador, umbral, estado ni motivo de cierre, y con el
+> flag apagado el cierre por inactividad opera igual que hoy. Backend **723** (651 unitarias + 72 de
+> integración), build Release, `dotnet format` y `git diff --check` verdes; sin push, despliegue ni
+> configuración remota. Pendiente solo lo operativo (D5/UAT/costo y acta de flags).
 >
-> **Siguiente ejecutable: `P-29` corte 2/2** — redactar el aviso con el redactor I-20 (acto `Pausar`,
-> `promptRefs.cierre`) conservando el respaldo como fallback; telemetría
-> `LogSeguridad(cierrePorInactividad)` con `accion=avisoEnviado|avisoOmitidoSinVentana|fallbackUsado`
-> y sin texto del participante; E2E simulada inactividad → aviso (LLM y fallback) → cierre existente;
-> QAS y cierre documental. Spec `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md` §11.1.
+> **Siguiente ejecutable: `P-30` — retomar ideas del pasado.** Selector histórico determinista por
+> participante dentro de la campaña/pregunta ya resueltas por P-26, conservando el mismo `ideaId` de
+> I-19. **No reimplementar** la reapertura reciente de I-19 §4.7 / P-26 §5.8: P-30 solo amplía las
+> candidatas. Búsqueda semántica/vectorial fuera de alcance; kill-switch
+> `Conversacion:RetomarIdeasHabilitado` nace en `false`. Spec:
+> `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`; supuesto `SUPUESTOS.md#retomar-ideas-p30`.
 >
 > **CONTEXTO PREVIO — `P-29` corte 1 de 2.**
 > **P-27 quedó COMPLETA local (5/5).** Corrige las salidas naturales con alias deterministas y, detrás
@@ -42,7 +46,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md` y supuesto
 > `SUPUESTOS.md#cierre-por-tiempo-p29`.
 >
-> **BACKLOG ACOTADO 2026-08-04 — `P-28` está completa; `P-29` es el siguiente y `P-30` queda especificada.**
+> **BACKLOG ACOTADO 2026-08-04 — `P-28` y `P-29` están completas; `P-30` es la única pendiente.**
 > Vienen de REQ-012/013/014 y cubren vacíos, no capacidades ya entregadas:
 > `P-28` entrega entrada humana para saludo/inicio no sustantivo sin flujo (el aporte sustantivo inicia
 > ciclo directo por P-26); `P-29` solo mensaje humano de pausa tras el cierre determinista por
@@ -85,9 +89,8 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > (default OFF), ayuda asociada por `aria-describedby`, aviso en `role="status"` al apagarlo y
 > round-trip completo del flag; admin edita y el visor no puede guardar. Backend **648/648**, portal
 > **30/30**, prettier/tsc/build de producción limpios (Node 24.18.0); sin push.
-> **Trabajo ejecutable actual: `P-29` corte 2 de 2 — redacción LLM del mensaje de pausa (el enganche
-> ya existe y hoy envía el respaldo determinista), telemetría, E2E y QAS. Leer la spec completa,
-> §11.1 y `SUPUESTOS.md#cierre-por-tiempo-p29`; no reimplementar el temporizador ni el enganche.**
+> **Trabajo ejecutable actual: `P-30` — selector histórico de ideas del participante. Leer la spec
+> completa y `SUPUESTOS.md#retomar-ideas-p30`; no reimplementar la reapertura reciente de I-19/P-26.**
 >
 > **ESTADO VIGENTE 2026-07-29 — `P-25` DONE LOCAL.** Cada aporte sustantivo se consolida, confirma
 > internamente y evalúa completo en el mismo turno; el coach responde con retroalimentación de rúbrica y
@@ -118,11 +121,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: `P-29` corte 2/2 — el corte 1/2 quedó DONE local (aviso enganchado).**
-El siguiente agente solo redacta ese aviso con el LLM (con fallback al respaldo actual), añade la
-telemetría sin texto, la E2E simulada y el QAS, manteniendo la validación operativa de
-I-19/I-20/P-24/P-25/P-26/P-27/P-28 como pendiente paralela, sin desplegar ni modificar configuración
-remota.
+**Iniciativa objetivo vigente: `P-30` — `P-29` quedó COMPLETA local (2/2).**
+El siguiente agente amplía la reapertura reciente con el selector histórico acotado por participante,
+campaña y pregunta, manteniendo la validación operativa de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29
+como pendiente paralela, sin desplegar ni modificar configuración remota.
 
 ---
 
@@ -245,7 +247,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 32 | **`P-26` participación continua y selección de campaña/pregunta** | **Inmediata** | **Claude** | **DONE local 2026-07-31 (6/6 cortes; backend 654/654, portal 30/30; flag OFF por defecto). Pendiente operativo: D5/UAT/costo.** Entregó dominio/contratos, resolución multi-campaña y pregunta, aporte preservado, afinidad, ciclos nuevos deterministas, reapertura reciente que conserva `ideaId`, cupos, portal, observabilidad, E2E simulada, QA y cierre. P-28/P-29/P-30 son extensiones acotadas, no cortes faltantes. Default `false`; solo campañas activas. |
 | 33 | **`P-27` clasificación flexible de intenciones de control** | **DONE local 2026-08-04 (5/5)** | Codex | Alias, clasificador y política server-side, menú persistido, rollback, portal y contabilidad durable de llamadas/tokens P-27. Backend 698/698, build/format verdes; flags global/campaña OFF y activación D5/UAT/costo pendiente. |
 | 34 | **`P-28` despertar proactivo del coach** | **DONE local 2026-08-04 (3/3)** | Codex | Saludo breve con flag global OFF, vocabulario determinista, redacción/fallback, selección P-26 sin convertir saludo en aporte, telemetría sin texto, Cosmos/E2E/QAS. Siguiente: P-29 corte 1. |
-| 35 | **`P-29` cierre conversacional por tiempo** | **WIP — corte 1/2 DONE local 2026-08-04** | **Claude** | Kill-switch `CierrePorTiempoHabilitado` (OFF), `promptRefs.cierre` con acto `Pausar`, respaldo `Mensajes:PausaPorInactividad` y aviso único enganchado al cierre por inactividad de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos); omitido fuera de la ventana de 24 h o con campaña no activa. Backend 716/716, build/format verdes. **Siguiente: corte 2/2** — redacción LLM con fallback, telemetría `cierrePorInactividad`, E2E simulada y QAS. |
+| 35 | **`P-29` cierre conversacional por tiempo** | **DONE local 2026-08-04 (2/2)** | **Claude** | Kill-switch `CierrePorTiempoHabilitado` (OFF), `promptRefs.cierre` con acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos) y lo omite fuera de la ventana de 24 h o con campaña no activa. Backend 723/723, build/format/diff verdes. **Siguiente: P-30.** |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **Backlog posterior; no es el siguiente cambio** | Pendiente | Ejecutar solo después de los requerimientos que se prioricen tras P-27. Las listas `FrasesFinalizarIdeaPorDefecto` y `FrasesFinalizarParticipacionPorDefecto` están hoy compiladas en `DetectorIntencionContinuar`. Extraerlas a configuración global versionada (`Conversacion:FrasesFinalizarIdea` y `Conversacion:FrasesFinalizarParticipacion`) con fallback seguro a los valores actuales, validación tras normalizar (sin vacíos, duplicados ni listas fuera de límite), historial/rollback y pruebas de regresión. No permitir edición libre por campaña, no modificar los alias vigentes ni activar P-27 como parte de esta deuda. |
 
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
@@ -254,7 +256,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 **Dependencias duras (actualizada 2026-08-04):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;
 `I-18 + I-05 + P-23` → `I-19` **DONE local** → `I-20/P-24/P-25` **DONE local** → `P-26`
 **DONE local (6/6)** → `P-27` **DONE local (5/5)** → `P-28` **DONE local (3/3)** → `P-29`
-**objetivo vigente (corte 1/2 DONE local; corte 2/2 pendiente)**. P-28 complementa saludos/inicios no sustantivos, P-29 el mensaje humano de pausa y P-30 el selector
+**DONE local (2/2)** → `P-30` **objetivo vigente**. P-28 complementa saludos/inicios no sustantivos, P-29 el mensaje humano de pausa y P-30 el selector
 histórico; ninguna es requisito técnico para P-26. I-12 sigue bloqueada por seeds, pero no bloquea
 P-27: campo vacío degrada limpio. D5/UAT/costo arbitran el despliegue y la activación del clasificador,
 no el inicio del código.
@@ -302,14 +304,13 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Implementar `P-29` corte 2 de 2 — redacción LLM del aviso de pausa, telemetría, E2E y QAS.** Leer
-   completa `P-29_Cierre_Conversacional_Por_Tiempo.md` (incluida §11.1, que detalla lo ya entregado en
-   el corte 1) y `SUPUESTOS.md#cierre-por-tiempo-p29`. El enganche, el kill-switch, el acto `Pausar`,
-   `promptRefs.cierre` y el respaldo determinista **ya existen**: no reimplementarlos. Falta componer
-   el turno con el redactor I-20 conservando ese respaldo como fallback, emitir
-   `LogSeguridad(cierrePorInactividad)` sin texto del participante, la E2E simulada y el QAS. Mantener
-   el kill-switch global OFF y la decisión/transición en el servidor; no tocar temporizador, umbral,
-   estado ni `motivoCierre`.
+1. **Implementar `P-30` — retomar ideas del pasado (selector histórico).** Leer completa
+   `P-30_Retomar_Ideas_Del_Pasado.md` y `SUPUESTOS.md#retomar-ideas-p30`. La reapertura reciente que
+   conserva el `ideaId` **ya existe** (I-19 §4.7 y P-26 §5.8): no reimplementarla. P-30 amplía las
+   candidatas a las ideas históricas del propio participante, sin filtro por estado, dentro de la
+   campaña y pregunta ya resueltas por P-26, con selección determinista por número o título exacto no
+   ambiguo. La búsqueda semántica/vectorial queda fuera de alcance. Mantener el kill-switch global
+   `Conversacion:RetomarIdeasHabilitado` en `false` y la decisión/transición en el servidor.
 
 2. **Backlog posterior: P-30.** **Pendiente operativo transversal, no de código:** D5 real,
    UAT y costo de I-19/I-20/P-24/P-25/P-26/**P-27** antes de activar nada en UAT/producción; sus flags

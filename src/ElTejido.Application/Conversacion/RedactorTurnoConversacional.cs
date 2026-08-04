@@ -153,6 +153,8 @@ public sealed class RedactorTurnoConversacional : IRedactorTurnoConversacional
             ActoConversacional.Reabrir => "retomar una idea anterior e invitar a cambiarla o completarla.",
             ActoConversacional.Cerrar => "cerrar con un agradecimiento breve.",
             ActoConversacional.Reactivar => "saludar a una persona sin flujo e invitarla a compartir una nueva idea, sin afirmar que ya existe una idea o una conversación activa.",
+            ActoConversacional.Pausar =>
+                "despedirse con calidez porque la conversación quedó en pausa por falta de actividad, dejando claro que puede retomarla cuando quiera. No pidas nada ahora ni afirmes que la idea fue aprobada, descartada o evaluada.",
             _ => "redactar el turno indicado.",
         };
 

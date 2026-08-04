@@ -420,6 +420,19 @@ puntaje/rúbrica en la respuesta, se registra el texto libre en telemetría o el
   abren nuevas. **Algo va mal si:** una campaña cerrada aparece en la lista, se mezclan ideas, se
   pierde el aporte original, se repite el menú durante el coaching, “complementar la anterior” crea
   una idea vacía, o apagar el interruptor corta una idea que ya estaba en curso.
+- ✅ **P-29 — Despedida amable cuando la conversación se queda quieta:** **implementada localmente
+  (2/2); viene apagada.** El cierre por inactividad ya existía y no cambia: lo nuevo es un mensaje de
+  pausa. Prueba: (1) con la función apagada, empieza una idea y deja de responder el tiempo de
+  inactividad configurado —la conversación se cierra sola, tu idea queda guardada como pendiente y
+  **no llega ningún mensaje**—; (2) pide al equipo que la encienda solo para la prueba y repite: ahora
+  debe llegar **un solo** mensaje cálido que invita a retomar cuando quieras; (3) espera más tiempo:
+  **no debe llegar un segundo mensaje**; (4) si pasaron más de 24 horas desde tu último mensaje, no
+  llega nada, pero la idea igual queda guardada; (5) en una campaña que el administrador haya cerrado,
+  tampoco llega el aviso; (6) escribe después una propuesta nueva: debe abrirse una idea nueva,
+  separada de la anterior. Apaga la función al terminar. **Algo va mal si:** llegan dos o más mensajes
+  de pausa, el mensaje menciona notas, puntajes o criterios de evaluación, hace una pregunta que
+  espera respuesta, la idea desaparece o cambia de estado, o el mensaje llega en una campaña ya
+  cerrada.
 - ⏳ **I-12 — Ideas semilla:** en espera del material de Felipe. Cuando llegue: el coach se apoyará en
   esos temas guía. Prueba mínima hoy: una campaña **sin** ideas semilla funciona igual que siempre.
 - 💤 **I-09 / I-10 — "Tejido colectivo"** (que el coach use aportes de otros): **aplazado** para después

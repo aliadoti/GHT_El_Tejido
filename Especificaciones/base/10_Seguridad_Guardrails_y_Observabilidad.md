@@ -100,7 +100,7 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27), `despertarProactivo` (P-28). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27), `despertarProactivo` (P-28), `cierrePorInactividad` (P-29). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.
@@ -128,6 +128,13 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
   `detalle=accion:reactivacion`, identificadores internos y `correlationId`. No incluye el saludo,
   el texto de bienvenida, nombres de campañas ni una idea; permite medir entradas humanas y fallos
   de entrega sin ampliar el plano de datos personales.
+
+- **`cierrePorInactividad` (P-29):** una entrada por hilo cerrado por inactividad **cuando el aviso
+  está habilitado**, con `resultado=accion` en `avisoEnviado|fallbackUsado|avisoOmitidoSinVentana`,
+  `campaniaId` interno y `detalle=accion:…;conversacion:…;pregunta:…;ciclo:…;envio:ok|error|omitido`.
+  **Nunca** incluye el texto del aviso ni el del participante. El cierre en sí y el consumo de tokens
+  del redactor siguen registrándose donde ya lo hacían (I-17 y `redaccionConversacional`), sin
+  duplicarse aquí. El cierre administrativo de campaña no genera este evento.
 
 - **`consolidacionProgresivaIdeas` (I-19):** transiciones
   `propuesta|confirmada|corregida|evaluada|reabierta|cerrada|fallback`, con índice, versión, estado y

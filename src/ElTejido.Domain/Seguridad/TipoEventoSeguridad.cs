@@ -65,4 +65,9 @@ public enum TipoEventoSeguridad
 
     // P-28: entrada humana ante saludo/inicio breve sin flujo. Sin texto ni PII adicional.
     DespertarProactivo,
+
+    // P-29 (10 §6.2): aviso de pausa posterior al cierre por inactividad ya realizado por I-17/I-19.
+    // Solo accion (avisoEnviado|avisoOmitidoSinVentana|fallbackUsado), ids internos y resultado del
+    // envio; nunca el texto del aviso ni el del participante. Aditivo al final (03 §3.15).
+    CierrePorInactividad,
 }

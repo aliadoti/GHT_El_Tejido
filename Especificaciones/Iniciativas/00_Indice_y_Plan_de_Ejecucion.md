@@ -6,12 +6,12 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> Última revisión: 2026-08-04 — **P-28 completa localmente y matriz canónica de cierres adoptada.** `P-26` ya entrega participación
-> continua y ciclos nuevos; `P-28`, `P-29` y `P-30` quedan especificadas como vacíos acotados:
-> entrada humana para saludo/inicio no sustantivo, mensaje humano posterior al cierre por inactividad ya
-> existente y selección histórica de una idea, respectivamente. P-28 está completa y P-29/P-30 permanecen
-> pendientes detrás de kill-switch OFF; ninguno es prerrequisito técnico de P-26.
-> Revisión: 2026-08-04 — **`P-27` y `P-28` completas localmente; `P-29` corte 1 es el siguiente.**
+> Última revisión: 2026-08-04 — **P-28 y P-29 completas localmente; matriz canónica de cierres adoptada.** `P-26` ya entrega participación
+> continua y ciclos nuevos; `P-28`, `P-29` y `P-30` cubrían vacíos acotados: entrada humana para
+> saludo/inicio no sustantivo, mensaje humano posterior al cierre por inactividad ya existente y
+> selección histórica de una idea, respectivamente. **`P-30` es la única pendiente**; las tres viven
+> detrás de kill-switch OFF y ninguna es prerrequisito técnico de P-26.
+> Revisión: 2026-08-04 — **`P-27`, `P-28` y `P-29` completas localmente; `P-30` es el siguiente.**
 > P-27 corrige las salidas naturales y añade, detrás de flags OFF, clasificación LLM de intención con
 > ejecución siempre server-side y consumo persistente de sus llamadas/tokens.
 > Revisión anterior: 2026-07-29 — **`P-26` especificada, pendiente de implementación.** Añade
@@ -53,7 +53,7 @@
 | P-26 | [P-26_Participacion_Continua_y_Seleccion_de_Campania.md](P-26_Participacion_Continua_y_Seleccion_de_Campania.md) | Inmediata | **DONE local 2026-07-31 (6/6).** Flag `participacionContinua` por campaña, selección campaña/pregunta, aporte preservado, afinidad 24 h, ciclos independientes y cupos móviles. Default OFF; activación operativa pendiente. |
 | P-27 | [P-27_Clasificacion_Flexible_Intenciones_Control.md](P-27_Clasificacion_Flexible_Intenciones_Control.md) | Alta, después de P-26 | **DONE local 2026-08-04 (5/5).** Alias, clasificador/política server-side, aclaración, portal y cupos/telemetría persistentes. Backend 698/698; flags global/campaña OFF y activación D5/UAT/costo pendiente. |
 | P-28 | [P-28_Despertar_Proactivo_Coach.md](P-28_Despertar_Proactivo_Coach.md) | Completa local | **DONE local 2026-08-04 (3/3).** Saludo/inicio no sustantivo, selección P-26, redacción/fallback, telemetría sin texto y E2E. El saludo no crea idea; kill-switch `DespertarProactivoHabilitado` OFF. |
-| P-29 | [P-29_Cierre_Conversacional_Por_Tiempo.md](P-29_Cierre_Conversacional_Por_Tiempo.md) | Reunión 31-jul (REQ-013) | **CORTE 1/2 DONE local 2026-08-04.** Kill-switch `CierrePorTiempoHabilitado` (OFF), `promptRefs.cierre` y enganche de aviso único sobre el cierre por inactividad ya existente de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos). Pendiente corte 2: redacción LLM con fallback, telemetría, E2E y QAS. |
+| P-29 | [P-29_Cierre_Conversacional_Por_Tiempo.md](P-29_Cierre_Conversacional_Por_Tiempo.md) | Completa local | **DONE local 2026-08-04 (2/2).** Aviso de pausa redactado por LLM con fallback determinista sobre el cierre por inactividad ya existente de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos), telemetría `cierrePorInactividad` sin texto, E2E simulada y QAS. Kill-switch `CierrePorTiempoHabilitado` OFF; activación D5/UAT/costo pendiente. |
 | P-30 | [P-30_Retomar_Ideas_Del_Pasado.md](P-30_Retomar_Ideas_Del_Pasado.md) | Reunión 31-jul (REQ-014) | **ESPECIFICADA; implementación pendiente (3 cortes).** Amplía la reapertura reciente I-19/P-26 con lista histórica determinista por participante, campaña y pregunta; conserva el mismo `ideaId`. Búsqueda semántica/vectorial fuera de alcance. Kill-switch `RetomarIdeasHabilitado` OFF. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |

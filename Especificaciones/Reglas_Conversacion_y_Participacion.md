@@ -3,7 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-08-04 (P-28 implementada localmente; matriz canónica de cierres preservada).
+> y `09` (Markdown). Última revisión: 2026-08-04 (P-28 y P-29 implementadas localmente; matriz canónica de cierres preservada).
 
 ## 1. Visión general del flujo
 
@@ -403,7 +403,7 @@ La selección acepta número o nombre/texto exacto no ambiguo y se vuelve a vali
 asociación y pregunta. El LLM no elige el alcance. Apagar el interruptor deja terminar una idea ya
 activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción. Ver P-26.
 
-### 2.11 Reingreso, pausa y retomar una idea (P-28 implementada; P-29 corte 1/2; P-30 especificada)
+### 2.11 Reingreso, pausa y retomar una idea (P-28 y P-29 implementadas; P-30 especificada)
 
 Estas iniciativas no crean otra variante de participación continua. Completan vacíos concretos sobre
 la base ya implementada:
@@ -421,7 +421,10 @@ la base ya implementada:
    `Conversacion:CierrePorTiempoHabilitado=true`, cada hilo que el barrido acaba de cerrar recibe **un
    solo** aviso: el hilo ya quedó cerrado, así que el barrido siguiente no vuelve a listarlo. Si la
    ventana de 24 h venció o la campaña se cerró administrativamente, el aviso se omite y el cierre se
-   conserva igual. Apagado, el cierre por inactividad opera exactamente como hoy.
+   conserva igual. Apagado, el cierre por inactividad opera exactamente como hoy. El texto lo redacta
+   el LLM y cae al respaldo determinista si no está disponible; nunca menciona rúbrica ni puntajes y
+   **no hace preguntas**, porque no espera respuesta: quien quiera seguir simplemente vuelve a
+   escribir y el reingreso lo resuelven P-26/P-28/P-30.
 3. **P-30 — retomar:** I-19/P-26 ya reabren explícitamente la idea reciente del alcance vigente y
    conservan su `ideaId`. P-30 añade la lista determinista de ideas históricas del propio participante,
    sin filtrar por estado, dentro de campaña y pregunta ya resueltas. “Sin importar el estado” nunca

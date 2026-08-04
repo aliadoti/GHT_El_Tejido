@@ -1,6 +1,6 @@
 # P-29 — Cierre conversacional por tiempo (determinístico + no determinístico)
 
-**Estado:** EN IMPLEMENTACIÓN — **corte 1 de 2 DONE local (2026-08-04)**; corte 2 pendiente.
+**Estado:** **COMPLETA local (2/2) — 2026-08-04.** Pendiente solo la validación operativa (D5/UAT/costo) y la decisión de flags del día-D.
 **Requerimiento de negocio:** `Client_partner/.../Nuevas iniciativas/REQ-013_Cierre_conversacional_por_tiempo.md`.
 **Fecha de decisión:** 2026-07-31 (reunión con Felipe Arango, GHT).
 **Áreas afectadas:** orquestador conversacional, temporización/cierre por inactividad, persistencia
@@ -190,7 +190,7 @@ solo agrega un interruptor, prompt opcional y telemetría:
 | Corte | Entrega verificable | Pruebas mínimas |
 |---|---|---|
 | 1 | **DONE local 2026-08-04.** Kill-switch `CierrePorTiempoHabilitado`, `promptRefs.cierre` y enganche de envío único en el cierre existente. **No** se toca umbral, estado ni `motivoCierre`. | Round-trip config, P-29 OFF conserva el cierre I-17 y no duplica avisos. |
-| 2 | Mensaje de pausa LLM con fallback, telemetría, E2E, QA y cierre documental. | LLM/fallback, ventana vencida, concurrencia, respeto de I-19, build/test/format/diff. |
+| 2 | **DONE local 2026-08-04.** Mensaje de pausa LLM con fallback, telemetría, E2E, QA y cierre documental. | LLM/fallback, ventana vencida, concurrencia, respeto de I-19, build/test/format/diff. |
 
 ### 11.1 Detalle del corte 1 (implementado)
 
@@ -205,8 +205,24 @@ solo agrega un interruptor, prompt opcional y telemetría:
 - `ServicioExpiracionConversaciones` invoca el aviso solo tras cerrar por inactividad y solo con el
   kill-switch encendido. El hilo queda cerrado antes del envío, de modo que el barrido siguiente no lo
   vuelve a listar: no hay doble aviso ni doble cierre.
-- **Aún no incluido (corte 2):** llamada al redactor LLM, telemetría
-  `LogSeguridad(cierrePorInactividad)`, E2E simulada y QAS.
+### 11.2 Detalle del corte 2 (implementado)
+
+- El aviso se compone con el redactor I-20 (`ActoConversacional.Pausar`, prompt de `promptRefs.cierre`).
+  El respaldo determinista se conserva y se usa ante modelo apagado, `ConfigLlm` inactiva, cupo de
+  llamadas agotado, salida inválida o fallo del proveedor. Las guardas de salida ya vigentes rechazan
+  fuga de rúbrica, promesas y **cualquier pregunta** en este acto.
+- Telemetría `LogSeguridad(cierrePorInactividad)` con
+  `resultado=avisoEnviado|fallbackUsado|avisoOmitidoSinVentana`, `campaniaId` interno,
+  `correlationId` y detalle con conversación, pregunta, ciclo y resultado del envío. Nunca incluye el
+  texto del aviso ni el del participante. El consumo de tokens sigue registrándose en
+  `redaccionConversacional` (I-20), sin duplicarse.
+- E2E simulada (`CierrePorTiempoP29E2EIntegrationTests`): inactividad → cierre de I-17/I-19 → aviso
+  redactado / fallback / omisión sin ventana / kill-switch apagado, segundo barrido sin repetición y
+  reingreso posterior resuelto por P-26.
+- Corrección menor arrastrada de I-20: al componer un acto sin cuerpo ni pregunta el turno quedaba con
+  un separador final colgando (afectaba también a `Reactivar` de P-28); ahora el texto se recorta.
+- **Pendiente (operativo, no de código):** D5 real, UAT y costo/latencia del acto `Pausar`, y la
+  decisión del flag en el acta del día-D.
 
 Cada corte deja `TODO.md` y `AVANCES.md` actualizados. No desplegar sin instrucción posterior.
 

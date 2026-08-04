@@ -77,6 +77,88 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P29_PausaPorInactividad_RedactaConElLlmYRegistraElAvisoEnviado()
+    {
+        var participante = Participante();
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(participante.Participante);
+        var cerrada = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .Cerrar(Epoca);
+
+        await Construir(redactor: RedactorQueDevuelve("Demos una pausa aquí; seguimos cuando quieras.", null))
+            .EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            "Demos una pausa aquí; seguimos cuando quieras.",
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log =>
+                log.TipoEvento == TipoEventoSeguridad.CierrePorInactividad
+                && log.Resultado == "avisoEnviado"
+                && log.CampaniaId == "c_1"
+                && log.Detalle!.Contains("conversacion:conv_c_1_u_1_p_1", StringComparison.Ordinal)
+                && log.Detalle.Contains("envio:ok", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P29_RedactorDegradado_EnviaElRespaldoYRegistraFallbackUsado()
+    {
+        var participante = Participante();
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(participante.Participante);
+        var redactor = Substitute.For<IRedactorTurnoConversacional>();
+        redactor.RedactarAsync(Arg.Any<ContextoRedaccionTurno>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoRedaccionTurno.Fallback("error_proveedor", null));
+        var cerrada = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .Cerrar(Epoca);
+
+        await Construir(redactor: redactor)
+            .EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            OpcionesMensajesConversacion.PausaPorInactividadDefault,
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log =>
+                log.TipoEvento == TipoEventoSeguridad.CierrePorInactividad
+                && log.Resultado == "fallbackUsado"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task P29_ElActoDePausa_PideAlRedactorUnTurnoSinPregunta()
+    {
+        var participante = Participante();
+        _participantes.ObtenerParticipantePorUsuarioAsync("c_1", "u_1", Arg.Any<CancellationToken>())
+            .Returns(participante.Participante);
+        var redactor = Substitute.For<IRedactorTurnoConversacional>();
+        redactor.RedactarAsync(Arg.Any<ContextoRedaccionTurno>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoRedaccionTurno.Exito("Quedamos en pausa.", null, UsoTokensLlm.Crear(9, 3)));
+        var cerrada = DominioConversacion
+            .Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca)
+            .Cerrar(Epoca);
+
+        await Construir(redactor: redactor)
+            .EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
+
+        // §4.1/§8: el acto de pausa no lleva pregunta; la guarda del redactor degrada una salida que la traiga.
+        await redactor.Received(1).RedactarAsync(
+            Arg.Is<ContextoRedaccionTurno>(contexto =>
+                contexto.Acto == ActoConversacional.Pausar && contexto.Pregunta.Id == "p_1"),
+            Arg.Any<CancellationToken>());
+        PoliticaRedaccionConversacional.AdmitePregunta(ActoConversacional.Pausar).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task P29_PausaPorInactividad_EnviaUnUnicoAvisoConElRespaldoDeterminista()
     {
         var participante = Participante();
@@ -114,6 +196,12 @@ public sealed class OrquestadorConversacionTests
         await Construir().EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
 
         await _gateway.DidNotReceiveWithAnyArgs().EnviarTextoAsync(default!, default!, default, default, default);
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log =>
+                log.TipoEvento == TipoEventoSeguridad.CierrePorInactividad
+                && log.Resultado == "avisoOmitidoSinVentana"
+                && log.Detalle!.Contains("envio:omitido", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -129,6 +217,8 @@ public sealed class OrquestadorConversacionTests
         await Construir().EnviarPausaPorInactividadAsync(cerrada, participante.Campania, CancellationToken.None);
 
         await _gateway.DidNotReceiveWithAnyArgs().EnviarTextoAsync(default!, default!, default, default, default);
+        // El cierre administrativo prevalece y no genera evento propio de P-29.
+        await _logSeguridad.DidNotReceiveWithAnyArgs().RegistrarAsync(default!, default);
     }
 
     [Theory]

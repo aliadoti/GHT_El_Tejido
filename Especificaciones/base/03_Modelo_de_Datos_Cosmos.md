@@ -686,6 +686,11 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   `esLlamadaLlm`. Solo las entradas con este último valor en `true` consumen cupo por usuario y
   presupuesto de campaña; incluye intentos que terminan en fallback, pero no los alias deterministas ni
   una omisión previa por cupo. No guarda el texto entrante ni la salida cruda del modelo.
+- `cierrePorInactividad` (P-29, **aditivo** al final del enum): una entrada por hilo cerrado por
+  inactividad cuando el aviso de pausa está habilitado (`resultado` =
+  `avisoEnviado|fallbackUsado|avisoOmitidoSinVentana`, `campaniaId` interno y detalle con
+  conversación, pregunta, ciclo y resultado del envío). **Nunca** incluye el texto del aviso ni el del
+  participante. Ver `10 §6.2`.
 - **Sin** códigos, secretos ni PII innecesaria.
 
 ### 3.16 `WebhookDedupe` (contenedor `leases`) — idempotencia

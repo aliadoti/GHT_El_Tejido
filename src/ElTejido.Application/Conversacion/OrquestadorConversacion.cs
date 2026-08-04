@@ -249,9 +249,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         var ahora = _tiempo.GetUtcNow();
 
-        // P-29 §9: el cierre administrativo de la campaña prevalece y no se le agrega aviso; fuera de
-        // la ventana de servicio de 24 h se omite el texto libre (nunca se fuerza una plantilla HSM).
-        if (campania.Estado != EstadoCampania.Activa || !conversacion.VentanaAbierta(ahora))
+        // P-29 §9: el cierre administrativo de la campaña prevalece y no se le agrega aviso.
+        if (campania.Estado != EstadoCampania.Activa)
         {
             return;
         }
@@ -265,13 +264,31 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        // Corte 1: respaldo determinista. El corte 2 enchufa el redactor (I-20) conservando este texto
-        // como fallback cuando el modelo falle o este apagado.
-        var texto = TextoConfigurado(
+        // P-29 §9: fuera de la ventana de servicio de 24 h se omite el texto libre y nunca se fuerza
+        // una plantilla HSM (eso es P-08). El cierre de I-17 ya quedó registrado igual.
+        if (!conversacion.VentanaAbierta(ahora))
+        {
+            await RegistrarCierrePorInactividadAsync(
+                conversacion, participante.WhatsappNormalizado, "avisoOmitidoSinVentana", envio: null, ahora, cancellationToken);
+            return;
+        }
+
+        // §5.2: el texto lo redacta el LLM (I-20) y el servidor conserva el respaldo determinista para
+        // el modelo apagado, la salida inválida, el cupo agotado o el fallo de la llamada.
+        var respaldo = TextoConfigurado(
             _mensajes.PausaPorInactividad,
             OpcionesMensajesConversacion.PausaPorInactividadDefault);
+        var texto = await ComponerTurnoAsync(
+            campania,
+            campania.Preguntas.FirstOrDefault(pregunta => pregunta.Id == conversacion.PreguntaId),
+            conversacion.UsuarioId,
+            participante.WhatsappNormalizado,
+            ActoConversacional.Pausar,
+            respaldo,
+            ahora,
+            cancellationToken);
 
-        await EnviarAsync(
+        var resultado = await EnviarAsync(
             conversacion,
             participante.WhatsappNormalizado,
             texto,
@@ -279,7 +296,40 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             campania.ConfigConversacional.NumeroWhatsAppSaliente,
             ahora,
             cancellationToken);
+
+        await RegistrarCierrePorInactividadAsync(
+            conversacion,
+            participante.WhatsappNormalizado,
+            string.Equals(texto, respaldo, StringComparison.Ordinal) ? "fallbackUsado" : "avisoEnviado",
+            resultado.Exito,
+            ahora,
+            cancellationToken);
     }
+
+    /// <summary>
+    /// P-29 §7 (10 §6.2): una entrada por cierre por inactividad con aviso. Solo accion, ids internos y
+    /// resultado del envio; nunca el texto del aviso ni el del participante.
+    /// </summary>
+    private Task RegistrarCierrePorInactividadAsync(
+        DominioConversacion conversacion,
+        NumeroWhatsApp numero,
+        string accion,
+        bool? envio,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.CierrePorInactividad,
+                conversacion.UsuarioId,
+                numero.Valor,
+                accion,
+                FormattableString.Invariant(
+                    $"accion:{accion};conversacion:{conversacion.Id};pregunta:{conversacion.PreguntaId};ciclo:{conversacion.CicloParticipacion};envio:{(envio is null ? "omitido" : envio.Value ? "ok" : "error")}"),
+                _correlacion.CorrelationIdActual,
+                ahora,
+                campaniaId: conversacion.CampaniaId),
+            cancellationToken);
 
     public async Task ProcesarMensajeEntranteAsync(
         ParticipanteResuelto participante,
@@ -2126,11 +2176,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         // El orden es siempre puente → cuerpo → pregunta: así la versión consolidada queda íntegra y
-        // visible, y el modelo no puede sustituirla ni esconderla (§4).
+        // visible, y el modelo no puede sustituirla ni esconderla (§4). Se recorta el resultado: un
+        // acto sin cuerpo ni pregunta (P-28 `Reactivar`, P-29 `Pausar`) dejaba el separador colgando.
         var texto = Combinar(redactado.Puente, cuerpo ?? string.Empty);
-        return string.IsNullOrWhiteSpace(redactado.Pregunta)
+        return (string.IsNullOrWhiteSpace(redactado.Pregunta)
             ? (string.IsNullOrWhiteSpace(texto) ? respaldo : texto)
-            : Combinar(texto, redactado.Pregunta);
+            : Combinar(texto, redactado.Pregunta)).Trim();
     }
 
     /// <summary>
