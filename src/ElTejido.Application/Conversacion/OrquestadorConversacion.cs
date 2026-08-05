@@ -157,7 +157,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             opciones.MaxCaracteresIntencionContinuar);
         _intencionRechazoIdea = intencionRechazoGuardado;
         _maxCaracteresIntencion = opciones.MaxCaracteresIntencionContinuar;
-        _politicaIntencionControl = new PoliticaIntencionControl(opciones.MaxCaracteresClasificacionIntencionControl);
+        _politicaIntencionControl = new PoliticaIntencionControl(opciones);
         _clasificacionIntencionControlHabilitada = opciones.ClasificacionIntencionControl;
         _intencionRevisitarAnterior = new DetectorIntencionContinuar(
             opciones.FrasesRevisitarAnterior is { Count: > 0 }

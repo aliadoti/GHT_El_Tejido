@@ -99,6 +99,18 @@ public sealed class OpcionesConversacion
     public IList<string> FrasesContinuar { get; set; } = new List<string>();
 
     /// <summary>
+    /// DT-P27-01 — alias deterministas para terminar solo la idea activa. Vacío = usa
+    /// <see cref="DetectorIntencionContinuar.FrasesFinalizarIdeaPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesFinalizarIdea { get; set; } = new List<string>();
+
+    /// <summary>
+    /// DT-P27-01 — alias deterministas para terminar la participación actual. Vacío = usa
+    /// <see cref="DetectorIntencionContinuar.FrasesFinalizarParticipacionPorDefecto"/>.
+    /// </summary>
+    public IList<string> FrasesFinalizarParticipacion { get; set; } = new List<string>();
+
+    /// <summary>
     /// P-24 — frases cortas con las que el participante pide trabajar una propuesta ya mostrada (por
     /// ejemplo, "vamos a mejorarla"). Solo en <c>pendienteConfirmacion</c> confirman implícitamente la
     /// versión vigente para evaluarla; no se guardan como aporte. Vacío = lista compilada.

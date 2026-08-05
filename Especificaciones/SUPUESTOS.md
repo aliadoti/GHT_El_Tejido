@@ -1006,3 +1006,20 @@
   - Las transiciones, alcance, umbrales y permisos son deterministas y server-side. El LLM solo puede redactar la respuesta con fallback, nunca decidir un cierre, acceso, campaña o idea.
 - Impacto / reversibilidad: corrección documental; sin cambios de código, configuración remota ni activación de flags. Las iniciativas pendientes mantienen sus kill-switches OFF.
 - Specs: `Reglas_Conversacion_y_Participacion.md`, `Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md`, `Iniciativas/P-28_Despertar_Proactivo_Coach.md`, `Iniciativas/P-29_Cierre_Conversacional_Por_Tiempo.md`, `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`.
+
+### config-frases-finalizacion-dt-p27-01 - Externalizar las listas de finalización de P-27 a config versionada
+- Fecha: 2026-08-04 - Agente/Rol: Analista/Arquitecto - Commit: n/a (solo especificación)
+- Contexto: P-27 dejó dos listas de alias determinísticos (`FrasesFinalizarIdeaPorDefecto` y `FrasesFinalizarParticipacionPorDefecto`) compiladas dentro de `DetectorIntencionContinuar`, mientras que el resto de listas de frases (`FrasesContinuar`, `FrasesSolicitarMejora`, `FrasesRevisitarAnterior/Idea`) ya viven en `Conversacion:Frases*`. Priorizado por el usuario como el siguiente cambio de código (deuda DT-P27-01). Spec DT-P27-01.
+- Decision:
+  - Externalizar ambas listas a `Conversacion:FrasesFinalizarIdea` y `Conversacion:FrasesFinalizarParticipacion` (app config/env), siguiendo el mismo patrón de `FrasesContinuar`.
+  - Fallback seguro: config ausente/vacía/inválida usa el default compilado actual; el comportamiento sin config es idéntico al de hoy.
+  - Validación tras la misma normalización de `DetectorIntencionContinuar`: sin vacíos, sin duplicados y sin exceder el límite de tamaño; una config inválida se descarta, se usa el default y se registra el motivo (sin volcar la lista a logs).
+  - Historial/rollback de la configuración; sin override por campaña ni edición libre desde el portal.
+  - No modificar los alias vigentes de P-27, su lógica ni su activación; DT-P27-01 solo cambia de dónde se leen.
+- Alternativa(s) descartada(s): dejar las listas compiladas (obliga a recompilar/desplegar para calibrar); permitir edición por campaña (rompe la operación como capacidad global); activar P-27 dentro de esta deuda.
+- Impacto / reversibilidad: aditivo y solo de configuración de aplicación (sin cambios de Cosmos). Vaciar las claves restaura el comportamiento actual. Plan en 2 cortes.
+- Estado de implementación 2026-08-05: corte 1 DONE local. Ambas claves se enlazan a
+  `OpcionesConversacion`; lista ausente/vacía usa el default compilado y lista con elementos lo
+  reemplaza usando el mismo detector/normalización. Corte 2 conserva pendiente la validación con
+  registro seguro y el historial/rollback. Sin cambio remoto ni activación de P-27.
+- Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`.

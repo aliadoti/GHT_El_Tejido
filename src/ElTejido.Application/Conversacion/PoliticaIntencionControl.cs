@@ -12,11 +12,37 @@ public sealed class PoliticaIntencionControl
     private readonly DetectorIntencionContinuar _finalizarParticipacion;
 
     public PoliticaIntencionControl(int maxCaracteres)
+        : this(
+            DetectorIntencionContinuar.FrasesFinalizarIdeaPorDefecto,
+            DetectorIntencionContinuar.FrasesFinalizarParticipacionPorDefecto,
+            maxCaracteres)
     {
+    }
+
+    public PoliticaIntencionControl(OpcionesConversacion opciones)
+    {
+        ArgumentNullException.ThrowIfNull(opciones);
+
+        IEnumerable<string> frasesFinalizarIdea = opciones.FrasesFinalizarIdea is { Count: > 0 }
+            ? opciones.FrasesFinalizarIdea
+            : DetectorIntencionContinuar.FrasesFinalizarIdeaPorDefecto;
+        IEnumerable<string> frasesFinalizarParticipacion = opciones.FrasesFinalizarParticipacion is { Count: > 0 }
+            ? opciones.FrasesFinalizarParticipacion
+            : DetectorIntencionContinuar.FrasesFinalizarParticipacionPorDefecto;
+
         _finalizarIdea = new DetectorIntencionContinuar(
-            DetectorIntencionContinuar.FrasesFinalizarIdeaPorDefecto, maxCaracteres);
+            frasesFinalizarIdea, opciones.MaxCaracteresClasificacionIntencionControl);
         _finalizarParticipacion = new DetectorIntencionContinuar(
-            DetectorIntencionContinuar.FrasesFinalizarParticipacionPorDefecto, maxCaracteres);
+            frasesFinalizarParticipacion, opciones.MaxCaracteresClasificacionIntencionControl);
+    }
+
+    private PoliticaIntencionControl(
+        IEnumerable<string> frasesFinalizarIdea,
+        IEnumerable<string> frasesFinalizarParticipacion,
+        int maxCaracteres)
+    {
+        _finalizarIdea = new DetectorIntencionContinuar(frasesFinalizarIdea, maxCaracteres);
+        _finalizarParticipacion = new DetectorIntencionContinuar(frasesFinalizarParticipacion, maxCaracteres);
     }
 
     public DecisionIntencionControl Resolver(

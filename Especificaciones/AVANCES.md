@@ -4,6 +4,27 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-05 por Codex (Arquitecto/Backend/SDET): **DT-P27-01 corte 1 de 2
+  DONE local — listas globales de salida con fallback seguro.** `OpcionesConversacion` ya enlaza
+  `FrasesFinalizarIdea` y `FrasesFinalizarParticipacion`; el orquestador entrega ambas a la política
+  server-side. Lista ausente/vacía conserva exactamente los alias compilados y una lista con elementos
+  los reemplaza reutilizando la normalización vigente (mayúsculas, acentos, espacios y puntuación).
+  No cambió ningún alias, flag, estado, contrato Cosmos/API ni configuración remota. **Verificado:**
+  build Release `-warnaserror` 0/0; regresión focalizada 29/29; backend no calibración **730/730**
+  (658 unitarias + 72 de integración); `dotnet format --verify-no-changes` verde. QAS, spec, reglas, índice, supuesto, prompt de continuidad y
+  `TODO.md` sincronizados. **Siguiente: corte 2**, validación de vacíos/duplicados/límite con fallback
+  y registro seguro, historial/rollback y cierre documental.
+- Ultima actualizacion: 2026-08-04 (Arquitecto/Analista): **`DT-P27-01` PRIORIZADA como el siguiente
+  cambio de código (por el usuario).** Deuda técnica de P-27: las dos listas de alias de finalización
+  (`FrasesFinalizarIdeaPorDefecto` / `FrasesFinalizarParticipacionPorDefecto`) están compiladas en
+  `DetectorIntencionContinuar`; DT-P27-01 las externaliza a configuración global versionada
+  (`Conversacion:FrasesFinalizarIdea` / `Conversacion:FrasesFinalizarParticipacion`) con fallback
+  seguro al default compilado, validación tras normalizar (sin vacíos, duplicados ni fuera de límite),
+  historial/rollback y regresión. **Aditiva; con config ausente el comportamiento es idéntico al
+  actual.** No editable por campaña, no toca los alias vigentes ni activa P-27. Plan en 2 cortes.
+  Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`; supuesto
+  `SUPUESTOS.md#config-frases-finalizacion-dt-p27-01`. En paralelo sigue lo operativo (D5/UAT/costo y
+  acta de flags). Sin código, push ni cambio remoto en esta entrada.
 - Ultima actualizacion: 2026-08-04 por Codex (Arquitecto/Backend/AppSec/SDET): **P-30 COMPLETA local
   (3/3) — retomar una idea histórica conserva la misma idea y el mismo hilo.** Con el kill-switch
   `Conversacion:RetomarIdeasHabilitado=false` por defecto, la intención de retomar ofrece solo ideas
@@ -604,10 +625,14 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **No iniciar otro cambio de código sin una nueva priorización expresa.** Coordinar D5 real, UAT,
-  costo/latencia y el acta de flags de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Los flags nuevos
-  continúan apagados; no hacer push, desplegar ni modificar configuración remota sin instrucción.
-  `DT-P27-01` sigue en backlog posterior y no es el siguiente ejecutable.
+- [ ] **Implementar DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
+  duplicados y límite); una lista inválida se descarta completa, usa el default compilado y registra
+  únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a
+  `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. No cambiar alias, agregar edición
+  por campaña, activar P-27, desplegar ni modificar configuración remota.
+- [x] **(HECHO 2026-08-05, Codex — backend 730: 658 unit + 72 integración; build Release y prueba
+  focalizada verdes) DT-P27-01 corte 1 de 2.** Lectura de las dos listas desde app config, fallback a
+  los defaults compilados y normalización compartida; QAS y continuidad sincronizados.
 - [x] **(HECHO 2026-08-04, Codex — backend 729: 657 unit + 72 integración; build Release,
   format y diff limpios) P-30 completa local 3/3.** Selector histórico por participante, campaña y
   pregunta, misma idea/hilo, persistencia y telemetría sin texto, E2E simulada y QAS; flag global OFF.
@@ -866,6 +891,7 @@
 | P-28 | Despertar proactivo del coach | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 706/706, build/format/diff verdes | Saludo/inicio con flag global OFF, selección P-26 sin convertirlo en aporte, redacción/fallback, telemetría sin texto, Cosmos, E2E y QAS. Siguiente: P-29 corte 1. |
 | P-29 | Cierre conversacional por tiempo | DONE local 2/2; D5/UAT/costo pendiente | `09d4d84` + cambios locales corte 2 | backend 723/723 (651+72), build/format/diff verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 sin temporizador, umbral, estado ni motivo nuevos. |
 | P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
+| DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | EN CURSO 1/2 | pendiente | backend 730/730 (658+72), build/focalizadas/formato verdes | Corte 1: lectura global, fallback a defaults y normalización compartida. Corte 2: validación/registro e historial/rollback. Sin cambio de alias, flags ni configuración remota. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -1260,3 +1286,10 @@
   sin reenviar. Se actualizó la especificación P-03 y las guías QAS. Verificado: build de producción
   Angular, E2E focalizada del portal 10/10 e integración P-03 3/3; `git diff --check` limpio. Sin
   push, despliegue ni configuración remota.
+- 2026-08-05 - Codex - **DT-P27-01 corte 1/2 DONE local: alias de finalización configurables con
+  fallback.** Rol: Arquitecto/Backend/SDET; cubre DT-P27-01 §§4/8/9 y `05 §4.4`, `07 §4/§5`,
+  `10 §6`. Se enlazaron las listas globales para finalizar idea/participación, se conservaron los
+  defaults cuando están ausentes o vacías y se reutilizó el detector normalizado. Regresión de carga
+  de app config y reemplazo de aliases; backend 730/730, build Release sin warnings y formato verde. Sin cambio de
+  alias, flags, Cosmos/API, despliegue o config remota. Handoff: corte 2, validación/registro e
+  historial/rollback.

@@ -389,6 +389,30 @@ una idea. El modelo propone una etiqueta; el sistema decide siempre qué cerrar.
 **Algo va mal si:** una frase de contenido cierra algo, la orden se evalúa como idea, aparece un
 puntaje/rúbrica en la respuesta, se registra el texto libre en telemetría o el modelo cierra una campaña.
 
+### ✅/🔧 DT-P27-01 — Cambiar las frases de salida sin cambiar el programa (corte 1)
+
+**Qué es:** el equipo técnico ya puede preparar una lista global de frases para terminar una idea y
+otra para terminar la participación. Si no prepara ninguna, siguen funcionando exactamente las frases
+actuales. Esta prueba debe hacerse en un ambiente de pruebas y con la interpretación libre de P-27
+apagada, para comprobar solo las listas.
+
+1. Sin listas personalizadas, abre una conversación de prueba y llega a una pregunta de mejora.
+   Escribe **“quiero parar aquí”**. **Deberías ver:** se termina solo esa idea, como antes.
+2. En otro intento escribe **“no más”**. **Deberías ver:** termina la participación actual, también
+   igual que antes.
+3. Pide al equipo técnico cargar temporalmente **“cerrar esta propuesta”** para terminar la idea y
+   **“terminar el ejercicio”** para terminar la participación.
+4. Repite dos conversaciones y escribe esas frases con mayúsculas, tildes o signos, por ejemplo
+   **“¿Cerrar ésta propuesta!”**. **Deberías ver:** ambas se entienden correctamente.
+5. Mientras están las listas temporales, **“quiero parar aquí”** ya no debe actuar como alias fijo:
+   la lista nueva reemplaza la anterior. Después pide retirar las listas temporales y comprueba que
+   **“quiero parar aquí”** vuelve a funcionar.
+
+**Algo va mal si:** dejar las listas vacías rompe las frases actuales, la frase personalizada se guarda
+como parte de la idea, mayúsculas o tildes cambian el resultado, se activa la interpretación libre sin
+pedirlo, o la aplicación deja de iniciar. La revisión automática de listas erróneas y su historial se
+completan en el corte 2; todavía no deben darse por probados.
+
 ### ✅ Salud del sistema (lo que quedó de P-09)
 **Qué es:** una comprobación simple de que el sistema está "vivo".
 1. Pídele al equipo la dirección de **estado de salud** del sistema (o míralo en el panel de Azure).

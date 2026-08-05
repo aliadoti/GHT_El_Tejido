@@ -1,12 +1,13 @@
 using ElTejido.Application.Conversacion;
 using ElTejido.Domain.Conversaciones;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 
 namespace ElTejido.UnitTests.Conversacion;
 
 public sealed class PoliticaIntencionControlTests
 {
-    private readonly PoliticaIntencionControl _politica = new(maxCaracteres: 160);
+    private readonly PoliticaIntencionControl _politica = new(new OpcionesConversacion());
 
     [Theory]
     [InlineData("Quiero parar aquí", DecisionIntencionControl.FinalizarIdea)]
@@ -53,5 +54,37 @@ public sealed class PoliticaIntencionControlTests
             IntencionControl.FinalizarIdea);
 
         decision.Should().Be(DecisionIntencionControl.FinalizarIdea);
+    }
+
+    [Fact]
+    public void Resolver_ConfigValida_ReemplazaLosAliasYConservaLaNormalizacion()
+    {
+        var configuracion = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Conversacion:FrasesFinalizarIdea:0"] = "  Cerrar esta propuesta  ",
+                ["Conversacion:FrasesFinalizarParticipacion:0"] = "TERMINAR EL EJERCÍCIO",
+                ["Conversacion:MaxCaracteresClasificacionIntencionControl"] = "160",
+            })
+            .Build();
+        var opciones = configuracion.GetSection(OpcionesConversacion.Seccion).Get<OpcionesConversacion>();
+        var politica = new PoliticaIntencionControl(opciones!);
+
+        politica.Resolver(
+                EstadoMaquinaConversacion.EsperandoRepregunta,
+                hayUnidadActiva: true,
+                "¿Cerrar ésta propuesta!")
+            .Should().Be(DecisionIntencionControl.FinalizarIdea);
+        politica.Resolver(
+                EstadoMaquinaConversacion.EsperandoRepregunta,
+                hayUnidadActiva: true,
+                "terminar el ejercicio")
+            .Should().Be(DecisionIntencionControl.FinalizarParticipacion);
+        politica.Resolver(
+                EstadoMaquinaConversacion.EsperandoRepregunta,
+                hayUnidadActiva: true,
+                "quiero parar aquí")
+            .Should().Be(DecisionIntencionControl.Aportar,
+                "una lista configurada reemplaza el default compilado");
     }
 }

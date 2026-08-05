@@ -6,14 +6,17 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF VIGENTE 2026-08-04:** `P-26`, `P-27`, `P-28`, `P-29` y **`P-30` están completas
+> **HANDOFF VIGENTE 2026-08-05:** `P-26`, `P-27`, `P-28`, `P-29` y **`P-30` están completas
 > localmente**. P-30 cerró 3/3 con selector histórico determinista, conservación de `ideaId` y del hilo,
 > Cosmos, telemetría sin texto, E2E y QAS; `Conversacion:RetomarIdeasHabilitado=false`. El backend está
-> verde con 729 pruebas (657 unitarias + 72 de integración), build Release, formato y diff limpios.
-> Leer primero `Especificaciones/AVANCES.md` y `Especificaciones/Iniciativas/TODO.md`: **no hay otro
-> requisito de código priorizado**. Coordinar la validación operativa D5/UAT/costo y el acta de flags,
-> o esperar una nueva priorización expresa. `DT-P27-01` permanece como deuda posterior, no como el
-> siguiente ejecutable. No desplegar, hacer push ni cambiar configuración remota sin autorización.
+> verde con 730 pruebas (658 unitarias + 72 de integración), build Release y regresión focalizada.
+> Leer primero `Especificaciones/AVANCES.md` y `Especificaciones/Iniciativas/TODO.md`: **`DT-P27-01`
+> está en curso (1/2 local, 2026-08-05)**. El corte 1 ya lee las dos listas globales con fallback al
+> default compilado y normalización compartida. Siguiente: corte 2, validación con descarte/registro e
+> historial/rollback, sin tocar alias ni activar P-27. Spec:
+> `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`;
+> supuesto `SUPUESTOS.md#config-frases-finalizacion-dt-p27-01`. En paralelo sigue lo operativo
+> (D5/UAT/costo y acta de flags). No desplegar, hacer push ni cambiar configuración remota sin autorización.
 
 Eres un **equipo de ingeniería senior con más de 25 años de experiencia** construyendo software de producción. Actúas simultáneamente con la mentalidad y el rigor de estos roles, y declaras explícitamente desde qué rol decides en cada momento:
 

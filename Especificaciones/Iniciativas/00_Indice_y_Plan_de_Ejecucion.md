@@ -6,6 +6,10 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
+> Última revisión: 2026-08-05 — **`DT-P27-01` en curso (1/2).** El corte 1 ya lee las dos listas de
+> alias de finalización desde configuración global, conserva el default compilado cuando están
+> ausentes/vacías y reutiliza la normalización vigente. Siguiente: corte 2, validación con fallback y
+> registro del motivo, más historial/rollback. Sin cambio de alias, flags ni configuración remota.
 > Última revisión: 2026-08-04 — **P-28 y P-29 completas localmente; matriz canónica de cierres adoptada.** `P-26` ya entrega participación
 > continua y ciclos nuevos; `P-28`, `P-29` y `P-30` cubrían vacíos acotados: entrada humana para
 > saludo/inicio no sustantivo, mensaje humano posterior al cierre por inactividad ya existente y
@@ -56,6 +60,7 @@
 | P-28 | [P-28_Despertar_Proactivo_Coach.md](P-28_Despertar_Proactivo_Coach.md) | Completa local | **DONE local 2026-08-04 (3/3).** Saludo/inicio no sustantivo, selección P-26, redacción/fallback, telemetría sin texto y E2E. El saludo no crea idea; kill-switch `DespertarProactivoHabilitado` OFF. |
 | P-29 | [P-29_Cierre_Conversacional_Por_Tiempo.md](P-29_Cierre_Conversacional_Por_Tiempo.md) | Completa local | **DONE local 2026-08-04 (2/2).** Aviso de pausa redactado por LLM con fallback determinista sobre el cierre por inactividad ya existente de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos), telemetría `cierrePorInactividad` sin texto, E2E simulada y QAS. Kill-switch `CierrePorTiempoHabilitado` OFF; activación D5/UAT/costo pendiente. |
 | P-30 | [P-30_Retomar_Ideas_Del_Pasado.md](P-30_Retomar_Ideas_Del_Pasado.md) | Reunión 31-jul (REQ-014) | **DONE local 2026-08-04 (3/3).** Lista histórica determinista por participante/campaña/pregunta, reapertura con el mismo `ideaId`, afinidad al ciclo histórico, telemetría y E2E; búsqueda vectorial fuera. Kill-switch `RetomarIdeasHabilitado` OFF. |
+| DT-P27-01 | [DT-P27-01_Config_Versionada_Frases_Finalizacion.md](DT-P27-01_Config_Versionada_Frases_Finalizacion.md) | **EN CURSO — 1/2 local** | **Corte 1 DONE 2026-08-05:** lectura de ambas listas desde config, fallback al default compilado y normalización compartida; backend 730/730, build/formato verdes. **Siguiente:** validación/descarte con registro e historial/rollback. Aditiva; sin tocar alias, flags ni config remota. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
