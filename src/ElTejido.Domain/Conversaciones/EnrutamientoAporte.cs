@@ -27,13 +27,15 @@ public sealed class EnrutamientoAporte
         string? campaniaSeleccionadaId,
         IReadOnlyList<OpcionPreguntaOfrecida> preguntasOfrecidas,
         string? preguntaSeleccionadaId,
+        ModoEnrutamientoAporte modo,
+        IReadOnlyList<OpcionIdeaOfrecida> ideasOfrecidas,
+        string? ideaSeleccionadaId,
         string? conversacionId,
         IReadOnlyList<IntentoSeleccion> intentosSeleccion,
         DateTimeOffset creadoEn,
         DateTimeOffset actualizadoEn,
         DateTimeOffset venceEn,
-        DateTimeOffset? procesadoEn,
-        bool esEntradaProactiva)
+        DateTimeOffset? procesadoEn)
     {
         Id = id;
         UsuarioId = usuarioId;
@@ -45,13 +47,15 @@ public sealed class EnrutamientoAporte
         CampaniaSeleccionadaId = campaniaSeleccionadaId;
         PreguntasOfrecidas = preguntasOfrecidas;
         PreguntaSeleccionadaId = preguntaSeleccionadaId;
+        Modo = modo;
+        IdeasOfrecidas = ideasOfrecidas;
+        IdeaSeleccionadaId = ideaSeleccionadaId;
         ConversacionId = conversacionId;
         IntentosSeleccion = intentosSeleccion;
         CreadoEn = creadoEn;
         ActualizadoEn = actualizadoEn;
         VenceEn = venceEn;
         ProcesadoEn = procesadoEn;
-        EsEntradaProactiva = esEntradaProactiva;
     }
 
     public string Id { get; }
@@ -78,6 +82,14 @@ public sealed class EnrutamientoAporte
 
     public string? PreguntaSeleccionadaId { get; }
 
+    /// <summary>P-30: finalidad del enrutamiento; ausente en Cosmos equivale al aporte P-26.</summary>
+    public ModoEnrutamientoAporte Modo { get; }
+
+    /// <summary>P-30: snapshot minimo de ideas historicas ofrecidas, sin puntajes ni texto completo.</summary>
+    public IReadOnlyList<OpcionIdeaOfrecida> IdeasOfrecidas { get; }
+
+    public string? IdeaSeleccionadaId { get; }
+
     /// <summary>Conversacion (ciclo) a la que quedo enrutado el aporte cuando el estado es enIdea o posterior.</summary>
     public string? ConversacionId { get; }
 
@@ -95,7 +107,9 @@ public sealed class EnrutamientoAporte
     public DateTimeOffset? ProcesadoEn { get; }
 
     /// <summary>P-28: la raíz es un saludo y nunca se entrega al orquestador como aporte.</summary>
-    public bool EsEntradaProactiva { get; }
+    public bool EsEntradaProactiva => Modo == ModoEnrutamientoAporte.EntradaProactiva;
+
+    public bool EsRetomarIdea => Modo == ModoEnrutamientoAporte.RetomarIdea;
 
     /// <summary>Particion interna reservada del contenedor <c>conversations</c> para este usuario.</summary>
     public string ParticionRouting => ParticionRoutingDe(UsuarioId);
@@ -129,7 +143,10 @@ public sealed class EnrutamientoAporte
         DateTimeOffset? actualizadoEn = null,
         DateTimeOffset? venceEn = null,
         DateTimeOffset? procesadoEn = null,
-        bool esEntradaProactiva = false)
+        bool esEntradaProactiva = false,
+        ModoEnrutamientoAporte modo = ModoEnrutamientoAporte.Aporte,
+        IEnumerable<OpcionIdeaOfrecida>? ideasOfrecidas = null,
+        string? ideaSeleccionadaId = null)
     {
         var usuario = DomainGuards.Required(usuarioId, nameof(usuarioId));
         var mensaje = DomainGuards.Required(whatsappMessageId, nameof(whatsappMessageId));
@@ -146,18 +163,22 @@ public sealed class EnrutamientoAporte
             string.IsNullOrWhiteSpace(campaniaSeleccionadaId) ? null : campaniaSeleccionadaId.Trim(),
             (preguntasOfrecidas ?? Array.Empty<OpcionPreguntaOfrecida>()).ToArray(),
             string.IsNullOrWhiteSpace(preguntaSeleccionadaId) ? null : preguntaSeleccionadaId.Trim(),
+            esEntradaProactiva ? ModoEnrutamientoAporte.EntradaProactiva : modo,
+            (ideasOfrecidas ?? Array.Empty<OpcionIdeaOfrecida>()).ToArray(),
+            string.IsNullOrWhiteSpace(ideaSeleccionadaId) ? null : ideaSeleccionadaId.Trim(),
             string.IsNullOrWhiteSpace(conversacionId) ? null : conversacionId.Trim(),
             (intentosSeleccion ?? Array.Empty<IntentoSeleccion>()).ToArray(),
             creado,
             (actualizadoEn ?? creado).ToUniversalTime(),
             (venceEn ?? creado.AddHours(HorasVigencia)).ToUniversalTime(),
-            procesadoEn?.ToUniversalTime(),
-            esEntradaProactiva);
+            procesadoEn?.ToUniversalTime());
     }
 
     /// <summary>¿La seleccion pendiente ya vencio logicamente? Solo aplica a los estados de seleccion.</summary>
     public bool SeleccionVencida(DateTimeOffset ahora)
-        => Estado is EstadoEnrutamientoAporte.SeleccionCampania or EstadoEnrutamientoAporte.SeleccionPregunta
+        => (Estado is EstadoEnrutamientoAporte.SeleccionCampania
+            or EstadoEnrutamientoAporte.SeleccionPregunta
+            or EstadoEnrutamientoAporte.SeleccionIdea)
             && ahora.ToUniversalTime() >= VenceEn;
 
     /// <summary>Reemplaza el snapshot de campanias ofrecidas (oferta inicial o recalculo tras revalidar).</summary>
@@ -201,6 +222,43 @@ public sealed class EnrutamientoAporte
             estado: EstadoEnrutamientoAporte.Listo,
             preguntaSeleccionadaId: DomainGuards.Required(preguntaId, nameof(preguntaId)),
             actualizadoEn: ahora);
+    }
+
+    /// <summary>P-30: conserva el snapshot minimo de ideas historicas que el servidor ofrecio.</summary>
+    public EnrutamientoAporte OfrecerIdeas(IEnumerable<OpcionIdeaOfrecida> opciones, DateTimeOffset ahora)
+        => With(
+            estado: EstadoEnrutamientoAporte.SeleccionIdea,
+            modo: ModoEnrutamientoAporte.RetomarIdea,
+            ideasOfrecidas: opciones.ToArray(),
+            actualizadoEn: ahora);
+
+    /// <summary>P-30: fija la idea ya revalidada y deja la accion lista para ejecutarse exactamente una vez.</summary>
+    public EnrutamientoAporte SeleccionarIdea(OpcionIdeaOfrecida opcion, DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.SeleccionIdea, "seleccionar la idea");
+        return With(
+            estado: EstadoEnrutamientoAporte.Listo,
+            ideaSeleccionadaId: DomainGuards.Required(opcion.IdeaId, nameof(opcion)),
+            conversacionId: DomainGuards.Required(opcion.ConversacionId, nameof(opcion)),
+            reemplazarConversacion: true,
+            actualizadoEn: ahora);
+    }
+
+    /// <summary>
+    /// P-30: la reapertura historica fue aplicada por I-19. La ruta queda como afinidad hacia ese hilo
+    /// para que el siguiente aporte llegue a la idea elegida aunque el ciclo no sea el mas reciente.
+    /// </summary>
+    public EnrutamientoAporte CompletarRetomarIdea(DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.Listo, "completar la reapertura historica");
+        if (!EsRetomarIdea || string.IsNullOrWhiteSpace(IdeaSeleccionadaId))
+        {
+            throw new DomainValidationException(
+                "ENRUTAMIENTO_REAPERTURA_INVALIDO",
+                "El enrutamiento no contiene una idea historica seleccionada.");
+        }
+
+        return With(estado: EstadoEnrutamientoAporte.EnIdea, actualizadoEn: ahora);
     }
 
     /// <summary>
@@ -271,6 +329,9 @@ public sealed class EnrutamientoAporte
         string? campaniaSeleccionadaId = null,
         IReadOnlyList<OpcionPreguntaOfrecida>? preguntasOfrecidas = null,
         string? preguntaSeleccionadaId = null,
+        ModoEnrutamientoAporte? modo = null,
+        IReadOnlyList<OpcionIdeaOfrecida>? ideasOfrecidas = null,
+        string? ideaSeleccionadaId = null,
         string? conversacionId = null,
         bool reemplazarConversacion = false,
         IReadOnlyList<IntentoSeleccion>? intentosSeleccion = null,
@@ -287,13 +348,15 @@ public sealed class EnrutamientoAporte
             campaniaSeleccionadaId ?? CampaniaSeleccionadaId,
             preguntasOfrecidas ?? PreguntasOfrecidas,
             preguntaSeleccionadaId ?? PreguntaSeleccionadaId,
+            modo ?? Modo,
+            ideasOfrecidas ?? IdeasOfrecidas,
+            ideaSeleccionadaId ?? IdeaSeleccionadaId,
             reemplazarConversacion ? conversacionId : conversacionId ?? ConversacionId,
             intentosSeleccion ?? IntentosSeleccion,
             CreadoEn,
             (actualizadoEn ?? ActualizadoEn).ToUniversalTime(),
             VenceEn,
-            (procesadoEn ?? ProcesadoEn)?.ToUniversalTime(),
-            EsEntradaProactiva);
+            (procesadoEn ?? ProcesadoEn)?.ToUniversalTime());
 }
 
 /// <summary>Estados del enrutamiento (03 §3.6.1). El vencimiento y las transiciones son server-side.</summary>
@@ -301,6 +364,7 @@ public enum EstadoEnrutamientoAporte
 {
     SeleccionCampania,
     SeleccionPregunta,
+    SeleccionIdea,
     Listo,
     EnIdea,
     Completado,
@@ -314,6 +378,21 @@ public sealed record OpcionCampaniaOfrecida(string CampaniaId, string NombreSnap
 /// <summary>Snapshot auditable de una pregunta ofrecida en la lista numerada.</summary>
 public sealed record OpcionPreguntaOfrecida(string PreguntaId, string TextoSnapshot, int Orden);
 
+/// <summary>P-30: opcion historica acotada y neutral; no incluye puntajes ni texto completo.</summary>
+public sealed record OpcionIdeaOfrecida(
+    string IdeaId,
+    string ConversacionId,
+    string ResumenSnapshot,
+    string EstadoSnapshot,
+    int Orden);
+
+public enum ModoEnrutamientoAporte
+{
+    Aporte,
+    EntradaProactiva,
+    RetomarIdea,
+}
+
 /// <summary>Intento de seleccion auditado: solo ids, tipo (campania|pregunta), resultado y fecha.</summary>
 public sealed record IntentoSeleccion(
     string WhatsappMessageId,
@@ -325,6 +404,7 @@ public enum TipoIntentoSeleccion
 {
     Campania,
     Pregunta,
+    Idea,
 }
 
 public enum ResultadoIntentoSeleccion

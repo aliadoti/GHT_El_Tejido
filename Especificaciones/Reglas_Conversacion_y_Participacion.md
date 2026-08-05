@@ -403,7 +403,7 @@ La selección acepta número o nombre/texto exacto no ambiguo y se vuelve a vali
 asociación y pregunta. El LLM no elige el alcance. Apagar el interruptor deja terminar una idea ya
 activa y bloquea otra; cerrar la campaña detiene inmediatamente la interacción. Ver P-26.
 
-### 2.11 Reingreso, pausa y retomar una idea (P-28 y P-29 implementadas; P-30 especificada)
+### 2.11 Reingreso, pausa y retomar una idea (P-28/P-29/P-30 implementadas localmente)
 
 Estas iniciativas no crean otra variante de participación continua. Completan vacíos concretos sobre
 la base ya implementada:
@@ -428,7 +428,9 @@ la base ya implementada:
 3. **P-30 — retomar:** I-19/P-26 ya reabren explícitamente la idea reciente del alcance vigente y
    conservan su `ideaId`. P-30 añade la lista determinista de ideas históricas del propio participante,
    sin filtrar por estado, dentro de campaña y pregunta ya resueltas. “Sin importar el estado” nunca
-   permite ignorar autorización, campaña activa ni aislamiento entre preguntas.
+   permite ignorar autorización, campaña activa ni aislamiento entre preguntas. La intención y la
+   opción de menú no son aportes. Tras elegir, la ruta conserva afinidad con el ciclo histórico para
+   que el siguiente texto modifique esa idea aunque exista un ciclo iniciado después.
 
 Ante un mensaje sin flujo activo, la precedencia final será: petición explícita de retomar → P-30;
 aporte sustantivo nuevo elegible → P-26; saludo/petición de entrada → P-28; sin elegibles → rechazo
@@ -457,6 +459,8 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 | `Conversacion:CierrePorTiempoHabilitado` | App config / env `Conversacion__CierrePorTiempoHabilitado` | `false` | **P-29** — habilita el aviso de pausa posterior al cierre por inactividad. Gobierna **solo el mensaje**: apagado, el cierre de I-17 sigue operando igual. No cambia umbral, estado ni motivo de cierre. |
 | `Conversacion:Mensajes:PausaPorInactividad` | App config / env `Conversacion__Mensajes__PausaPorInactividad` | texto de respaldo | **P-29** — texto determinista del aviso de pausa; también es el fallback cuando la redacción LLM no está disponible. Nunca menciona rúbrica ni puntajes. |
 | `promptRefs.cierre` (campaña / pregunta) | Portal admin (campaña/pregunta) | ausente | **P-29** — voz opcional del aviso de pausa; ausente, hereda la voz general del hilo (`conversacion` → `retro`) y, si tampoco existe, el texto de respaldo. |
+| `Conversacion:RetomarIdeasHabilitado` | App config / env `Conversacion__RetomarIdeasHabilitado` | `false` | **P-30** — habilita el selector histórico. OFF conserva la reapertura reciente I-19/P-26. |
+| `Conversacion:Mensajes:InstruccionSeleccionIdea` / `:SinIdeasHistoricas` | App config / env `Conversacion__Mensajes__…` | textos de respaldo | **P-30** — instrucción de número/resumen exacto y respuesta neutral cuando no hay candidatas. |
 | `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
 | `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
 | `Conversacion:Mensajes:AcuseContinuar` | App config / env `Conversacion__Mensajes__AcuseContinuar` | "¡Perfecto, sigamos!" | Acuse que antecede al cierre cuando el participante pide continuar. |
@@ -523,6 +527,9 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 - **Entrada P-28:** un `EnrutamientoAporte` marcado `esEntradaProactiva` puede recorrer el mismo menú
   P-26, pero al resolverlo hace `listo → completado` y envía solo bienvenida: no llega a `enIdea` ni
   crea conversación.
+- **Retomar P-30:** `modo=retomarIdea` recorre
+  `seleccionCampania|seleccionPregunta → seleccionIdea → listo → enIdea → completado`; `enIdea`
+  mantiene la afinidad al ciclo histórico reabierto y nunca significa que la intención fue un aporte.
 - **Aclaración P-27 (opcional):** `esperandoRepregunta → esperandoConfirmacionSalida →
   esperandoRepregunta|cerrada`; las opciones 1/2/3 son deterministas y no consumen una repregunta.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).

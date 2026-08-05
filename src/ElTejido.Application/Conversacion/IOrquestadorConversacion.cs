@@ -44,6 +44,16 @@ public interface IOrquestadorConversacion
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-30: reabre la idea historica elegida por el servidor, conservando su <c>ideaId</c>. La frase
+    /// de intención y el número/título de selección no se procesan como aportes.
+    /// </summary>
+    Task<bool> RetomarIdeaHistoricaAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ContextoRetomarIdea contexto,
+        CancellationToken cancellationToken) => Task.FromResult(false);
+
+    /// <summary>
     /// P-29 §5.2: avisa la pausa del hilo que el barrido de inactividad (I-17 §7) <b>ya cerro</b>. No
     /// decide el cierre, no toca estados ni <c>motivoCierre</c> y envia un unico mensaje; fuera de la
     /// ventana de servicio de 24 h se omite el envio libre.
@@ -67,4 +77,7 @@ public interface IOrquestadorConversacion
 /// P-26: alcance ya resuelto de un aporte enrutado — la pregunta elegida y, si el aporte estuvo
 /// conservado, el id del <c>EnrutamientoAporte</c> que lo origino (auditoria en la conversacion).
 /// </summary>
-public sealed record ContextoAporteEnrutado(string PreguntaId, string? EnrutamientoAporteId);
+public sealed record ContextoAporteEnrutado(
+    string PreguntaId,
+    string? EnrutamientoAporteId,
+    string? ConversacionIdAfinidad = null);

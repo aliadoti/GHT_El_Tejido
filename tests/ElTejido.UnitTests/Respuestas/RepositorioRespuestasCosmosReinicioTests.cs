@@ -76,6 +76,27 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
         container.QueriesConUsuario.Should().OnlyContain(q => !q);
     }
 
+    [Fact]
+    public async Task P30_ListarHistoricas_FiltraUsuarioYPreguntaSinFiltrarEstado()
+    {
+        var idea = IdeaConsolidada.Crear(
+            "idea_1", "c_1", "u_1", "p_1", "conv_1", "resp_1", 1, Epoca);
+        var container = new FakeResponsesCosmosContainer
+        {
+            Ideas = [IdeaConsolidadaCosmosDocument.FromDomain(idea)],
+        };
+        var repo = new RepositorioRespuestasCosmos(container);
+
+        var resultado = await repo.ListarIdeasHistoricasAsync(
+            "c_1", "u_1", "p_1", CancellationToken.None);
+
+        resultado.Should().ContainSingle().Which.Id.Should().Be("idea_1");
+        container.QueryTexts.Should().ContainSingle(query =>
+            query.Contains("c.usuarioId = @usuarioId", StringComparison.Ordinal)
+            && query.Contains("c.preguntaId = @preguntaId", StringComparison.Ordinal)
+            && !query.Contains("estado", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static RespuestaCosmosDocument DocRespuesta(string id, string usuarioId)
         => RespuestaCosmosDocument.FromDomain(
             Respuesta.Crear(id, "c_1", usuarioId, "p_1", "conv_1", "Idea", "whatsapp", false, EstadoRespuesta.Recibida, Epoca, null));
@@ -103,6 +124,8 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
         public IReadOnlyCollection<EvaluacionCosmosDocument> Evaluaciones { get; init; } = [];
 
         public IReadOnlyCollection<ArtefactoMarkdownCosmosDocument> Artefactos { get; init; } = [];
+
+        public IReadOnlyCollection<IdeaConsolidadaCosmosDocument> Ideas { get; init; } = [];
 
         public List<(string Id, string PartitionKey)> Deletes { get; } = [];
 
@@ -132,6 +155,7 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
                 var t when t == typeof(RespuestaCosmosDocument) => Respuestas,
                 var t when t == typeof(EvaluacionCosmosDocument) => OrdenarEvaluaciones(query),
                 var t when t == typeof(ArtefactoMarkdownCosmosDocument) => Artefactos,
+                var t when t == typeof(IdeaConsolidadaCosmosDocument) => Ideas,
                 _ => Array.Empty<object>(),
             };
             return Task.FromResult<IReadOnlyCollection<T>>(resultado.Cast<T>().ToArray());

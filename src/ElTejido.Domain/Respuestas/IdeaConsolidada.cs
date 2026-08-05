@@ -107,7 +107,7 @@ public sealed class IdeaConsolidada
 
     public IdeaConsolidada Reabrir(DateTimeOffset ahora)
         => CrearEstado(Id, CampaniaId, UsuarioId, PreguntaId, ConversacionId, RespuestaRaizId, IdeaIndice,
-            VersionConfirmadaRef, null, null, EstadoFlujoIdeaConsolidada.EnRevision, null,
+            VersionConfirmadaRef ?? VersionPropuestaRef, null, null, EstadoFlujoIdeaConsolidada.EnRevision, null,
             NivelMadurez.Incubacion, null, null, CreadaEn, ahora);
 
     private static IdeaConsolidada CrearEstado(

@@ -396,7 +396,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var conversaciones = await _conversaciones.ListarConversacionesAsync(campania.Id, cancellationToken);
-        var reciente = conversaciones
+        var afinidadExplicita = string.IsNullOrWhiteSpace(contexto.ConversacionIdAfinidad)
+            ? null
+            : conversaciones.FirstOrDefault(c => c.Id == contexto.ConversacionIdAfinidad
+                && c.UsuarioId == usuario.Id
+                && c.PreguntaId == pregunta.Id
+                && c.Estado != EstadoConversacion.Cerrada);
+        var reciente = afinidadExplicita ?? conversaciones
             .Where(c => c.UsuarioId == usuario.Id && c.PreguntaId == pregunta.Id)
             .OrderByDescending(c => c.FechaInicio)
             .FirstOrDefault();
@@ -455,6 +461,72 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, cancellationToken);
+    }
+
+    /// <summary>
+    /// P-30: aplica la selección histórica ya resuelta por P-26. Revalida propiedad y alcance antes
+    /// de reutilizar la reapertura I-19; el texto que expresó la intención/selección no entra a la idea.
+    /// </summary>
+    public async Task<bool> RetomarIdeaHistoricaAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ContextoRetomarIdea contexto,
+        CancellationToken cancellationToken)
+    {
+        var usuario = participante.Usuario;
+        var campania = participante.Campania;
+        var ahora = _tiempo.GetUtcNow();
+        var pregunta = campania.Preguntas.FirstOrDefault(
+            candidata => candidata.Id == contexto.PreguntaId && candidata.Estado == EstadoRegistro.Activo);
+        if (campania.Estado != EstadoCampania.Activa || pregunta is null)
+        {
+            return false;
+        }
+
+        var idea = await _respuestas.ObtenerIdeaConsolidadaAsync(
+            campania.Id, contexto.IdeaId, cancellationToken);
+        var conversacion = await _conversaciones.ObtenerConversacionAsync(
+            campania.Id, contexto.ConversacionId, cancellationToken);
+        if (idea is null
+            || conversacion is null
+            || idea.UsuarioId != usuario.Id
+            || idea.PreguntaId != pregunta.Id
+            || idea.ConversacionId != conversacion.Id
+            || conversacion.UsuarioId != usuario.Id
+            || conversacion.PreguntaId != pregunta.Id)
+        {
+            return false;
+        }
+
+        if (conversacion.Estado == EstadoConversacion.Cerrada)
+        {
+            conversacion = conversacion.Reabrir(ahora);
+            await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
+        }
+
+        await ReabrirIdeaAsync(
+            conversacion,
+            campania,
+            usuario,
+            pregunta,
+            usuario.WhatsappNormalizado,
+            mensaje.PhoneNumberIdDestino,
+            idea,
+            ahora,
+            cancellationToken);
+        await _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.RetomarIdea,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                "reabierto",
+                $"enrutamiento={contexto.EnrutamientoAporteId};conversacion={conversacion.Id};pregunta={pregunta.Id};idea={idea.Id}",
+                _correlacion.CorrelationIdActual,
+                ahora,
+                campaniaId: campania.Id),
+            cancellationToken);
+        return true;
     }
 
     /// <summary>

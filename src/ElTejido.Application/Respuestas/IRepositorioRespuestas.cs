@@ -23,6 +23,20 @@ public interface IRepositorioRespuestas
     Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasConsolidadasAsync(string campaniaId, CancellationToken cancellationToken)
         => throw new NotSupportedException("El repositorio no implementa ideas consolidadas I-19.");
 
+    /// <summary>
+    /// P-30: ideas historicas del participante dentro de una campania/pregunta, sin filtrar por estado
+    /// ni por ciclo. La implementacion por defecto conserva compatibilidad con dobles de prueba I-19;
+    /// los adaptadores persistentes pueden traducir el filtro a su consulta nativa.
+    /// </summary>
+    async Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasHistoricasAsync(
+        string campaniaId,
+        string usuarioId,
+        string preguntaId,
+        CancellationToken cancellationToken)
+        => (await ListarIdeasConsolidadasAsync(campaniaId, cancellationToken))
+            .Where(idea => idea.UsuarioId == usuarioId && idea.PreguntaId == preguntaId)
+            .ToArray();
+
     Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
         => throw new NotSupportedException("El repositorio no implementa versiones de ideas I-19.");
 

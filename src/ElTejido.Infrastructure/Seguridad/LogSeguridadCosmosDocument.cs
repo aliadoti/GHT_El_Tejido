@@ -98,6 +98,8 @@ internal sealed class LogSeguridadCosmosDocument
             TipoEventoSeguridad.EnrutamientoParticipacion => "enrutamientoParticipacion",
             TipoEventoSeguridad.ClasificacionIntencionControl => "clasificacionIntencionControl",
             TipoEventoSeguridad.DespertarProactivo => "despertarProactivo",
+            TipoEventoSeguridad.CierrePorInactividad => "cierrePorInactividad",
+            TipoEventoSeguridad.RetomarIdea => "retomarIdea",
             _ => throw new InvalidOperationException($"Tipo de evento de seguridad no soportado: {tipo}."),
         };
     }

@@ -135,6 +135,53 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P30_RetomarHistorica_ReabreMismoIdeaIdYSuspendeCuraduria()
+    {
+        var participante = Participante();
+        var conversacion = DominioConversacion
+            .Iniciar("conv_historica", "c_1", "u_1", "p_1", "whatsapp", null, Epoca.AddDays(-5))
+            .Cerrar(Epoca.AddDays(-4));
+        await _conversaciones.GuardarConversacionAsync(conversacion, CancellationToken.None);
+        var version = VersionIdeaConsolidada.Crear(
+            "idea_historica_v1", "c_1", "idea_historica", 1, null, "Automatizar el proceso de atención.",
+            ["aporte_1"], ["aporte_1"], TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Confirmada,
+            null, null, null, null, Epoca.AddDays(-5), Epoca.AddDays(-5));
+        var idea = IdeaConsolidada
+            .Crear("idea_historica", "c_1", "u_1", "p_1", "conv_historica", "resp_1", 1, Epoca.AddDays(-5))
+            .ConfirmarVersion(version.Id, Epoca.AddDays(-5))
+            .Cerrar(EstadoResultadoIdeaConsolidada.Madura, "eval_1", "umbral", Epoca.AddDays(-4));
+        _respuestas.ObtenerIdeaConsolidadaAsync("c_1", idea.Id, Arg.Any<CancellationToken>()).Returns(idea);
+        _respuestas.ObtenerVersionIdeaAsync("c_1", version.Id, Arg.Any<CancellationToken>()).Returns(version);
+        IdeaConsolidada? guardada = null;
+        _respuestas.GuardarIdeaConsolidadaAsync(
+                Arg.Do<IdeaConsolidada>(valor => guardada = valor), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var resultado = await Construir().RetomarIdeaHistoricaAsync(
+            participante,
+            new MensajeEntrante(Numero, "2", "wamid.sel", Epoca, null),
+            new ContextoRetomarIdea("p_1", idea.Id, conversacion.Id, "route_1", "wamid.raiz"),
+            CancellationToken.None);
+
+        resultado.Should().BeTrue();
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Abierta);
+        guardada!.Id.Should().Be(idea.Id);
+        guardada.EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.EnRevision);
+        guardada.EstadoCuraduria.Should().BeNull();
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Automatizar el proceso", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.RetomarIdea
+                && log.Resultado == "reabierto"
+                && !log.Detalle!.Contains("Automatizar", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task P29_ElActoDePausa_PideAlRedactorUnTurnoSinPregunta()
     {
         var participante = Participante();

@@ -1,12 +1,14 @@
 using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Identidad;
+using ElTejido.Application.Respuestas;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Participantes;
+using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
 using ElTejido.UnitTests.Soporte;
@@ -29,6 +31,7 @@ public sealed class ServicioEnrutamientoParticipacionTests
     private readonly EnrutamientosFake _enrutamientos = new();
     private readonly ConversacionesFake _conversaciones = new();
     private readonly IWhatsAppGateway _gateway = Substitute.For<IWhatsAppGateway>();
+    private readonly IRepositorioRespuestas _respuestas = Substitute.For<IRepositorioRespuestas>();
     private readonly List<LogSeguridad> _logs = [];
     private readonly List<string> _enviados = [];
     private readonly Usuario _usuario;
@@ -539,6 +542,56 @@ public sealed class ServicioEnrutamientoParticipacionTests
             .Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
     }
 
+    [Fact]
+    public async Task P30_FlagApagado_ConservaLaReaperturaAcotadaAnterior()
+    {
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        ConfigurarIdeasHistoricas([IdeaHistorica("idea_1", "conv_antigua", "Idea anterior", cerrada: true)]);
+
+        var resultado = await Servicio(retomarIdeas: false).ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.retomar", "quiero retomar una idea"), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.SinElegibles>();
+        _enrutamientos.Documentos.Should().BeEmpty();
+        _enviados.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task P30_ListaSinFiltrarEstado_SeleccionaTituloExactoYCompletaAuditoria()
+    {
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        var descartada = IdeaHistorica("idea_1", "conv_1", "Idea descartada", cerrada: true, rechazada: true);
+        var pendiente = IdeaHistorica("idea_2", "conv_2", "Idea pendiente", cerrada: false);
+        ConfigurarIdeasHistoricas([descartada, pendiente]);
+        var servicio = Servicio(retomarIdeas: true);
+
+        var ofrecido = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.retomar", "quiero retomar una idea"), CancellationToken.None);
+        var seleccionado = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.seleccion", "Idea pendiente"), CancellationToken.None);
+
+        ofrecido.Should().BeOfType<ResultadoEnrutamiento.SeleccionPendiente>();
+        _enviados.Should().ContainSingle().Which.Should()
+            .Contain("Idea descartada (descartada)")
+            .And.Contain("Idea pendiente (en proceso)");
+        var retomar = seleccionado.Should().BeOfType<ResultadoEnrutamiento.RetomarIdea>().Which;
+        retomar.Contexto.IdeaId.Should().Be("idea_2");
+        retomar.Contexto.ConversacionId.Should().Be("conv_2");
+        var ruta = _enrutamientos.Documentos.Should().ContainSingle().Which;
+        ruta.Estado.Should().Be(EstadoEnrutamientoAporte.Listo);
+        ruta.Modo.Should().Be(ModoEnrutamientoAporte.RetomarIdea);
+        ruta.IntentosSeleccion.Should().ContainSingle(i => i.Tipo == TipoIntentoSeleccion.Idea);
+
+        await servicio.ConfirmarRetomadaAsync(_usuario.Id, "wamid.retomar", true, CancellationToken.None);
+
+        _enrutamientos.Documentos.Should().ContainSingle().Which.Estado
+            .Should().Be(EstadoEnrutamientoAporte.EnIdea, "la reapertura queda como afinidad al ciclo historico");
+        _logs.Should().Contain(log => log.TipoEvento == TipoEventoSeguridad.RetomarIdea && log.Resultado == "ofrecido");
+        _logs.Should().OnlyContain(log => !log.Detalle!.Contains("Idea pendiente"));
+    }
+
     /// <summary>Deja un enrutamiento en <c>enIdea</c> apuntando a una conversación (afinidad vigente §5.6).</summary>
     private Task SembrarAfinidadAsync(string campaniaId, string conversacionId)
         => _enrutamientos.GuardarAsync(
@@ -553,7 +606,10 @@ public sealed class ServicioEnrutamientoParticipacionTests
                 .MarcarEnIdea(conversacionId, Ahora),
             CancellationToken.None);
 
-    private ServicioEnrutamientoParticipacion Servicio(TimeProvider? reloj = null, bool despertarProactivo = false)
+    private ServicioEnrutamientoParticipacion Servicio(
+        TimeProvider? reloj = null,
+        bool despertarProactivo = false,
+        bool retomarIdeas = false)
     {
         var logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
         logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(_logs.Add), Arg.Any<CancellationToken>())
@@ -564,8 +620,61 @@ public sealed class ServicioEnrutamientoParticipacionTests
             _gateway,
             logSeguridad,
             Substitute.For<IProveedorCorrelacion>(),
-            new OpcionesConversacion { DespertarProactivoHabilitado = despertarProactivo },
-            reloj ?? new RelojFijo(Ahora));
+            new OpcionesConversacion
+            {
+                DespertarProactivoHabilitado = despertarProactivo,
+                RetomarIdeasHabilitado = retomarIdeas,
+            },
+            reloj ?? new RelojFijo(Ahora),
+            _respuestas);
+    }
+
+    private IdeaConsolidada IdeaHistorica(
+        string ideaId,
+        string conversacionId,
+        string texto,
+        bool cerrada,
+        bool rechazada = false)
+    {
+        var versionId = ideaId + "_v1";
+        var version = VersionIdeaConsolidada.Crear(
+            versionId,
+            "c_1",
+            ideaId,
+            1,
+            null,
+            texto,
+            ["aporte_1"],
+            ["aporte_1"],
+            TipoAporteIdea.Inicial,
+            EstadoConfirmacionVersionIdea.Propuesta,
+            null,
+            null,
+            null,
+            null,
+            Ahora.AddDays(-2));
+        var idea = IdeaConsolidada.Crear(
+                ideaId, "c_1", _usuario.Id, "p_1", conversacionId, "resp_1", 1, Ahora.AddDays(-2))
+            .ConPropuesta(versionId, Ahora.AddDays(-2));
+        if (cerrada)
+        {
+            version = version.Confirmar(Ahora.AddDays(-2));
+            idea = idea.ConfirmarVersion(versionId, Ahora.AddDays(-2)).Cerrar(
+                rechazada ? EstadoResultadoIdeaConsolidada.Rechazada : EstadoResultadoIdeaConsolidada.Pendiente,
+                null,
+                rechazada ? "rechazoParticipante" : "participante",
+                Ahora.AddDays(-1));
+        }
+
+        _respuestas.ObtenerVersionIdeaAsync("c_1", versionId, Arg.Any<CancellationToken>())
+            .Returns(version);
+        return idea;
+    }
+
+    private void ConfigurarIdeasHistoricas(IReadOnlyCollection<IdeaConsolidada> ideas)
+    {
+        _respuestas.ListarIdeasHistoricasAsync("c_1", _usuario.Id, "p_1", Arg.Any<CancellationToken>())
+            .Returns(ideas);
     }
 
     private CandidatoCampania Candidato(

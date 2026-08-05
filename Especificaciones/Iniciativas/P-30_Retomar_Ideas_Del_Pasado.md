@@ -1,6 +1,6 @@
 # P-30 — Retomar ideas del pasado sin importar el estado
 
-**Estado:** ESPECIFICADA — lista para implementación por cortes; **sin código implementado**.
+**Estado:** **DONE local 2026-08-04 (3/3 cortes)**; pendiente activación operativa.
 **Requerimiento de negocio:** `Client_partner/.../Nuevas iniciativas/REQ-014_Retomar_ideas_del_pasado.md`.
 **Fecha de decisión:** 2026-07-31 (reunión con Felipe Arango, GHT).
 **Áreas afectadas:** orquestador conversacional, consulta de ideas por participante, persistencia
@@ -195,6 +195,26 @@ No cambia el contrato de API administrativa.
 | 3 | Integración opcional con P-28, E2E simulada, QA y cierre documental. | Petición directa y reingreso, build/test/format/diff. |
 
 Cada corte deja `TODO.md` y `AVANCES.md` actualizados. No desplegar sin instrucción posterior.
+
+### 11.1 Estado implementado
+
+- Consulta Cosmos por `campaniaId + usuarioId + preguntaId`, sin condición de estado ni ciclo.
+- `EnrutamientoAporte` reutilizado con `modo=retomarIdea`, estado `seleccionIdea`, opciones mínimas,
+  intentos sin texto libre e idea elegida. La selección acepta número o resumen exacto no ambiguo.
+- La ruta queda como afinidad `enIdea` hacia el ciclo histórico reabierto. Esto garantiza que el
+  siguiente aporte llegue a ese hilo aunque exista otro ciclo con fecha de inicio posterior.
+- Reapertura I-19 reutilizada: conserva `ideaId`, versiones e historial; una idea madura vuelve a
+  `enRevision` y suspende la curaduría hasta la nueva evaluación.
+- Telemetría `LogSeguridad(retomarIdea)` con `ofrecido|seleccionado|invalido|reabierto`, conteos e ids
+  internos; nunca incluye el resumen/título ni el texto del participante.
+- Kill-switch `Conversacion:RetomarIdeasHabilitado=false` en la configuración distribuida. OFF deja
+  intacta la reapertura reciente I-19/P-26.
+- E2E simulada: webhook → intención → lista → selección → reapertura de ciclo histórico → aporte →
+  re-evaluación del mismo `ideaId`, sin crear otra idea.
+
+**Verificación local:** build Release con warnings como errores, 729 pruebas backend no calibración
+(657 unitarias + 72 de integración), formato .NET y diff limpios. Sin despliegue, push ni cambio de
+configuración remota.
 
 ---
 

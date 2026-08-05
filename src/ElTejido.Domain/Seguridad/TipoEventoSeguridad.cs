@@ -70,4 +70,8 @@ public enum TipoEventoSeguridad
     // Solo accion (avisoEnviado|avisoOmitidoSinVentana|fallbackUsado), ids internos y resultado del
     // envio; nunca el texto del aviso ni el del participante. Aditivo al final (03 §3.15).
     CierrePorInactividad,
+
+    // P-30 (10 §6.2): oferta, selección y reapertura de una idea histórica. Solo ids internos,
+    // conteos y resultado; nunca el resumen/título ni el texto libre del participante.
+    RetomarIdea,
 }

@@ -9,9 +9,10 @@
 > Última revisión: 2026-08-04 — **P-28 y P-29 completas localmente; matriz canónica de cierres adoptada.** `P-26` ya entrega participación
 > continua y ciclos nuevos; `P-28`, `P-29` y `P-30` cubrían vacíos acotados: entrada humana para
 > saludo/inicio no sustantivo, mensaje humano posterior al cierre por inactividad ya existente y
-> selección histórica de una idea, respectivamente. **`P-30` es la única pendiente**; las tres viven
+> selección histórica de una idea, respectivamente. **Las tres están completas localmente** y viven
 > detrás de kill-switch OFF y ninguna es prerrequisito técnico de P-26.
-> Revisión: 2026-08-04 — **`P-27`, `P-28` y `P-29` completas localmente; `P-30` es el siguiente.**
+> Revisión: 2026-08-04 — **`P-27`, `P-28`, `P-29` y `P-30` completas localmente.** No hay otra
+> implementación priorizada; siguen pendientes D5/UAT/costo y la decisión formal de flags.
 > P-27 corrige las salidas naturales y añade, detrás de flags OFF, clasificación LLM de intención con
 > ejecución siempre server-side y consumo persistente de sus llamadas/tokens.
 > Revisión anterior: 2026-07-29 — **`P-26` especificada, pendiente de implementación.** Añade
@@ -54,7 +55,7 @@
 | P-27 | [P-27_Clasificacion_Flexible_Intenciones_Control.md](P-27_Clasificacion_Flexible_Intenciones_Control.md) | Alta, después de P-26 | **DONE local 2026-08-04 (5/5).** Alias, clasificador/política server-side, aclaración, portal y cupos/telemetría persistentes. Backend 698/698; flags global/campaña OFF y activación D5/UAT/costo pendiente. |
 | P-28 | [P-28_Despertar_Proactivo_Coach.md](P-28_Despertar_Proactivo_Coach.md) | Completa local | **DONE local 2026-08-04 (3/3).** Saludo/inicio no sustantivo, selección P-26, redacción/fallback, telemetría sin texto y E2E. El saludo no crea idea; kill-switch `DespertarProactivoHabilitado` OFF. |
 | P-29 | [P-29_Cierre_Conversacional_Por_Tiempo.md](P-29_Cierre_Conversacional_Por_Tiempo.md) | Completa local | **DONE local 2026-08-04 (2/2).** Aviso de pausa redactado por LLM con fallback determinista sobre el cierre por inactividad ya existente de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos), telemetría `cierrePorInactividad` sin texto, E2E simulada y QAS. Kill-switch `CierrePorTiempoHabilitado` OFF; activación D5/UAT/costo pendiente. |
-| P-30 | [P-30_Retomar_Ideas_Del_Pasado.md](P-30_Retomar_Ideas_Del_Pasado.md) | Reunión 31-jul (REQ-014) | **ESPECIFICADA; implementación pendiente (3 cortes).** Amplía la reapertura reciente I-19/P-26 con lista histórica determinista por participante, campaña y pregunta; conserva el mismo `ideaId`. Búsqueda semántica/vectorial fuera de alcance. Kill-switch `RetomarIdeasHabilitado` OFF. |
+| P-30 | [P-30_Retomar_Ideas_Del_Pasado.md](P-30_Retomar_Ideas_Del_Pasado.md) | Reunión 31-jul (REQ-014) | **DONE local 2026-08-04 (3/3).** Lista histórica determinista por participante/campaña/pregunta, reapertura con el mismo `ideaId`, afinidad al ciclo histórico, telemetría y E2E; búsqueda vectorial fuera. Kill-switch `RetomarIdeasHabilitado` OFF. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
 | I-05 | [I-05_Parafraseo_Transparencia.md](I-05_Parafraseo_Transparencia.md)                                                                                                                                                                                 | Sprint 1b             | **DONE local 2026-07-20** (flag por campaña + kill-switch, salida/persistencia aditivas, truncado determinista; D5 real pendiente) |
 | I-06 | [I-06_Multi_Idea_N_Registros.md](I-06_Multi_Idea_N_Registros.md)                                                                                                                                                                                     | S1a diseño / S1b impl | **Código DONE local 2026-07-15**; flags apagados hasta D5/UAT/costo en staging (gran apuesta)                         |
@@ -215,7 +216,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
 `I-20/P-24/P-25` **DONE local** → `P-26` **DONE local** → `P-27` **DONE local (5/5)** →
 `P-28` **DONE local (3/3)** → `P-29` **objetivo vigente (corte 1/2)** ·
 `I-17/I-19` → `P-29` **ESPECIFICADA** (solo pausa humana tras cierre existente) ·
-`I-19/P-26` → `P-30` **ESPECIFICADA** (selector histórico que amplía la reapertura reciente). ·
+`I-19/P-26` → `P-30` **DONE local** (selector histórico que amplía la reapertura reciente). ·
 `I-08` **✓ backend + UI** → (extensión demográfica, insumo Munir) → carga
 real del freeze. **Fuera de la ruta crítica del MVP (diferidas a Capa 3):** `I-09 → I-10`, `P-07`,
 panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables demográficas de Munir (I-08).**
@@ -258,8 +259,8 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | P-21 número saliente de WhatsApp | `configConversacional.numeroWhatsAppSaliente` (alias `string?`, default null) — **DONE local 2026-07-25** | **null = usa el número predeterminado global** (`WhatsApp:AliasPredeterminado`); la respuesta conversacional NO usa este campo: sale siempre por el número entrante |
 | P-26 participación continua | `configConversacional.participacionContinua` (bool, default `false`) — **DONE local 2026-07-31** | `false`/ausente = recorrido único actual; `true` permite ideas/ciclos nuevos solo con campaña `activa` |
 | P-27 clasificación flexible de control | `configConversacional.clasificacionIntencionControl` (bool, default `false`) — **DONE local 2026-08-04** | `false`/ausente = sin llamada flexible; los alias deterministas corregidos siguen disponibles |
-| P-29 cierre por tiempo | Reutiliza el temporizador existente `ConfigConversacional.MinutosInactividadSesion` (I-17); solo añade `promptRefs.cierre` opcional y telemetría del mensaje de pausa — **ESPECIFICADA; código pendiente** | kill-switch global `CierrePorTiempoHabilitado` OFF conserva íntegro el cierre por inactividad existente, sin mensaje humano |
-| P-28 despertar / P-30 retomar | Sin campo por campaña: capacidades transversales con kill-switch global (`promptRefs.reactivacion` y vocabulario configurable son opcionales) — **P-28 DONE local; P-30 pendiente** | OFF: P-28 no responde a saludo/inicio no sustantivo sin flujo; P-30 no muestra selector histórico y sigue la reapertura reciente I-19/P-26 |
+| P-29 cierre por tiempo | Reutiliza el temporizador existente `ConfigConversacional.MinutosInactividadSesion` (I-17); solo añade `promptRefs.cierre` opcional y telemetría del mensaje de pausa — **DONE local 2026-08-04** | kill-switch global `CierrePorTiempoHabilitado` OFF conserva íntegro el cierre por inactividad existente, sin mensaje humano |
+| P-28 despertar / P-30 retomar | Sin campo por campaña: capacidades transversales con kill-switch global (`promptRefs.reactivacion` y vocabulario configurable son opcionales) — **ambas DONE local 2026-08-04** | OFF: P-28 no responde a saludo/inicio no sustantivo sin flujo; P-30 no muestra selector histórico y sigue la reapertura reciente I-19/P-26 |
 | ~~I-09/I-10 tejido colectivo~~ | ~~`tejidoColectivo`~~ | **DIFERIDA (Capa 3)** — el campo existe en el modelo pero queda OFF; su UI no se construye para el MVP |
 
 ### 4.3 Candidatas a por-campaña (decidir al implementar; post-Hito si aprieta el freeze)

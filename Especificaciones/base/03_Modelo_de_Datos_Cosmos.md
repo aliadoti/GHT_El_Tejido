@@ -308,6 +308,7 @@ aporte a una campaña real.
   "phoneNumberIdDestino": "123456789",
   "textoOriginal": "Se me ocurrió crear...",
   "estado": "seleccionCampania",
+  "modo": "aporte",
   "esEntradaProactiva": false,
   "campaniasOfrecidas": [
     { "campaniaId": "c_1", "nombreSnapshot": "Innovación comercial", "orden": 1 }
@@ -315,6 +316,8 @@ aporte a una campaña real.
   "campaniaSeleccionadaId": null,
   "preguntasOfrecidas": [],
   "preguntaSeleccionadaId": null,
+  "ideasOfrecidas": [],
+  "ideaSeleccionadaId": null,
   "conversacionId": null,
   "intentosSeleccion": [
     {
@@ -332,7 +335,8 @@ aporte a una campaña real.
 ```
 
 - `estado` ∈
-  `seleccionCampania|seleccionPregunta|listo|enIdea|completado|expirado|cancelado`.
+  `seleccionCampania|seleccionPregunta|seleccionIdea|listo|enIdea|completado|expirado|cancelado`.
+- `modo` (**P-30**, aditivo; ausente = `aporte`) ∈ `aporte|entradaProactiva|retomarIdea`.
 - `id` es determinístico por usuario + `whatsappMessageId`; un reintento no crea otro enrutamiento.
 - La partición reservada `routing:<usuarioId>` permite leer por usuario sin consulta cross-partition.
   No se expone como campaña y los repositorios normales filtran `type=Conversacion|Mensaje`.
@@ -347,6 +351,10 @@ aporte a una campaña real.
   fue un saludo/inicio no sustantivo. Si requiere menú, evita que el saludo se entregue como aporte al
   resolver la selección: el mismo documento pasa de `listo` a `completado`, sin `procesadoEn`,
   `Conversacion` ni `Respuesta` nuevos.
+- `ideasOfrecidas`/`ideaSeleccionadaId` (**P-30**, aditivos) conservan solo id interno, conversación,
+  resumen acotado, estado neutral y orden de la lista histórica. La ruta `retomarIdea` pasa por
+  `seleccionIdea → listo → enIdea`; `enIdea` mantiene afinidad con el ciclo histórico reabierto hasta
+  que vuelva a cerrar. El texto/resumen nunca se copia a telemetría.
 
 ### 3.7 `Mensaje` (contenedor `conversations`) — `REQ §28.3`
 
@@ -428,7 +436,6 @@ los aportes originales.
   "nivelMadurez": "maduro",
   "motivoCierre": "umbral",
   "estadoCuraduria": "pendiente",
-  "reaperturas": 0,
   "creadaEn": "2026-07-27T14:00:00Z",
   "actualizadaEn": "2026-07-27T14:08:00Z",
   "cerradaEn": "2026-07-27T14:08:00Z"
@@ -445,6 +452,9 @@ los aportes originales.
   nueva versión confirmada, para que una versión en cambio no avance a curaduría.
 - Una reapertura mantiene el mismo `ideaId`; cambia punteros/estado de forma idempotente y conserva
   todas las versiones.
+- P-30 puede reabrir una idea en cualquier `estadoFlujo`: usa la versión confirmada vigente o, si aún
+  no existía, la propuesta conservada como base; limpia resultado/evaluación/curaduría mientras se
+  prepara y evalúa la nueva versión. No existe un contador `reaperturas` en el dominio.
 
 ### 3.8.2 `VersionIdeaConsolidada` (contenedor `responses`) — I-19
 

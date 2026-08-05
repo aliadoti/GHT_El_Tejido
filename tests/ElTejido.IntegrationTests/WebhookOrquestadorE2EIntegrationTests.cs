@@ -137,6 +137,50 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         gateway.Enviados.Should().Contain(enviado => enviado.Tipo == TipoEnvioMensaje.Cierre);
     }
 
+    [Fact]
+    public async Task P30_IntencionListaSeleccionReaperturaYReevaluacion_ConservaIdeaId()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+        await SembrarIdeaHistoricaAsync(
+            conversaciones, respuestas, "idea_reciente", "conv_reciente", "Reducir desperdicio reciente", Epoca.AddDays(-1));
+        await SembrarIdeaHistoricaAsync(
+            conversaciones, respuestas, "idea_antigua", "conv_antigua", "Automatizar la atención antigua", Epoca.AddDays(-2));
+
+        using var fabrica = Construir(
+            gateway,
+            conversaciones,
+            respuestas,
+            contextos,
+            compilaciones,
+            confirmacionExplicitaIdeas: false,
+            retomarIdeas: true);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.P30.1", "quiero retomar una idea");
+        await EsperarAsync(() => gateway.Enviados.Any(
+            envio => envio.Texto.Contains("Automatizar la atención antigua", StringComparison.Ordinal)));
+        contextos.Should().BeEmpty("la intención y el menú no son aportes evaluables");
+
+        await EnviarEntranteAsync(client, "wamid.P30.2", "2");
+        await EsperarAsync(() => respuestas.Ideas["idea_antigua"].EstadoFlujo == EstadoFlujoIdeaConsolidada.EnRevision);
+        respuestas.Ideas["idea_antigua"].Id.Should().Be("idea_antigua");
+        conversaciones.Conversaciones.Single(c => c.Id == "conv_antigua").Estado.Should().Be(EstadoConversacion.Abierta);
+
+        await EnviarEntranteAsync(client, "wamid.P30.3", "Agregar medición mensual y un responsable.");
+        await EsperarAsync(() => contextos.Any(contexto => contexto.IdeaId == "idea_antigua"));
+
+        var idsEvaluados = string.Join(",", contextos.Select(contexto => contexto.IdeaId ?? "null"));
+        var reevaluacion = contextos.Should()
+            .ContainSingle(contexto => contexto.IdeaId == "idea_antigua", $"ids observados: {idsEvaluados}").Which;
+        reevaluacion.RespuestaTexto.Should().NotBe("2").And.NotBe("quiero retomar una idea");
+        respuestas.Ideas["idea_antigua"].VersionConfirmadaRef.Should().NotBeNull();
+        respuestas.Ideas.Should().HaveCount(2, "retomar no crea una tercera idea");
+    }
+
     /// <summary>
     /// I-20 §8.5: el recorrido real webhook → worker → orquestador usa al redactor inyectado, conserva
     /// la propuesta completa en el medio y no concatena el respaldo histórico de confirmación.
@@ -297,6 +341,44 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             Arg.Any<CancellationToken>());
     }
 
+    private static async Task SembrarIdeaHistoricaAsync(
+        ConversacionesFake conversaciones,
+        RespuestasFake respuestas,
+        string ideaId,
+        string conversacionId,
+        string texto,
+        DateTimeOffset fecha)
+    {
+        var versionId = ideaId + "_v1";
+        var version = VersionIdeaConsolidada.Crear(
+            versionId,
+            "c_1",
+            ideaId,
+            1,
+            null,
+            texto,
+            [ideaId + "_aporte"],
+            [ideaId + "_aporte"],
+            TipoAporteIdea.Inicial,
+            EstadoConfirmacionVersionIdea.Confirmada,
+            null,
+            null,
+            null,
+            null,
+            fecha.AddMinutes(-2),
+            fecha.AddMinutes(-1));
+        var idea = IdeaConsolidada
+            .Crear(ideaId, "c_1", "u_1", "p_1", conversacionId, ideaId + "_resp", 1, fecha.AddMinutes(-3))
+            .ConfirmarVersion(versionId, fecha.AddMinutes(-1))
+            .Cerrar(EstadoResultadoIdeaConsolidada.Pendiente, null, "participante", fecha);
+        var conversacion = DominioConversacion
+            .Iniciar(conversacionId, "c_1", "u_1", "p_1", "whatsapp", null, fecha.AddMinutes(-3))
+            .Cerrar(fecha);
+        await respuestas.GuardarVersionIdeaAsync(version, CancellationToken.None);
+        await respuestas.GuardarIdeaConsolidadaAsync(idea, CancellationToken.None);
+        await conversaciones.GuardarConversacionAsync(conversacion, CancellationToken.None);
+    }
+
     private static async Task EnviarEntranteAsync(HttpClient client, string wamid, string texto)
     {
         var cuerpo =
@@ -318,6 +400,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         IClasificadorIntencionControl? clasificador = null,
         IRepositorioLogSeguridad? logSeguridad = null,
         bool clasificacionIntencionControl = false,
+        bool retomarIdeas = false,
         DominioEvaluacion? evaluacion = null)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
@@ -362,6 +445,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                     ["Conversacion:ConfirmacionExplicitaIdeasHabilitada"] =
                         confirmacionExplicitaIdeas.ToString(),
                     ["Conversacion:ClasificacionIntencionControl"] = clasificacionIntencionControl.ToString(),
+                    ["Conversacion:RetomarIdeasHabilitado"] = retomarIdeas.ToString(),
                 }));
 
             builder.ConfigureTestServices(services =>
@@ -636,6 +720,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         private readonly Dictionary<string, DominioConversacion> _conversaciones = new(StringComparer.Ordinal);
 
         public DominioConversacion? Ultima { get; private set; }
+
+        public IReadOnlyCollection<DominioConversacion> Conversaciones => _conversaciones.Values.ToArray();
 
         public Task GuardarConversacionAsync(DominioConversacion conversacion, CancellationToken cancellationToken)
         {

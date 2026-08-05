@@ -161,6 +161,21 @@ public sealed class ProcesadorWebhookEntrante
                     cancellationToken);
                 return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
 
+            case ResultadoEnrutamiento.RetomarIdea retomar:
+                var participanteRetomar = new ParticipanteResuelto(
+                    autorizado.Usuario,
+                    retomar.Candidato.Campania,
+                    retomar.Candidato.Participante,
+                    retomar.Candidato.PreguntaVigente);
+                var completada = await _orquestador.RetomarIdeaHistoricaAsync(
+                    participanteRetomar, retomar.Mensaje, retomar.Contexto, cancellationToken);
+                await _enrutamiento.ConfirmarRetomadaAsync(
+                    autorizado.Usuario.Id,
+                    retomar.Contexto.WhatsappMessageIdOriginal,
+                    completada,
+                    cancellationToken);
+                return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
+
             case ResultadoEnrutamiento.ContinuarConversacion continuar:
                 var candidato = continuar.Candidato;
                 var participante = new ParticipanteResuelto(

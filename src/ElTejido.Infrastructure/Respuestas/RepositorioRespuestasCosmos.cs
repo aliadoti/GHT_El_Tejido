@@ -64,6 +64,25 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.Select(documento => documento.ToDomain()).ToArray();
     }
 
+    public async Task<IReadOnlyCollection<IdeaConsolidada>> ListarIdeasHistoricasAsync(
+        string campaniaId,
+        string usuarioId,
+        string preguntaId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(usuarioId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(preguntaId);
+        var query = new QueryDefinition(
+                "SELECT * FROM c WHERE c.type = @type AND c.usuarioId = @usuarioId AND c.preguntaId = @preguntaId")
+            .WithParameter("@type", IdeaConsolidadaCosmosDocument.DocumentType)
+            .WithParameter("@usuarioId", usuarioId.Trim())
+            .WithParameter("@preguntaId", preguntaId.Trim());
+        var documentos = await _container.QueryAsync<IdeaConsolidadaCosmosDocument>(
+            query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
     public Task GuardarVersionIdeaAsync(VersionIdeaConsolidada version, CancellationToken cancellationToken)
         => _container.UpsertAsync(VersionIdeaConsolidadaCosmosDocument.FromDomain(version), version.CampaniaId, cancellationToken);
 

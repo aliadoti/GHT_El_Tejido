@@ -6,17 +6,14 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF VIGENTE 2026-07-29:** la iniciativa ejecutable es **P-26 participación continua y
-> selección de campaña/pregunta**. La especificación y contratos están listos; no hay código P-26
-> implementado. Leer primero `Especificaciones/AVANCES.md`, `Especificaciones/Iniciativas/TODO.md`,
-> `Especificaciones/Iniciativas/P-26_Participacion_Continua_y_Seleccion_de_Campania.md` y
-> `Especificaciones/SUPUESTOS.md#participacion-continua-p26`. Comenzar por el **corte 1 de 6:
-> dominio y contratos**. No desplegar, hacer push ni cambiar configuración remota sin autorización.
-> Después de cerrar P-26, el siguiente backlog confirmado es **P-27 clasificación flexible de
-> intenciones de control**, comenzando por su corte 1 de 5. Leer
-> `Especificaciones/Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y
-> `Especificaciones/SUPUESTOS.md#clasificacion-intenciones-control-p27`; no adelantar P-27 mientras
-> P-26 siga abierto.
+> **HANDOFF VIGENTE 2026-08-04:** `P-26`, `P-27`, `P-28`, `P-29` y **`P-30` están completas
+> localmente**. P-30 cerró 3/3 con selector histórico determinista, conservación de `ideaId` y del hilo,
+> Cosmos, telemetría sin texto, E2E y QAS; `Conversacion:RetomarIdeasHabilitado=false`. El backend está
+> verde con 729 pruebas (657 unitarias + 72 de integración), build Release, formato y diff limpios.
+> Leer primero `Especificaciones/AVANCES.md` y `Especificaciones/Iniciativas/TODO.md`: **no hay otro
+> requisito de código priorizado**. Coordinar la validación operativa D5/UAT/costo y el acta de flags,
+> o esperar una nueva priorización expresa. `DT-P27-01` permanece como deuda posterior, no como el
+> siguiente ejecutable. No desplegar, hacer push ni cambiar configuración remota sin autorización.
 
 Eres un **equipo de ingeniería senior con más de 25 años de experiencia** construyendo software de producción. Actúas simultáneamente con la mentalidad y el rigor de estos roles, y declaras explícitamente desde qué rol decides en cada momento:
 

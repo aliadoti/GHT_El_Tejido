@@ -102,6 +102,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
     provocar una intención ambigua y resolver el menú 1/2/3 sin consumir una repregunta.
 21. Apagar ambos gates P-27 y simular timeout, JSON inválido y cupo agotado: los alias inequívocos
     siguen funcionando, mientras la ruta flexible degrada sin cerrar ni perder la idea.
+22. Con P-30 encendida, sembrar ideas maduras, pendientes y rechazadas en ciclos distintos; pedir
+    retomar, elegir por número y por resumen exacto, aportar una mejora y comprobar que se re-evalúa el
+    mismo `ideaId`. Repetir con el flag apagado y confirmar que solo queda la reapertura reciente.
 
 ---
 
@@ -124,6 +127,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §9/§20/§21/§22 Redacción fluida I-20 | I-20, 03 §3.3, 05 §4.4–§4.5, 08, 09 | Unit (JSON/guardrails/fallback/formato) + integración (un acto por turno) + E2E §5.9–14 |
 | Participación continua y enrutamiento P-26 | P-26, 03 §3.3/§3.6.1, 05 §4.4.3, 06 §3 | Unit (elegibilidad/selección/ciclos/ventana) + integración (webhook y Cosmos) + E2E §5.15–18 |
 | Intenciones de control flexibles P-27 | P-27, 03 §3.3/§3.6, 05 §4.4.4, 08 §2.3, 10 §2/§6 | Unit (enum/política/falsos positivos/fallback) + integración (Cosmos/API/orquestador) + E2E §5.19–21 |
+| Retomar ideas históricas P-30 | P-30, 03 §3.6.1/§3.8.1, 05 §4.4.5, 10 §6 | Unit (consulta/0-1-N/selección/aislamiento/rollback) + Cosmos + E2E §5.22 |
 | §25 Guardrails/abuso | 10 §2 | Unit + integración límites + §4.6 |
 | §30 Trazabilidad | 10 §6 | Integración (snapshots, logs) + §4.1–2 |
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |

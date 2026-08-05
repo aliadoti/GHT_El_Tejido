@@ -49,6 +49,15 @@ internal sealed class EnrutamientoAporteCosmosDocument
     [JsonProperty("preguntaSeleccionadaId")]
     public string? PreguntaSeleccionadaId { get; init; }
 
+    [JsonProperty("modo", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Modo { get; init; }
+
+    [JsonProperty("ideasOfrecidas")]
+    public IReadOnlyList<OpcionIdeaDocument> IdeasOfrecidas { get; init; } = Array.Empty<OpcionIdeaDocument>();
+
+    [JsonProperty("ideaSeleccionadaId", NullValueHandling = NullValueHandling.Ignore)]
+    public string? IdeaSeleccionadaId { get; init; }
+
     [JsonProperty("conversacionId")]
     public string? ConversacionId { get; init; }
 
@@ -89,12 +98,29 @@ internal sealed class EnrutamientoAporteCosmosDocument
                 .Select(o => new OpcionPreguntaDocument { PreguntaId = o.PreguntaId, TextoSnapshot = o.TextoSnapshot, Orden = o.Orden })
                 .ToArray(),
             PreguntaSeleccionadaId = enrutamiento.PreguntaSeleccionadaId,
+            Modo = MapearModo(enrutamiento.Modo),
+            IdeasOfrecidas = enrutamiento.IdeasOfrecidas
+                .Select(o => new OpcionIdeaDocument
+                {
+                    IdeaId = o.IdeaId,
+                    ConversacionId = o.ConversacionId,
+                    ResumenSnapshot = o.ResumenSnapshot,
+                    EstadoSnapshot = o.EstadoSnapshot,
+                    Orden = o.Orden,
+                })
+                .ToArray(),
+            IdeaSeleccionadaId = enrutamiento.IdeaSeleccionadaId,
             ConversacionId = enrutamiento.ConversacionId,
             IntentosSeleccion = enrutamiento.IntentosSeleccion
                 .Select(i => new IntentoSeleccionDocument
                 {
                     WhatsappMessageId = i.WhatsappMessageId,
-                    Tipo = i.Tipo == TipoIntentoSeleccion.Pregunta ? "pregunta" : "campania",
+                    Tipo = i.Tipo switch
+                    {
+                        TipoIntentoSeleccion.Pregunta => "pregunta",
+                        TipoIntentoSeleccion.Idea => "idea",
+                        _ => "campania",
+                    },
                     Resultado = i.Resultado == ResultadoIntentoSeleccion.Valido ? "valido" : "invalido",
                     Fecha = i.Fecha,
                 })
@@ -121,19 +147,29 @@ internal sealed class EnrutamientoAporteCosmosDocument
             ConversacionId,
             IntentosSeleccion.Select(i => new IntentoSeleccion(
                 i.WhatsappMessageId,
-                i.Tipo == "pregunta" ? TipoIntentoSeleccion.Pregunta : TipoIntentoSeleccion.Campania,
+                i.Tipo switch
+                {
+                    "pregunta" => TipoIntentoSeleccion.Pregunta,
+                    "idea" => TipoIntentoSeleccion.Idea,
+                    _ => TipoIntentoSeleccion.Campania,
+                },
                 i.Resultado == "valido" ? ResultadoIntentoSeleccion.Valido : ResultadoIntentoSeleccion.Invalido,
                 i.Fecha)),
             ActualizadoEn,
             VenceEn,
             ProcesadoEn,
-            EsEntradaProactiva);
+            EsEntradaProactiva,
+            MapearModo(Modo, EsEntradaProactiva),
+            IdeasOfrecidas.Select(o => new OpcionIdeaOfrecida(
+                o.IdeaId, o.ConversacionId, o.ResumenSnapshot, o.EstadoSnapshot, o.Orden)),
+            IdeaSeleccionadaId);
 
     private static string MapearEstado(EstadoEnrutamientoAporte estado)
         => estado switch
         {
             EstadoEnrutamientoAporte.SeleccionCampania => "seleccionCampania",
             EstadoEnrutamientoAporte.SeleccionPregunta => "seleccionPregunta",
+            EstadoEnrutamientoAporte.SeleccionIdea => "seleccionIdea",
             EstadoEnrutamientoAporte.Listo => "listo",
             EstadoEnrutamientoAporte.EnIdea => "enIdea",
             EstadoEnrutamientoAporte.Completado => "completado",
@@ -147,12 +183,30 @@ internal sealed class EnrutamientoAporteCosmosDocument
         {
             "seleccionCampania" => EstadoEnrutamientoAporte.SeleccionCampania,
             "seleccionPregunta" => EstadoEnrutamientoAporte.SeleccionPregunta,
+            "seleccionIdea" => EstadoEnrutamientoAporte.SeleccionIdea,
             "listo" => EstadoEnrutamientoAporte.Listo,
             "enIdea" => EstadoEnrutamientoAporte.EnIdea,
             "completado" => EstadoEnrutamientoAporte.Completado,
             "expirado" => EstadoEnrutamientoAporte.Expirado,
             "cancelado" => EstadoEnrutamientoAporte.Cancelado,
             _ => throw new InvalidOperationException($"Estado de enrutamiento no soportado en Cosmos: {estado}."),
+        };
+
+    private static string MapearModo(ModoEnrutamientoAporte modo)
+        => modo switch
+        {
+            ModoEnrutamientoAporte.EntradaProactiva => "entradaProactiva",
+            ModoEnrutamientoAporte.RetomarIdea => "retomarIdea",
+            _ => "aporte",
+        };
+
+    private static ModoEnrutamientoAporte MapearModo(string? modo, bool esEntradaProactiva)
+        => modo switch
+        {
+            "entradaProactiva" => ModoEnrutamientoAporte.EntradaProactiva,
+            "retomarIdea" => ModoEnrutamientoAporte.RetomarIdea,
+            _ when esEntradaProactiva => ModoEnrutamientoAporte.EntradaProactiva,
+            _ => ModoEnrutamientoAporte.Aporte,
         };
 
     internal sealed class OpcionCampaniaDocument
@@ -174,6 +228,24 @@ internal sealed class EnrutamientoAporteCosmosDocument
 
         [JsonProperty("textoSnapshot")]
         public string TextoSnapshot { get; init; } = string.Empty;
+
+        [JsonProperty("orden")]
+        public int Orden { get; init; }
+    }
+
+    internal sealed class OpcionIdeaDocument
+    {
+        [JsonProperty("ideaId")]
+        public string IdeaId { get; init; } = string.Empty;
+
+        [JsonProperty("conversacionId")]
+        public string ConversacionId { get; init; } = string.Empty;
+
+        [JsonProperty("resumenSnapshot")]
+        public string ResumenSnapshot { get; init; } = string.Empty;
+
+        [JsonProperty("estadoSnapshot")]
+        public string EstadoSnapshot { get; init; } = string.Empty;
 
         [JsonProperty("orden")]
         public int Orden { get; init; }

@@ -433,6 +433,18 @@ puntaje/rúbrica en la respuesta, se registra el texto libre en telemetría o el
   de pausa, el mensaje menciona notas, puntajes o criterios de evaluación, hace una pregunta que
   espera respuesta, la idea desaparece o cambia de estado, o el mensaje llega en una campaña ya
   cerrada.
+- ✅ **P-30 — Retomar una idea anterior:** **implementada localmente (3/3); viene apagada.** Pide al
+  equipo que la active solo en una campaña de prueba que tenga, para el mismo participante, al menos
+  dos ideas anteriores sobre la misma pregunta (pueden estar terminadas, pendientes o descartadas).
+  (1) Escribe **“quiero retomar una idea”**; (2) si participaste en varias campañas o preguntas, elige
+  primero el alcance; (3) debe aparecer una lista numerada con resúmenes breves y estados neutrales,
+  nunca notas; (4) responde con el número o copia exactamente un resumen; (5) debe mostrarse la idea
+  elegida y preguntarte qué deseas agregar o cambiar; (6) envía la mejora y revisa **Resultados**: debe
+  actualizarse la misma idea y conservarse su historial, no aparecer otra idea nueva. Apaga la función
+  y repite: el selector histórico ya no debe aparecer. **Algo va mal si:** ves ideas de otra persona,
+  campaña o pregunta; el sistema adivina una opción ambigua; la orden o el número aparecen como aporte;
+  se crea otra idea; se pierde la versión anterior; o una idea madura sigue en curaduría mientras se
+  está modificando.
 - ⏳ **I-12 — Ideas semilla:** en espera del material de Felipe. Cuando llegue: el coach se apoyará en
   esos temas guía. Prueba mínima hoy: una campaña **sin** ideas semilla funciona igual que siempre.
 - 💤 **I-09 / I-10 — "Tejido colectivo"** (que el coach use aportes de otros): **aplazado** para después

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using ElTejido.Application.Common;
 using ElTejido.Application.Identidad;
+using ElTejido.Application.Respuestas;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
@@ -40,6 +41,13 @@ public interface IServicioEnrutamientoParticipacion
         string usuarioId,
         string whatsappMessageIdOriginal,
         CancellationToken cancellationToken);
+
+    /// <summary>P-30: cierra de forma auditable la seleccion historica despues de aplicar I-19.</summary>
+    Task ConfirmarRetomadaAsync(
+        string usuarioId,
+        string whatsappMessageIdOriginal,
+        bool completada,
+        CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>Desenlace de la resolucion P-26; jerarquia cerrada para forzar el manejo de todos los casos.</summary>
@@ -81,6 +89,12 @@ public abstract record ResultadoEnrutamiento
     /// </summary>
     public sealed record DespertarProactivo(CandidatoCampania Candidato) : ResultadoEnrutamiento;
 
+    /// <summary>P-30: idea historica ya elegida y revalidada; el texto de seleccion no es un aporte.</summary>
+    public sealed record RetomarIdea(
+        CandidatoCampania Candidato,
+        MensajeEntrante Mensaje,
+        ContextoRetomarIdea Contexto) : ResultadoEnrutamiento;
+
     /// <summary>Ninguna campania elegible: rechazo neutral vigente (silencio, comportamiento actual).</summary>
     public sealed record SinElegibles() : ResultadoEnrutamiento;
 }
@@ -88,9 +102,11 @@ public abstract record ResultadoEnrutamiento
 public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoParticipacion
 {
     private static readonly TimeSpan VigenciaAfinidad = TimeSpan.FromHours(24);
+    private const int MaxCaracteresParafrasisSeleccion = 160;
 
     private readonly IRepositorioEnrutamientosAporte _enrutamientos;
     private readonly IRepositorioConversaciones _conversaciones;
+    private readonly IRepositorioRespuestas? _respuestas;
     private readonly IWhatsAppGateway _gateway;
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
@@ -98,6 +114,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     private readonly DetectorIntencionContinuar _cambioCampania;
     private readonly DetectorEntradaProactiva _entradaProactiva;
     private readonly bool _despertarProactivoHabilitado;
+    private readonly bool _retomarIdeasHabilitado;
+    private readonly DetectorIntencionContinuar _retomarIdea;
     private readonly TimeProvider _tiempo;
 
     public ServicioEnrutamientoParticipacion(
@@ -107,10 +125,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         IRepositorioLogSeguridad logSeguridad,
         IProveedorCorrelacion correlacion,
         OpcionesConversacion opciones,
-        TimeProvider tiempo)
+        TimeProvider tiempo,
+        IRepositorioRespuestas? respuestas = null)
     {
         _enrutamientos = enrutamientos;
         _conversaciones = conversaciones;
+        _respuestas = respuestas;
         _gateway = gateway;
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
@@ -126,6 +146,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 : DetectorEntradaProactiva.FrasesPorDefecto,
             opciones.MaxCaracteresDespertarProactivo);
         _despertarProactivoHabilitado = opciones.DespertarProactivoHabilitado;
+        _retomarIdeasHabilitado = opciones.RetomarIdeasHabilitado;
+        _retomarIdea = new DetectorIntencionContinuar(
+            opciones.FrasesRevisitarIdea is { Count: > 0 }
+                ? opciones.FrasesRevisitarIdea
+                : DetectorIntencionContinuar.FrasesRevisitarIdeaPorDefecto,
+            opciones.MaxCaracteresIntencionContinuar);
         _tiempo = tiempo;
     }
 
@@ -149,9 +175,25 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
 
         if (pendiente is not null)
         {
-            return pendiente.Estado == EstadoEnrutamientoAporte.SeleccionCampania
-                ? await ResolverSeleccionCampaniaAsync(usuario, candidatos, pendiente, mensaje, ahora, cancellationToken)
-                : await ResolverSeleccionPreguntaAsync(usuario, candidatos, pendiente, mensaje, ahora, cancellationToken);
+            return pendiente.Estado switch
+            {
+                EstadoEnrutamientoAporte.SeleccionCampania => await ResolverSeleccionCampaniaAsync(
+                    usuario, candidatos, pendiente, mensaje, ahora, cancellationToken),
+                EstadoEnrutamientoAporte.SeleccionPregunta => await ResolverSeleccionPreguntaAsync(
+                    usuario, candidatos, pendiente, mensaje, ahora, cancellationToken),
+                EstadoEnrutamientoAporte.SeleccionIdea => await ResolverSeleccionIdeaHistoricaAsync(
+                    usuario, candidatos, pendiente, mensaje, ahora, cancellationToken),
+                EstadoEnrutamientoAporte.Listo when pendiente.EsRetomarIdea => await EntregarRetomadaListaAsync(
+                    usuario, candidatos, pendiente, mensaje, ahora, cancellationToken),
+                _ => throw new InvalidOperationException($"Seleccion pendiente no soportada: {pendiente.Estado}."),
+            };
+        }
+
+        // P-30: una peticion generica de retomar precede a la afinidad y a un aporte nuevo. El
+        // servidor resuelve primero campania/pregunta y nunca entrega esta frase como contenido.
+        if (_retomarIdeasHabilitado && _respuestas is not null && _retomarIdea.Coincide(mensaje.Texto))
+        {
+            return await IniciarRetomarIdeaAsync(usuario, candidatos, mensaje, ahora, cancellationToken);
         }
 
         // §5.6: una afinidad vigente enruta las respuestas de coaching sin volver a listar campanias,
@@ -170,7 +212,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                     afinidad.Candidato,
                     mensaje,
                     null,
-                    new ContextoAporteEnrutado(afinidad.Conversacion.PreguntaId, null));
+                    new ContextoAporteEnrutado(
+                        afinidad.Conversacion.PreguntaId, null, afinidad.Conversacion.Id));
             }
 
             // Afinidad hacia una campania sin conversacion todavia (cambio de campania reciente): el
@@ -241,6 +284,25 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             cancellationToken);
     }
 
+    public async Task ConfirmarRetomadaAsync(
+        string usuarioId,
+        string whatsappMessageIdOriginal,
+        bool completada,
+        CancellationToken cancellationToken)
+    {
+        var enrutamiento = await _enrutamientos.ObtenerPorMensajeAsync(
+            usuarioId, whatsappMessageIdOriginal, cancellationToken);
+        if (enrutamiento is null || enrutamiento.Estado != EstadoEnrutamientoAporte.Listo || !enrutamiento.EsRetomarIdea)
+        {
+            return;
+        }
+
+        var ahora = _tiempo.GetUtcNow();
+        await _enrutamientos.GuardarAsync(
+            completada ? enrutamiento.CompletarRetomarIdea(ahora) : enrutamiento.Cancelar(ahora),
+            cancellationToken);
+    }
+
     private async Task<ResultadoEnrutamiento> ResolverSeleccionCampaniaAsync(
         Usuario usuario,
         IReadOnlyList<CandidatoCampania> candidatos,
@@ -265,7 +327,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         }
 
         // Revalidacion (§5.3/§10): el estado pudo cambiar desde que se ofrecio la lista.
-        var elegibles = await CalcularElegiblesAsync(candidatos, usuario.Id, cancellationToken);
+        var elegibles = pendiente.EsRetomarIdea
+            ? await CalcularElegiblesRetomarAsync(candidatos, usuario.Id, cancellationToken)
+            : await CalcularElegiblesAsync(candidatos, usuario.Id, cancellationToken);
         var elegido = elegibles.FirstOrDefault(c => c.Candidato.Campania.Id == opcion.CampaniaId);
         if (elegido is null)
         {
@@ -294,7 +358,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        var preguntas = await PreguntasElegiblesAsync(candidato.Campania, usuario.Id, cancellationToken);
+        var preguntas = enrutamiento.EsRetomarIdea
+            ? await PreguntasConIdeasHistoricasAsync(candidato.Campania, usuario.Id, cancellationToken)
+            : await PreguntasElegiblesAsync(candidato.Campania, usuario.Id, cancellationToken);
         if (preguntas.Count == 0)
         {
             await _enrutamientos.GuardarAsync(enrutamiento.Cancelar(ahora), cancellationToken);
@@ -326,7 +392,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         // §5.1 paso 3: el cambio explicito de campania tambien aplica durante la seleccion de pregunta.
         if (_cambioCampania.Coincide(mensaje.Texto))
         {
-            var elegiblesCambio = await CalcularElegiblesAsync(candidatos, usuario.Id, cancellationToken);
+            var elegiblesCambio = pendiente.EsRetomarIdea
+                ? await CalcularElegiblesRetomarAsync(candidatos, usuario.Id, cancellationToken)
+                : await CalcularElegiblesAsync(candidatos, usuario.Id, cancellationToken);
             await RegistrarAsync(usuario, "cambioCampania", Detalle(pendiente), ahora, cancellationToken);
             return await OfrecerCampaniasDeNuevoAsync(usuario, elegiblesCambio, pendiente, mensaje, ahora, cancellationToken);
         }
@@ -335,7 +403,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         if (candidato is null)
         {
             // La campania elegida dejo de estar autorizada entre la oferta y la seleccion (§11).
-            var elegiblesActuales = await CalcularElegiblesAsync(candidatos, usuario.Id, cancellationToken);
+            var elegiblesActuales = pendiente.EsRetomarIdea
+                ? await CalcularElegiblesRetomarAsync(candidatos, usuario.Id, cancellationToken)
+                : await CalcularElegiblesAsync(candidatos, usuario.Id, cancellationToken);
             await RegistrarAsync(usuario, "invalido", Detalle(pendiente) + ";revalidacion", ahora, cancellationToken);
             return await OfrecerCampaniasDeNuevoAsync(usuario, elegiblesActuales, pendiente, mensaje, ahora, cancellationToken);
         }
@@ -354,7 +424,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         }
 
         // Revalidacion: la pregunta pudo desactivarse o completarse desde que se ofrecio (§11).
-        var vigentes = await PreguntasElegiblesAsync(candidato.Campania, usuario.Id, cancellationToken);
+        var vigentes = pendiente.EsRetomarIdea
+            ? await PreguntasConIdeasHistoricasAsync(candidato.Campania, usuario.Id, cancellationToken)
+            : await PreguntasElegiblesAsync(candidato.Campania, usuario.Id, cancellationToken);
         var pregunta = vigentes.FirstOrDefault(p => p.Id == opcion.PreguntaId);
         if (pregunta is null)
         {
@@ -421,12 +493,206 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             return new ResultadoEnrutamiento.DespertarProactivo(candidato);
         }
 
+        if (enrutamiento.EsRetomarIdea)
+        {
+            return await ResolverIdeasTrasPreguntaAsync(
+                usuario, candidato, pregunta, enrutamiento, mensajeSeleccion, ahora, cancellationToken);
+        }
+
         return new ResultadoEnrutamiento.ContinuarConversacion(
             candidato,
             MensajeOriginal(enrutamiento, mensajeSeleccion, ahora),
             enrutamiento.Id,
             new ContextoAporteEnrutado(pregunta.Id, enrutamiento.Id));
     }
+
+    private async Task<ResultadoEnrutamiento> IniciarRetomarIdeaAsync(
+        Usuario usuario,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var elegibles = await CalcularElegiblesRetomarAsync(candidatos, usuario.Id, cancellationToken);
+        if (elegibles.Count == 0)
+        {
+            await EnviarSinIdeasHistoricasAsync(usuario, mensaje.PhoneNumberIdDestino, cancellationToken);
+            return new ResultadoEnrutamiento.SinElegibles();
+        }
+
+        var existente = await _enrutamientos.ObtenerPorMensajeAsync(
+            usuario.Id, mensaje.WhatsappMessageId, cancellationToken);
+        if (existente is not null)
+        {
+            return new ResultadoEnrutamiento.SeleccionPendiente(existente.Id);
+        }
+
+        if (elegibles.Count > 1)
+        {
+            var seleccionarCampania = EnrutamientoAporte.Crear(
+                usuario.Id,
+                mensaje.WhatsappMessageId,
+                mensaje.Texto,
+                EstadoEnrutamientoAporte.SeleccionCampania,
+                ahora,
+                phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
+                campaniasOfrecidas: Opciones(elegibles),
+                modo: ModoEnrutamientoAporte.RetomarIdea);
+            await _enrutamientos.GuardarAsync(seleccionarCampania, cancellationToken);
+            await RegistrarRetomarAsync(usuario, "ofrecido", seleccionarCampania, ahora, cancellationToken);
+            await EnviarMenuCampaniasAsync(
+                usuario, seleccionarCampania.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
+            return new ResultadoEnrutamiento.SeleccionPendiente(seleccionarCampania.Id);
+        }
+
+        var unico = elegibles[0].Candidato;
+        var preguntas = await PreguntasConIdeasHistoricasAsync(unico.Campania, usuario.Id, cancellationToken);
+        var enrutamiento = EnrutamientoAporte.Crear(
+            usuario.Id,
+            mensaje.WhatsappMessageId,
+            mensaje.Texto,
+            EstadoEnrutamientoAporte.SeleccionPregunta,
+            ahora,
+            phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
+            campaniaSeleccionadaId: unico.Campania.Id,
+            preguntasOfrecidas: OpcionesPregunta(preguntas),
+            modo: ModoEnrutamientoAporte.RetomarIdea);
+
+        if (preguntas.Count == 1)
+        {
+            var listo = enrutamiento.SeleccionarPregunta(preguntas[0].Id, ahora);
+            await _enrutamientos.GuardarAsync(listo, cancellationToken);
+            return await ResolverIdeasTrasPreguntaAsync(
+                usuario, unico, preguntas[0], listo, mensaje, ahora, cancellationToken);
+        }
+
+        await _enrutamientos.GuardarAsync(enrutamiento, cancellationToken);
+        await RegistrarRetomarAsync(usuario, "ofrecido", enrutamiento, ahora, cancellationToken);
+        await EnviarMenuPreguntasAsync(
+            usuario, enrutamiento.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
+        return new ResultadoEnrutamiento.SeleccionPendiente(enrutamiento.Id);
+    }
+
+    private async Task<ResultadoEnrutamiento> ResolverIdeasTrasPreguntaAsync(
+        Usuario usuario,
+        CandidatoCampania candidato,
+        Pregunta pregunta,
+        EnrutamientoAporte enrutamiento,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var opciones = await OpcionesIdeasHistoricasAsync(
+            candidato.Campania.Id, usuario.Id, pregunta.Id, cancellationToken);
+        if (opciones.Count == 0)
+        {
+            await _enrutamientos.GuardarAsync(enrutamiento.Cancelar(ahora), cancellationToken);
+            await EnviarSinIdeasHistoricasAsync(usuario, mensaje.PhoneNumberIdDestino, cancellationToken);
+            return new ResultadoEnrutamiento.SinElegibles();
+        }
+
+        var ofrecido = enrutamiento.OfrecerIdeas(opciones, ahora);
+        await RegistrarRetomarAsync(usuario, "ofrecido", ofrecido, ahora, cancellationToken);
+        if (opciones.Count == 1)
+        {
+            var listo = ofrecido.SeleccionarIdea(opciones[0], ahora);
+            await _enrutamientos.GuardarAsync(listo, cancellationToken);
+            await RegistrarRetomarAsync(usuario, "seleccionado", listo, ahora, cancellationToken);
+            return CrearResultadoRetomar(candidato, mensaje, listo);
+        }
+
+        await _enrutamientos.GuardarAsync(ofrecido, cancellationToken);
+        await EnviarMenuIdeasAsync(usuario, opciones, mensaje.PhoneNumberIdDestino, false, cancellationToken);
+        return new ResultadoEnrutamiento.SeleccionPendiente(ofrecido.Id);
+    }
+
+    private async Task<ResultadoEnrutamiento> ResolverSeleccionIdeaHistoricaAsync(
+        Usuario usuario,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        EnrutamientoAporte pendiente,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var opcion = InterpretarSeleccion(
+            mensaje.Texto, pendiente.IdeasOfrecidas, idea => idea.ResumenSnapshot, idea => idea.Orden);
+        if (opcion is null)
+        {
+            var invalido = pendiente.RegistrarIntento(
+                new IntentoSeleccion(
+                    mensaje.WhatsappMessageId, TipoIntentoSeleccion.Idea, ResultadoIntentoSeleccion.Invalido, ahora),
+                ahora);
+            await _enrutamientos.GuardarAsync(invalido, cancellationToken);
+            await RegistrarRetomarAsync(usuario, "invalido", invalido, ahora, cancellationToken);
+            await EnviarMenuIdeasAsync(usuario, invalido.IdeasOfrecidas, mensaje.PhoneNumberIdDestino, true, cancellationToken);
+            return new ResultadoEnrutamiento.SeleccionPendiente(invalido.Id);
+        }
+
+        var candidato = candidatos.FirstOrDefault(c => c.Campania.Id == pendiente.CampaniaSeleccionadaId);
+        var preguntaActiva = candidato?.Campania.Preguntas.Any(
+            pregunta => pregunta.Id == pendiente.PreguntaSeleccionadaId && pregunta.Estado == EstadoRegistro.Activo) == true;
+        var idea = candidato is null || !preguntaActiva || _respuestas is null
+            ? null
+            : (await _respuestas.ListarIdeasHistoricasAsync(
+                    candidato.Campania.Id, usuario.Id, pendiente.PreguntaSeleccionadaId!, cancellationToken))
+                .FirstOrDefault(candidata => candidata.Id == opcion.IdeaId
+                    && candidata.ConversacionId == opcion.ConversacionId
+                    && candidata.CampaniaId == candidato.Campania.Id
+                    && candidata.UsuarioId == usuario.Id
+                    && candidata.PreguntaId == pendiente.PreguntaSeleccionadaId);
+        if (idea is null)
+        {
+            await _enrutamientos.GuardarAsync(pendiente.Cancelar(ahora), cancellationToken);
+            await RegistrarRetomarAsync(usuario, "invalido", pendiente, ahora, cancellationToken);
+            await EnviarSinIdeasHistoricasAsync(usuario, mensaje.PhoneNumberIdDestino, cancellationToken);
+            return new ResultadoEnrutamiento.SinElegibles();
+        }
+
+        var listo = pendiente
+            .RegistrarIntento(
+                new IntentoSeleccion(
+                    mensaje.WhatsappMessageId, TipoIntentoSeleccion.Idea, ResultadoIntentoSeleccion.Valido, ahora),
+                ahora)
+            .SeleccionarIdea(opcion, ahora);
+        await _enrutamientos.GuardarAsync(listo, cancellationToken);
+        await RegistrarRetomarAsync(usuario, "seleccionado", listo, ahora, cancellationToken);
+        return CrearResultadoRetomar(candidato!, mensaje, listo);
+    }
+
+    private async Task<ResultadoEnrutamiento> EntregarRetomadaListaAsync(
+        Usuario usuario,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        EnrutamientoAporte enrutamiento,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var candidato = candidatos.FirstOrDefault(c => c.Campania.Id == enrutamiento.CampaniaSeleccionadaId);
+        if (candidato is null
+            || candidato.Campania.Estado != EstadoCampania.Activa
+            || string.IsNullOrWhiteSpace(enrutamiento.PreguntaSeleccionadaId)
+            || !candidato.Campania.Preguntas.Any(p => p.Id == enrutamiento.PreguntaSeleccionadaId && p.Estado == EstadoRegistro.Activo))
+        {
+            await _enrutamientos.GuardarAsync(enrutamiento.Cancelar(ahora), cancellationToken);
+            return new ResultadoEnrutamiento.SinElegibles();
+        }
+
+        return CrearResultadoRetomar(candidato, mensaje, enrutamiento);
+    }
+
+    private static ResultadoEnrutamiento.RetomarIdea CrearResultadoRetomar(
+        CandidatoCampania candidato,
+        MensajeEntrante mensaje,
+        EnrutamientoAporte enrutamiento)
+        => new(
+            candidato,
+            mensaje,
+            new ContextoRetomarIdea(
+                enrutamiento.PreguntaSeleccionadaId!,
+                enrutamiento.IdeaSeleccionadaId!,
+                enrutamiento.ConversacionId!,
+                enrutamiento.Id,
+                enrutamiento.WhatsappMessageId));
 
     private async Task<ResultadoEnrutamiento> RecalcularTrasRevalidacionAsync(
         Usuario usuario,
@@ -665,6 +931,93 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             .ToArray();
     }
 
+    /// <summary>P-30: campañas autorizadas y activas que realmente contienen ideas del participante.</summary>
+    private async Task<IReadOnlyList<CampaniaElegible>> CalcularElegiblesRetomarAsync(
+        IReadOnlyList<CandidatoCampania> candidatos,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        if (_respuestas is null)
+        {
+            return Array.Empty<CampaniaElegible>();
+        }
+
+        var elegibles = new List<CampaniaElegible>();
+        foreach (var candidato in candidatos.Where(c => c.Campania.Estado == EstadoCampania.Activa))
+        {
+            if ((await PreguntasConIdeasHistoricasAsync(candidato.Campania, usuarioId, cancellationToken)).Count > 0)
+            {
+                elegibles.Add(new CampaniaElegible(candidato, TrabajoPendiente: false));
+            }
+        }
+
+        return elegibles
+            .OrderBy(c => c.Candidato.Campania.Nombre, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.Candidato.Campania.Id, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyList<Pregunta>> PreguntasConIdeasHistoricasAsync(
+        Campania campania,
+        string usuarioId,
+        CancellationToken cancellationToken)
+    {
+        if (_respuestas is null)
+        {
+            return Array.Empty<Pregunta>();
+        }
+
+        var resultado = new List<Pregunta>();
+        foreach (var pregunta in PreguntasActivas(campania))
+        {
+            if ((await _respuestas.ListarIdeasHistoricasAsync(
+                    campania.Id, usuarioId, pregunta.Id, cancellationToken)).Count > 0)
+            {
+                resultado.Add(pregunta);
+            }
+        }
+
+        return resultado;
+    }
+
+    private async Task<IReadOnlyList<OpcionIdeaOfrecida>> OpcionesIdeasHistoricasAsync(
+        string campaniaId,
+        string usuarioId,
+        string preguntaId,
+        CancellationToken cancellationToken)
+    {
+        if (_respuestas is null)
+        {
+            return Array.Empty<OpcionIdeaOfrecida>();
+        }
+
+        var ideas = (await _respuestas.ListarIdeasHistoricasAsync(
+                campaniaId, usuarioId, preguntaId, cancellationToken))
+            .Where(idea => idea.CampaniaId == campaniaId
+                && idea.UsuarioId == usuarioId
+                && idea.PreguntaId == preguntaId)
+            .OrderByDescending(idea => idea.ActualizadaEn)
+            .ThenBy(idea => idea.Id, StringComparer.Ordinal)
+            .ToArray();
+        var opciones = new List<OpcionIdeaOfrecida>(ideas.Length);
+        for (var indice = 0; indice < ideas.Length; indice++)
+        {
+            var idea = ideas[indice];
+            var versionId = idea.VersionConfirmadaRef ?? idea.VersionPropuestaRef;
+            var version = string.IsNullOrWhiteSpace(versionId)
+                ? null
+                : await _respuestas.ObtenerVersionIdeaAsync(campaniaId, versionId, cancellationToken);
+            opciones.Add(new OpcionIdeaOfrecida(
+                idea.Id,
+                idea.ConversacionId,
+                Acotar(version?.Texto ?? "Idea sin resumen disponible", MaxCaracteresParafrasisSeleccion),
+                EstadoNeutral(idea),
+                indice + 1));
+        }
+
+        return opciones;
+    }
+
     /// <summary>
     /// Trabajo pendiente = alguna pregunta activa sin conversacion o con su conversacion mas reciente
     /// aun abierta (mismo criterio que el hilo de trabajo del orquestador).
@@ -827,6 +1180,33 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             conAyuda,
             cancellationToken);
 
+    private Task EnviarMenuIdeasAsync(
+        Usuario usuario,
+        IReadOnlyList<OpcionIdeaOfrecida> opciones,
+        string? emisor,
+        bool conAyuda,
+        CancellationToken cancellationToken)
+        => EnviarMenuAsync(
+            usuario,
+            Texto(_mensajes.PreguntaSeleccionIdea, OpcionesMensajesConversacion.PreguntaSeleccionIdeaDefault),
+            opciones.OrderBy(o => o.Orden).Select(
+                o => $"{o.Orden}. {o.ResumenSnapshot} ({o.EstadoSnapshot})"),
+            Texto(_mensajes.InstruccionSeleccionIdea, OpcionesMensajesConversacion.InstruccionSeleccionIdeaDefault),
+            emisor,
+            conAyuda,
+            cancellationToken);
+
+    private Task EnviarSinIdeasHistoricasAsync(
+        Usuario usuario,
+        string? emisor,
+        CancellationToken cancellationToken)
+        => _gateway.EnviarTextoAsync(
+            usuario.WhatsappNormalizado.Valor,
+            Texto(_mensajes.SinIdeasHistoricas, OpcionesMensajesConversacion.SinIdeasHistoricasDefault),
+            TipoEnvioMensaje.Repregunta,
+            cancellationToken,
+            emisor);
+
     private async Task EnviarMenuAsync(
         Usuario usuario,
         string encabezado,
@@ -866,7 +1246,10 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     {
         var enrutamientos = await _enrutamientos.ListarPorUsuarioAsync(usuarioId, cancellationToken);
         return enrutamientos
-            .Where(e => e.Estado is EstadoEnrutamientoAporte.SeleccionCampania or EstadoEnrutamientoAporte.SeleccionPregunta)
+            .Where(e => e.Estado is EstadoEnrutamientoAporte.SeleccionCampania
+                or EstadoEnrutamientoAporte.SeleccionPregunta
+                or EstadoEnrutamientoAporte.SeleccionIdea
+                || (e.Estado == EstadoEnrutamientoAporte.Listo && e.EsRetomarIdea))
             .OrderByDescending(e => e.ActualizadoEn)
             .FirstOrDefault();
     }
@@ -932,8 +1315,39 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 ahora),
             cancellationToken);
 
+    private Task RegistrarRetomarAsync(
+        Usuario usuario,
+        string accion,
+        EnrutamientoAporte enrutamiento,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.RetomarIdea,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                accion,
+                $"enrutamiento={enrutamiento.Id};opciones={enrutamiento.IdeasOfrecidas.Count};campania={enrutamiento.CampaniaSeleccionadaId};pregunta={enrutamiento.PreguntaSeleccionadaId};idea={enrutamiento.IdeaSeleccionadaId}",
+                _correlacion.CorrelationIdActual,
+                ahora,
+                campaniaId: enrutamiento.CampaniaSeleccionadaId),
+            cancellationToken);
+
     private static string Detalle(EnrutamientoAporte enrutamiento)
-        => $"enrutamiento={enrutamiento.Id};opciones={enrutamiento.CampaniasOfrecidas.Count};preguntas={enrutamiento.PreguntasOfrecidas.Count}";
+        => $"enrutamiento={enrutamiento.Id};opciones={enrutamiento.CampaniasOfrecidas.Count};preguntas={enrutamiento.PreguntasOfrecidas.Count};ideas={enrutamiento.IdeasOfrecidas.Count}";
+
+    private static string EstadoNeutral(ElTejido.Domain.Respuestas.IdeaConsolidada idea)
+        => idea.EstadoResultado switch
+        {
+            ElTejido.Domain.Respuestas.EstadoResultadoIdeaConsolidada.Madura => "madura",
+            ElTejido.Domain.Respuestas.EstadoResultadoIdeaConsolidada.Rechazada => "descartada",
+            ElTejido.Domain.Respuestas.EstadoResultadoIdeaConsolidada.Pendiente => "pendiente",
+            _ => "en proceso",
+        };
+
+    private static string Acotar(string texto, int maximo)
+        => texto.Length <= maximo ? texto : texto[..maximo].TrimEnd() + "…";
 
     private static string Texto(string configurado, string porDefecto)
         => string.IsNullOrWhiteSpace(configurado) ? porDefecto : configurado;
@@ -947,3 +1361,11 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         CandidatoCampania Candidato,
         DominioConversacion? Conversacion);
 }
+
+/// <summary>P-30: seleccion historica ya resuelta; solo contiene ids internos auditables.</summary>
+public sealed record ContextoRetomarIdea(
+    string PreguntaId,
+    string IdeaId,
+    string ConversacionId,
+    string EnrutamientoAporteId,
+    string WhatsappMessageIdOriginal);

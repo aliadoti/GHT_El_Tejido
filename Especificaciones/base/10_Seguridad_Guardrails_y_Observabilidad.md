@@ -158,6 +158,12 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
   ambigüedades (`invalido`), reaperturas vs. ideas nuevas (`reapertura` vs. `cicloNuevo`) y latencia
   hasta procesar (percentiles de `latenciaMs`).
 
+- **P-30 — retomar histórico:** `LogSeguridad(retomarIdea)` registra
+  `ofrecido|seleccionado|invalido|reabierto`, el conteo de opciones, ids internos de
+  enrutamiento/campaña/pregunta/idea/conversación y `correlationId`. Nunca registra el resumen/título,
+  el texto de intención ni el texto de selección. La propiedad y el alcance se revalidan al ofrecer,
+  seleccionar y reabrir.
+
 ---
 
 ## 7. Retención (`ARQ §13`)

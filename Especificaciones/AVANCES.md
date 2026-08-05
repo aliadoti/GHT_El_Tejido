@@ -4,6 +4,20 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-04 por Codex (Arquitecto/Backend/AppSec/SDET): **P-30 COMPLETA local
+  (3/3) — retomar una idea histórica conserva la misma idea y el mismo hilo.** Con el kill-switch
+  `Conversacion:RetomarIdeasHabilitado=false` por defecto, la intención de retomar ofrece solo ideas
+  del participante dentro de la campaña y pregunta resueltas por P-26, sin filtrar por estado o ciclo.
+  El menú persistido acepta número o título/resumen exacto no ambiguo; la curaduría queda suspendida
+  durante la selección, se revalida el alcance al confirmar y se reutiliza la reapertura I-19 sin
+  crear una idea nueva. La afinidad explícita mantiene el aporte siguiente en la conversación
+  histórica elegida. Cosmos persiste el nuevo modo/estado, y `LogSeguridad(retomarIdea)` registra la
+  transición sin texto ni PII. **Verificado:** build Release `-warnaserror` 0/0, **729** pruebas backend
+  no calibración (657 unitarias + 72 de integración), `dotnet format --verify-no-changes` y
+  `git diff --check` limpios. Specs, reglas, modelo de datos, seguridad, plan de pruebas, QAS,
+  `SUPUESTOS.md`, índice y `TODO.md` sincronizados. Sin push, despliegue ni configuración remota.
+  **No hay otro requisito de código priorizado:** sigue la validación operativa D5/UAT/costo y el acta
+  de flags, o una nueva priorización expresa; `DT-P27-01` permanece como deuda posterior.
 - Ultima actualizacion: 2026-08-04 por Claude Opus 5 (Arquitecto/Backend/SDET): **P-29 COMPLETA local
   (2/2) — el cierre por inactividad ahora se despide con voz humana.** El corte 2 conecta el aviso ya
   enganchado con el redactor de I-20 (`ActoConversacional.Pausar` + `promptRefs.cierre`) y conserva el
@@ -590,13 +604,13 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`P-30` — retomar ideas del pasado (selector histórico por participante, campaña y pregunta).**
-  Es la última iniciativa especificada del backlog acotado; P-29 quedó completa local. Leer
-  `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md` y `SUPUESTOS.md#retomar-ideas-p30`. **No
-  reimplementar** la reapertura reciente de I-19 §4.7 / P-26 §5.8: P-30 solo amplía la lista de
-  candidatas a ideas históricas del mismo participante y alcance, conservando el mismo `ideaId`.
-  Búsqueda semántica/vectorial fuera de alcance; kill-switch `Conversacion:RetomarIdeasHabilitado`
-  nace en `false`.
+- [ ] **No iniciar otro cambio de código sin una nueva priorización expresa.** Coordinar D5 real, UAT,
+  costo/latencia y el acta de flags de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Los flags nuevos
+  continúan apagados; no hacer push, desplegar ni modificar configuración remota sin instrucción.
+  `DT-P27-01` sigue en backlog posterior y no es el siguiente ejecutable.
+- [x] **(HECHO 2026-08-04, Codex — backend 729: 657 unit + 72 integración; build Release,
+  format y diff limpios) P-30 completa local 3/3.** Selector histórico por participante, campaña y
+  pregunta, misma idea/hilo, persistencia y telemetría sin texto, E2E simulada y QAS; flag global OFF.
 - [x] **(HECHO 2026-08-04, Claude Opus 5 — backend 723: 651 unit + 72 integración; build Release,
   format y diff limpios) P-29 corte 2 de 2 — redacción LLM, telemetría, E2E y QAS. `P-29` COMPLETA
   local (2/2).** El aviso lo redacta I-20 con el acto `Pausar` y degrada al respaldo determinista;
@@ -851,6 +865,7 @@
 | P-27 | Clasificación flexible de intenciones de control | DONE local 5/5; D5/UAT/costo pendiente | `255c4cb`, `708f473`, `73d22dd`, `ed76ccc` + cambios locales corte 5 | backend 698/698, build/format verdes | Alias, clasificador/política server-side, menú persistido, rollback, portal y cupos/tokens persistentes sin PII. |
 | P-28 | Despertar proactivo del coach | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 706/706, build/format/diff verdes | Saludo/inicio con flag global OFF, selección P-26 sin convertirlo en aporte, redacción/fallback, telemetría sin texto, Cosmos, E2E y QAS. Siguiente: P-29 corte 1. |
 | P-29 | Cierre conversacional por tiempo | DONE local 2/2; D5/UAT/costo pendiente | `09d4d84` + cambios locales corte 2 | backend 723/723 (651+72), build/format/diff verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 sin temporizador, umbral, estado ni motivo nuevos. |
+| P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -978,6 +993,21 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-08-04 - Codex - **P-30 retomar ideas del pasado (COMPLETA local 3/3, sin push).** Rol:
+  Arquitecto/Backend/AppSec/SDET. REQ-014, `Iniciativas/P-30_…` §5-§12 y
+  `SUPUESTOS.md#retomar-ideas-p30`. (1) Se añadió al enrutamiento persistido el modo `retomarIdea`, el
+  estado `seleccionIdea`, el menú snapshot y la idea elegida, con compatibilidad para documentos
+  anteriores. (2) El repositorio lista por participante, campaña y pregunta sin filtrar estado/ciclo;
+  el servidor ofrece y revalida candidatas, acepta número o texto exacto no ambiguo y registra
+  intentos sin guardar texto. (3) La reapertura reutiliza I-19: conserva `ideaId` y versiones, reabre
+  su conversación y suspende la curaduría. Una afinidad explícita evita que el aporte siguiente caiga
+  en un ciclo más reciente. (4) Kill-switch global OFF y fallback legacy intacto; sin búsqueda
+  vectorial. (5) Telemetría `retomarIdea` sin texto/PII, pruebas unitarias de dominio, servicio,
+  Cosmos/orquestador y E2E webhook→lista→selección→reapertura→aporte→reevaluación. (6) Documentación y
+  QAS sincronizados. **Verificado:** build Release `-warnaserror` 0/0, 729 pruebas (657+72), format y
+  diff limpios. **Siguiente:** validación operativa transversal o nueva priorización expresa;
+  `DT-P27-01` no se promovió.
 
 - 2026-08-04 - Claude Opus 5 - **P-29 corte 2 de 2 — voz humana del aviso de pausa, telemetría y E2E
   (COMPLETA local 2/2, sin push).** Rol: Arquitecto/Backend/AppSec/SDET. REQ-013,

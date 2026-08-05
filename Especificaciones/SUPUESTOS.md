@@ -988,6 +988,12 @@
   - La selección se conserva de manera aditiva en el contexto de enrutamiento P-26 (`modo retomarIdea`, opción elegida y snapshots mínimos); no existe ni se requiere un contador `Conversacion.reaperturas`. Kill-switch global `Conversacion:RetomarIdeasHabilitado` (default false); apagado conserva la reapertura reciente vigente de I-19/P-26.
 - Alternativa(s) descartada(s): búsqueda semántica ahora (requiere base vectorial); permitir cruzar campañas/preguntas sin resolver alcance.
 - Impacto / reversibilidad: aditivo; kill-switch OFF conserva I-19/P-26. P-28 puede presentar la opción solo cuando P-30 está habilitada y hay candidatas.
+- Estado de implementación (2026-08-04, **COMPLETA local 3/3**): consulta histórica sin filtro de
+  estado/ciclo; selección persistida en `EnrutamientoAporte` (`modo=retomarIdea`, `seleccionIdea`);
+  número o resumen exacto no ambiguo; revalidación de participante/campaña/pregunta/idea; reapertura
+  I-19 con el mismo `ideaId`; afinidad explícita al ciclo histórico; telemetría sin texto y E2E de
+  re-evaluación. `Conversacion:RetomarIdeasHabilitado` permanece `false`. Pendiente operativo:
+  D5/UAT/costo y decisión formal de activación; sin despliegue ni cambio remoto.
 - Spec: `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`.
 
 ### cierres-y-reingreso-canonicos-2026-08-04 - Matriz de producto para P-26/P-28/P-29/P-30

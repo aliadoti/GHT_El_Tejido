@@ -329,6 +329,25 @@ El LLM nunca selecciona ids, campaña, pregunta, idea siguiente, estado, umbral 
 invoca herramientas. Solo propone una etiqueta no confiable. Ver
 `Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md` y `08 §2.3`.
 
+### 4.4.5 Retomar ideas históricas (P-30)
+
+Con `Conversacion:RetomarIdeasHabilitado=true`, una petición determinista como “quiero retomar una
+idea” se atiende antes de la afinidad, el aporte nuevo y el saludo P-28:
+
+1. P-26 resuelve campaña y pregunta usando solo alcances activos y autorizados que contienen ideas
+   del participante;
+2. el repositorio consulta todas sus ideas en ese alcance, sin filtrar estado ni ciclo;
+3. una candidata se elige automáticamente y varias se guardan en `EnrutamientoAporte` con
+   `modo=retomarIdea`/`estado=seleccionIdea`, para aceptar número o resumen exacto no ambiguo;
+4. el servidor revalida participante, campaña, pregunta, conversación e idea antes de reabrir;
+5. I-19 conserva el mismo `ideaId`, suspende curaduría y muestra la versión base para recibir el nuevo
+   aporte; el enrutamiento queda como afinidad al ciclo histórico hasta que vuelva a cerrar;
+6. el siguiente aporte consolida una nueva versión completa y se re-evalúa normalmente.
+
+La intención y la opción elegida nunca se guardan como aportes. El LLM no lista, selecciona ni reabre
+ideas. Con el flag apagado se conserva sin cambios la reapertura reciente de I-19/P-26. Ver
+`Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. En el flujo legacy, I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`**. Con I-19, la paráfrasis acumulada para confirmación es obligatoria y reemplaza esa salida opcional para no enviar dos resúmenes; no depende del flag I-05. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 

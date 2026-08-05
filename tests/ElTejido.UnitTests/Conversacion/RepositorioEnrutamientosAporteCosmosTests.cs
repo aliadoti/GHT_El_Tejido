@@ -60,6 +60,7 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
 
     [Theory]
     [InlineData(EstadoEnrutamientoAporte.SeleccionCampania, "seleccionCampania")]
+    [InlineData(EstadoEnrutamientoAporte.SeleccionIdea, "seleccionIdea")]
     [InlineData(EstadoEnrutamientoAporte.Listo, "listo")]
     [InlineData(EstadoEnrutamientoAporte.EnIdea, "enIdea")]
     [InlineData(EstadoEnrutamientoAporte.Completado, "completado")]
@@ -71,6 +72,33 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
 
         documento.Estado.Should().Be(esperado);
         documento.ToDomain().Estado.Should().Be(estado);
+    }
+
+    [Fact]
+    public void Documento_P30_ConservaModoOpcionesIdeaYSeleccion()
+    {
+        var opcion = new OpcionIdeaOfrecida("idea_1", "conv_1", "Mejorar el proceso", "pendiente", 1);
+        var enrutamiento = EnrutamientoAporte.Crear(
+                "u_8f3c",
+                "wamid.retomar",
+                "quiero retomar una idea",
+                EstadoEnrutamientoAporte.SeleccionIdea,
+                Ahora,
+                campaniaSeleccionadaId: "c_1",
+                preguntaSeleccionadaId: "p_1",
+                modo: ModoEnrutamientoAporte.RetomarIdea,
+                ideasOfrecidas: [opcion])
+            .SeleccionarIdea(opcion, Ahora.AddMinutes(1));
+
+        var documento = EnrutamientoAporteCosmosDocument.FromDomain(enrutamiento);
+        var reconstruido = documento.ToDomain();
+
+        documento.Modo.Should().Be("retomarIdea");
+        documento.Estado.Should().Be("listo");
+        reconstruido.Modo.Should().Be(ModoEnrutamientoAporte.RetomarIdea);
+        reconstruido.IdeasOfrecidas.Should().ContainSingle().Which.Should().Be(opcion);
+        reconstruido.IdeaSeleccionadaId.Should().Be("idea_1");
+        reconstruido.ConversacionId.Should().Be("conv_1");
     }
 
     [Fact]

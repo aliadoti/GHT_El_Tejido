@@ -74,6 +74,13 @@ public sealed class OpcionesConversacion
     public bool CierrePorTiempoHabilitado { get; set; }
 
     /// <summary>
+    /// P-30: kill-switch global para listar y retomar ideas historicas del propio participante en el
+    /// alcance campania/pregunta ya resuelto. Nace apagado; con <c>false</c> se conserva exactamente la
+    /// reapertura reciente de I-19/P-26.
+    /// </summary>
+    public bool RetomarIdeasHabilitado { get; set; }
+
+    /// <summary>
     /// P-28: vocabulario breve de saludo/inicio. Vacío usa
     /// <see cref="DetectorEntradaProactiva.FrasesPorDefecto"/>.
     /// </summary>
@@ -281,6 +288,12 @@ public sealed class OpcionesMensajesConversacion
     public const string PreguntaSeleccionIdeaDefault =
         "¿Cuál de estas ideas quieres retomar? Respóndeme con el número.";
 
+    public const string InstruccionSeleccionIdeaDefault =
+        "Responde con el número o con el resumen exacto de la idea.";
+
+    public const string SinIdeasHistoricasDefault =
+        "No encontré ideas anteriores en este tema. Si quieres, escribe una idea nueva.";
+
     public const string EncabezadoSeleccionCampaniaDefault =
         "¿A cuál campaña corresponde tu aporte?";
 
@@ -365,6 +378,12 @@ public sealed class OpcionesMensajesConversacion
     /// La lista nunca muestra calificaciones.
     /// </summary>
     public string PreguntaSeleccionIdea { get; set; } = PreguntaSeleccionIdeaDefault;
+
+    /// <summary>P-30: instrucción determinista para número o resumen exacto no ambiguo.</summary>
+    public string InstruccionSeleccionIdea { get; set; } = InstruccionSeleccionIdeaDefault;
+
+    /// <summary>P-30: respuesta neutral cuando no hay candidatas históricas en el alcance.</summary>
+    public string SinIdeasHistoricas { get; set; } = SinIdeasHistoricasDefault;
 
     /// <summary>P-26 §5.3 — encabezado del menu numerado de campanias elegibles.</summary>
     public string EncabezadoSeleccionCampania { get; set; } = EncabezadoSeleccionCampaniaDefault;
