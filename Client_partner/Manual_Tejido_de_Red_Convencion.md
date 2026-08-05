@@ -1,8 +1,10 @@
 # Tejido de Red — Manual de uso para la convención
 
-*Cómo funciona el sistema y cómo configurarlo — versión 2026-08-04*
+*Cómo funciona el sistema y cómo configurarlo — versión 2026-08-05*
 
 Tejido de Red recoge ideas por WhatsApp: una persona escribe, un coach de inteligencia artificial conversa con ella, la ayuda a mejorar su idea con base en una rúbrica y guarda el resultado para revisarlo desde el portal. Este manual explica, en lenguaje sencillo, qué hace el sistema paso a paso y qué puedes ajustar en cada campaña.
+
+> **Estado a la fecha:** todas las capacidades conversacionales del diagrama (campañas continuas, despertar del coach, pausa amable por inactividad y retomar ideas anteriores) ya están **construidas y probadas en el entorno de desarrollo**. Permanecen **apagadas por defecto** hasta que el equipo las active en el acta de flags del día del evento.
 
 **Dos tipos de ajustes.** Hay cosas que configuras tú en cada campaña desde el portal (el comportamiento del coach), y hay interruptores generales que enciende el equipo técnico una sola vez para todo el sistema. Separar estas dos cosas es la clave para entenderlo.
 
