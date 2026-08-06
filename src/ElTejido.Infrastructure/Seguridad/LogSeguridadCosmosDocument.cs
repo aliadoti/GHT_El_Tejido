@@ -100,6 +100,7 @@ internal sealed class LogSeguridadCosmosDocument
             TipoEventoSeguridad.DespertarProactivo => "despertarProactivo",
             TipoEventoSeguridad.CierrePorInactividad => "cierrePorInactividad",
             TipoEventoSeguridad.RetomarIdea => "retomarIdea",
+            TipoEventoSeguridad.SimulacionWebhookEntrante => "simulacionWebhookEntrante",
             _ => throw new InvalidOperationException($"Tipo de evento de seguridad no soportado: {tipo}."),
         };
     }

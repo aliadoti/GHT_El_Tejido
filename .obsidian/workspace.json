@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "QAS/12_Prompt_ClaudeCode_Ejecutar_Pruebas_E2E.md",
+                "file": "Especificaciones/Iniciativas/TODO.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "12_Prompt_ClaudeCode_Ejecutar_Pruebas_E2E"
+              "title": "TODO"
             }
           },
           {
@@ -201,23 +201,22 @@
   },
   "active": "8cc6b5c552480c8c",
   "lastOpenFiles": [
-    "QAS/12_Prompt_ClaudeCode_Ejecutar_Pruebas_E2E.md.tmp.30040.1eb02a57f808",
-    "Especificaciones/planes/PROMPT_Inicio_Desarrollo_Codex.md.tmp.30040.6c20dddb0cf3",
-    "Especificaciones/Iniciativas/00_Indice_y_Plan_de_Ejecucion.md.tmp.30040.f9b0517b8e60",
-    "Especificaciones/Iniciativas/00_Indice_y_Plan_de_Ejecucion.md.tmp.30040.cd065927396b",
-    "Especificaciones/AVANCES.md.tmp.30040.5a6bbee948b6",
-    "Especificaciones/Iniciativas/DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md",
-    "QAS/12_Prompt_ClaudeCode_Ejecutar_Pruebas_E2E.md.tmp.87612.e9b37775ff40",
-    "QAS/10_Guia_E2E_Ejecutable_Agente_o_Humano.md.tmp.87612.ff01ac7f0656",
-    "QAS/11_Prompt_Codex_Ejecutar_Pruebas_E2E.md",
     "QAS/12_Prompt_ClaudeCode_Ejecutar_Pruebas_E2E.md",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.362166206507",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.08baa1e4b283",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.0ceceab9c447",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.80dc9cb60876",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.338c46e8a033",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.de8f4c5ccb64",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.fa33120a354a",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.fbf7e62c8f17",
+    "QAS/resultados/2026-08-05/_qa.ps1",
+    "QAS/resultados/2026-08-05/_qa.ps1.tmp.80188.c179d421e2a1",
+    "Especificaciones/Iniciativas/DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md",
+    "QAS/11_Prompt_Codex_Ejecutar_Pruebas_E2E.md",
     "QAS/10_Guia_E2E_Ejecutable_Agente_o_Humano.md",
-    "QAS/11_Prompt_Codex_Ejecutar_Pruebas_E2E.md.tmp.67464.b97829907bd5",
     "Client_partner/Manual_Tejido_de_Red_Convencion.md",
     "Especificaciones/Iniciativas/TODO.md",
-    "QAS/10_Guia_E2E_Ejecutable_Agente_o_Humano.md.tmp.30532.0de9daed9d0e",
-    "Especificaciones/Reglas_Conversacion_y_Participacion.md.tmp.66148.23ef44379c6c",
-    "Especificaciones/planes/PROMPT_Inicio_Desarrollo_Codex.md.tmp.66148.0ab5324b9715",
     "Especificaciones/Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md",
     "Especificaciones/Iniciativas/P-27_Clasificacion_Flexible_Intenciones_Control.md",
     "Client_partner/02_Backlog_Requerimientos/Estado_Requerimientos_2026-08-04.md",
