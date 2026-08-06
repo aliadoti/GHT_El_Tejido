@@ -1,7 +1,11 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using ElTejido.Application.Auth;
 using ElTejido.Application.Common;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.Usuarios;
+using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Seguridad;
@@ -24,6 +28,7 @@ internal static class EndpointsSimulacion
 
         grupo.MapPost("/admin-inicial", CrearAdminInicialAsync);
         grupo.MapPost("/otp-admin", CrearOtpAdminAsync);
+        grupo.MapPost("/webhook-entrante", InyectarWebhookEntranteAsync);
 
         return app;
     }
@@ -131,6 +136,100 @@ internal static class EndpointsSimulacion
         });
     }
 
+    /// <summary>
+    /// Inyecta un mensaje entrante ya autenticado por <see cref="FiltroClaveDiagnostico"/> en la
+    /// misma cola que usa el webhook real tras validar su firma (DT-QA-01). Nunca recibe ni usa el
+    /// App Secret de Meta; el procesamiento posterior conserva deduplicación y reglas de negocio.
+    /// </summary>
+    private static async Task<IResult> InyectarWebhookEntranteAsync(
+        WebhookEntranteSimuladoRequest request,
+        HttpContext contexto,
+        INormalizadorNumero normalizador,
+        IColaWebhook cola,
+        TimeProvider tiempo,
+        CancellationToken ct)
+    {
+        var numero = normalizador.Normalizar(Requerir(request.Numero, "numero"));
+        var texto = Requerir(request.Texto, "texto");
+        var idFueGenerado = string.IsNullOrWhiteSpace(request.WhatsappMessageId);
+        var ahora = tiempo.GetUtcNow();
+        var messageId = idFueGenerado
+            ? GenerarIdMensaje(numero.Valor, texto, ahora)
+            : request.WhatsappMessageId!.Trim();
+
+        var payload = new WhatsAppWebhookPayload
+        {
+            Entry =
+            [
+                new WhatsAppEntry
+                {
+                    Changes =
+                    [
+                        new WhatsAppChange
+                        {
+                            Value = new WhatsAppChangeValue
+                            {
+                                Metadata = string.IsNullOrWhiteSpace(request.PhoneNumberIdDestino)
+                                    ? null
+                                    : new WhatsAppMetadata { PhoneNumberId = request.PhoneNumberIdDestino.Trim() },
+                                Messages =
+                                [
+                                    new WhatsAppMessage
+                                    {
+                                        From = numero.Valor,
+                                        Id = messageId,
+                                        Timestamp = ahora.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+                                        Type = "text",
+                                        Text = new WhatsAppMessageText { Body = texto },
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        // Mismo límite del webhook firmado: ack inmediato y procesamiento posterior por el worker.
+        await cola.EncolarAsync(payload, ct);
+        await RegistrarInyeccionAsync(contexto, idFueGenerado, ahora, ct);
+        return Results.Ok();
+    }
+
+    private static string GenerarIdMensaje(string numero, string texto, DateTimeOffset ahora)
+    {
+        // La fecha es el día UTC, no el instante: el mismo reintento de la corrida mantiene el id
+        // para que IRegistroWebhookDedupe aplique exactamente la protección ya existente.
+        var material = $"{numero}\n{texto}\n{ahora:yyyy-MM-dd}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(material));
+        return "sim_" + Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static async Task RegistrarInyeccionAsync(
+        HttpContext contexto,
+        bool idFueGenerado,
+        DateTimeOffset ahora,
+        CancellationToken ct)
+    {
+        var logs = contexto.RequestServices.GetService<IRepositorioLogSeguridad>();
+        if (logs is null)
+        {
+            return;
+        }
+
+        var correlacion = contexto.RequestServices.GetService<IProveedorCorrelacion>();
+        var log = LogSeguridad.Crear(
+            "log_" + Guid.NewGuid().ToString("N"),
+            TipoEventoSeguridad.SimulacionWebhookEntrante,
+            usuarioId: null,
+            numero: null,
+            resultado: "encolado",
+            detalle: $"origen=simulacionDiagnostico; idGenerado={idFueGenerado.ToString().ToLowerInvariant()}",
+            correlationId: correlacion?.CorrelationIdActual,
+            timestamp: ahora);
+        await logs.RegistrarAsync(log, ct);
+    }
+
     private static T Resolver<T>(HttpContext contexto)
         where T : notnull
         => contexto.RequestServices.GetService<T>()
@@ -156,4 +255,10 @@ internal static class EndpointsSimulacion
         IReadOnlyCollection<string>? Tags);
 
     private sealed record OtpAdminRequest(string? Numero, string? Codigo);
+
+    private sealed record WebhookEntranteSimuladoRequest(
+        string? Numero,
+        string? Texto,
+        string? WhatsappMessageId,
+        string? PhoneNumberIdDestino);
 }

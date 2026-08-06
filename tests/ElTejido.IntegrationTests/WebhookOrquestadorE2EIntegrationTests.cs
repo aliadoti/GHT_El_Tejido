@@ -83,6 +83,31 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         conversaciones.Ultima!.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoRepregunta);
     }
 
+    [Fact]
+    public async Task DTQA01_MensajeInyectado_RecorreLaMismaColaYOfreceLaPreguntaInicial()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+
+        using var fabrica = Construir(gateway, conversaciones);
+        using var client = fabrica.CreateClient();
+
+        using var respuesta = await client.PostAsJsonAsync(
+            "/diagnostico/simulacion/webhook-entrante",
+            new
+            {
+                numero = Numero,
+                texto = "Hola",
+                whatsappMessageId = "wamid.DTQA.1",
+            });
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+
+        gateway.Enviados.Should().ContainSingle();
+        gateway.Enviados.Single().Tipo.Should().Be(TipoEnvioMensaje.Inicial);
+    }
+
     /// <summary>
     /// I-19 §13: recorrido completo de una idea por el webhook real — aporte → propuesta →
     /// confirmación → evaluación de la versión consolidada → cierre madura con curaduría pendiente y su

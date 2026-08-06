@@ -74,4 +74,8 @@ public enum TipoEventoSeguridad
     // P-30 (10 §6.2): oferta, selección y reapertura de una idea histórica. Solo ids internos,
     // conteos y resultado; nunca el resumen/título ni el texto libre del participante.
     RetomarIdea,
+
+    // DT-QA-01: inyección de un webhook entrante por la herramienta de simulación ya autenticada.
+    // Conserva solo el origen y si el id fue generado; nunca el número ni el texto del participante.
+    SimulacionWebhookEntrante,
 }

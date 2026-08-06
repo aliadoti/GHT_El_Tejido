@@ -1023,3 +1023,19 @@
   reemplaza usando el mismo detector/normalización. Corte 2 conserva pendiente la validación con
   registro seguro y el historial/rollback. Sin cambio remoto ni activación de P-27.
 - Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`.
+
+### inyeccion-webhook-diagnostico-dt-qa-01 - Endpoint de diagnóstico para inyectar mensaje entrante sin firma
+- Fecha: 2026-08-05 - Agente/Rol: Arquitecto/Backend/AppSec/SDET - Commit: pendiente local
+- Contexto: el webhook real `/webhook/whatsapp` exige firma HMAC con el App Secret de Meta (`EndpointsWebhook.RecibirAsync` → `VerificarFirma`), sin bypass. El despliegue está conectado a Meta real, así que simular un mensaje entrante obligaría a exponer ese secreto. Se necesita correr las pruebas E2E conversacionales (solo simulación, sin números reales) contra el desplegado sin exponerlo. Spec DT-QA-01.
+- Decision:
+  - Añadir `POST /diagnostico/simulacion/webhook-entrante` en el grupo `/diagnostico/simulacion`, protegido por `FiltroClaveDiagnostico` (X-Diag-Key) y mapeado solo en Development o con `Simulacion:Habilitada=true` (mismo gating que crear-admin/emitir-OTP).
+  - El endpoint construye un `WhatsAppWebhookPayload` a partir de `{numero, texto, whatsappMessageId?, phoneNumberIdDestino?}` y encola por `IColaWebhook.EncolarAsync` — el mismo paso que hace el webhook real tras validar la firma. NO exige firma (ya está autenticado por la clave de diagnóstico).
+  - Idempotencia por `whatsappMessageId` (si falta, se deriva determinista); observabilidad con `origen=simulacionDiagnostico` sin volcar el texto a logs.
+  - NO se relaja la verificación de firma del webhook real; `/webhook/whatsapp` sigue exigiéndola. El App Secret de Meta no participa en este camino.
+- Alternativa(s) descartada(s): firmar el webhook del lado cliente (expone el App Secret real); rotar el App Secret tras exponerlo (riesgoso cerca de la convención, rompe el webhook real); usar WhatsApp real (el usuario quiere solo simulación); relajar la firma del webhook real (abre superficie de ataque).
+- Impacto / reversibilidad: aditivo, solo herramienta de diagnóstico; no cambia contratos de producto ni Cosmos. Rollback = no mapear el endpoint o apagar `Simulacion:Habilitada`. Requiere desplegar para usarlo contra Azure.
+- Estado de implementación 2026-08-05: DONE local. El endpoint normaliza el número, crea el payload
+  mínimo estándar y lo encola por `IColaWebhook`; el id ausente se deriva de número+texto+día UTC para
+  reutilizar el dedupe. `LogSeguridad(simulacionWebhookEntrante)` conserva solo el origen, si el id fue
+  generado y el correlationId; nunca número ni texto. El webhook real continúa devolviendo 401 sin firma.
+- Spec: `Iniciativas/DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md`.

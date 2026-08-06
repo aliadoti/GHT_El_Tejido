@@ -4,6 +4,30 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-05 por Codex (Arquitecto/Backend/AppSec/SDET): **`DT-QA-01` DONE
+  local — inyección segura de webhook para E2E desplegado.** `POST
+  /diagnostico/simulacion/webhook-entrante`, bajo el mismo gating Development/`Simulacion:Habilitada`
+  y `X-Diag-Key`, normaliza `{numero,texto,whatsappMessageId?,phoneNumberIdDestino?}`, construye el
+  payload estándar y lo encola por `IColaWebhook`, sin leer, aceptar ni exponer el App Secret de Meta.
+  Si el id no llega, se deriva establemente de número+texto+día UTC para el dedupe existente. La
+  auditoría append-only registra solo `origen=simulacionDiagnostico`, si el id fue generado y el
+  correlationId; nunca número ni texto. **Verificado:** build Release sin advertencias, 7 integraciones
+  focalizadas y backend no calibración **734/734** (658 unitarias + 76 de integración), formato y diff
+  verdes. El webhook real mantiene 401 sin firma.
+  Pendiente solo desplegar controladamente para Azure; sin push ni cambio remoto. **Siguiente:
+  DT-P27-01 corte 2.**
+- Ultima actualizacion: 2026-08-05 (Arquitecto/Analista/QA): **`DT-QA-01` PRIORIZADA como el siguiente
+  cambio de código (habilitador de pruebas E2E).** El webhook real exige firma HMAC con el App Secret
+  de Meta (`EndpointsWebhook.RecibirAsync`), sin bypass; simular un mensaje entrante obliga hoy a
+  exponer ese secreto (crítico porque el despliegue está conectado a Meta real). DT-QA-01 añade
+  `POST /diagnostico/simulacion/webhook-entrante` (grupo `/diagnostico/simulacion`, protegido por
+  `FiltroClaveDiagnostico` = `X-Diag-Key`, mapeado solo en Development o `Simulacion:Habilitada`), que
+  construye el `WhatsAppWebhookPayload` y **encola por `IColaWebhook`** sin exigir firma (ya autenticado
+  por la clave). **No** relaja la firma del webhook real. Con esto, el probador/agente solo necesita la
+  clave de diagnóstico y el App Secret de Meta **no sale de Key Vault**. Aditivo; requiere **desplegar**
+  para usarlo contra Azure. Después se retoma **DT-P27-01 corte 2**. Spec:
+  `Iniciativas/DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md`; supuesto
+  `SUPUESTOS.md#inyeccion-webhook-diagnostico-dt-qa-01`. Sin código, push ni cambio remoto en esta entrada.
 - Ultima actualizacion: 2026-08-05 por Codex (Arquitecto/Backend/SDET): **DT-P27-01 corte 1 de 2
   DONE local — listas globales de salida con fallback seguro.** `OpcionesConversacion` ya enlaza
   `FrasesFinalizarIdea` y `FrasesFinalizarParticipacion`; el orquestador entrega ambas a la política
@@ -630,6 +654,9 @@
   únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a
   `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. No cambiar alias, agregar edición
   por campaña, activar P-27, desplegar ni modificar configuración remota.
+- [x] **(HECHO 2026-08-05, Codex — 7 integraciones focalizadas verdes) DT-QA-01.** El endpoint
+  diagnosticado recibe una entrada de prueba con `X-Diag-Key`, la encola sin exponer el App Secret y
+  conserva firma real, dedupe y auditoría sin PII. Pendiente solo despliegue controlado para usarlo en Azure.
 - [x] **(HECHO 2026-08-05, Codex — backend 730: 658 unit + 72 integración; build Release y prueba
   focalizada verdes) DT-P27-01 corte 1 de 2.** Lectura de las dos listas desde app config, fallback a
   los defaults compilados y normalización compartida; QAS y continuidad sincronizados.
@@ -794,7 +821,7 @@
 - [x] **(HECHO 2026-07-13, Claude Opus 4.8 — backend verificado verde; frontend pendiente por Node) P-03 sistema de reinicio de datos (primer paso del Sprint 1a).** Rol: Arquitecto/Backend/SDET/AppSec. Dos endpoints admin nuevos (aditivos, `04 §5.3`): `POST /api/admin/campanias/{id}/participantes/{usuarioId}/reiniciar` y `POST /api/admin/campanias/{id}/reiniciar-datos` (subconjunto por `usuarioIds` o toda la campania). `ServicioReinicioDatos` (Application) borra **fisicamente** conversaciones/mensajes/respuestas/evaluaciones/artefactos + blob (tolerado), **resetea** participantes (`estadoRespuesta=sinRespuesta`, `fechaUltimaRespuesta=null`; con `reiniciarEnvios` ademas `estadoEnvio=pendiente`+`fechaPrimerEnvio=null`) y **conserva** campania/config/usuarios; idempotente; reporte de conteos. Puertos internos nuevos `IRepositorioConversaciones/IRepositorioRespuestas.EliminarPorUsuarioAsync` (impls Memoria+Cosmos) y `IAlmacenBlob.EliminarAsync`. Enum aditivo `TipoEventoSeguridad.AccionAdministrativa` + `LogSeguridad` con conteos+correlationId (sin PII). Flag global `Seguridad:PermitirReinicioDatos` (default `true`) gatea el masivo (409 si `false`; se apaga en el freeze). Portal: botones por participante y masivo (confirmacion fuerte por nombre) en el detalle de campania con reporte en toast. Sin cambio de contratos `03`; `04` aditivo (commit aparte). Cubre REQ §26, ARQ §6/§13. **Backend VERIFICADO local (2026-07-13, SDK 8.0.128): `dotnet build -c Release -warnaserror` = 0 warn/0 err; `dotnet test -c Release` = 241 unit + 45 integration = 286 en verde (18 nuevas: 5 repos memoria + 8 servicio + 2 Cosmos + 3 integration cold-start/409/401); `dotnet format --verify-no-changes` limpio.** **Falta:** frontend `npm run lint/test/build` (requiere Node `^22.22.3 || ^24.15.0 || >=26`; la WSL tiene Node 18) y commitear. Docs: `SUPUESTOS.md#reinicio-datos`, `04 §5.3`.
 - Como continuar:
   - **Estado WhatsApp real (actualizado 2026-07-20): OPERATIVO.** El billing `131042` quedo resuelto (moneda + metodo de pago configurados en la WABA), la **plantilla de inicio esta aprobada por Meta y configurada** (P-02) y el **flujo E2E real quedo validado** (P-01): envio de plantilla → ventana 24h → evaluacion LLM → Markdown, con estados de entrega monitoreados (`sent`/`delivered`/`read`; `TrabajadorWebhook` loguea `failed` con `code/detalle`).
-  - **Simulacion (sigue disponible para pruebas sin costo):** poner `Simulacion__Habilitada=true` + clave de diagnostico (`X-Diag-Key`); en `/simulacion-whatsapp` enviar el webhook entrante firmado (App secret = valor de `wa-appsec`) con el numero del participante y un texto de respuesta, y verificar en **Resultados** que se creo Respuesta + Evaluacion + retro + Markdown (`Guia_Prueba_E2E_Simulada_WhatsApp.md §7`). Recordar `P-03`: el reinicio de datos desde el portal evita limpiar Cosmos a mano entre pruebas.
+  - **Simulacion (sigue disponible para pruebas sin costo):** poner `Simulacion__Habilitada=true` + clave de diagnostico (`X-Diag-Key`); contra Azure usar `POST /diagnostico/simulacion/webhook-entrante` con número y texto, sin entregar el App Secret de Meta, y verificar en **Resultados** que se creó Respuesta + Evaluación + retro + Markdown. En local Development se conserva la página de simulación con su secreto de prueba. Recordar `P-03`: el reinicio de datos desde el portal evita limpiar Cosmos a mano entre pruebas.
   - **Camino con WhatsApp real (ya habilitado):** la plantilla inicial aprobada esta configurada en Azure (`WhatsApp__PlantillaEnvioInicial__Nombre=el_tejido_inicio_campania`, `WhatsApp__PlantillaEnvioInicial__Idioma=es_CO`, componentes `nombre`/`campania`); enviar el mensaje inicial de campania desde el portal (Envios), que el participante responda, y verificar el hilo. `/health/ready` debe estar en `ok`.
   - **Antes de produccion abierta:** revisar la deuda tecnica de abajo (filtros de consulta, cupos/guardrails).
 
@@ -892,6 +919,7 @@
 | P-29 | Cierre conversacional por tiempo | DONE local 2/2; D5/UAT/costo pendiente | `09d4d84` + cambios locales corte 2 | backend 723/723 (651+72), build/format/diff verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 sin temporizador, umbral, estado ni motivo nuevos. |
 | P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | EN CURSO 1/2 | pendiente | backend 730/730 (658+72), build/focalizadas/formato verdes | Corte 1: lectura global, fallback a defaults y normalización compartida. Corte 2: validación/registro e historial/rollback. Sin cambio de alias, flags ni configuración remota. |
+| DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
 
@@ -1286,6 +1314,13 @@
   sin reenviar. Se actualizó la especificación P-03 y las guías QAS. Verificado: build de producción
   Angular, E2E focalizada del portal 10/10 e integración P-03 3/3; `git diff --check` limpio. Sin
   push, despliegue ni configuración remota.
+- 2026-08-05 - Codex - **DT-QA-01 DONE local: inyección de webhook de diagnóstico segura.** Rol:
+  Arquitecto/Backend/AppSec/SDET; cubre DT-QA-01 §§2–7, `04 §6.2`, `10 §3/§6` y el supuesto
+  `#inyeccion-webhook-diagnostico-dt-qa-01`. Se agregó el endpoint protegido que normaliza y encola el
+  payload mínimo por la cola existente, con id explícito o derivado para dedupe y auditoría sin PII.
+  Pruebas de acceso/payload/auditoría/id/firma y recorrido cola→orquestador: 7/7 verdes. No cambió el
+  webhook real, el App Secret, Cosmos, configuración remota, despliegue ni push. Handoff: DT-P27-01
+  corte 2.
 - 2026-08-05 - Codex - **DT-P27-01 corte 1/2 DONE local: alias de finalización configurables con
   fallback.** Rol: Arquitecto/Backend/SDET; cubre DT-P27-01 §§4/8/9 y `05 §4.4`, `07 §4/§5`,
   `10 §6`. Se enlazaron las listas globales para finalizar idea/participación, se conservaron los

@@ -213,3 +213,74 @@ Debe tener tres partes: **cabecera de entorno**, **tabla de resultados** y **res
 
 > Nota de estado: los flags de las capacidades nuevas (P-26..P-30, DT-P27-01) nacen **apagados**; para
 > probarlos, enciéndelos según la columna «Flag» y vuélvelos a apagar al terminar (postura segura para el día-D).
+
+---
+
+## 8. Modalidad B — contra el sistema DESPLEGADO (Azure)
+
+Preferida cuando hay que probar la **evaluación LLM real**: la app desplegada lee la LLM key desde
+**Key Vault** en tiempo de ejecución, así que **el agente nunca la ve**. Igual a §2–§5 pero sobre la URL
+de Azure. (Base: `Guia_Prueba_E2E_Simulada_WhatsApp.md §7`.)
+
+### 8.1 Preparación (lo hace un HUMANO en el App Service, no el agente)
+1. Confirmar que responde `GET https://<tuapp>.azurewebsites.net/health` = 200.
+2. **`Simulacion:Habilitada=true`** en App Settings → Apply (reinicia la app). **Apagar al terminar.**
+3. **Clave de diagnóstico** configurada (`Diagnostico__ClaveSecretName=diag-key` o `Diagnostico__Clave=<cadena>`).
+4. En Key Vault: `jwt-sign` y `otp-salt` (login); `wa-appsec` sigue configurado para el webhook real,
+   pero **no se entrega ni se usa** para inyectar entradas simuladas. La **LLM key ya está** (config
+   `OpenRouter-Terra`).
+
+### 8.2 Qué recibe el agente (y qué NO)
+- **Sí:** la **URL base** y la **clave de diagnóstico** (header `X-Diag-Key`).
+- **No:** la LLM key (vive en Key Vault). Validación por `/api/admin/*` sobre esa URL.
+
+### 8.3 Datos: reutilizar lo que ya existe (no recrear)
+Al crear la campaña de prueba, **selecciona los activos ya cargados** en la Cosmos desplegada:
+- **Rúbrica:** `rúbrica OpenBrain v3.4`
+- **Prompt:** `Evaluación con rubrica OpenBrain Thought-Scoring`
+- **Config LLM:** `OpenRouter-Terra`
+
+**Saltar** los sub-pasos de E3 que crean rúbrica / prompt / config LLM (ya están OK). Sí crear: la
+**campaña**, sus **preguntas**, el **mensaje inicial**, **asociar participantes** y ponerla **activa**.
+
+### 8.4 Ajustes al catálogo E1–E19 en esta modalidad
+- **E3:** solo cablear los activos existentes en una campaña nueva (no crear rúbrica/prompt/LLM).
+- **E5 / E6 / E9 / E18 (puntaje):** ahora con **LLM real** → resultado **PASS/FAIL** (ya no BLOCKED).
+- **E4 (envío inicial real):** depende de `wa-token`/`PhoneNumberId` reales en el deployed; si no están,
+  el envío real falla (esperado). El camino entrante simulado (webhook) funciona igual.
+- **E16 (reinicio P-03):** probar el mecanismo **por participante** solo si un caso necesita cold-start.
+
+### 8.5 NO borrar datos al terminar
+**No** ejecutes un reinicio masivo al final. **Conserva las campañas, ideas y evaluaciones** de prueba
+para poder revisarlas. Registra los `ideaId`/`conversacionId` en el archivo de resultados. Al cerrar,
+solo pide al humano **apagar `Simulacion:Habilitada`**.
+
+### 8.6 Simular el mensaje entrante SIN exponer el App Secret (DT-QA-01)
+El despliegue está conectado a **WhatsApp real**, así que `wa-appsec` es el **App Secret real de Meta**
+y no debe exponerse. En vez de firmar el webhook, usa el **endpoint de inyección de diagnóstico**
+(`DT-QA-01`), autenticado solo por la **clave de diagnóstico**:
+
+```
+POST https://<tuapp>.azurewebsites.net/diagnostico/simulacion/webhook-entrante
+Header: X-Diag-Key: <clave de diagnóstico>
+Body:  { "numero": "573001112201", "texto": "…" }
+→ 200; el mensaje se procesa igual que un webhook real (mismo flujo asíncrono).
+```
+
+- El agente **solo necesita `X-Diag-Key`** (no `wa-appsec`). El App Secret de Meta **no sale de Key Vault**.
+- **Requisito:** DT-QA-01 debe estar **implementado y desplegado**. Si el endpoint responde 404, aún no
+  está desplegado → **detente y avísale al usuario** (no intentes firmar con el App Secret real).
+
+### 8.7 Alcance de esta corrida (acordado 2026-08-05)
+- **Probar (conversacionales):** E2, E5, E6, E7, E8, E9, E10, E11, E12, E13, E14, E18, E19.
+- **Omitir (ya probadas):** E1 (login), E4 (envío), E15 (carga masiva), E16 (reinicio).
+- **Flags globales (los enciende el HUMANO en Azure App Settings para la ventana de prueba):**
+  `Conversacion:DespertarProactivoHabilitado` (E12), `Conversacion:RetomarIdeasHabilitado` (E13),
+  `Conversacion:CierrePorTiempoHabilitado` (E10, mensaje de pausa), `Conversacion:ClasificacionIntencionControl` (E14,
+  clasificador LLM; los alias deterministas funcionan sin él). Apagar todos al terminar.
+- **Flags por campaña (los pone el AGENTE al crear la campaña):** `participacionContinua=true` (E11),
+  `segmentacionIdeas=true` (E7), `coachingSecuencialIdeas=true` (E8), `minutosInactividadSesion` bajo (E10),
+  `umbral` de madurez (E9). Madurez (I-17) y consolidación/redacción (I-19/I-20) ya están activas.
+- **E3 = preparación, no prueba:** reutiliza los activos ya cargados (rúbrica `rúbrica OpenBrain v3.4`,
+  prompt `Evaluación con rubrica OpenBrain Thought-Scoring`, config LLM `OpenRouter-Terra`); solo crea la
+  campaña, sus preguntas, el mensaje inicial, asocia participantes y ponla activa. No se puntúa.

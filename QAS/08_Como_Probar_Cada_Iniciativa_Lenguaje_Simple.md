@@ -166,6 +166,27 @@ o el resumen aparece para una idea en incubación.
 
 ## B. Lo que se prueba conversando (simulación o WhatsApp real)
 
+### ✅ DT-QA-01 — Probar una conversación de ensayo sin compartir una clave sensible
+
+**Qué es:** una forma segura de enviar un mensaje de prueba al sistema desplegado sin usar ni mostrar la
+clave privada de WhatsApp. Requiere que el equipo técnico haya publicado esta versión y habilitado la
+simulación solo durante la prueba.
+
+1. Pide al equipo técnico la dirección de pruebas y una clave temporal de diagnóstico; no pidas la clave
+   privada de WhatsApp.
+2. Con la herramienta de pruebas, elige un participante de prueba y escribe un mensaje corto, por ejemplo
+   “Hola”. Envía el mensaje.
+3. **Deberías ver:** una confirmación inmediata de que el mensaje fue recibido. Espera unos segundos.
+4. Abre **Resultados** o la conversación de esa persona. **Deberías ver:** la misma pregunta inicial o
+   respuesta que recibiría una persona por WhatsApp normal.
+5. Envía exactamente el mismo mensaje de ensayo otra vez con su mismo identificador. **Deberías ver:** que
+   no se duplica la conversación ni aparecen dos resultados iguales.
+6. Al terminar, pide al equipo técnico que cierre la simulación.
+
+**Algo va mal si:** la herramienta pide la clave privada de WhatsApp, el mensaje crea dos conversaciones,
+no aparece ninguna respuesta después de esperar, o un mensaje normal de WhatsApp deja de ser rechazado
+cuando no tiene una firma válida.
+
 ### ✅ I-19/P-25 — Construir, calificar y mejorar una sola idea completa
 
 **Qué es:** cada respuesta del participante complementa la misma idea. El sistema la consolida y
