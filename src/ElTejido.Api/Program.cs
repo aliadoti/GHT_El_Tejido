@@ -11,6 +11,7 @@ using ElTejido.Application.Mantenimiento;
 using ElTejido.Application.Reinicio;
 using ElTejido.Application.Usuarios.CargaMasiva;
 using ElTejido.Infrastructure.Configuracion;
+using ElTejido.Infrastructure.Usuarios;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,8 +37,9 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
     builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
     builder.Services.AddScoped<IServicioPurgaCampanias, ServicioPurgaCampanias>();
-    // I-08: carga masiva de participantes. Lector CSV sin dependencia (Sprint 1a); el puerto admite
-    // sumar un lector .xlsx en Infraestructura mas adelante sin tocar el servicio.
+    // I-08 v2: carga masiva con la plantilla oficial de GHT. El .xlsx es el formato primario (es el
+    // que entrega GHT) y el .csv queda como respaldo; el servicio elige por extension.
+    builder.Services.AddSingleton<ILectorArchivoParticipantes, LectorXlsxParticipantes>();
     builder.Services.AddSingleton<ILectorArchivoParticipantes, LectorCsvParticipantes>();
     builder.Services.AddScoped<IServicioCargaMasiva, ServicioCargaMasiva>();
 }

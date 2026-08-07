@@ -4,16 +4,15 @@ using ElTejido.Application.Common;
 namespace ElTejido.Application.Usuarios.CargaMasiva;
 
 /// <summary>
-/// Lector CSV de la plantilla de carga masiva (I-08), sin dependencias externas (Sprint 1a). Interpreta
-/// comillas dobles al estilo RFC 4180 (campos entrecomillados, comas y saltos de linea dentro de
-/// comillas, <c>""</c> como comilla escapada) y ambos finales de linea (<c>\n</c>/<c>\r\n</c>). La
-/// plantilla tiene cabecera obligatoria y columnas fijas por posicion:
-/// <c>Nombre, WhatsApp, Area, Empresa, Tags</c> (las <c>Tags</c> se separan con <c>;</c>).
+/// Lector CSV de la plantilla oficial de GHT (I-08 §3), sin dependencias externas. Interpreta comillas
+/// dobles al estilo RFC 4180 (campos entrecomillados, comas y saltos de linea dentro de comillas,
+/// <c>""</c> como comilla escapada) y ambos finales de linea (<c>\n</c>/<c>\r\n</c>). Cabecera
+/// obligatoria y 9 columnas fijas por posicion; los nombres y su validacion viven en
+/// <see cref="PlantillaParticipantes"/>, compartidos con el lector <c>.xlsx</c>.
+/// <para>Es el formato de respaldo: el primario es el <c>.xlsx</c> que entrega GHT (I-08 §10).</para>
 /// </summary>
 public sealed class LectorCsvParticipantes : ILectorArchivoParticipantes
 {
-    private static readonly string[] Cabecera = { "Nombre", "WhatsApp", "Area", "Empresa", "Tags" };
-
     public bool Soporta(string extensionArchivo)
         => string.Equals(extensionArchivo, ".csv", StringComparison.OrdinalIgnoreCase);
 
@@ -33,7 +32,7 @@ public sealed class LectorCsvParticipantes : ILectorArchivoParticipantes
                 new[] { new DetalleError("archivo", "vacio") });
         }
 
-        ValidarCabecera(registros[0]);
+        PlantillaParticipantes.ValidarCabecera(registros[0]);
 
         var filas = new List<FilaParticipanteCarga>(registros.Count - 1);
         for (var indice = 1; indice < registros.Count; indice++)
@@ -41,60 +40,35 @@ public sealed class LectorCsvParticipantes : ILectorArchivoParticipantes
             var campos = registros[indice];
             if (campos.All(string.IsNullOrWhiteSpace))
             {
-                continue; // Linea en blanco: se ignora pero conserva el numero de fila del archivo.
+                // Fila totalmente vacia: se descarta (la V1 de GHT trae una) sin correr la numeracion.
+                continue;
             }
+
+            PlantillaParticipantes.ParsearAntiguedad(
+                Columna(campos, PlantillaParticipantes.IndiceAntiguedad),
+                out var antiguedad,
+                out var antiguedadIlegible);
 
             var numeroFila = indice + 1; // La cabecera es la fila 1 (1-based, como en una hoja de calculo).
             filas.Add(new FilaParticipanteCarga(
                 numeroFila,
-                Columna(campos, 0),
-                Columna(campos, 1),
-                Columna(campos, 2),
-                Columna(campos, 3),
-                ParsearTags(Columna(campos, 4))));
+                Columna(campos, PlantillaParticipantes.IndiceEmpresa),
+                Columna(campos, PlantillaParticipantes.IndiceEmpresaId),
+                Columna(campos, PlantillaParticipantes.IndiceSede),
+                Columna(campos, PlantillaParticipantes.IndiceNombre),
+                Columna(campos, PlantillaParticipantes.IndiceCargo),
+                Columna(campos, PlantillaParticipantes.IndiceEmail),
+                antiguedad,
+                antiguedadIlegible,
+                Columna(campos, PlantillaParticipantes.IndiceIdioma),
+                Columna(campos, PlantillaParticipantes.IndiceTelefono)));
         }
 
         return filas;
     }
 
-    private static void ValidarCabecera(IReadOnlyList<string> cabecera)
-    {
-        var valida = cabecera.Count >= Cabecera.Length
-            && Cabecera
-                .Select((nombre, indice) => string.Equals(cabecera[indice].Trim(), nombre, StringComparison.OrdinalIgnoreCase))
-                .All(coincide => coincide);
-
-        if (!valida)
-        {
-            throw new ErrorValidacion(
-                "La cabecera del archivo no coincide con la plantilla (Nombre, WhatsApp, Area, Empresa, Tags).",
-                new[] { new DetalleError("cabecera", "invalida") });
-        }
-    }
-
     private static string? Columna(IReadOnlyList<string> campos, int indice)
-    {
-        if (indice >= campos.Count)
-        {
-            return null;
-        }
-
-        var valor = campos[indice].Trim();
-        return valor.Length == 0 ? null : valor;
-    }
-
-    private static IReadOnlyCollection<string> ParsearTags(string? valor)
-    {
-        if (string.IsNullOrWhiteSpace(valor))
-        {
-            return Array.Empty<string>();
-        }
-
-        return valor
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-    }
+        => indice >= campos.Count ? null : PlantillaParticipantes.Normalizar(campos[indice]);
 
     // Maquina de estados minima RFC 4180: separa el texto en registros (filas) y campos (columnas),
     // respetando comillas. Devuelve un registro por fila del archivo, en orden, incluidas las vacias.

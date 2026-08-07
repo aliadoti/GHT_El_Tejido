@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Usuarios;
@@ -102,10 +103,12 @@ internal static class EndpointsAdminConfiguracion
         }
 
         var extension = Path.GetExtension(archivo.FileName);
-        if (!string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
+        var formatoAdmitido = string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase);
+        if (!formatoAdmitido)
         {
             throw new ErrorValidacion(
-                "Solo se admite archivo .csv.",
+                "Solo se admiten archivos .xlsx y .csv.",
                 new[] { new DetalleError("archivo", "formato_no_soportado") });
         }
 
@@ -119,13 +122,54 @@ internal static class EndpointsAdminConfiguracion
         }
 
         var campaniaId = ResolverCampaniaId(contexto, formulario);
+        var modo = ResolverModo(contexto, formulario);
+        var resoluciones = ResolverReasignaciones(formulario);
 
         await using var contenido = archivo.OpenReadStream();
         var reporte = await contexto.RequestServices
             .GetRequiredService<IServicioCargaMasiva>()
-            .CargarAsync(archivo.FileName, contenido, campaniaId, cancellationToken);
+            .CargarAsync(archivo.FileName, contenido, campaniaId, modo, resoluciones, cancellationToken);
 
         return Results.Ok(MapearReporteCargaMasiva(reporte));
+    }
+
+    private static string ResolverModo(HttpContext contexto, IFormCollection formulario)
+    {
+        var desdeQuery = contexto.Request.Query["modo"].ToString();
+        if (!string.IsNullOrWhiteSpace(desdeQuery))
+        {
+            return desdeQuery.Trim();
+        }
+
+        var desdeForm = formulario["modo"].ToString();
+        return string.IsNullOrWhiteSpace(desdeForm) ? ModoCargaMasiva.Upsert : desdeForm.Trim();
+    }
+
+    /// <summary>
+    /// Decisiones del admin sobre los conflictos de titular, en la segunda pasada del mismo archivo
+    /// (04 §5.1). Viajan como campo del formulario con un arreglo JSON <c>[{fila, accion}]</c>.
+    /// </summary>
+    private static IReadOnlyCollection<ResolucionConflictoTitular> ResolverReasignaciones(
+        IFormCollection formulario)
+    {
+        var crudo = formulario["reasignaciones"].ToString();
+        if (string.IsNullOrWhiteSpace(crudo))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<ResolucionConflictoTitular[]>(
+                crudo,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
+        }
+        catch (JsonException)
+        {
+            throw new ErrorValidacion(
+                "El campo 'reasignaciones' debe ser un arreglo JSON de {fila, accion}.",
+                new[] { new DetalleError("reasignaciones", "invalido") });
+        }
     }
 
     private static string? ResolverCampaniaId(HttpContext contexto, IFormCollection formulario)
@@ -437,10 +481,20 @@ internal static class EndpointsAdminConfiguracion
             reporte.TotalFilas,
             reporte.Creados,
             reporte.Actualizados,
+            reporte.Reasignados,
             reporte.Rechazados,
             reporte.Asociados,
             reporte.Filas
-                .Select(f => new ResultadoFilaCargaDto(f.Fila, f.Resultado, f.UsuarioId, f.Motivo))
+                .Select(f => new ResultadoFilaCargaDto(
+                    f.Fila,
+                    f.Resultado,
+                    f.UsuarioId,
+                    f.Motivo,
+                    f.CodigoUsuario,
+                    f.UsuarioIdAnterior,
+                    f.CodigoUsuarioAnterior,
+                    f.NombreActual,
+                    f.NombrePropuesto))
                 .ToArray());
 
     private static TagAdminDto MapearTag(Tag tag)
@@ -526,15 +580,25 @@ internal static class EndpointsAdminConfiguracion
         int TotalFilas,
         int Creados,
         int Actualizados,
+        int Reasignados,
         int Rechazados,
         int Asociados,
         IReadOnlyCollection<ResultadoFilaCargaDto> Filas);
 
+    /// <summary>
+    /// Fila del reporte (04 §5.1). Los campos del titular anterior y los nombres solo vienen en un
+    /// <c>conflicto_titular</c> o una reasignacion, para que el portal muestre <i>actual vs. propuesto</i>.
+    /// </summary>
     private sealed record ResultadoFilaCargaDto(
         int Fila,
         string Resultado,
         string? UsuarioId,
-        string? Motivo);
+        string? Motivo,
+        int? CodigoUsuario,
+        string? UsuarioIdAnterior,
+        int? CodigoUsuarioAnterior,
+        string? NombreActual,
+        string? NombrePropuesto);
 
     private sealed record RespuestaPaginada<T>(
         IReadOnlyCollection<T> Items,
