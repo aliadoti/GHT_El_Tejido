@@ -198,7 +198,8 @@ internal static class EndpointsAdminFase4
                 request.MaxRepreguntas,
                 request.LimitesSeguridad is null ? null : ToLimitesPregunta(request.LimitesSeguridad),
                 request.ConfigMarkdown is null ? null : ToConfigMarkdown(request.ConfigMarkdown),
-                request.UmbralCierreAnticipado),
+                request.UmbralCierreAnticipado,
+                request.UmbralResumenConsolidacion),
             ct)));
 
     private static async Task<IResult> EliminarPreguntaAsync(string id, string preguntaId, HttpContext contexto, CancellationToken ct)
@@ -435,7 +436,8 @@ internal static class EndpointsAdminFase4
             request.MaxRepreguntas ?? 1,
             ToLimitesPregunta(request.LimitesSeguridad),
             ToConfigMarkdown(request.ConfigMarkdown),
-            request.UmbralCierreAnticipado);
+            request.UmbralCierreAnticipado,
+            request.UmbralResumenConsolidacion);
 
     private static SolicitudGuardarRubrica ToSolicitudRubrica(RubricaRequest request)
         => new(
@@ -500,7 +502,9 @@ internal static class EndpointsAdminFase4
             request?.CoachingSecuencialIdeas ?? false,
             request?.MinutosCoachingPorIdea,
             request?.ParticipacionContinua ?? false,
-            request?.ClasificacionIntencionControl ?? false);
+            request?.ClasificacionIntencionControl ?? false,
+            request?.UmbralResumenConsolidacion,
+            request?.ResumenConsolidacion ?? true);
 
     private static LimitesSeguridad ToLimitesCampania(LimitesSeguridadRequest? request)
         => LimitesSeguridad.Crear(
@@ -579,6 +583,7 @@ internal static class EndpointsAdminFase4
             limitesSeguridad = MapearLimitesPregunta(pregunta.LimitesSeguridad),
             configMarkdown = MapearConfigMarkdown(pregunta.ConfigMarkdown),
             pregunta.UmbralCierreAnticipado,
+            pregunta.UmbralResumenConsolidacion,
         };
 
     private static object MapearParticipante(ParticipanteCampania participante)
@@ -663,6 +668,8 @@ internal static class EndpointsAdminFase4
             config.NumeroWhatsAppSaliente,
             config.ParticipacionContinua,
             config.ClasificacionIntencionControl,
+            config.UmbralResumenConsolidacion,
+            config.ResumenConsolidacion,
         };
 
     private static object MapearLimitesCampania(LimitesSeguridad limites)
@@ -817,14 +824,16 @@ internal static class EndpointsAdminFase4
         int? MinutosInactividadSesion,
         string? NumeroWhatsAppSaliente,
         bool? ParticipacionContinua,
-        bool? ClasificacionIntencionControl);
+        bool? ClasificacionIntencionControl,
+        double? UmbralResumenConsolidacion,
+        bool? ResumenConsolidacion);
     private sealed record LimitesSeguridadRequest(int? MaxCaracteresMensaje, int? MaxMensajesPorUsuario, int? MaxLlamadasLlmPorUsuario, int? PresupuestoTokensCampania);
     private sealed record LimitesSeguridadPreguntaRequest(int? MaxCaracteresMensaje, int? MaxLlamadasLlm);
     private sealed record PlantillaWhatsAppRequest(string? Nombre, string? Idioma, IReadOnlyCollection<string>? Componentes);
     private sealed record MensajeInicialRequest(string? NombreInterno, string? Texto, int? Orden, IReadOnlyCollection<string>? VariablesDinamicas, string? Estado, PlantillaWhatsAppRequest? PlantillaWhatsApp);
     private sealed record MensajeInicialPatchRequest(string? NombreInterno, string? Texto, int? Orden, IReadOnlyCollection<string>? VariablesDinamicas, string? Estado, PlantillaWhatsAppRequest? PlantillaWhatsApp);
-    private sealed record PreguntaRequest(string? Texto, string? Instruccion, string? Categoria, int? Orden, string? Estado, string? RubricaRef, int? VersionRubrica, IReadOnlyDictionary<string, string>? PromptRefs, int? MaxRepreguntas, LimitesSeguridadPreguntaRequest? LimitesSeguridad, ConfigMarkdownRequest? ConfigMarkdown, double? UmbralCierreAnticipado);
-    private sealed record PreguntaPatchRequest(string? Texto, string? Instruccion, string? Categoria, int? Orden, string? Estado, string? RubricaRef, int? VersionRubrica, IReadOnlyDictionary<string, string>? PromptRefs, int? MaxRepreguntas, LimitesSeguridadPreguntaRequest? LimitesSeguridad, ConfigMarkdownRequest? ConfigMarkdown, double? UmbralCierreAnticipado);
+    private sealed record PreguntaRequest(string? Texto, string? Instruccion, string? Categoria, int? Orden, string? Estado, string? RubricaRef, int? VersionRubrica, IReadOnlyDictionary<string, string>? PromptRefs, int? MaxRepreguntas, LimitesSeguridadPreguntaRequest? LimitesSeguridad, ConfigMarkdownRequest? ConfigMarkdown, double? UmbralCierreAnticipado, double? UmbralResumenConsolidacion);
+    private sealed record PreguntaPatchRequest(string? Texto, string? Instruccion, string? Categoria, int? Orden, string? Estado, string? RubricaRef, int? VersionRubrica, IReadOnlyDictionary<string, string>? PromptRefs, int? MaxRepreguntas, LimitesSeguridadPreguntaRequest? LimitesSeguridad, ConfigMarkdownRequest? ConfigMarkdown, double? UmbralCierreAnticipado, double? UmbralResumenConsolidacion);
     private sealed record AsociarParticipantesRequest(IReadOnlyCollection<string>? UsuarioIds, FiltroParticipantesRequest? Filtro);
     private sealed record ReiniciarParticipanteRequest(bool? ReiniciarEnvios);
     private sealed record ReiniciarCampaniaRequest(IReadOnlyCollection<string>? UsuarioIds, bool? ReiniciarEnvios);

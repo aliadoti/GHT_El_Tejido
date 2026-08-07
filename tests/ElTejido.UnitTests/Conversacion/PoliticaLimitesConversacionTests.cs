@@ -16,6 +16,25 @@ namespace ElTejido.UnitTests.Conversacion;
 /// </summary>
 public sealed class PoliticaLimitesConversacionTests
 {
+    [Fact]
+    public void ResolverUmbralResumen_RespetaPrecedenciaYNoAlteraUmbralBase()
+    {
+        var politica = new PoliticaLimitesConversacion(0.6, false, 0.4, true);
+        var campania = CrearCampania(umbralCampania: 0.5, umbralResumenCampania: 0.45);
+        var pregunta = CrearPregunta(umbralPregunta: 0.8, umbralResumenPregunta: 0.5);
+
+        politica.ResolverUmbralBase(campania, pregunta).Should().Be(0.8);
+        politica.ResolverUmbralResumen(campania, pregunta).Should().Be(0.5);
+        politica.OrigenUmbralResumen(campania, pregunta).Should().Be("pregunta");
+    }
+
+    [Fact]
+    public void ResolverUmbralResumen_KillSwitchApagado_DevuelveCero()
+    {
+        var politica = new PoliticaLimitesConversacion(0.6, false, 0.4, false);
+        politica.ResolverUmbralResumen(CrearCampania(umbralCampania: null), CrearPregunta(umbralPregunta: null))
+            .Should().Be(0);
+    }
     private static readonly EscalaRubrica Escala1a5 = new(1, 5);
     private static readonly DateTimeOffset Epoca = DateTimeOffset.UnixEpoch;
 
@@ -172,7 +191,7 @@ public sealed class PoliticaLimitesConversacionTests
 
     // ---- Fábricas locales --------------------------------------------------------------------------
 
-    private static Pregunta CrearPregunta(double? umbralPregunta, int maxRepreguntas = 1)
+    private static Pregunta CrearPregunta(double? umbralPregunta, int maxRepreguntas = 1, double? umbralResumenPregunta = null)
         => Pregunta.Crear(
             "p_1",
             "Pregunta 1",
@@ -186,9 +205,9 @@ public sealed class PoliticaLimitesConversacionTests
             maxRepreguntas,
             LimitesSeguridad.ParaPregunta(1500, 2),
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
-            umbralPregunta);
+            umbralPregunta, umbralResumenPregunta);
 
-    private static Campania CrearCampania(double? umbralCampania)
+    private static Campania CrearCampania(double? umbralCampania, double? umbralResumenCampania = null)
         => Campania.Crear(
             "c_1",
             "Campania c_1",
@@ -201,7 +220,7 @@ public sealed class PoliticaLimitesConversacionTests
             promptRefs: null,
             configLlmRef: "llm_1",
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Campania),
-            ConfigConversacional.Crear(1, "Gracias por participar.", umbralCierreAnticipado: umbralCampania),
+            ConfigConversacional.Crear(1, "Gracias por participar.", umbralCierreAnticipado: umbralCampania, umbralResumenConsolidacion: umbralResumenCampania),
             LimitesSeguridad.Crear(1500, 10, 2),
             usuariosHabilitados: null,
             Epoca,

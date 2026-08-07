@@ -78,4 +78,7 @@ public enum TipoEventoSeguridad
     // DT-QA-01: inyección de un webhook entrante por la herramienta de simulación ya autenticada.
     // Conserva solo el origen y si el id fue generado; nunca el número ni el texto del participante.
     SimulacionWebhookEntrante,
+
+    // P-31: disparo u omision del resumen de consolidacion, sin texto ni PII.
+    ResumenConsolidacion,
 }

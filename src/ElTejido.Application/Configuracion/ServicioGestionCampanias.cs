@@ -207,7 +207,7 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             solicitud.MaxRepreguntas,
             solicitud.LimitesSeguridad,
             solicitud.ConfigMarkdown,
-            solicitud.UmbralCierreAnticipado);
+            solicitud.UmbralCierreAnticipado, solicitud.UmbralResumenConsolidacion);
 
         await _campanias.GuardarCampaniaAsync(
             CopiarCampania(campania, preguntas: campania.Preguntas.Append(pregunta).OrderBy(p => p.Orden).ToArray()),
@@ -237,7 +237,8 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             solicitud.MaxRepreguntas ?? actual.MaxRepreguntas,
             solicitud.LimitesSeguridad ?? actual.LimitesSeguridad,
             solicitud.ConfigMarkdown ?? actual.ConfigMarkdown,
-            solicitud.UmbralCierreAnticipado ?? actual.UmbralCierreAnticipado);
+            solicitud.UmbralCierreAnticipado ?? actual.UmbralCierreAnticipado,
+            solicitud.UmbralResumenConsolidacion ?? actual.UmbralResumenConsolidacion);
         var preguntas = campania.Preguntas.Select(p => p.Id == preguntaId ? reemplazo : p).OrderBy(p => p.Orden).ToArray();
         await _campanias.GuardarCampaniaAsync(CopiarCampania(campania, preguntas: preguntas), cancellationToken);
         return reemplazo;

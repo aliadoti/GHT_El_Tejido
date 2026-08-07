@@ -120,7 +120,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
         _mensajes = opciones.Mensajes;
-        _limites = new PoliticaLimitesConversacion(opciones.UmbralCierreAnticipado, opciones.CierreAnticipadoHabilitado);
+        _limites = new PoliticaLimitesConversacion(
+            opciones.UmbralCierreAnticipado,
+            opciones.CierreAnticipadoHabilitado,
+            opciones.UmbralResumenConsolidacion,
+            opciones.ResumenConsolidacionHabilitado);
         _procesador = new ProcesadorResultadoEvaluacion(respuestas, compilador, logSeguridad, correlacion, _limites);
         _cuposHabilitados = opciones.CuposHabilitados;
         _maxTurnosPorHilo = opciones.MaxTurnosPorHilo;
@@ -1854,13 +1858,33 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var preguntaCoaching = string.IsNullOrWhiteSpace(resultado.Evaluacion.RepreguntaSugerida)
             ? EvaluadorLlm.RepreguntaNeutra
             : resultado.Evaluacion.RepreguntaSugerida.Trim();
+        var umbralResumen = _limites.ResolverUmbralResumen(campania, pregunta);
+        var enviarResumen = resultado is not ResultadoEvaluacion.Fallback
+            && idea.ResumenEnviadoEn is null
+            && _limites.UmbralAlcanzado(
+                resultado.Evaluacion.CalificacionTotal,
+                contexto.Contexto.RubricaSnapshot.Escala,
+                umbralResumen);
+        var encabezadoResumen = TextoConfigurado(
+            _mensajes.EncabezadoResumenAvance, OpcionesMensajesConversacion.EncabezadoResumenAvanceDefault);
+        var preguntaResumen = TextoConfigurado(
+            _mensajes.PreguntaContinuarMadurando, OpcionesMensajesConversacion.PreguntaContinuarMadurandoDefault);
         var turnoCoaching = await ComponerTurnoAsync(
-            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Mejorar,
-            respaldo: Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion),
+            campania, pregunta, usuario.Id, usuario.WhatsappNormalizado,
+            enviarResumen ? ActoConversacional.ResumirAvance : ActoConversacional.Mejorar,
+            respaldo: enviarResumen
+                ? Combinar(Combinar(Combinar(resultado.Evaluacion.RetroalimentacionEnviada, encabezadoResumen), version.Texto), preguntaResumen)
+                : Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion),
             ahora, cancellationToken,
-            cuerpo: resultado.Evaluacion.RetroalimentacionEnviada,
+            cuerpo: enviarResumen ? Combinar(Combinar(resultado.Evaluacion.RetroalimentacionEnviada, encabezadoResumen), version.Texto) : resultado.Evaluacion.RetroalimentacionEnviada,
+            versionCompleta: enviarResumen ? version.Texto : null,
             retroalimentacionValidada: resultado.Evaluacion.RetroalimentacionEnviada,
-            preguntaAprobada: preguntaCoaching);
+            preguntaAprobada: enviarResumen ? preguntaResumen : preguntaCoaching);
+        if (enviarResumen)
+        {
+            idea = idea.ConResumenEnviado(version.NumeroVersion, ahora);
+            await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+        }
         await EnviarAsync(
             conversacion, numero, turnoCoaching, TipoEnvioMensaje.Repregunta, emisor, ahora,
             cancellationToken);

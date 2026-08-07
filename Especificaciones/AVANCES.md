@@ -4,6 +4,57 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-06 (Backend/SDET): **`P-31` corte 1/3 y el enganche base del corte 2
+  estan implementados localmente.** Perillas independientes apagadas por defecto, precedencia,
+  opt-out, persistencia compatible y composicion idempotente; build Release y 736 pruebas verdes.
+  Falta diagnostico, telemetria y E2E/QAS antes del cierre.
+  Viene de REQ-052 (GHT, 2026-08-06): los participantes quieren visibilidad del progreso de su idea.
+  Hoy la version consolidada de I-19 solo se muestra al confirmar (§4.1) o al reabrir (§4.7); en el
+  coaching normal (P-25) nunca, y al cruzar el umbral base la rama `madura` de
+  `ConfirmarOCorregirIdeaAsync` cierra idea e hilo sin mostrarla.
+  **Decision de diseno tomada con el usuario:** dos perillas **independientes** — el
+  `umbralCierreAnticipado` vigente sigue sellando madurez (I-17, intacto) y un
+  `umbralResumenConsolidacion` **nuevo** decide cuando se muestra la consolidacion vigente. Precedencia
+  pregunta -> campania -> global en ambos.
+  **Invariantes de la spec:** no crea estado en la maquina conversacional; no toca el sellado de
+  madurez ni sus telemetrias; no consume `repreguntasUsadas`; una sola vez por idea (idempotencia
+  persistida, campos aditivos con default `null`); **no depende de los flags de P-27**; el LLM no
+  puede alterar ni omitir el texto consolidado (insercion server-side, como el acto `Confirmar`).
+  **Ojo con la calibracion:** con `umbralCierreAnticipado=0.6`, un umbral de resumen >= 0.6 nunca
+  dispara (la idea cierra por madurez primero). Rango util 0.40-0.55, o subir el umbral base si GHT
+  quiere el resumen al 70 %. Es decision de negocio y afecta la distribucion maduro/incubacion de D5.
+  **Decision abierta, no incluida:** consulta bajo demanda del consolidado ("¿como va mi idea?"); hoy
+  no existe esa ruta (`CandidatasReaperturaAsync` filtra `EstadoFlujo == Cerrada`) y la peticion se
+  consolidaria como aporte dentro de la propia idea.
+  **`DT-P27-01` corte 2 queda en pausa y cede prioridad.** Segunda solicitud del mismo dia —soporte de
+  **ingles**— pendiente de especificar. Spec:
+  `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`; requerimiento:
+  `Client_partner/.../Nuevas iniciativas/REQ-052_Visibilidad_progreso_de_la_idea.md`; supuesto:
+  `SUPUESTOS.md#resumen-consolidacion-p31`.
+- Ultima actualizacion: 2026-08-06 (QA/SDET — E2E conversacional contra Azure desplegado): **flujo
+  conversacional validado punta a punta; 13/13 funcionalmente OK.** Tres aprendizajes operativos, sin
+  cambio de código de producto (solo QA + App Settings que aplica el humano):
+  1. **Listas de frases en App Settings deben ir INDEXADAS por clave** (`Conversacion__Frases…__0`,
+     `__1`, …), nunca todo el listado en un solo value. En las primeras vueltas `FrasesDespertarProactivo`
+     quedó como un **blob** en un value; como el despertar (P-28) hace **coincidencia exacta**
+     (`DetectorEntradaProactiva`), `hola` dejó de matchear y daba **cero respuesta**. Corregido al indexar.
+  2. **E12 despertar — cómo se verifica.** P-28 **no crea conversación ni idea** por diseño: compone el
+     saludo y lo **envía saliente** (`EnviarDespertarProactivoAsync` → `_gateway.EnviarTextoAsync`),
+     registra un `EnvioMensaje(Enviado)` y un log de seguridad `despertarProactivo`
+     (`resultado=reactivacion`). No es observable por `/api/admin/conversaciones|ideas|respuestas`;
+     verificar por `/api/admin/campanias/{id}/envios` y el contenedor Cosmos `security`. Confirmado
+     (log `despertarProactivo`, `resultado:reactivacion`, `573001112209`) → **E12 PASS**; el "FAIL"
+     previo fue brecha de observabilidad, no bug.
+  3. **E14 borde del clasificador P-27 (severidad baja, degradación segura).** `ClasificadorIntencionControl.ConstruirMensajes`
+     pasa al LLM `QUEDAN_UNIDADES_PENDIENTES`; cuando es **`no`** (última idea de la cola) una **variante
+     libre no-alias** se clasifica `aportar` en vez de control (reproducible 2/2). Degrada seguro (no corta
+     la idea) y los **alias deterministas sí funcionan** en esa condición (E19). Candidato a **calibración
+     de prompt** de P-27; no bloqueante para el día-D. `PoliticaIntencionControl` (alias) está correcto.
+  - **E13 (O-6):** la reapertura solo opera dentro de la **misma conversación** donde llega el alias
+    (`CandidatasReaperturaAsync` filtra `idea.ConversacionId == conversacion.Id`); un hilo multi-idea
+    (cerrar #1 con #2 activa) reabre #1 con el mismo `ideaId`. E13 PASS.
+  - **Op:** para cierre por inactividad predecible el día-D, fijar `Conversacion:IntervaloRevisionMinutos=1`
+    (default 15; el worker barre cada N min). Recordatorio: apagar `Simulacion:Habilitada` al cerrar la ventana.
 - Ultima actualizacion: 2026-08-05 por Codex (Arquitecto/Backend/AppSec/SDET): **`DT-QA-01` DONE
   local — inyección segura de webhook para E2E desplegado.** `POST
   /diagnostico/simulacion/webhook-entrante`, bajo el mismo gating Development/`Simulacion:Habilitada`
@@ -649,7 +700,23 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Implementar DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
+- [ ] **Completar P-31 corte 2 de 3 — diagnostico, telemetria y pruebas focalizadas.** Lee
+  primero `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md` (§7 contratos, §11 cortes). Entrega:
+  `Conversacion:UmbralResumenConsolidacion` y `Conversacion:ResumenConsolidacionHabilitado` en
+  `OpcionesConversacion`; overrides `configConversacional.umbralResumenConsolidacion` /
+  `.resumenConsolidacion` y `Pregunta.umbralResumenConsolidacion`; `ResolverUmbralResumen` +
+  `OrigenUmbralResumen` en `PoliticaLimitesConversacion` reutilizando `UmbralAlcanzado`/`ValorUmbral`;
+  campos `ResumenEnviadoEn` / `ResumenEnviadoEnVersion` en `IdeaConsolidada` propagados por
+  `Crear`/`Restaurar`/`CrearEstado` y las transiciones existentes, mapeados en
+  `IdeaConsolidadaCosmosDocument` con ausente => `null`; y diagnostico de arranque en
+  `ServicioPreparacion` cuando `umbralResumen >= umbralBase`. **Nada dispara todavia**: la regresion
+  completa debe quedar verde sin cambiar una sola expectativa existente. No tocar el sellado de
+  madurez, no desplegar, no hacer push ni modificar configuracion remota.
+- [ ] **Despues: P-31 cortes 2 y 3.** Corte 2 = acto `ResumirAvance` en I-20, insercion server-side del
+  texto consolidado, respaldo determinista, enganche en la rama de coaching de
+  `ConfirmarOCorregirIdeaAsync`, marcado idempotente y `LogSeguridad(resumenConsolidacion)`. Corte 3 =
+  E2E simulada via DT-QA-01, casos QAS y cierre documental.
+- [ ] **EN PAUSA (retomar tras P-31): DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
   duplicados y límite); una lista inválida se descarta completa, usa el default compilado y registra
   únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a
   `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. No cambiar alias, agregar edición

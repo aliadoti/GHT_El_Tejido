@@ -24,6 +24,8 @@ public sealed class IdeaConsolidada
         NivelMadurez nivelMadurez,
         EstadoCuraduriaIdea? estadoCuraduria,
         string? motivoCierre,
+        DateTimeOffset? resumenEnviadoEn,
+        int? resumenEnviadoEnVersion,
         DateTimeOffset creadaEn,
         DateTimeOffset actualizadaEn)
     {
@@ -42,6 +44,8 @@ public sealed class IdeaConsolidada
         NivelMadurez = nivelMadurez;
         EstadoCuraduria = estadoCuraduria;
         MotivoCierre = motivoCierre;
+        ResumenEnviadoEn = resumenEnviadoEn;
+        ResumenEnviadoEnVersion = resumenEnviadoEnVersion;
         CreadaEn = creadaEn;
         ActualizadaEn = actualizadaEn;
     }
@@ -61,6 +65,8 @@ public sealed class IdeaConsolidada
     public NivelMadurez NivelMadurez { get; }
     public EstadoCuraduriaIdea? EstadoCuraduria { get; }
     public string? MotivoCierre { get; }
+    public DateTimeOffset? ResumenEnviadoEn { get; }
+    public int? ResumenEnviadoEnVersion { get; }
     public DateTimeOffset CreadaEn { get; }
     public DateTimeOffset ActualizadaEn { get; }
 
@@ -70,29 +76,30 @@ public sealed class IdeaConsolidada
         => CrearEstado(
             id, campaniaId, usuarioId, preguntaId, conversacionId, respuestaRaizId, ideaIndice,
             null, null, null, EstadoFlujoIdeaConsolidada.PendienteConfirmacion, null,
-            NivelMadurez.Incubacion, null, null, creadaEn, creadaEn);
+            NivelMadurez.Incubacion, null, null, null, null, creadaEn, creadaEn);
 
     public static IdeaConsolidada Restaurar(
         string id, string campaniaId, string usuarioId, string preguntaId, string conversacionId,
         string respuestaRaizId, int ideaIndice, string? versionConfirmadaRef, string? versionPropuestaRef,
         string? evaluacionVigenteRef, EstadoFlujoIdeaConsolidada estadoFlujo,
         EstadoResultadoIdeaConsolidada? estadoResultado, NivelMadurez nivelMadurez,
-        EstadoCuraduriaIdea? estadoCuraduria, string? motivoCierre, DateTimeOffset creadaEn,
+        EstadoCuraduriaIdea? estadoCuraduria, string? motivoCierre, DateTimeOffset? resumenEnviadoEn,
+        int? resumenEnviadoEnVersion, DateTimeOffset creadaEn,
         DateTimeOffset actualizadaEn)
         => CrearEstado(id, campaniaId, usuarioId, preguntaId, conversacionId, respuestaRaizId, ideaIndice,
             versionConfirmadaRef, versionPropuestaRef, evaluacionVigenteRef, estadoFlujo, estadoResultado,
-            nivelMadurez, estadoCuraduria, motivoCierre, creadaEn, actualizadaEn);
+            nivelMadurez, estadoCuraduria, motivoCierre, resumenEnviadoEn, resumenEnviadoEnVersion, creadaEn, actualizadaEn);
 
     public IdeaConsolidada ConPropuesta(string versionId, DateTimeOffset ahora)
         => CrearEstado(Id, CampaniaId, UsuarioId, PreguntaId, ConversacionId, RespuestaRaizId, IdeaIndice,
             VersionConfirmadaRef, DomainGuards.Required(versionId, nameof(versionId)), EvaluacionVigenteRef,
             EstadoFlujoIdeaConsolidada.PendienteConfirmacion, EstadoResultado, NivelMadurez,
-            EstadoCuraduria, MotivoCierre, CreadaEn, ahora);
+            EstadoCuraduria, MotivoCierre, ResumenEnviadoEn, ResumenEnviadoEnVersion, CreadaEn, ahora);
 
     public IdeaConsolidada ConfirmarVersion(string versionId, DateTimeOffset ahora)
         => CrearEstado(Id, CampaniaId, UsuarioId, PreguntaId, ConversacionId, RespuestaRaizId, IdeaIndice,
             DomainGuards.Required(versionId, nameof(versionId)), null, null,
-            EstadoFlujoIdeaConsolidada.EnMejora, null, NivelMadurez.Incubacion, null, null, CreadaEn, ahora);
+            EstadoFlujoIdeaConsolidada.EnMejora, null, NivelMadurez.Incubacion, null, null, ResumenEnviadoEn, ResumenEnviadoEnVersion, CreadaEn, ahora);
 
     public IdeaConsolidada Cerrar(
         EstadoResultadoIdeaConsolidada resultado, string? evaluacionId, string motivo, DateTimeOffset ahora)
@@ -102,20 +109,27 @@ public sealed class IdeaConsolidada
             VersionConfirmadaRef, null, evaluacionId, EstadoFlujoIdeaConsolidada.Cerrada, resultado,
             esMadura ? NivelMadurez.Maduro : NivelMadurez.Incubacion,
             esMadura ? EstadoCuraduriaIdea.Pendiente : null, DomainGuards.Required(motivo, nameof(motivo)),
-            CreadaEn, ahora);
+            ResumenEnviadoEn, ResumenEnviadoEnVersion, CreadaEn, ahora);
     }
 
     public IdeaConsolidada Reabrir(DateTimeOffset ahora)
         => CrearEstado(Id, CampaniaId, UsuarioId, PreguntaId, ConversacionId, RespuestaRaizId, IdeaIndice,
             VersionConfirmadaRef ?? VersionPropuestaRef, null, null, EstadoFlujoIdeaConsolidada.EnRevision, null,
-            NivelMadurez.Incubacion, null, null, CreadaEn, ahora);
+            NivelMadurez.Incubacion, null, null, ResumenEnviadoEn, ResumenEnviadoEnVersion, CreadaEn, ahora);
+
+    public IdeaConsolidada ConResumenEnviado(int numeroVersion, DateTimeOffset ahora)
+        => ResumenEnviadoEn is not null ? this : CrearEstado(
+            Id, CampaniaId, UsuarioId, PreguntaId, ConversacionId, RespuestaRaizId, IdeaIndice,
+            VersionConfirmadaRef, VersionPropuestaRef, EvaluacionVigenteRef, EstadoFlujo, EstadoResultado,
+            NivelMadurez, EstadoCuraduria, MotivoCierre, ahora, numeroVersion, CreadaEn, ahora);
 
     private static IdeaConsolidada CrearEstado(
         string id, string campaniaId, string usuarioId, string preguntaId, string conversacionId,
         string respuestaRaizId, int ideaIndice, string? versionConfirmadaRef, string? versionPropuestaRef,
         string? evaluacionVigenteRef, EstadoFlujoIdeaConsolidada estadoFlujo,
         EstadoResultadoIdeaConsolidada? estadoResultado, NivelMadurez nivelMadurez,
-        EstadoCuraduriaIdea? estadoCuraduria, string? motivoCierre, DateTimeOffset creadaEn,
+        EstadoCuraduriaIdea? estadoCuraduria, string? motivoCierre, DateTimeOffset? resumenEnviadoEn,
+        int? resumenEnviadoEnVersion, DateTimeOffset creadaEn,
         DateTimeOffset actualizadaEn)
     {
         if (ideaIndice <= 0)
@@ -140,7 +154,7 @@ public sealed class IdeaConsolidada
             DomainGuards.Required(conversacionId, nameof(conversacionId)),
             DomainGuards.Required(respuestaRaizId, nameof(respuestaRaizId)), ideaIndice,
             Normalizar(versionConfirmadaRef), Normalizar(versionPropuestaRef), Normalizar(evaluacionVigenteRef),
-            estadoFlujo, estadoResultado, nivelMadurez, estadoCuraduria, Normalizar(motivoCierre),
+            estadoFlujo, estadoResultado, nivelMadurez, estadoCuraduria, Normalizar(motivoCierre), resumenEnviadoEn?.ToUniversalTime(), resumenEnviadoEnVersion,
             creadaEn.ToUniversalTime(), actualizadaEn.ToUniversalTime());
     }
 

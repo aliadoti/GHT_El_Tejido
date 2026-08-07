@@ -19,6 +19,8 @@ public sealed class PoliticaLimitesConversacion
 {
     private readonly double _umbralBaseGlobal;
     private readonly bool _cierreAnticipadoHabilitado;
+    private readonly double _umbralResumenGlobal;
+    private readonly bool _resumenConsolidacionHabilitado;
 
     /// <param name="umbralBaseGlobal">
     /// Default global del umbral compartido (<c>Conversacion:UmbralCierreAnticipado</c>): fracción de la
@@ -28,10 +30,13 @@ public sealed class PoliticaLimitesConversacion
     /// Kill-switch global del cierre anticipado (<c>Conversacion:CierreAnticipadoHabilitado</c>). En
     /// <c>false</c> apaga todo cierre anticipado sin afectar la clasificación de madurez.
     /// </param>
-    public PoliticaLimitesConversacion(double umbralBaseGlobal, bool cierreAnticipadoHabilitado)
+    public PoliticaLimitesConversacion(double umbralBaseGlobal, bool cierreAnticipadoHabilitado,
+        double umbralResumenGlobal = 0, bool resumenConsolidacionHabilitado = false)
     {
         _umbralBaseGlobal = umbralBaseGlobal;
         _cierreAnticipadoHabilitado = cierreAnticipadoHabilitado;
+        _umbralResumenGlobal = umbralResumenGlobal;
+        _resumenConsolidacionHabilitado = resumenConsolidacionHabilitado;
     }
 
     /// <summary>
@@ -59,6 +64,21 @@ public sealed class PoliticaLimitesConversacion
         => pregunta.UmbralCierreAnticipado.HasValue
             ? "pregunta"
             : campania.ConfigConversacional.UmbralCierreAnticipado.HasValue
+                ? "campania"
+                : "global";
+
+    /// <summary>P-31: umbral independiente para mostrar la consolidacion, con la misma precedencia.</summary>
+    public double ResolverUmbralResumen(Campania campania, Pregunta pregunta)
+        => !_resumenConsolidacionHabilitado || !campania.ConfigConversacional.ResumenConsolidacion
+            ? 0
+            : pregunta.UmbralResumenConsolidacion
+                ?? campania.ConfigConversacional.UmbralResumenConsolidacion
+                ?? _umbralResumenGlobal;
+
+    public string OrigenUmbralResumen(Campania campania, Pregunta pregunta)
+        => pregunta.UmbralResumenConsolidacion.HasValue
+            ? "pregunta"
+            : campania.ConfigConversacional.UmbralResumenConsolidacion.HasValue
                 ? "campania"
                 : "global";
 

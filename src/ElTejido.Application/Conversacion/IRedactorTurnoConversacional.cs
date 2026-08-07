@@ -54,6 +54,7 @@ public enum ActoConversacional
     /// cierre ni cambia estados: solo humaniza el hilo que el servidor ya cerró.
     /// </summary>
     Pausar,
+    ResumirAvance,
 }
 
 /// <summary>

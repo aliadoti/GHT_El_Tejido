@@ -100,7 +100,8 @@ public sealed class PoliticaRedaccionConversacional
             or ActoConversacional.Mejorar
             or ActoConversacional.Aclarar
             or ActoConversacional.Reabrir
-            or ActoConversacional.Reactivar;
+            or ActoConversacional.Reactivar
+            or ActoConversacional.ResumirAvance;
 
     private static string? Primero(IReadOnlyDictionary<string, string>? refs, string tipo)
         => refs is not null && refs.TryGetValue(tipo, out var referencia) && !string.IsNullOrWhiteSpace(referencia)

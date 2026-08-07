@@ -44,6 +44,12 @@ public sealed class OpcionesConversacion
     /// </summary>
     public bool CierreAnticipadoHabilitado { get; set; }
 
+    /// <summary>P-31: kill-switch global del resumen de avance; nace apagado.</summary>
+    public bool ResumenConsolidacionHabilitado { get; set; }
+
+    /// <summary>P-31: fraccion [0,1] para mostrar el avance; 0 o negativo lo desactiva.</summary>
+    public double UmbralResumenConsolidacion { get; set; }
+
     /// <summary>
     /// Largo maximo (en caracteres ya normalizados) para que una coincidencia por contencion de una
     /// frase de continuar cuente como intencion del participante. Acota falsos positivos sobre
@@ -263,6 +269,8 @@ public sealed class OpcionesConversacion
 
 public sealed class OpcionesMensajesConversacion
 {
+    public const string EncabezadoResumenAvanceDefault = "Asi va tu idea hasta ahora:";
+    public const string PreguntaContinuarMadurandoDefault = "¿Quieres seguir puliendola o prefieres dejarla asi?";
     public const string SaludoPrimerContactoDefault =
         "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:";
 
@@ -334,6 +342,10 @@ public sealed class OpcionesMensajesConversacion
     };
 
     public string SaludoPrimerContacto { get; set; } = SaludoPrimerContactoDefault;
+
+    public string EncabezadoResumenAvance { get; set; } = EncabezadoResumenAvanceDefault;
+
+    public string PreguntaContinuarMadurando { get; set; } = PreguntaContinuarMadurandoDefault;
 
     public string SaludoSiguientePregunta { get; set; } = SaludoSiguientePreguntaDefault;
 

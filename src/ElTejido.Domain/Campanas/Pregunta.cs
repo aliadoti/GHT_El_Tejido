@@ -17,7 +17,8 @@ public sealed class Pregunta
         int maxRepreguntas,
         LimitesSeguridad limitesSeguridad,
         ConfigMarkdown configMarkdown,
-        double? umbralCierreAnticipado)
+        double? umbralCierreAnticipado,
+        double? umbralResumenConsolidacion)
     {
         Id = id;
         Texto = texto;
@@ -32,6 +33,7 @@ public sealed class Pregunta
         LimitesSeguridad = limitesSeguridad;
         ConfigMarkdown = configMarkdown;
         UmbralCierreAnticipado = umbralCierreAnticipado;
+        UmbralResumenConsolidacion = umbralResumenConsolidacion;
     }
 
     public string Id { get; }
@@ -64,6 +66,7 @@ public sealed class Pregunta
     /// (y este, a su vez, el default global). Precedencia: pregunta → campania → global.
     /// </summary>
     public double? UmbralCierreAnticipado { get; }
+    public double? UmbralResumenConsolidacion { get; }
 
     public static Pregunta Crear(
         string id,
@@ -78,7 +81,8 @@ public sealed class Pregunta
         int maxRepreguntas,
         LimitesSeguridad limitesSeguridad,
         ConfigMarkdown configMarkdown,
-        double? umbralCierreAnticipado = null)
+        double? umbralCierreAnticipado = null,
+        double? umbralResumenConsolidacion = null)
     {
         if (orden <= 0)
         {
@@ -107,6 +111,10 @@ public sealed class Pregunta
                 "UMBRAL_CIERRE_ANTICIPADO_INVALIDO",
                 "El umbral de cierre anticipado no puede ser mayor que 1.");
         }
+        if (umbralResumenConsolidacion is > 1)
+        {
+            throw new DomainValidationException("UMBRAL_RESUMEN_CONSOLIDACION_INVALIDO", "El umbral de resumen no puede ser mayor que 1.");
+        }
 
         return new Pregunta(
             DomainGuards.Required(id, nameof(id)),
@@ -121,7 +129,7 @@ public sealed class Pregunta
             maxRepreguntas,
             limitesSeguridad,
             configMarkdown,
-            umbralCierreAnticipado);
+            umbralCierreAnticipado, umbralResumenConsolidacion);
     }
 
     private static string? NormalizeOptional(string? value)

@@ -22,6 +22,8 @@ internal sealed class IdeaConsolidadaCosmosDocument
     [JsonProperty("nivelMadurez")] public string NivelMadurez { get; init; } = "incubacion";
     [JsonProperty("estadoCuraduria", NullValueHandling = NullValueHandling.Ignore)] public string? EstadoCuraduria { get; init; }
     [JsonProperty("motivoCierre", NullValueHandling = NullValueHandling.Ignore)] public string? MotivoCierre { get; init; }
+    [JsonProperty("resumenEnviadoEn", NullValueHandling = NullValueHandling.Ignore)] public DateTimeOffset? ResumenEnviadoEn { get; init; }
+    [JsonProperty("resumenEnviadoEnVersion", NullValueHandling = NullValueHandling.Ignore)] public int? ResumenEnviadoEnVersion { get; init; }
     [JsonProperty("creadaEn")] public DateTimeOffset CreadaEn { get; init; }
     [JsonProperty("actualizadaEn")] public DateTimeOffset ActualizadaEn { get; init; }
 
@@ -42,6 +44,8 @@ internal sealed class IdeaConsolidadaCosmosDocument
         NivelMadurez = idea.NivelMadurez == Domain.Respuestas.NivelMadurez.Maduro ? "maduro" : "incubacion",
         EstadoCuraduria = idea.EstadoCuraduria is null ? null : "pendiente",
         MotivoCierre = idea.MotivoCierre,
+        ResumenEnviadoEn = idea.ResumenEnviadoEn,
+        ResumenEnviadoEnVersion = idea.ResumenEnviadoEnVersion,
         CreadaEn = idea.CreadaEn,
         ActualizadaEn = idea.ActualizadaEn,
     };
@@ -50,7 +54,7 @@ internal sealed class IdeaConsolidadaCosmosDocument
         Id, CampaniaId, UsuarioId, PreguntaId, ConversacionId, RespuestaRaizId, IdeaIndice,
         VersionConfirmadaRef, VersionPropuestaRef, EvaluacionVigenteRef, MapearFlujo(EstadoFlujo),
         MapearResultado(EstadoResultado), NivelMadurez == "maduro" ? Domain.Respuestas.NivelMadurez.Maduro : Domain.Respuestas.NivelMadurez.Incubacion,
-        EstadoCuraduria is null ? null : EstadoCuraduriaIdea.Pendiente, MotivoCierre, CreadaEn, ActualizadaEn);
+        EstadoCuraduria is null ? null : EstadoCuraduriaIdea.Pendiente, MotivoCierre, ResumenEnviadoEn, ResumenEnviadoEnVersion, CreadaEn, ActualizadaEn);
 
     private static string Mapear(EstadoFlujoIdeaConsolidada estado) => estado switch
     { EstadoFlujoIdeaConsolidada.PendienteConfirmacion => "pendienteConfirmacion", EstadoFlujoIdeaConsolidada.EnMejora => "enMejora", EstadoFlujoIdeaConsolidada.EnRevision => "enRevision", _ => "cerrada" };

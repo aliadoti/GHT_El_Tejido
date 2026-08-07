@@ -117,7 +117,8 @@ public sealed record SolicitudGuardarPregunta(
     int MaxRepreguntas,
     LimitesSeguridad LimitesSeguridad,
     ConfigMarkdown ConfigMarkdown,
-    double? UmbralCierreAnticipado = null);
+    double? UmbralCierreAnticipado = null,
+    double? UmbralResumenConsolidacion = null);
 
 public sealed record SolicitudActualizarPregunta(
     string? Texto,
@@ -131,7 +132,8 @@ public sealed record SolicitudActualizarPregunta(
     int? MaxRepreguntas,
     LimitesSeguridad? LimitesSeguridad,
     ConfigMarkdown? ConfigMarkdown,
-    double? UmbralCierreAnticipado = null);
+    double? UmbralCierreAnticipado = null,
+    double? UmbralResumenConsolidacion = null);
 
 public sealed record SolicitudAsociarParticipantes(
     IReadOnlyCollection<string>? UsuarioIds,

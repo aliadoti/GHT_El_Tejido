@@ -299,6 +299,9 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("umbralCierreAnticipado")]
         public double? UmbralCierreAnticipado { get; init; }
 
+        [JsonProperty("umbralResumenConsolidacion")]
+        public double? UmbralResumenConsolidacion { get; init; }
+
         public static PreguntaDocument FromDomain(Pregunta pregunta)
         {
             return new PreguntaDocument
@@ -316,6 +319,7 @@ internal sealed class CampaniaCosmosDocument
                 LimitesSeguridad = LimitesSeguridadPreguntaDocument.FromDomain(pregunta.LimitesSeguridad),
                 ConfigMarkdown = ConfigMarkdownDocument.FromDomain(pregunta.ConfigMarkdown),
                 UmbralCierreAnticipado = pregunta.UmbralCierreAnticipado,
+                UmbralResumenConsolidacion = pregunta.UmbralResumenConsolidacion,
             };
         }
 
@@ -334,7 +338,7 @@ internal sealed class CampaniaCosmosDocument
                 MaxRepreguntas,
                 LimitesSeguridad.ToDomain(),
                 ConfigMarkdown.ToDomain(),
-                UmbralCierreAnticipado);
+                UmbralCierreAnticipado, UmbralResumenConsolidacion);
         }
     }
 
@@ -402,6 +406,12 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("clasificacionIntencionControl")]
         public bool ClasificacionIntencionControl { get; init; }
 
+        [JsonProperty("umbralResumenConsolidacion")]
+        public double? UmbralResumenConsolidacion { get; init; }
+
+        [JsonProperty("resumenConsolidacion")]
+        public bool ResumenConsolidacion { get; init; } = true;
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -418,6 +428,8 @@ internal sealed class CampaniaCosmosDocument
                 NumeroWhatsAppSaliente = config.NumeroWhatsAppSaliente,
                 ParticipacionContinua = config.ParticipacionContinua,
                 ClasificacionIntencionControl = config.ClasificacionIntencionControl,
+                UmbralResumenConsolidacion = config.UmbralResumenConsolidacion,
+                ResumenConsolidacion = config.ResumenConsolidacion,
             };
         }
 
@@ -426,7 +438,7 @@ internal sealed class CampaniaCosmosDocument
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
                 MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
                 MinutosInactividadSesion, NumeroWhatsAppSaliente, CoachingSecuencialIdeas, MinutosCoachingPorIdea,
-                ParticipacionContinua, ClasificacionIntencionControl);
+                ParticipacionContinua, ClasificacionIntencionControl, UmbralResumenConsolidacion, ResumenConsolidacion);
         }
     }
 

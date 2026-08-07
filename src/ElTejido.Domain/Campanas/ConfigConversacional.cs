@@ -16,7 +16,9 @@ public sealed class ConfigConversacional
         bool coachingSecuencialIdeas,
         int? minutosCoachingPorIdea,
         bool participacionContinua,
-        bool clasificacionIntencionControl)
+        bool clasificacionIntencionControl,
+        double? umbralResumenConsolidacion,
+        bool resumenConsolidacion)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -30,6 +32,8 @@ public sealed class ConfigConversacional
         MinutosCoachingPorIdea = minutosCoachingPorIdea;
         ParticipacionContinua = participacionContinua;
         ClasificacionIntencionControl = clasificacionIntencionControl;
+        UmbralResumenConsolidacion = umbralResumenConsolidacion;
+        ResumenConsolidacion = resumenConsolidacion;
     }
 
     public int MaxRepreguntas { get; }
@@ -99,6 +103,8 @@ public sealed class ConfigConversacional
     /// el kill-switch global y la política server-side se incorporan en cortes posteriores.
     /// </summary>
     public bool ClasificacionIntencionControl { get; }
+    public double? UmbralResumenConsolidacion { get; }
+    public bool ResumenConsolidacion { get; }
 
     public static ConfigConversacional Crear(
         int maxRepreguntas,
@@ -112,7 +118,9 @@ public sealed class ConfigConversacional
         bool coachingSecuencialIdeas = false,
         int? minutosCoachingPorIdea = null,
         bool participacionContinua = false,
-        bool clasificacionIntencionControl = false)
+        bool clasificacionIntencionControl = false,
+        double? umbralResumenConsolidacion = null,
+        bool resumenConsolidacion = true)
     {
         if (maxRepreguntas < 0)
         {
@@ -127,6 +135,10 @@ public sealed class ConfigConversacional
                 "UMBRAL_CIERRE_ANTICIPADO_INVALIDO",
                 "El umbral de cierre anticipado no puede ser mayor que 1.");
         }
+        if (umbralResumenConsolidacion is > 1)
+        {
+            throw new DomainValidationException("UMBRAL_RESUMEN_CONSOLIDACION_INVALIDO", "El umbral de resumen no puede ser mayor que 1.");
+        }
 
         return new ConfigConversacional(
             maxRepreguntas,
@@ -140,6 +152,6 @@ public sealed class ConfigConversacional
             coachingSecuencialIdeas,
             minutosCoachingPorIdea,
             participacionContinua,
-            clasificacionIntencionControl);
+            clasificacionIntencionControl, umbralResumenConsolidacion, resumenConsolidacion);
     }
 }

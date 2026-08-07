@@ -6,6 +6,19 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
+> **Última revisión: 2026-08-06 — `P-31` en curso local (corte 1/3).**
+> Nueva solicitud de GHT (REQ-052): los participantes quieren visibilidad del progreso de su idea. Hoy
+> la versión consolidada de I-19 solo se muestra al confirmar o al reabrir, y al cruzar el umbral la
+> rama `madura` cierra el hilo sin mostrarla. `P-31` introduce un **umbral de resumen propio**
+> (`umbralResumenConsolidacion`), **independiente** del umbral de madurez de I-17/P-13, que presenta la
+> consolidación vigente y pregunta si se quiere seguir madurando. No agrega estado conversacional, no
+> depende de los flags de P-27 y no toca el sellado de madurez. Kill-switch
+> `Conversacion:ResumenConsolidacionHabilitado` OFF. **La deuda técnica `DT-P27-01` corte 2 sigue
+> abierta pero cede prioridad.** Spec: [P-31_Resumen_Consolidacion_Por_Umbral.md](P-31_Resumen_Consolidacion_Por_Umbral.md).
+> *Decisión abierta:* si el participante debe poder pedir el consolidado **bajo demanda** ("muéstrame
+> cómo va mi idea") — hoy no existe esa ruta y la petición se consolidaría como aporte; sin resolver.
+> *Pendiente de especificar:* soporte de **inglés** en el chatbot (segunda solicitud del 2026-08-06),
+> en análisis de alcance.
 > Última revisión: 2026-08-05 — **`DT-QA-01` DONE local.** Endpoint de diagnóstico
 > `POST /diagnostico/simulacion/webhook-entrante` (protegido por `X-Diag-Key`) que inyecta un mensaje
 > entrante y lo encola sin exigir firma, para correr las pruebas E2E conversacionales contra el desplegado
@@ -65,6 +78,7 @@
 | P-28 | [P-28_Despertar_Proactivo_Coach.md](P-28_Despertar_Proactivo_Coach.md) | Completa local | **DONE local 2026-08-04 (3/3).** Saludo/inicio no sustantivo, selección P-26, redacción/fallback, telemetría sin texto y E2E. El saludo no crea idea; kill-switch `DespertarProactivoHabilitado` OFF. |
 | P-29 | [P-29_Cierre_Conversacional_Por_Tiempo.md](P-29_Cierre_Conversacional_Por_Tiempo.md) | Completa local | **DONE local 2026-08-04 (2/2).** Aviso de pausa redactado por LLM con fallback determinista sobre el cierre por inactividad ya existente de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos), telemetría `cierrePorInactividad` sin texto, E2E simulada y QAS. Kill-switch `CierrePorTiempoHabilitado` OFF; activación D5/UAT/costo pendiente. |
 | P-30 | [P-30_Retomar_Ideas_Del_Pasado.md](P-30_Retomar_Ideas_Del_Pasado.md) | Reunión 31-jul (REQ-014) | **DONE local 2026-08-04 (3/3).** Lista histórica determinista por participante/campaña/pregunta, reapertura con el mismo `ideaId`, afinidad al ciclo histórico, telemetría y E2E; búsqueda vectorial fuera. Kill-switch `RetomarIdeasHabilitado` OFF. |
+| P-31 | [P-31_Resumen_Consolidacion_Por_Umbral.md](P-31_Resumen_Consolidacion_Por_Umbral.md) | **PRÓXIMA — inmediata** | **ESPECIFICADA 2026-08-06 (0/3 cortes).** REQ-052. Umbral de resumen propio (`umbralResumenConsolidacion`, global/campaña/pregunta) **independiente** del umbral de madurez: al cruzarlo con la idea **abierta**, el turno de coaching lleva la consolidación vigente insertada server-side y una pregunta de continuidad. Sin estado conversacional nuevo, sin consumir repreguntas, idempotente por idea y sin dependencia de los flags de P-27. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF. |
 | DT-P27-01 | [DT-P27-01_Config_Versionada_Frases_Finalizacion.md](DT-P27-01_Config_Versionada_Frases_Finalizacion.md) | **EN CURSO — 1/2 local** | **Corte 1 DONE 2026-08-05:** lectura de ambas listas desde config, fallback al default compilado y normalización compartida; backend 730/730, build/formato verdes. **Siguiente:** validación/descarte con registro e historial/rollback. Aditiva; sin tocar alias, flags ni config remota. |
 | DT-QA-01 | [DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md](DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md) | **DONE local 2026-08-05** | Herramienta de QA: endpoint `POST /diagnostico/simulacion/webhook-entrante` (gating `X-Diag-Key` + Development/`Simulacion:Habilitada`) que inyecta un mensaje entrante y lo encola por `IColaWebhook` **sin exigir firma**. Auditoría sin PII e id estable para el dedupe; 7 pruebas focalizadas verdes. **No** relaja la firma real. Pendiente: despliegue controlado. |
 | I-03 | [I-03_Followups_Eje_Debil.md](I-03_Followups_Eje_Debil.md)                                                                                                                                                                                           | Sprint 1b             | **DONE local 2026-07-21** (pista de foco + filtro de fuga de rúbrica siempre-on; sin cambio de contratos; D5 real contra staging pendiente) |
