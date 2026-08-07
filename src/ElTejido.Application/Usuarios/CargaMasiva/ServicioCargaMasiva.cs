@@ -120,8 +120,12 @@ public sealed class ServicioCargaMasiva : IServicioCargaMasiva
         var existente = await _usuarios.ObtenerUsuarioPorNumeroAsync(numero, cancellationToken);
         if (existente is null)
         {
+            // TODO(I-08 v2 §3.1.b): reservar un bloque de N codigos por lote cuando el servicio se
+            // reescriba a la plantilla oficial; hasta entonces se reserva uno por alta.
+            var codigoUsuario = await _usuarios.ReservarCodigosUsuarioAsync(1, cancellationToken);
             var nuevo = Usuario.Crear(
                 "u_" + Guid.NewGuid().ToString("N"),
+                codigoUsuario,
                 fila.Nombre!,
                 numero,
                 RolUsuario.Participante,
@@ -142,6 +146,7 @@ public sealed class ServicioCargaMasiva : IServicioCargaMasiva
         var tags = fila.Tags.Count > 0 ? fila.Tags : existente.Tags;
         var actualizado = Usuario.Crear(
             existente.Id,
+            existente.CodigoUsuario,
             fila.Nombre!,
             numero,
             existente.Rol,
@@ -151,7 +156,14 @@ public sealed class ServicioCargaMasiva : IServicioCargaMasiva
             tags,
             existente.PropiedadesDinamicas,
             existente.CreadoEn,
-            ahora);
+            ahora,
+            existente.UsuarioWhatsapp,
+            existente.EmpresaId,
+            existente.Sede,
+            existente.Cargo,
+            existente.Email,
+            existente.AntiguedadAnios,
+            existente.Idioma);
         await _usuarios.GuardarUsuarioAsync(actualizado, cancellationToken);
         return new ResultadoFilaCarga(fila.Fila, ResultadoCarga.Actualizado, actualizado.Id, Motivo: null);
     }

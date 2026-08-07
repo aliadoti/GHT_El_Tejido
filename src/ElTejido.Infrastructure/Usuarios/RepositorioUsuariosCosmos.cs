@@ -1,6 +1,7 @@
 using System.Net;
 using ElTejido.Application.Common;
 using ElTejido.Application.Usuarios;
+using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Usuarios;
 using Microsoft.Azure.Cosmos;
@@ -13,16 +14,21 @@ namespace ElTejido.Infrastructure.Usuarios;
 /// </summary>
 public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
 {
+    /// <summary>Reintentos de la reserva de codigos ante 412/409 del contador (03 §3.1.1).</summary>
+    private const int MaxIntentosSecuencia = 8;
+
     private readonly IUsersCosmosContainer _container;
+    private readonly TimeProvider _tiempo;
 
     public RepositorioUsuariosCosmos(Container container)
-        : this(new UsersCosmosContainer(container))
+        : this(new UsersCosmosContainer(container), TimeProvider.System)
     {
     }
 
-    internal RepositorioUsuariosCosmos(IUsersCosmosContainer container)
+    internal RepositorioUsuariosCosmos(IUsersCosmosContainer container, TimeProvider? tiempo = null)
     {
         _container = container;
+        _tiempo = tiempo ?? TimeProvider.System;
     }
 
     public async Task GuardarUsuarioAsync(Usuario usuario, CancellationToken cancellationToken)
@@ -34,10 +40,11 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
         }
         catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
         {
-            // La clave unica de `users` (/whatsappNormalizado) ya tiene ese numero: se traduce el
-            // conflicto de almacenamiento a un error de dominio limpio (409) en vez de un 500. Cubre
-            // la carrera con el chequeo previo de unicidad y la latencia del indice (07 §1, 04 §3).
-            throw new ErrorConflicto("Ya existe un usuario con ese numero de WhatsApp.");
+            // La clave unica de `users` (/claveUnicidad) ya tiene un usuario activo con ese numero: se
+            // traduce el conflicto de almacenamiento a un error de dominio limpio (409) en vez de un
+            // 500. Cubre la carrera con el chequeo previo de unicidad y la latencia del indice
+            // (07 §1, 04 §3, I-08 §3.1.e).
+            throw new ErrorConflicto("Ya existe un usuario activo con ese numero de WhatsApp.");
         }
     }
 
@@ -53,6 +60,26 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
         NumeroWhatsApp numero,
         CancellationToken cancellationToken)
     {
+        // El filtro por estado activo va aqui, no en los llamadores (I-08 §3.1.f): un numero reasignado
+        // conserva a sus titulares anteriores como inactivos y no debe resolverlos nunca.
+        var documents = await _container.QueryUsuariosAsync(
+            new FiltroUsuariosCosmos(
+                numero.Valor,
+                null,
+                UsuarioCosmosDocument.ToCosmosEstado(EstadoRegistro.Activo),
+                null,
+                null,
+                [],
+                null),
+            cancellationToken);
+
+        return documents.FirstOrDefault()?.ToDomain();
+    }
+
+    public async Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+        NumeroWhatsApp numero,
+        CancellationToken cancellationToken)
+    {
         var documents = await _container.QueryUsuariosAsync(
             new FiltroUsuariosCosmos(
                 numero.Valor,
@@ -64,7 +91,44 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
                 null),
             cancellationToken);
 
-        return documents.FirstOrDefault()?.ToDomain();
+        return documents
+            .Select(document => document.ToDomain())
+            .OrderBy(usuario => usuario.CreadoEn)
+            .ThenBy(usuario => usuario.CodigoUsuario)
+            .ToArray();
+    }
+
+    public async Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(cantidad, 1);
+
+        // Concurrencia optimista sobre un unico documento contador (03 §3.1.1): se relee y se reintenta
+        // ante 412 (otro lo movio) o 409 (otro lo creo primero). Un solo viaje por bloque, no por fila.
+        for (var intento = 0; intento < MaxIntentosSecuencia; intento++)
+        {
+            var actual = await _container.ReadSecuenciaAsync(
+                SecuenciaCosmosDocument.IdUsuario,
+                cancellationToken);
+            var ultimoValor = actual?.UltimoValor ?? 0;
+            var siguiente = SecuenciaCosmosDocument.Crear(
+                SecuenciaCosmosDocument.IdUsuario,
+                ultimoValor + cantidad,
+                _tiempo.GetUtcNow());
+
+            try
+            {
+                await _container.GuardarSecuenciaAsync(siguiente, actual?.ETag, cancellationToken);
+                return ultimoValor + 1;
+            }
+            catch (CosmosException exception)
+                when (exception.StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict)
+            {
+                // Otro lote gano la carrera; se relee el contador y se vuelve a intentar.
+            }
+        }
+
+        throw new ErrorConflicto(
+            "No fue posible reservar codigos de usuario por concurrencia en el contador.");
     }
 
     public async Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(

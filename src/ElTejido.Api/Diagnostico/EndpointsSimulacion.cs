@@ -45,8 +45,13 @@ internal static class EndpointsSimulacion
         var ahora = tiempo.GetUtcNow();
         var existente = await usuarios.ObtenerUsuarioPorNumeroAsync(numero, ct);
 
+        // Un admin ya existente conserva su codigo secuencial; uno nuevo lo toma del contador (03 §3.1.1).
+        var codigoUsuario = existente?.CodigoUsuario
+            ?? await usuarios.ReservarCodigosUsuarioAsync(1, ct);
+
         var admin = Usuario.Crear(
             existente?.Id ?? "u_admin_" + Guid.NewGuid().ToString("N"),
+            codigoUsuario,
             string.IsNullOrWhiteSpace(request.Nombre) ? "Administrador prueba" : request.Nombre.Trim(),
             numero,
             RolUsuario.Admin,
@@ -62,6 +67,7 @@ internal static class EndpointsSimulacion
         return Results.Ok(new
         {
             admin.Id,
+            codigoUsuario = admin.CodigoUsuarioLegible,
             admin.Nombre,
             whatsappNormalizado = admin.WhatsappNormalizado.Valor,
             rol = "admin",

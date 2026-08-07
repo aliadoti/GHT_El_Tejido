@@ -177,6 +177,7 @@ public sealed class EnviosIntegrationTests
     private static Usuario CrearUsuario(string id)
         => Usuario.Crear(
             id,
+            1,
             "Usuario " + id,
             NumeroWhatsApp.FromNormalized(Numero),
             RolUsuario.Participante,

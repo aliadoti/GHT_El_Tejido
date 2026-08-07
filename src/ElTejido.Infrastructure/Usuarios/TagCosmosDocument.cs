@@ -18,6 +18,14 @@ internal sealed class TagCosmosDocument
     [JsonProperty("pk")]
     public string Pk { get; init; } = PartitionKeyValue;
 
+    /// <summary>
+    /// <c>tag|&lt;id&gt;</c> (03 §3.2, I-08 §3.1.e). Obligatorio aunque la Tag no tenga relacion con
+    /// WhatsApp: comparte contenedor con <c>Usuario</c> y la unique key <c>/claveUnicidad</c> haria
+    /// colisionar entre si a todos los documentos que omitieran el campo.
+    /// </summary>
+    [JsonProperty("claveUnicidad")]
+    public string ClaveUnicidad { get; init; } = string.Empty;
+
     [JsonProperty("nombre")]
     public string Nombre { get; init; } = string.Empty;
 
@@ -40,6 +48,7 @@ internal sealed class TagCosmosDocument
             Id = tag.Id,
             Type = DocumentType,
             Pk = PartitionKeyValue,
+            ClaveUnicidad = ConstruirClaveUnicidad(tag.Id),
             Nombre = tag.Nombre,
             TipoTag = tag.TipoTag,
             Descripcion = tag.Descripcion,
@@ -47,6 +56,8 @@ internal sealed class TagCosmosDocument
             CreadoEn = tag.CreadoEn,
         };
     }
+
+    public static string ConstruirClaveUnicidad(string id) => "tag|" + id;
 
     public Tag ToDomain()
     {

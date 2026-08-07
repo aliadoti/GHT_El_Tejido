@@ -308,8 +308,10 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             u.Id,
             u.Nombre,
             u.WhatsappNormalizado.Valor,
-            u.Area,
-            u.Empresa,
+            // El DTO de vista previa conserva su forma (04): area/empresa vacias viajan como cadena
+            // vacia en vez de null, que es lo que el portal ya sabe pintar.
+            u.Area ?? string.Empty,
+            u.Empresa ?? string.Empty,
             u.Tags)).ToArray();
     }
 

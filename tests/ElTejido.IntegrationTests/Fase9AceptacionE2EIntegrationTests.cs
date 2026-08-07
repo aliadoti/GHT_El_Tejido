@@ -424,6 +424,7 @@ public sealed class Fase9AceptacionE2EIntegrationTests
     private static Usuario CrearAdmin()
         => Usuario.Crear(
             "u_admin1",
+            1,
             "Admin",
             NumeroWhatsApp.FromNormalized(NumeroAdmin),
             RolUsuario.Admin,
@@ -447,6 +448,7 @@ public sealed class Fase9AceptacionE2EIntegrationTests
         IRegistroWebhookDedupe
     {
         private readonly object _sync = new();
+        private int _ultimoCodigoUsuario;
         private readonly Dictionary<string, Usuario> _usuarios = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Tag> _tags = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Campania> _campanias = new(StringComparer.Ordinal);
@@ -500,7 +502,34 @@ public sealed class Fase9AceptacionE2EIntegrationTests
 
         public Task<Usuario?> ObtenerUsuarioPorNumeroAsync(NumeroWhatsApp numero, CancellationToken cancellationToken)
         {
-            lock (_sync) return Task.FromResult(_usuarios.Values.FirstOrDefault(u => u.WhatsappNormalizado.Valor == numero.Valor));
+            lock (_sync)
+            {
+                return Task.FromResult(_usuarios.Values.FirstOrDefault(u =>
+                    u.WhatsappNormalizado.Valor == numero.Valor && u.Estado == EstadoRegistro.Activo));
+            }
+        }
+
+        public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+            NumeroWhatsApp numero,
+            CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                return Task.FromResult<IReadOnlyCollection<Usuario>>(_usuarios.Values
+                    .Where(u => u.WhatsappNormalizado.Valor == numero.Valor)
+                    .OrderBy(u => u.CreadoEn)
+                    .ToArray());
+            }
+        }
+
+        public Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+        {
+            lock (_sync)
+            {
+                var primero = _ultimoCodigoUsuario + 1;
+                _ultimoCodigoUsuario += cantidad;
+                return Task.FromResult(primero);
+            }
         }
 
         public Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(FiltroUsuarios filtro, CancellationToken cancellationToken)

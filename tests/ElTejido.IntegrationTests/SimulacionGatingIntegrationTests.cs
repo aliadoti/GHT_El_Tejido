@@ -5,6 +5,7 @@ using ElTejido.Application.Common;
 using ElTejido.Application.Seguridad;
 using ElTejido.Application.Usuarios;
 using ElTejido.Application.WhatsApp;
+using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Seguridad;
 using ElTejido.Domain.Usuarios;
@@ -215,9 +216,29 @@ public sealed class SimulacionGatingIntegrationTests
     private sealed class UsuariosEnMemoria : IRepositorioUsuarios
     {
         private readonly Dictionary<string, Usuario> _porNumero = new();
+        private int _ultimoCodigoUsuario;
 
         public Task<Usuario?> ObtenerUsuarioPorNumeroAsync(NumeroWhatsApp numero, CancellationToken cancellationToken)
-            => Task.FromResult(_porNumero.GetValueOrDefault(numero.Valor));
+        {
+            var usuario = _porNumero.GetValueOrDefault(numero.Valor);
+            return Task.FromResult(usuario?.Estado == EstadoRegistro.Activo ? usuario : null);
+        }
+
+        public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+            NumeroWhatsApp numero,
+            CancellationToken cancellationToken)
+        {
+            var usuario = _porNumero.GetValueOrDefault(numero.Valor);
+            return Task.FromResult<IReadOnlyCollection<Usuario>>(
+                usuario is null ? [] : new[] { usuario });
+        }
+
+        public Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+        {
+            var primero = _ultimoCodigoUsuario + 1;
+            _ultimoCodigoUsuario += cantidad;
+            return Task.FromResult(primero);
+        }
 
         public Task GuardarUsuarioAsync(Usuario usuario, CancellationToken cancellationToken)
         {

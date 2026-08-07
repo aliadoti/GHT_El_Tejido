@@ -4,6 +4,47 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-07 (Claude Opus 5, Backend/SDET): **`I-08 v2` corte 1 de 7 DONE local
+  — dominio del maestro + repositorio (`§8` pasos 1 y 2).** Backend verde **762** (685 unitarias + 77
+  de integracion, +21), build Release `-warnaserror`, `dotnet format` y `git diff --check` limpios.
+  Sin push, sin despliegue y **sin recrear la base todavia**.
+  Entregado: `Usuario` con `codigoUsuario` (obligatorio, lo asigna la secuencia), `usuarioWhatsapp`,
+  `empresaId`, `sede`, `cargo`, `email` (normalizado a minusculas), `antiguedadAnios` (`decimal?` sin
+  redondear) e `idioma` (`es|en`, default `es`); `area`/`empresa` pasan a **opcionales**; el nombre
+  colapsa espacios sin re-capitalizar. `claveUnicidad` se calcula **solo** en el mapeo a documento
+  (`wa|<numero>` activo, `hist|<id>` inactivo, `tag|<id>`, `seq|<id>`), nunca en el dominio ni en un
+  servicio. `ObtenerUsuarioPorNumeroAsync` **filtra `estado = activo`** dentro del repositorio (Cosmos
+  y memoria, mas los 6 dobles de prueba) y se agrega `ListarUsuariosPorNumeroAsync` para el historico.
+  Contador `Secuencia` (`seq_usuario`) con concurrencia optimista por ETag, reintento en `412`/`409` y
+  reserva por bloque. El DTO de usuario de `04 §5.1` suma los campos nuevos de forma **aditiva**.
+  **Ojo al retomar:** el guardarrail `codigoUsuario >= 1` es intencional y ya atrapo un caso real (un
+  doble de prueba que devolvia 0); todo camino de alta debe pasar por `ReservarCodigosUsuarioAsync`.
+  **Siguiente: `I-08 §8` paso 3 — recrear el contenedor `users` con unique key `/claveUnicidad`,
+  sembrar el admin y verificar el `409`.** Es irreversible (las unique keys de Cosmos son inmutables)
+  y **bloquea** los pasos 4-7 (lectores `.xlsx`/`.csv`, servicio, endpoint, portal). Tras recrear hay
+  que **repetir la prueba de humo de P-31** (`QAS/14_*`). **No cargar datos reales**: falta el archivo
+  de GHT con `Telefono` diligenciado.
+- Ultima actualizacion: 2026-08-07 (Backend/SDET): **`P-31` DONE 3/3 y DESPLEGADO. El siguiente
+  cambio de codigo es `I-08 v2`.**
+  Commits `6ba6ce0` (corte 1: perilla, politica y dominio sin efecto observable), `32794fb` (corte 2:
+  auditoria y enganche del acto) y `6d02492` (corte 3: E2E simulada — inicio → aporte sobre umbral →
+  resumen → mejora sin repetirlo). Validacion verde: build Release, **664 unitarias + 77 de
+  integracion**, `dotnet format` y `git diff --check` limpios. Guia en lenguaje simple:
+  `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`.
+  Verificado contra el codigo: `PoliticaLimitesConversacion.ResolverUmbralResumen` **ya se consume**
+  en `OrquestadorConversacion` (en el corte 1 el umbral se calculaba pero no lo usaba nadie, por eso
+  el estado "1/3" era correcto y no un error de documentacion).
+  **Flags siguen OFF** (`Conversacion:ResumenConsolidacionHabilitado` + opt-out por campania).
+  **Pendiente operativo antes de encender:** D5 real, UAT, costo y acta de flags, mas la **decision de
+  negocio del umbral** — con `umbralCierreAnticipado=0.6` el rango util es **0.40–0.55**; si GHT lo
+  quiere al 70 %, hay que subir el umbral base y eso mueve la distribucion maduro/incubacion de D5.
+  **Decision abierta, fuera de alcance:** consulta bajo demanda del consolidado ("¿como va mi idea?").
+  **Handoff: `I-08 v2`** (TODO item 22a, spec y contratos listos desde el 2026-08-07, 0 codigo).
+  Orden en `I-08 §8`; el paso de **recrear el contenedor `users`** es irreversible y bloquea el resto.
+  ⚠️ **P-31 ya esta desplegado:** recrear la base borrara el estado del entorno donde se valido — no
+  se pierde codigo ni configuracion, pero hay que **repetir su prueba de humo** despues de sembrar.
+  `DT-P27-01` corte 2 se retoma despues de `I-08 v2`. Soporte de **ingles** sigue pendiente de
+  especificar; `I-08 v2` ya deja el campo `idioma` (`es|en`) en `Usuario`, asi que no lo bloquea.
 - Ultima actualizacion: 2026-08-07 (Claude Opus 5, Arquitecto/PM tecnico): **`I-08` REABIERTA como
   `I-08 v2`. SOLO DOCUMENTACION — cero cambios de codigo; queda todo listo para implementar.**
   GHT entrego la plantilla oficial (`Información asistentes convención gerentes 2026 V1.xlsx`, 129
@@ -37,8 +78,8 @@
   Cosmos son inmutables) que va antes de tocar el codigo de carga.
   **Por ahora NO se carga ningun dato:** la V1 del archivo trae `Telefono`, `Idioma` y `Empresa`
   vacias en las 129 filas; sin telefono ninguna fila entra. Falta que GHT entregue la V2 diligenciada.
-  **Pendiente de decision del usuario:** la prioridad de `I-08 v2` frente a `P-31` (en curso local
-  1/3). Docs actualizados: `Iniciativas/I-08_Carga_Masiva_Participantes.md` (reescrita),
+  **Prioridad resuelta el 2026-08-07:** `P-31` cerro 3/3 y quedo desplegado, asi que `I-08 v2` pasa a
+  ser el siguiente cambio de codigo (ver la entrada de arriba). Docs actualizados: `Iniciativas/I-08_Carga_Masiva_Participantes.md` (reescrita),
   `Iniciativas/plantillas/plantilla_participantes_v1.{xlsx,csv}` (nuevas), `base/03` (§2, §3.1, §3.1.1
   `Secuencia`, §3.2 `Tag`, §5, §6), `base/04 §5.1`, `base/06` (§2.1 nuevo, §3.2),
   `Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md` (§2.1 pasos 5–6 y checklist),
@@ -741,22 +782,26 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Completar P-31 corte 2 de 3 — diagnostico, telemetria y pruebas focalizadas.** Lee
-  primero `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md` (§7 contratos, §11 cortes). Entrega:
-  `Conversacion:UmbralResumenConsolidacion` y `Conversacion:ResumenConsolidacionHabilitado` en
-  `OpcionesConversacion`; overrides `configConversacional.umbralResumenConsolidacion` /
-  `.resumenConsolidacion` y `Pregunta.umbralResumenConsolidacion`; `ResolverUmbralResumen` +
-  `OrigenUmbralResumen` en `PoliticaLimitesConversacion` reutilizando `UmbralAlcanzado`/`ValorUmbral`;
-  campos `ResumenEnviadoEn` / `ResumenEnviadoEnVersion` en `IdeaConsolidada` propagados por
-  `Crear`/`Restaurar`/`CrearEstado` y las transiciones existentes, mapeados en
-  `IdeaConsolidadaCosmosDocument` con ausente => `null`; y diagnostico de arranque en
-  `ServicioPreparacion` cuando `umbralResumen >= umbralBase`. **Nada dispara todavia**: la regresion
-  completa debe quedar verde sin cambiar una sola expectativa existente. No tocar el sellado de
-  madurez, no desplegar, no hacer push ni modificar configuracion remota.
-- [ ] **Despues: P-31 cortes 2 y 3.** Corte 2 = acto `ResumirAvance` en I-20, insercion server-side del
-  texto consolidado, respaldo determinista, enganche en la rama de coaching de
-  `ConfirmarOCorregirIdeaAsync`, marcado idempotente y `LogSeguridad(resumenConsolidacion)`. Corte 3 =
-  E2E simulada via DT-QA-01, casos QAS y cierre documental.
+- [ ] **`I-08 v2` paso 3 de `§8` — recrear el contenedor `users` y sembrar. BLOQUEA los pasos 4-7 y es
+  IRREVERSIBLE.** El esquema ya esta cerrado en codigo (corte 1 DONE, ver "Estado global"), asi que
+  este es el momento. Procedimiento en `Iniciativas/I-08_Carga_Masiva_Participantes.md §3.2` y
+  `Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md §2.1`:
+  1. Borrar y recrear `users` con `pk = /pk` y **unique key `/claveUnicidad`** (ya **no**
+     `/whatsappNormalizado`); verificar que no quedo `/pk` como unique key.
+  2. Recrear los contenedores que referencian `usuarioId` (`campaigns`, `conversations`, `security`, …)
+     para no dejar huerfanos.
+  3. Sembrar **solo el admin** (`POST /diagnostico/simulacion/admin-inicial` ya reserva el codigo y
+     devuelve `U-000001`), lo que crea de paso el documento `Secuencia`.
+  4. Verificar el guardarrail: un segundo usuario **activo** con el numero del admin debe dar **`409`**.
+  5. **Repetir la prueba de humo de P-31** (`QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`): la
+     recreacion borra el estado del entorno donde se valido.
+  **No cargar datos reales:** falta que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
+- [ ] **Despues: `I-08 v2` pasos 4-7.** 4 = lectores `.xlsx` (ClosedXML) y `.csv` con las 9 columnas
+  oficiales y cabecera exacta; 5 = `ServicioCargaMasiva` reescrito (modos `upsert`/`solo_actualizar`,
+  conflicto de titular con similitud ≥ 0,85, reasignacion con compensacion, reserva de bloque de
+  codigos, reporte por fila); 6 = endpoint + request DTOs de `04 §5.1` (`modo`, `reasignaciones`,
+  `usuarioWhatsapp` y campos nuevos en alta/edicion, `POST /usuarios/{id}/reasignar-numero`,
+  descarga de plantilla); 7 = portal.
 - [ ] **EN PAUSA (retomar tras P-31): DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
   duplicados y límite); una lista inválida se descarta completa, usa el default compilado y registra
   únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a

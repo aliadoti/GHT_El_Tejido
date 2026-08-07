@@ -29,6 +29,7 @@ internal sealed class RepositorioUsuariosMemoria : IRepositorioUsuarios
 {
     private readonly ConcurrentDictionary<string, Usuario> _usuarios = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, Tag> _tags = new(StringComparer.Ordinal);
+    private int _ultimoCodigoUsuario;
 
     public Task GuardarUsuarioAsync(Usuario usuario, CancellationToken cancellationToken)
     {
@@ -40,7 +41,28 @@ internal sealed class RepositorioUsuariosMemoria : IRepositorioUsuarios
         => Task.FromResult(_usuarios.GetValueOrDefault(id));
 
     public Task<Usuario?> ObtenerUsuarioPorNumeroAsync(NumeroWhatsApp numero, CancellationToken cancellationToken)
-        => Task.FromResult(_usuarios.Values.FirstOrDefault(u => u.WhatsappNormalizado.Valor == numero.Valor));
+        // Mismo filtro por estado que el adaptador Cosmos (I-08 §3.1.f): sin el, las pruebas pasarian
+        // con un comportamiento distinto al de produccion.
+        => Task.FromResult(_usuarios.Values.FirstOrDefault(u =>
+            u.WhatsappNormalizado.Valor == numero.Valor && u.Estado == EstadoRegistro.Activo));
+
+    public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+        NumeroWhatsApp numero,
+        CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyCollection<Usuario>>(_usuarios.Values
+            .Where(u => u.WhatsappNormalizado.Valor == numero.Valor)
+            .OrderBy(u => u.CreadoEn)
+            .ThenBy(u => u.CodigoUsuario)
+            .ToArray());
+
+    public Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(cantidad, 1);
+
+        // Equivalente en memoria del contador seq_usuario (03 §3.1.1): bloque consecutivo y atomico.
+        var ultimoValor = Interlocked.Add(ref _ultimoCodigoUsuario, cantidad);
+        return Task.FromResult(ultimoValor - cantidad + 1);
+    }
 
     public Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(FiltroUsuarios filtro, CancellationToken cancellationToken)
     {

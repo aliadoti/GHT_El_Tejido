@@ -196,6 +196,7 @@ internal sealed class EvaluadorEntradaLlmReal : IEvaluadorEntrada
 
         var usuario = Usuario.Crear(
             "u_calibracion",
+            1,
             "Participante",
             NumeroWhatsApp.FromNormalized("573000000000"),
             RolUsuario.Participante,

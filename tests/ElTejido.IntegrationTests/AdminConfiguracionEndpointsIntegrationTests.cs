@@ -182,6 +182,7 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
     private static Usuario CrearUsuario(string id, string numero)
         => Usuario.Crear(
             id,
+            1,
             "Usuario",
             NumeroWhatsApp.FromNormalized(numero),
             RolUsuario.Participante,
@@ -254,6 +255,7 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
     {
         private readonly Dictionary<string, Usuario> _usuarios = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Tag> _tags = new(StringComparer.Ordinal);
+        private int _ultimoCodigoUsuario;
 
         public RepositorioUsuariosMemoria(params Usuario[] usuarios)
         {
@@ -275,7 +277,23 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         public Task<Usuario?> ObtenerUsuarioPorNumeroAsync(
             NumeroWhatsApp numero,
             CancellationToken cancellationToken)
-            => Task.FromResult(_usuarios.Values.FirstOrDefault(u => u.WhatsappNormalizado.Valor == numero.Valor));
+            => Task.FromResult(_usuarios.Values.FirstOrDefault(u =>
+                u.WhatsappNormalizado.Valor == numero.Valor && u.Estado == EstadoRegistro.Activo));
+
+        public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+            NumeroWhatsApp numero,
+            CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Usuario>>(_usuarios.Values
+                .Where(u => u.WhatsappNormalizado.Valor == numero.Valor)
+                .OrderBy(u => u.CreadoEn)
+                .ToArray());
+
+        public Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+        {
+            var primero = _ultimoCodigoUsuario + 1;
+            _ultimoCodigoUsuario += cantidad;
+            return Task.FromResult(primero);
+        }
 
         public Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(
             FiltroUsuarios filtro,

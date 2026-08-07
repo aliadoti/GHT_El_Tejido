@@ -22,6 +22,7 @@ public sealed class UsuarioTests
 
         var usuario = Usuario.Crear(
             " u_1 ",
+            42,
             " Ana Perez ",
             Numero,
             RolUsuario.Participante,
@@ -34,6 +35,7 @@ public sealed class UsuarioTests
             actualizadoEn);
 
         usuario.Id.Should().Be("u_1");
+        usuario.CodigoUsuario.Should().Be(42);
         usuario.Nombre.Should().Be("Ana Perez");
         usuario.WhatsappNormalizado.Should().Be(Numero);
         usuario.Area.Should().Be("Operaciones");
@@ -50,18 +52,7 @@ public sealed class UsuarioTests
     [InlineData(RolUsuario.Visor)]
     public void EsAdministrativo_IsTrueForPortalRoles(RolUsuario rol)
     {
-        var usuario = Usuario.Crear(
-            "u_admin",
-            "Admin",
-            Numero,
-            rol,
-            EstadoRegistro.Activo,
-            "TI",
-            "GHT",
-            [],
-            null,
-            DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow);
+        var usuario = Crear(rol: rol);
 
         usuario.EsAdministrativo.Should().BeTrue();
     }
@@ -69,18 +60,7 @@ public sealed class UsuarioTests
     [Fact]
     public void EsAdministrativo_IsFalseForParticipantRole()
     {
-        var usuario = Usuario.Crear(
-            "u_part",
-            "Participante",
-            Numero,
-            RolUsuario.Participante,
-            EstadoRegistro.Activo,
-            "Operaciones",
-            "GHT",
-            [],
-            null,
-            DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow);
+        var usuario = Crear(rol: RolUsuario.Participante);
 
         usuario.EsAdministrativo.Should().BeFalse();
     }
@@ -93,6 +73,7 @@ public sealed class UsuarioTests
 
         var act = () => Usuario.Crear(
             "u_1",
+            1,
             "Ana",
             Numero,
             RolUsuario.Participante,
@@ -108,5 +89,121 @@ public sealed class UsuarioTests
             .Throw<DomainValidationException>()
             .Where(exception => exception.Code == "FECHA_ACTUALIZACION_INVALIDA");
     }
-}
 
+    // --- I-08 v2: maestro alineado a la plantilla oficial de GHT (03 §3.1) ---
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Crear_RejectsCodigoUsuarioNotAssignedBySequence(int codigoUsuario)
+    {
+        var act = () => Crear(codigoUsuario: codigoUsuario);
+
+        act.Should()
+            .Throw<DomainValidationException>()
+            .Where(exception => exception.Code == "CODIGO_USUARIO_INVALIDO");
+    }
+
+    [Fact]
+    public void CodigoUsuarioLegible_UsesPaddedFormat()
+    {
+        Crear(codigoUsuario: 42).CodigoUsuarioLegible.Should().Be("U-000042");
+        Usuario.FormatearCodigo(1).Should().Be("U-000001");
+    }
+
+    [Fact]
+    public void Crear_AcceptsUserWithoutAreaEmpresaOrEmail()
+    {
+        // La plantilla oficial no trae Area y puede traer Empresa/Email vacios (I-08 §3).
+        var usuario = Crear(area: "  ", empresa: null, email: "   ");
+
+        usuario.Area.Should().BeNull();
+        usuario.Empresa.Should().BeNull();
+        usuario.Email.Should().BeNull();
+    }
+
+    [Fact]
+    public void Crear_NormalizesNombreEmailAndOptionalProfileFields()
+    {
+        var usuario = Crear(
+            nombre: "  JUAN   CARLOS   PEREZ ",
+            email: "  Ana.Perez@GHT.com  ",
+            empresaId: " AL ",
+            sede: " FF - ADM ",
+            cargo: " Gerente ",
+            usuarioWhatsapp: " ana.perez ");
+
+        // Se colapsan espacios pero no se re-capitaliza: el archivo llega en mayusculas (I-08 §3, col. D).
+        usuario.Nombre.Should().Be("JUAN CARLOS PEREZ");
+        usuario.Email.Should().Be("ana.perez@ght.com");
+        usuario.EmpresaId.Should().Be("AL");
+        usuario.Sede.Should().Be("FF - ADM");
+        usuario.Cargo.Should().Be("Gerente");
+        usuario.UsuarioWhatsapp.Should().Be("ana.perez");
+    }
+
+    [Fact]
+    public void Crear_KeepsAntiguedadDecimalWithoutRounding()
+    {
+        Crear(antiguedadAnios: 16.391666m).AntiguedadAnios.Should().Be(16.391666m);
+        Crear().AntiguedadAnios.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(null, "es")]
+    [InlineData("", "es")]
+    [InlineData(" ES ", "es")]
+    [InlineData("en", "en")]
+    public void Crear_AppliesSpanishAsDefaultLanguage(string? idioma, string esperado)
+    {
+        Crear(idioma: idioma).Idioma.Should().Be(esperado);
+    }
+
+    [Fact]
+    public void Crear_RejectsUnsupportedLanguage()
+    {
+        var act = () => Crear(idioma: "fr");
+
+        act.Should()
+            .Throw<DomainValidationException>()
+            .Where(exception => exception.Code == "IDIOMA_NO_SOPORTADO");
+
+        Usuario.EsIdiomaSoportado("fr").Should().BeFalse();
+        Usuario.EsIdiomaSoportado(" EN ").Should().BeTrue();
+    }
+
+    private static Usuario Crear(
+        int codigoUsuario = 1,
+        string nombre = "Ana",
+        RolUsuario rol = RolUsuario.Participante,
+        EstadoRegistro estado = EstadoRegistro.Activo,
+        string? area = "Operaciones",
+        string? empresa = "GHT",
+        string? usuarioWhatsapp = null,
+        string? empresaId = null,
+        string? sede = null,
+        string? cargo = null,
+        string? email = null,
+        decimal? antiguedadAnios = null,
+        string? idioma = null)
+        => Usuario.Crear(
+            "u_1",
+            codigoUsuario,
+            nombre,
+            Numero,
+            rol,
+            estado,
+            area,
+            empresa,
+            [],
+            null,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            usuarioWhatsapp,
+            empresaId,
+            sede,
+            cargo,
+            email,
+            antiguedadAnios,
+            idioma);
+}

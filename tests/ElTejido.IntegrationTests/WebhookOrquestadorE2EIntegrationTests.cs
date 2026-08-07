@@ -637,7 +637,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             LimitesSeguridad.Crear(1500, 10, 2), null, Epoca, Epoca);
 
         var usuario = Usuario.Crear(
-            "u_1", "Ana", NumeroWhatsApp.FromNormalized(Numero), RolUsuario.Participante, EstadoRegistro.Activo,
+            "u_1", 1, "Ana", NumeroWhatsApp.FromNormalized(Numero), RolUsuario.Participante, EstadoRegistro.Activo,
             "Operaciones", "GHT", null, null, Epoca, Epoca);
 
         var participante = ParticipanteCampania.Crear(

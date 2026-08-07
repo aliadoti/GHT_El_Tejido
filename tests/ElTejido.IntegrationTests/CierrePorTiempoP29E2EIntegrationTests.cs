@@ -302,7 +302,7 @@ public sealed class CierrePorTiempoP29E2EIntegrationTests
 
     private static Usuario CrearUsuario()
         => Usuario.Crear(
-            "u_1", "Ana", NumeroWhatsApp.FromNormalized(Numero), RolUsuario.Participante,
+            "u_1", 1, "Ana", NumeroWhatsApp.FromNormalized(Numero), RolUsuario.Participante,
             EstadoRegistro.Activo, "Operaciones", "GHT", null, null, Epoca, Epoca);
 
     private static Rubrica CrearRubrica()

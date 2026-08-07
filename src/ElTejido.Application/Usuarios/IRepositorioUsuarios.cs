@@ -13,7 +13,27 @@ public interface IRepositorioUsuarios
 
     Task<Usuario?> ObtenerUsuarioPorIdAsync(string id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Devuelve el usuario <b>activo</b> de ese numero (I-08 §3.1.f, 03 §3.1). El filtro por estado vive
+    /// aqui y no en cada llamador porque los 7 puntos de uso lo requieren por igual: un numero cuyo unico
+    /// registro esta inactivo no debe resolver participante ni permitir login.
+    /// </summary>
     Task<Usuario?> ObtenerUsuarioPorNumeroAsync(NumeroWhatsApp numero, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Devuelve el activo y el historico de titulares de un numero, ordenados por <c>creadoEn</c>
+    /// (I-08 §3.1.f). Unico camino para ver inactivos: ficha del portal y auditoria de reasignaciones.
+    /// </summary>
+    Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+        NumeroWhatsApp numero,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reserva un bloque de <paramref name="cantidad"/> codigos consecutivos del contador
+    /// <c>seq_usuario</c> (03 §3.1.1) y devuelve el <b>primero</b> del bloque. La reserva por bloque
+    /// evita golpear el contador fila por fila en la carga masiva (I-08 §3.1.b).
+    /// </summary>
+    Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(
         FiltroUsuarios filtro,

@@ -412,12 +412,21 @@ internal static class EndpointsAdminConfiguracion
     private static UsuarioAdminDto MapearUsuario(Usuario usuario)
         => new(
             usuario.Id,
+            usuario.CodigoUsuario,
+            usuario.CodigoUsuarioLegible,
             usuario.Nombre,
             usuario.WhatsappNormalizado.Valor,
+            usuario.UsuarioWhatsapp,
             usuario.Rol.ToString().ToLowerInvariant(),
             usuario.Estado.ToString().ToLowerInvariant(),
             usuario.Area,
             usuario.Empresa,
+            usuario.EmpresaId,
+            usuario.Sede,
+            usuario.Cargo,
+            usuario.Email,
+            usuario.AntiguedadAnios,
+            usuario.Idioma,
             usuario.Tags,
             usuario.PropiedadesDinamicas,
             usuario.CreadoEn,
@@ -477,14 +486,29 @@ internal static class EndpointsAdminConfiguracion
 
     private sealed record CambiarEstadoRequest(string? Estado);
 
+    /// <summary>
+    /// DTO de usuario de 04 §5.1. Los campos del maestro oficial (<c>codigoUsuario</c>, <c>email</c>,
+    /// <c>empresaId</c>, <c>sede</c>, <c>cargo</c>, <c>antiguedadAnios</c>, <c>idioma</c>,
+    /// <c>usuarioWhatsapp</c>) se agregan de forma <b>aditiva</b>: un cliente que los ignore sigue
+    /// funcionando (I-08 §3.1).
+    /// </summary>
     private sealed record UsuarioAdminDto(
         string Id,
+        int CodigoUsuario,
+        string CodigoUsuarioLegible,
         string Nombre,
         string WhatsappNormalizado,
+        string? UsuarioWhatsapp,
         string Rol,
         string Estado,
-        string Area,
-        string Empresa,
+        string? Area,
+        string? Empresa,
+        string? EmpresaId,
+        string? Sede,
+        string? Cargo,
+        string? Email,
+        decimal? AntiguedadAnios,
+        string Idioma,
         IReadOnlyCollection<string> Tags,
         IReadOnlyDictionary<string, object?> PropiedadesDinamicas,
         DateTimeOffset CreadoEn,

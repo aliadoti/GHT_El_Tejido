@@ -21,6 +21,9 @@ public sealed class ServicioGestionUsuariosTests
         repositorio
             .GuardarUsuarioAsync(Arg.Do<Usuario>(u => guardado = u), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
+        repositorio
+            .ReservarCodigosUsuarioAsync(1, Arg.Any<CancellationToken>())
+            .Returns(131);
         var servicio = CrearServicio(repositorio);
 
         var usuario = await servicio.CrearUsuarioAsync(
@@ -40,7 +43,58 @@ public sealed class ServicioGestionUsuariosTests
         usuario.WhatsappNormalizado.Valor.Should().Be("573001112233");
         usuario.Estado.Should().Be(EstadoRegistro.Activo);
         usuario.CreadoEn.Should().Be(Ahora);
+        // El codigo legible lo asigna la secuencia del maestro, no el cliente (03 §3.1.1).
+        usuario.CodigoUsuario.Should().Be(131);
+        usuario.CodigoUsuarioLegible.Should().Be("U-000131");
+        usuario.Idioma.Should().Be("es");
+        await repositorio.Received(1).ReservarCodigosUsuarioAsync(1, Arg.Any<CancellationToken>());
         await repositorio.Received(1).GuardarUsuarioAsync(usuario, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ActualizarUsuario_ConservaCodigoUsuarioYCamposDelMaestro()
+    {
+        var existente = Usuario.Crear(
+            "u_1",
+            77,
+            "Usuario",
+            NumeroWhatsApp.FromNormalized("573001112233"),
+            RolUsuario.Participante,
+            EstadoRegistro.Activo,
+            "Operaciones",
+            "GHT",
+            null,
+            null,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            usuarioWhatsapp: "ana.perez",
+            empresaId: "AL",
+            sede: "FF - ADM",
+            cargo: "Gerente",
+            email: "ana@ght.com",
+            antiguedadAnios: 16.391666m,
+            idioma: "en");
+        var repositorio = Substitute.For<IRepositorioUsuarios>();
+        repositorio.ObtenerUsuarioPorIdAsync("u_1", Arg.Any<CancellationToken>()).Returns(existente);
+        var servicio = CrearServicio(repositorio);
+
+        var actualizado = await servicio.ActualizarUsuarioAsync(
+            "u_1",
+            new SolicitudActualizarUsuario("Ana Nueva", null, null, null, null, null, null, null),
+            CancellationToken.None);
+
+        actualizado.Nombre.Should().Be("Ana Nueva");
+        actualizado.CodigoUsuario.Should().Be(77);
+        actualizado.UsuarioWhatsapp.Should().Be("ana.perez");
+        actualizado.EmpresaId.Should().Be("AL");
+        actualizado.Sede.Should().Be("FF - ADM");
+        actualizado.Cargo.Should().Be("Gerente");
+        actualizado.Email.Should().Be("ana@ght.com");
+        actualizado.AntiguedadAnios.Should().Be(16.391666m);
+        actualizado.Idioma.Should().Be("en");
+        await repositorio.DidNotReceive().ReservarCodigosUsuarioAsync(
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -118,6 +172,7 @@ public sealed class ServicioGestionUsuariosTests
     private static Usuario CrearUsuario(string id, string numero)
         => Usuario.Crear(
             id,
+            1,
             "Usuario",
             NumeroWhatsApp.FromNormalized(numero),
             RolUsuario.Participante,

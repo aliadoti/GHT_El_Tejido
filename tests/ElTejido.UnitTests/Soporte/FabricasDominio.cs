@@ -18,9 +18,11 @@ internal static class FabricasDominio
         string numero,
         RolUsuario rol = RolUsuario.Admin,
         EstadoRegistro estado = EstadoRegistro.Activo,
-        string nombre = "Admin")
+        string nombre = "Admin",
+        int codigoUsuario = 1)
         => Usuario.Crear(
             id,
+            codigoUsuario,
             nombre,
             NumeroWhatsApp.FromNormalized(numero),
             rol,

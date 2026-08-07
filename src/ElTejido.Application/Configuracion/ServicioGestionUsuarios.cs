@@ -45,12 +45,15 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
         var existente = await _usuarios.ObtenerUsuarioPorNumeroAsync(numero, cancellationToken);
         if (existente is not null)
         {
-            throw new ErrorConflicto("Ya existe un usuario con ese numero de WhatsApp.");
+            throw new ErrorConflicto("Ya existe un usuario activo con ese numero de WhatsApp.");
         }
 
         var ahora = _tiempo.GetUtcNow();
+        // El codigo legible lo entrega la secuencia del maestro, nunca el cliente (03 §3.1.1).
+        var codigoUsuario = await _usuarios.ReservarCodigosUsuarioAsync(1, cancellationToken);
         var usuario = Usuario.Crear(
             "u_" + Guid.NewGuid().ToString("N"),
+            codigoUsuario,
             solicitud.Nombre,
             numero,
             solicitud.Rol,
@@ -75,18 +78,28 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
         var numero = await ResolverNumeroAsync(existente, solicitud.Numero, cancellationToken);
         var ahora = _tiempo.GetUtcNow();
 
+        // codigoUsuario y el resto de campos del maestro se conservan: son inmutables o todavia no
+        // editables por esta ruta (I-08 §3.1.b, §4.2).
         var actualizado = Usuario.Crear(
             existente.Id,
+            existente.CodigoUsuario,
             ResolverTexto(solicitud.Nombre, existente.Nombre),
             numero,
             solicitud.Rol ?? existente.Rol,
             solicitud.Estado ?? existente.Estado,
-            ResolverTexto(solicitud.Area, existente.Area),
-            ResolverTexto(solicitud.Empresa, existente.Empresa),
+            ResolverOpcional(solicitud.Area, existente.Area),
+            ResolverOpcional(solicitud.Empresa, existente.Empresa),
             solicitud.Tags ?? existente.Tags,
             solicitud.PropiedadesDinamicas ?? existente.PropiedadesDinamicas,
             existente.CreadoEn,
-            ahora);
+            ahora,
+            existente.UsuarioWhatsapp,
+            existente.EmpresaId,
+            existente.Sede,
+            existente.Cargo,
+            existente.Email,
+            existente.AntiguedadAnios,
+            existente.Idioma);
 
         await _usuarios.GuardarUsuarioAsync(actualizado, cancellationToken);
         return actualizado;
@@ -191,5 +204,9 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
     }
 
     private static string ResolverTexto(string? valor, string actual)
+        => valor is null ? actual : valor;
+
+    /// <summary>Campos opcionales del maestro (<c>area</c>, <c>empresa</c>): ausente conserva, presente manda.</summary>
+    private static string? ResolverOpcional(string? valor, string? actual)
         => valor is null ? actual : valor;
 }

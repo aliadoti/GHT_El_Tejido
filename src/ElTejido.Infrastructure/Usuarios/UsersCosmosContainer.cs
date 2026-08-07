@@ -121,6 +121,46 @@ internal sealed class UsersCosmosContainer : IUsersCosmosContainer
         }
     }
 
+    public async Task<SecuenciaCosmosDocument?> ReadSecuenciaAsync(
+        string id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _container.ReadItemAsync<SecuenciaCosmosDocument>(
+                id,
+                new PartitionKey(SecuenciaCosmosDocument.PartitionKeyValue),
+                cancellationToken: cancellationToken);
+
+            return response.Resource;
+        }
+        catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task GuardarSecuenciaAsync(
+        SecuenciaCosmosDocument document,
+        string? etag,
+        CancellationToken cancellationToken)
+    {
+        var particion = new PartitionKey(SecuenciaCosmosDocument.PartitionKeyValue);
+        if (etag is null)
+        {
+            // Primera vez: Create (no Upsert) para que dos arranques simultaneos no se pisen el contador.
+            await _container.CreateItemAsync(document, particion, cancellationToken: cancellationToken);
+            return;
+        }
+
+        await _container.ReplaceItemAsync(
+            document,
+            document.Id,
+            particion,
+            new ItemRequestOptions { IfMatchEtag = etag },
+            cancellationToken);
+    }
+
     private static QueryDefinition CreateUsuariosQueryDefinition(FiltroUsuariosCosmos filtro)
     {
         var filters = new List<string>

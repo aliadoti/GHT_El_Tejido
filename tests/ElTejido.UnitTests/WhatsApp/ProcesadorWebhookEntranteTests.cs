@@ -219,6 +219,7 @@ public sealed class ProcesadorWebhookEntranteTests
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         var usuario = Usuario.Crear(
             "u_1",
+            1,
             "Ana",
             ElTejido.Domain.Identidad.NumeroWhatsApp.FromNormalized(Numero),
             RolUsuario.Participante,

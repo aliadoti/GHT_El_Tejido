@@ -102,6 +102,7 @@ public sealed class AuthEndpointsIntegrationTests
     private static Usuario CrearAdmin()
         => Usuario.Crear(
             "u_admin1",
+            1,
             "Admin",
             NumeroWhatsApp.FromNormalized(NumeroAdmin),
             RolUsuario.Admin,
@@ -157,7 +158,19 @@ public sealed class AuthEndpointsIntegrationTests
         public FakeUsuarios(params Usuario[] usuarios) => _usuarios = usuarios.ToList();
 
         public Task<Usuario?> ObtenerUsuarioPorNumeroAsync(NumeroWhatsApp numero, CancellationToken cancellationToken)
-            => Task.FromResult(_usuarios.FirstOrDefault(u => u.WhatsappNormalizado.Valor == numero.Valor));
+            => Task.FromResult(_usuarios.FirstOrDefault(u =>
+                u.WhatsappNormalizado.Valor == numero.Valor && u.Estado == EstadoRegistro.Activo));
+
+        public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+            NumeroWhatsApp numero,
+            CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Usuario>>(_usuarios
+                .Where(u => u.WhatsappNormalizado.Valor == numero.Valor)
+                .OrderBy(u => u.CreadoEn)
+                .ToArray());
+
+        public Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
 
         public Task<Usuario?> ObtenerUsuarioPorIdAsync(string id, CancellationToken cancellationToken)
             => Task.FromResult(_usuarios.FirstOrDefault(u => u.Id == id));
