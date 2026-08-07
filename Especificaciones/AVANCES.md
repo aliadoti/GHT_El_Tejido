@@ -4,6 +4,26 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-07 (Claude Opus 5, Backend/SDET): **`I-08 v2` corte 2 — lectores y
+  servicio de carga (`§8` pasos 4 y 5, mas el endpoint del paso 6). DONE local, commit `d07b9f0`.**
+  Backend verde **799** (719 unitarias + 80 de integracion, +37), build Release `-warnaserror`,
+  `dotnet format` y `git diff --check` limpios. **Paquete nuevo: ClosedXML 0.105.1** (Infrastructure y
+  los dos proyectos de prueba).
+  `PlantillaParticipantes` centraliza las 9 columnas, la validacion de cabecera (tolerante a
+  mayusculas, espacios y tildes; **no** al orden) y las conversiones, para que `.xlsx` y `.csv` den
+  exactamente las mismas filas — hay una prueba que lo compara. El lector `.xlsx` es el primario y
+  toma la antiguedad del **valor** de la celda, no del texto formateado (el formato redondea a la
+  vista y la spec la quiere sin redondear).
+  `ServicioCargaMasiva` trabaja en **dos pasadas**: planea sin escribir y luego ejecuta. Eso permite
+  reservar **exactamente N** codigos en una sola operacion y que una fila en conflicto no deje el lote
+  a medias. Incluye modos `upsert`/`solo_actualizar`, conflicto de titular con similitud ≥ 0,85 y sus
+  tres resoluciones, reasignacion ordenada (inactivar → crear) con compensacion, tag de empresa
+  derivada de `ID Empresa` y auditoria sin PII.
+  **Falta del paso 6:** request DTOs de alta/edicion con los campos nuevos y `usuarioWhatsapp`,
+  `POST /usuarios/{id}/reasignar-numero` y `GET /usuarios/plantilla-carga`. **Falta el paso 7** (portal).
+  ⚠️ **Pendiente bloqueante:** el paso 3 (recrear `users`) sigue sin hacerse; hasta entonces la
+  reasignacion no puede funcionar contra Azure porque la unique key vieja (`/whatsappNormalizado`)
+  rechaza dos documentos con el mismo numero.
 - Ultima actualizacion: 2026-08-07 (Claude Opus 5, Backend/SDET): **`I-08 v2` corte 1 de 7 DONE local
   — dominio del maestro + repositorio (`§8` pasos 1 y 2).** Backend verde **762** (685 unitarias + 77
   de integracion, +21), build Release `-warnaserror`, `dotnet format` y `git diff --check` limpios.
@@ -796,12 +816,15 @@
   5. **Repetir la prueba de humo de P-31** (`QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`): la
      recreacion borra el estado del entorno donde se valido.
   **No cargar datos reales:** falta que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
-- [ ] **Despues: `I-08 v2` pasos 4-7.** 4 = lectores `.xlsx` (ClosedXML) y `.csv` con las 9 columnas
-  oficiales y cabecera exacta; 5 = `ServicioCargaMasiva` reescrito (modos `upsert`/`solo_actualizar`,
-  conflicto de titular con similitud ≥ 0,85, reasignacion con compensacion, reserva de bloque de
-  codigos, reporte por fila); 6 = endpoint + request DTOs de `04 §5.1` (`modo`, `reasignaciones`,
-  `usuarioWhatsapp` y campos nuevos en alta/edicion, `POST /usuarios/{id}/reasignar-numero`,
-  descarga de plantilla); 7 = portal.
+- [ ] **Despues: completar el paso 6 y hacer el 7.** Del **paso 6** falta: request DTOs de
+  `POST/PUT /api/admin/usuarios` con `email`, `empresaId`, `sede`, `cargo`, `antiguedadAnios`,
+  `idioma` y `usuarioWhatsapp` (04 §5.1); `POST /api/admin/usuarios/{id}/reasignar-numero`
+  (reasignacion manual desde la ficha); y `GET /api/admin/usuarios/plantilla-carga` para descargar la
+  plantilla vacia. El **paso 7** es el portal: subida `.xlsx`/`.csv`, selector de modo, resolucion de
+  conflictos de titular por fila, descarga de plantilla, `codigoUsuario` en la tabla e historico del
+  numero en la ficha de usuario.
+  Ya estan hechos los pasos 4 y 5 y la parte del endpoint que recibe archivo, `modo` y
+  `reasignaciones` (commit `d07b9f0`).
 - [ ] **EN PAUSA (retomar tras P-31): DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
   duplicados y límite); una lista inválida se descarta completa, usa el default compilado y registra
   únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a

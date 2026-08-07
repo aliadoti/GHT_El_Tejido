@@ -9,8 +9,17 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **▶▶ INICIATIVA EN CURSO 2026-08-07 — `I-08 v2` CARGA MASIVA. CORTE 1 DE 7 DONE LOCAL
-> (commit `63fa3e7`). ▶ SIGUIENTE: PASO 3 DE `§8` — RECREAR EL CONTENEDOR `users`.**
+> **▶▶ INICIATIVA EN CURSO 2026-08-07 — `I-08 v2` CARGA MASIVA. CORTES 1 Y 2 DONE LOCAL
+> (commits `63fa3e7`, `d07b9f0`). ▶ SIGUIENTE: PASO 3 DE `§8` — RECREAR EL CONTENEDOR `users`.**
+> **Corte 2 (pasos 4 y 5, mas el endpoint del paso 6):** `PlantillaParticipantes` centraliza las 9
+> columnas y sus conversiones; lector `.xlsx` con ClosedXML (primario, toma la antigüedad del valor de
+> la celda y no del texto formateado) y `.csv` de respaldo, con una prueba que compara que den las
+> mismas filas; `ServicioCargaMasiva` en dos pasadas (planear sin escribir → ejecutar) con modos
+> `upsert`/`solo_actualizar`, conflicto de titular ≥ 0,85 y sus tres resoluciones, reasignación
+> ordenada con compensación, tag de empresa derivada y auditoría sin PII. Backend **799**
+> (719 + 80). **Paquete nuevo: ClosedXML 0.105.1.**
+> **Falta:** del paso 6, los request DTOs de alta/edición, `reasignar-numero` y la descarga de
+> plantilla; y el paso 7 (portal).
 > **Corte 1 (pasos 1 y 2 de `§8`) entregado:** `Usuario` con `codigoUsuario` (obligatorio, lo asigna
 > la secuencia), `usuarioWhatsapp`, `empresaId`, `sede`, `cargo`, `email`, `antiguedadAnios`
 > (`decimal?` sin redondear) e `idioma` (`es|en`, default `es`); `area`/`empresa` **opcionales**;
@@ -256,8 +265,9 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 
 **Iniciativa objetivo vigente: `I-08 v2` — carga masiva con la plantilla oficial de GHT
 (ítem 22a).** Orden de `I-08 §8`: ~~dominio y `03`~~ ✅ → ~~repositorio (filtro `estado = activo` +
-`claveUnicidad`)~~ ✅ → **▶ recrear la base y sembrar** (paso irreversible que bloquea el resto) →
-lectores `.xlsx`/`.csv` → servicio → endpoint → portal.
+`claveUnicidad`)~~ ✅ → **▶ recrear la base y sembrar** (paso irreversible; sin él la reasignación no
+puede funcionar contra Azure) → ~~lectores `.xlsx`/`.csv`~~ ✅ → ~~servicio~~ ✅ → endpoint (parcial) →
+portal.
 Tras recrear, repetir la prueba de humo de P-31 (`QAS/14_*`). **No cargar datos reales**: falta que
 GHT entregue el archivo con `Telefono` diligenciado.
 
@@ -372,7 +382,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 19 | `P-07` consentimiento de datos | ~~Sprint 2~~ | Codex | **⛔ DIFERIDA (reunión 20-jul)** — consentimiento innecesario en herramienta interna (IP de GHT); no implementar para el Hito |
 | 20 | `P-10` costo LLM + rate por número | Sprint 2 | Claude | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
 | 21 | `P-09` monitoreo día-D | Pruebas 4–8 ago | Codex | **Panel DIFERIDO (reunión 20-jul)** — basta health-check; se conservan `/health(/ready)`, logs de entrega, **acta de flags + runbook** (esos sí son entregables del go-live) |
-| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **EN CURSO — antes del freeze** | **Claude** | **CORTE 1 DE 7 DONE local 2026-08-07 (commit `63fa3e7`)** — pasos 1 y 2 de `§8`: `Usuario` con `codigoUsuario`/`usuarioWhatsapp`/`empresaId`/`sede`/`cargo`/`email`/`antiguedadAnios`/`idioma`, `area`-`empresa` opcionales, `claveUnicidad` derivada solo en el mapeo, filtro `estado = activo` en `ObtenerUsuarioPorNumeroAsync` + `ListarUsuariosPorNumeroAsync`, contador `Secuencia` con ETag y reserva por bloque, DTO `04 §5.1` aditivo. Backend **762** (685+77), build/format/diff verdes; sin push ni despliegue. **▶ Siguiente: paso 3 — recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el `409`. Irreversible y bloquea los pasos 4-7**; tras recrear, repetir la prueba de humo de P-31. Faltan además lectores `.xlsx`/`.csv`, servicio (modos + conflicto de titular + reasignación), endpoint y portal. |
+| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **EN CURSO — antes del freeze** | **Claude** | **CORTES 1 Y 2 DONE local 2026-08-07 (commits `63fa3e7`, `d07b9f0`)** — pasos 1 y 2 de `§8`: `Usuario` con `codigoUsuario`/`usuarioWhatsapp`/`empresaId`/`sede`/`cargo`/`email`/`antiguedadAnios`/`idioma`, `area`-`empresa` opcionales, `claveUnicidad` derivada solo en el mapeo, filtro `estado = activo` en `ObtenerUsuarioPorNumeroAsync` + `ListarUsuariosPorNumeroAsync`, contador `Secuencia` con ETag y reserva por bloque, DTO `04 §5.1` aditivo. Pasos 4 y 5 (+ endpoint parcial): `PlantillaParticipantes` con las 9 columnas, lectores `.xlsx` (ClosedXML, primario) y `.csv` que producen filas idénticas, y `ServicioCargaMasiva` en dos pasadas con modos, conflicto de titular ≥ 0,85, reasignación con compensación, tag de empresa derivada y auditoría sin PII. Backend **799** (719+80), build/format/diff verdes; corte 1 desplegado, corte 2 sin push. **▶ Siguiente: paso 3 — recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el `409`. Irreversible; sin él la reasignación no funciona contra Azure**; tras recrear, repetir la prueba de humo de P-31. Falta además cerrar el paso 6 (DTOs de alta/edición, `reasignar-numero`, descarga de plantilla) y el paso 7 (portal). |
 | 22 | `I-08` carga real de la lista de GHT | Freeze 8–9 ago | Claude | **TODO — BLOCKED por 22a y por GHT.** Las variables demográficas de Munir **ya llegaron**: son las columnas de la plantilla oficial (insumo cerrado). Falta que GHT entregue el archivo con **`Telefono` diligenciado** (en la V1 esa columna viene vacía en las 129 filas, igual que `Empresa` e `Idioma`). **No cargar nada hasta entonces.** |
 | 23 | **cierre por inactividad ~5 min** (granularidad sub-hora) | Sprint 2 | Claude | **DONE local dentro de I-17 (2026-07-22).** Cierre sub-hora, parametrizable por campaña, con interruptor global apagado por defecto; backend verde 420. |
 | 24 | **`P-21` multi-número de WhatsApp** | A coordinar (fuera de ruta crítica) | Codex | **DONE local 2026-07-25.** Misma WABA/App; `metadata.phone_number_id` llega al orquestador y todas las respuestas salen por ese número. `IWhatsAppGateway` acepta emisor opcional; `configConversacional.numeroWhatsAppSaliente` guarda un alias por campaña y el fallback legacy/predeterminado conserva el comportamiento actual. Sin secretos nuevos; backend 473/473 verde. |
@@ -463,12 +473,12 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
       recreación borra el estado del entorno donde se validó.
    **No cargar datos reales** hasta que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-2. **Después: `I-08 v2` pasos 4-7.** 4 = lectores `.xlsx` (ClosedXML) y `.csv` con las 9 columnas y
-   cabecera exacta; 5 = `ServicioCargaMasiva` reescrito (modos `upsert`/`solo_actualizar`, conflicto
-   de titular con similitud ≥ 0,85, reasignación con compensación, reserva de bloque de códigos,
-   reporte por fila con motivos tipificados); 6 = endpoint y request DTOs de `04 §5.1` (`modo`,
-   `reasignaciones`, campos nuevos en alta/edición, `POST /usuarios/{id}/reasignar-numero`, descarga
-   de plantilla); 7 = portal (upload, resolución de conflictos, ficha con histórico del número).
+2. **Después: completar el paso 6 y hacer el 7.** Del **paso 6** falta: request DTOs de
+   `POST/PUT /api/admin/usuarios` con `email`, `empresaId`, `sede`, `cargo`, `antiguedadAnios`,
+   `idioma` y `usuarioWhatsapp`; `POST /api/admin/usuarios/{id}/reasignar-numero`; y
+   `GET /api/admin/usuarios/plantilla-carga`. El **paso 7** es el portal: subida `.xlsx`/`.csv`,
+   selector de modo, resolución de conflictos por fila, descarga de plantilla, `codigoUsuario` en la
+   tabla e histórico del número en la ficha.
 
 3. **Deuda técnica en pausa: `DT-P27-01` corte 2 de 2.** Validar cada lista tras normalizar (vacíos,
    duplicados, límite); ante invalidez usar el default y registrar solo el motivo; completar
