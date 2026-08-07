@@ -1859,12 +1859,26 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             ? EvaluadorLlm.RepreguntaNeutra
             : resultado.Evaluacion.RepreguntaSugerida.Trim();
         var umbralResumen = _limites.ResolverUmbralResumen(campania, pregunta);
-        var enviarResumen = resultado is not ResultadoEvaluacion.Fallback
-            && idea.ResumenEnviadoEn is null
+        var superaUmbralResumen = resultado is not ResultadoEvaluacion.Fallback
             && _limites.UmbralAlcanzado(
                 resultado.Evaluacion.CalificacionTotal,
                 contexto.Contexto.RubricaSnapshot.Escala,
                 umbralResumen);
+        var enviarResumen = superaUmbralResumen && idea.ResumenEnviadoEn is null;
+        if (umbralResumen > 0 && resultado is ResultadoEvaluacion.Fallback)
+        {
+            await RegistrarResumenConsolidacionAsync(
+                usuario, idea, version.NumeroVersion, umbralResumen, campania, pregunta,
+                resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
+                "omitidoFallback", ahora, cancellationToken);
+        }
+        else if (superaUmbralResumen && !enviarResumen)
+        {
+            await RegistrarResumenConsolidacionAsync(
+                usuario, idea, version.NumeroVersion, umbralResumen, campania, pregunta,
+                resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
+                "omitidoYaEnviado", ahora, cancellationToken);
+        }
         var encabezadoResumen = TextoConfigurado(
             _mensajes.EncabezadoResumenAvance, OpcionesMensajesConversacion.EncabezadoResumenAvanceDefault);
         var preguntaResumen = TextoConfigurado(
@@ -1884,12 +1898,43 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             idea = idea.ConResumenEnviado(version.NumeroVersion, ahora);
             await _respuestas.GuardarIdeaConsolidadaAsync(idea, cancellationToken);
+            await RegistrarResumenConsolidacionAsync(
+                usuario, idea, version.NumeroVersion, umbralResumen, campania, pregunta,
+                resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
+                "enviado", ahora, cancellationToken);
         }
         await EnviarAsync(
             conversacion, numero, turnoCoaching, TipoEnvioMensaje.Repregunta, emisor, ahora,
             cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion.RegistrarRepregunta(), cancellationToken);
     }
+
+    /// <summary>P-31: trazabilidad del resumen sin aporte, texto consolidado ni texto redactado.</summary>
+    private Task RegistrarResumenConsolidacionAsync(
+        Usuario usuario,
+        IdeaConsolidada idea,
+        int numeroVersion,
+        double umbral,
+        Campania campania,
+        Pregunta pregunta,
+        decimal score,
+        EscalaRubrica escala,
+        string accion,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.ResumenConsolidacion,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                accion,
+                FormattableString.Invariant(
+                    $"accion:{accion};idea:{idea.Id};version:{numeroVersion};umbral:{umbral};origen:{_limites.OrigenUmbralResumen(campania, pregunta)};score:{score};escalaMin:{escala.Min};escalaMax:{escala.Max}"),
+                _correlacion.CorrelationIdActual,
+                ahora,
+                campaniaId: campania.Id),
+            cancellationToken);
 
     private async Task CrearPropuestaComplementariaAsync(
         DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,

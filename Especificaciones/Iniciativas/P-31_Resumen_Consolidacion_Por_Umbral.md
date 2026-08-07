@@ -297,3 +297,13 @@ calibrando. Ambos valores se fijan en el acta de flags del día D.
 3. Los campos `resumenEnviadoEn` / `resumenEnviadoEnVersion` quedan como dato histórico inerte; si el
    interruptor se vuelve a encender, las ideas ya resumidas no repiten el resumen.
 4. Los umbrales de campaña/pregunta son opcionales: borrarlos devuelve el alcance al default global.
+
+---
+
+## 13. Avance local
+
+- **2026-08-07 — corte 2 en curso:** el acto `ResumirAvance` compone el texto de la versión vigente
+  en el servidor, persiste su marca de idempotencia y registra `ResumenConsolidacion` sin texto de la
+  idea ni del participante. La preparación advierte cuando el umbral global de resumen es igual o
+  superior al de cierre. Queda el corte 3: E2E simulada, QAS y cierre documental. Los flags siguen
+  apagados por defecto.

@@ -25,6 +25,7 @@ public static class ServiciosDiagnostico
         // Secretos (Key Vault / config local) y configuracion no secreta de WhatsApp.
         services.AddSingleton<IComprobacionPreparacion, ComprobacionSecretos>();
         services.AddSingleton<IComprobacionPreparacion, ComprobacionWhatsApp>();
+        services.AddSingleton<IComprobacionPreparacion, ComprobacionUmbralResumenConsolidacion>();
 
         // Cosmos: el cliente solo existe en modo Cosmos; en memoria se reporta NoAplica.
         var database = configuration["Cosmos:DatabaseName"] ?? "eltejido";

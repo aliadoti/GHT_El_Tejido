@@ -465,6 +465,58 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P31_IdeaAbiertaSobreUmbral_EnviaLaVersionIntegraUnaSolaVezYLaAuditaSinTexto()
+    {
+        var almacen = ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(
+                RecomendacionEvaluacion.Repreguntar,
+                "Que resultado esperas?",
+                "La propuesta va tomando forma.",
+                calificacionTotal: 3m)));
+        await PrepararConversacionAsync();
+
+        var orquestador = Construir(
+            new OpcionesConversacion
+            {
+                ConfirmacionExplicitaIdeasHabilitada = false,
+                ResumenConsolidacionHabilitado = true,
+                UmbralResumenConsolidacion = 0.4,
+            },
+            ConsolidadorQueAcumula(),
+            RedactorQueDevuelve("Mira el avance.", "Quieres continuar?"));
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxRepreguntas: 2),
+            Mensaje("Una propuesta para mejorar la atencion de usuarios"),
+            CancellationToken.None);
+
+        var idea = almacen.Ideas.Values.Should().ContainSingle().Which;
+        idea.ResumenEnviadoEn.Should().NotBeNull();
+        idea.ResumenEnviadoEnVersion.Should().Be(1);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Una propuesta para mejorar la atencion de usuarios", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+        await _logSeguridad.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ResumenConsolidacion
+                && log.Resultado == "enviado"
+                && !log.Detalle!.Contains("Una propuesta para mejorar", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(maxRepreguntas: 2),
+            Mensaje("Agrego una ruta clara para responder solicitudes"),
+            CancellationToken.None);
+
+        await _logSeguridad.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ResumenConsolidacion
+                && log.Resultado == "omitidoYaEnviado"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task P25_PrimerAporteSustantivo_SeEvaluaYRecibeCoachingSinConfirmacionRepetitiva()
     {
         var almacen = ConfigurarAlmacenIdeas();
