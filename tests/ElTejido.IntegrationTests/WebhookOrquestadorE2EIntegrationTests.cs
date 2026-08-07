@@ -108,6 +108,57 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         gateway.Enviados.Single().Tipo.Should().Be(TipoEnvioMensaje.Inicial);
     }
 
+    [Fact]
+    public async Task P31_Simulacion_AporteSobreUmbralMuestraResumenYLaMejoraNoLoRepite()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+        var logs = Substitute.For<IRepositorioLogSeguridad>();
+
+        using var fabrica = Construir(
+            gateway,
+            conversaciones,
+            respuestas,
+            contextos,
+            compilaciones,
+            confirmacionExplicitaIdeas: false,
+            logSeguridad: logs,
+            resumenConsolidacion: true,
+            evaluacion: CrearEvaluacion(
+                recomendacion: RecomendacionEvaluacion.Repreguntar,
+                repregunta: "Que resultado esperas?",
+                calificacionTotal: 3m));
+        using var client = fabrica.CreateClient();
+
+        await EnviarSimulacionAsync(client, "wamid.P31.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Any(envio => envio.Tipo == TipoEnvioMensaje.Inicial));
+
+        const string aporte = "Una ruta clara para que los usuarios reciban respuesta a sus solicitudes";
+        await EnviarSimulacionAsync(client, "wamid.P31.2", aporte);
+        await EsperarAsync(() => gateway.Enviados.Any(envio => envio.Tipo == TipoEnvioMensaje.Repregunta));
+
+        gateway.Enviados.Last(envio => envio.Tipo == TipoEnvioMensaje.Repregunta).Texto.Should().Contain(aporte);
+        respuestas.Ideas.Values.Should().ContainSingle().Which.ResumenEnviadoEn.Should().NotBeNull();
+        await logs.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ResumenConsolidacion
+                && log.Resultado == "enviado"
+                && !log.Detalle!.Contains(aporte, StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+
+        await EnviarSimulacionAsync(client, "wamid.P31.3", "Agrego responsables y un plazo para cada respuesta");
+        await EsperarAsync(() => contextos.Count >= 2);
+
+        gateway.Enviados.Count(envio => envio.Tipo == TipoEnvioMensaje.Repregunta && envio.Texto.Contains("Asi va tu idea", StringComparison.Ordinal))
+            .Should().Be(1);
+        await logs.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.TipoEvento == TipoEventoSeguridad.ResumenConsolidacion
+                && log.Resultado == "omitidoYaEnviado"),
+            Arg.Any<CancellationToken>());
+    }
+
     /// <summary>
     /// I-19 §13: recorrido completo de una idea por el webhook real — aporte → propuesta →
     /// confirmación → evaluación de la versión consolidada → cierre madura con curaduría pendiente y su
@@ -414,6 +465,14 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    private static async Task EnviarSimulacionAsync(HttpClient client, string wamid, string texto)
+    {
+        using var respuesta = await client.PostAsJsonAsync(
+            "/diagnostico/simulacion/webhook-entrante",
+            new { numero = Numero, texto, whatsappMessageId = wamid });
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private static WebApplicationFactory<Program> Construir(
         GatewayDePrueba gateway,
         ConversacionesFake conversaciones,
@@ -426,7 +485,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         IRepositorioLogSeguridad? logSeguridad = null,
         bool clasificacionIntencionControl = false,
         bool retomarIdeas = false,
-        DominioEvaluacion? evaluacion = null)
+        DominioEvaluacion? evaluacion = null,
+        bool resumenConsolidacion = false)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
         dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
@@ -471,6 +531,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                         confirmacionExplicitaIdeas.ToString(),
                     ["Conversacion:ClasificacionIntencionControl"] = clasificacionIntencionControl.ToString(),
                     ["Conversacion:RetomarIdeasHabilitado"] = retomarIdeas.ToString(),
+                    ["Conversacion:ResumenConsolidacionHabilitado"] = resumenConsolidacion.ToString(),
+                    ["Conversacion:UmbralResumenConsolidacion"] = "0.4",
                 }));
 
             builder.ConfigureTestServices(services =>
