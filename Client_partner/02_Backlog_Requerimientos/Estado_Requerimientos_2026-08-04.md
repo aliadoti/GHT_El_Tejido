@@ -1,4 +1,4 @@
-# Estado de requerimientos — El Tejido (corte 2026-08-04)
+# Estado de requerimientos — El Tejido (corte 2026-08-04, addendum 2026-08-06)
 
 > **Atendido / DONE local** = codificado y probado en local; interruptores apagados, pendiente de
 > activación operativa (UAT/D5/costo). Nomenclatura unificada REQ; entre paréntesis el código de spec.
@@ -44,6 +44,23 @@
 - REQ-038 (I-20) — Redacción conversacional fluida + Markdown ejecutivo. Atendido (28-jul).
 - REQ-039 (P-24) — Evaluación implícita al solicitar mejora (fix). Atendido (29-jul).
 - REQ-040 (P-25) — Coaching directo sin confirmación repetitiva. Atendido (29-jul).
+
+## 🆕 Nuevas solicitudes (2026-08-06)
+
+- **REQ-052 (P-31) — Visibilidad del progreso de la idea.** Al alcanzar un umbral configurable, el
+  sistema presenta de forma proactiva la consolidación de la idea en la que se está trabajando y
+  pregunta si quiere seguir madurándola. **Especificada el 06-ago y priorizada como la próxima
+  iniciativa a implementar** (3 cortes, kill-switch OFF). El umbral que dispara el mensaje es
+  **independiente** del que clasifica una idea como madura, y ambos se ajustan por campaña y por
+  pregunta. Spec: `Especificaciones/Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`.
+  - *Decisión abierta:* que el participante pueda pedir el consolidado **bajo demanda** ("muéstrame
+    cómo va mi idea"). Hoy no existe esa ruta y la petición se guardaría como parte de la idea.
+    Fuera del alcance de P-31 hasta decidirlo.
+- **REQ-053 — Soporte de inglés en el chatbot.** Campo de idioma en el participante, mensaje de
+  bienvenida bilingüe y respuestas del asistente en el idioma de la persona. **Pendiente de
+  especificar:** el alcance real toca la plantilla aprobada de WhatsApp, los prompts, los
+  vocabularios deterministas de reconocimiento de intención y el contenido de campaña (preguntas y
+  mensajes de cierre). En análisis.
 
 ## 🔄 En curso
 

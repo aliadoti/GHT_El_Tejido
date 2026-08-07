@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Informe ejecutivo E2E conversacional | 6 de agosto de 2026</title>
+  <style>
+    :root { --ink:#12263f; --muted:#607287; --line:#dbe5ee; --blue:#0d6efd; --teal:#00a6a6; --green:#14804a; --amber:#b7791f; --red:#c53030; --pale:#f5f8fb; --navy:#082a4a; }
+    * { box-sizing:border-box; } body { margin:0; color:var(--ink); background:var(--pale); font:15px/1.5 "Segoe UI", Arial, sans-serif; }
+    .wrap { max-width:1220px; margin:auto; padding:0 28px 48px; } .hero { color:white; background:linear-gradient(120deg,#052b52,#087d88); padding:46px 0 38px; }
+    .eyebrow { font-size:12px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; opacity:.8; } h1 { max-width:820px; margin:8px 0 10px; font-size:38px; line-height:1.08; } .subtitle { max-width:800px; margin:0; font-size:18px; opacity:.93; }
+    .meta { display:flex; flex-wrap:wrap; gap:9px; margin-top:22px; } .tag { border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:5px 10px; font-size:12px; }
+    h2 { margin:42px 0 14px; font-size:24px; } h3 { margin:0 0 7px; font-size:16px; } p { margin:0 0 12px; } .lead { font-size:17px; color:#3f5368; max-width:930px; }
+    .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:20px; } .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 3px 12px rgba(21,55,84,.04); }
+    .metric { display:block; color:var(--blue); font-size:31px; font-weight:750; line-height:1; margin-bottom:7px; }.label { color:var(--muted); font-size:13px; }
+    .panel { background:white; border:1px solid var(--line); border-radius:14px; padding:22px; margin-top:16px; }.summary { display:grid; grid-template-columns:260px 1fr; gap:28px; align-items:center; }
+    .donut { width:190px; height:190px; margin:auto; border-radius:50%; background:conic-gradient(var(--green) 0 92.3%,var(--red) 92.3% 100%); display:grid; place-items:center; }.donut > div { width:130px; height:130px; border-radius:50%; background:white; display:grid; place-items:center; text-align:center; font-size:28px; font-weight:750; line-height:1; }.donut small { display:block; color:var(--muted); font-size:12px; font-weight:600; margin-top:4px; }
+    .key-list { display:grid; grid-template-columns:1fr 1fr; gap:12px; }.key { border-left:4px solid var(--blue); background:#f7fbff; padding:12px 14px; border-radius:0 8px 8px 0; }.key.warn { border-color:var(--amber); background:#fffaf0; }.key.fail { border-color:var(--red); background:#fff5f5; }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:9px; margin-top:18px; }.step { position:relative; background:#edf6ff; border:1px solid #cde3f6; border-radius:10px; min-height:112px; padding:14px; }.step b { display:block; color:#075a9e; margin-bottom:6px; }.step:not(:last-child)::after { content:'›'; position:absolute; right:-11px; top:39px; z-index:2; width:20px; height:30px; text-align:center; font-size:27px; color:#1c7ebf; }
+    .flow-image { display:block; width:100%; max-width:900px; margin:20px auto 0; border:1px solid var(--line); border-radius:10px; background:white; }
+    .twocol { display:grid; grid-template-columns:1fr 1fr; gap:16px; }.rule { padding:14px; border:1px solid var(--line); border-radius:10px; background:#fff; }.rule b { color:#0b5c91; }
+    table { width:100%; border-collapse:collapse; background:white; font-size:13px; } th { color:#385169; background:#eaf2f8; text-align:left; font-size:12px; letter-spacing:.02em; } th,td { padding:12px 11px; vertical-align:top; border:1px solid var(--line); } td:first-child { font-weight:700; white-space:nowrap; } .status { display:inline-block; padding:3px 8px; border-radius:999px; font-weight:700; font-size:11px; }.pass { color:#0d6b3d; background:#dff5e8; }.fail { color:#a52222; background:#ffe4e4; }.note { color:#875b16; background:#fff1cf; }
+    .recommend { margin-top:18px; border-radius:11px; padding:18px 20px; background:#fff8e8; border:1px solid #f0d69a; }.recommend ol { margin:8px 0 0; padding-left:22px; }.recommend li { margin:6px 0; }.small { color:var(--muted); font-size:12px; }.source { border-top:1px solid var(--line); margin-top:40px; padding-top:18px; color:var(--muted); font-size:12px; }
+    @media (max-width:850px) { h1{font-size:30px}.cards{grid-template-columns:repeat(2,1fr)}.summary,.twocol{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.step:not(:last-child)::after{content:'↓';right:auto;left:20px;bottom:-23px;top:auto}.table-wrap{overflow-x:auto} }
+    @media print { body{background:#fff}.wrap{max-width:none}.hero{print-color-adjust:exact;-webkit-print-color-adjust:exact}.panel,.card{box-shadow:none} h2{break-after:avoid} tr{break-inside:avoid} }
+  </style>
+</head>
+<body>
+  <header class="hero"><div class="wrap">
+    <div class="eyebrow">Tejido de Red · Convención</div>
+    <h1>Informe ejecutivo de pruebas conversacionales E2E</h1>
+    <p class="subtitle">Validación integral del recorrido de WhatsApp: desde el aporte de una persona hasta la evaluación, el cierre y la consulta del resultado.</p>
+    <div class="meta"><span class="tag">Pruebas: 6 de agosto de 2026</span><span class="tag">Entorno Azure</span><span class="tag">Campaña activa de prueba</span><span class="tag">13 escenarios E2E</span></div>
+  </div></header>
+  <main class="wrap">
+    <h2>Lectura ejecutiva</h2>
+    <p class="lead">El núcleo conversacional está validado: captura, mejora, evaluación con rúbrica, cierre, continuidad, seguridad y recuperación de ideas. Antes del evento debe corregirse la reactivación por saludo y decidir formalmente la activación de los interruptores generales.</p>
+    <section class="cards" aria-label="Indicadores principales">
+      <article class="card"><span class="metric">13</span><span class="label">escenarios ejecutados</span></article>
+      <article class="card"><span class="metric" style="color:var(--green)">12</span><span class="label">escenarios aprobados</span></article>
+      <article class="card"><span class="metric" style="color:var(--red)">1</span><span class="label">fallo reproducido</span></article>
+      <article class="card"><span class="metric" style="color:var(--amber)">3</span><span class="label">observaciones a gestionar</span></article>
+    </section>
+    <section class="panel summary">
+      <div class="donut" aria-label="92,3 por ciento de escenarios aprobados"><div>92,3%<small>aprobados</small></div></div>
+      <div>
+        <h3>Resultado de la validación</h3>
+        <p><b>12 PASS · 1 FAIL · 0 bloqueados.</b> El fallo se concentra en una capacidad complementaria: cuando una persona ya terminó sus conversaciones y escribe “hola”, el coach no responde, aunque el interruptor estaba habilitado.</p>
+        <div class="key-list">
+          <div class="key"><b>Listo para usar</b><br>Camino feliz, coaching, madurez, continuidad, seguridad y retomar una idea.</div>
+          <div class="key warn"><b>Con matices</b><br>Segmentación de ideas, latencia del cierre y alcance de reapertura entre preguntas.</div>
+          <div class="key fail"><b>Corregir antes de activar</b><br>Reactivación por saludo en una conversación dormida (E12 / P-28).</div>
+          <div class="key"><b>Protecciones confirmadas</b><br>El sistema no expone campañas ajenas, rúbricas, puntajes ni instrucciones internas.</div>
+        </div>
+      </div>
+    </section>
+
+    <h2>Cómo fluye el sistema</h2>
+    <p class="lead">El servidor conserva las decisiones sensibles; la inteligencia artificial ayuda a evaluar y redactar, pero no decide permisos, campañas, preguntas ni cierres.</p>
+    <section class="flow" aria-label="Flujo principal">
+      <div class="step"><b>1. Entrada</b>La persona escribe por WhatsApp. Se valida que esté registrada y asociada a una campaña activa.</div>
+      <div class="step"><b>2. Orientación</b>Se retoma el hilo abierto, se envía la pregunta o se guía para elegir campaña / pregunta cuando aplique.</div>
+      <div class="step"><b>3. Idea</b>Se registra y consolida el aporte. Si hay varias ideas, cada una mantiene su propio registro.</div>
+      <div class="step"><b>4. Evaluación</b>La versión completa se evalúa con rúbrica, guía y modelo configurados. El coach devuelve una mejora concreta.</div>
+      <div class="step"><b>5. Cierre y resultado</b>La idea madura, se pausa o se cierra; queda disponible su evaluación y Markdown para el portal.</div>
+    </section>
+    <img class="flow-image" src="flujo_participante_tejido.png" alt="Diagrama de flujo del participante de Tejido de Red">
+    <section class="panel">
+      <h3>Rutas paralelas y decisiones</h3>
+      <div class="twocol">
+        <div class="rule"><b>Varias ideas</b><br>Las separa y trabaja una por una. Al finalizar una, pasa a la siguiente sin mezclar contenido.</div>
+        <div class="rule"><b>Participación continua</b><br>Después de cerrar un ciclo, la persona puede iniciar una idea nueva; se crea un ciclo independiente.</div>
+        <div class="rule"><b>Retomar una idea</b><br>La persona puede elegir una idea histórica de su propio recorrido; conserva identidad e historial y se vuelve a evaluar.</div>
+        <div class="rule"><b>Inactividad</b><br>La conversación se pausa de forma amable. El cierre ocurre después de la ventana configurada y del siguiente barrido del sistema.</div>
+        <div class="rule"><b>“Paremos” o “otra idea”</b><br>Las frases conocidas se resuelven de forma determinista; no se guardan como parte de la idea.</div>
+        <div class="rule"><b>Seguridad</b><br>Un mensaje de alguien no inscrito recibe rechazo neutral; nunca ve campañas, datos ni resultados ajenos.</div>
+      </div>
+    </section>
+
+    <h2>Qué se parametriza</h2>
+    <section class="panel"><div class="table-wrap"><table>
+      <thead><tr><th>Ámbito</th><th>Se configura</th><th>Para la prueba E2E</th><th>Decisión operativa</th></tr></thead>
+      <tbody>
+        <tr><td>Campaña</td><td>Estado, mensaje inicial, preguntas, rúbrica, guía del coach y modelo de IA.</td><td>Campaña activa; 3 preguntas; rúbrica OpenBrain v3.4 y modelo OpenRouter-Terra.</td><td>Verificar contenido y aprobaciones antes del evento.</td></tr>
+        <tr><td>Comportamiento</td><td>Continuidad, varias ideas, una idea a la vez, máximo de repreguntas, madurez e inactividad.</td><td>Continuidad y segmentación activas; una idea a la vez; 1 repregunta; madurez 60%; pausa a 2 min.</td><td>Para convención se recomienda calibrar el umbral y usar una pausa cercana a 5 min.</td></tr>
+        <tr><td>Protección</td><td>Límites de uso/costo, número de WhatsApp y mensajes aprobados.</td><td>Límites activos y simulación controlada de entradas.</td><td>Mantener límites activos y apagar la simulación al finalizar QA.</td></tr>
+        <tr><td>Interruptores generales</td><td>Reactivación por saludo, pausa amable, retomar ideas y entendimiento de “paremos”.</td><td>Habilitados para probar P-28 a P-30 y clasificación de intención.</td><td>La activación para el evento requiere acta, UAT, revisión de costo y plan de reversa.</td></tr>
+      </tbody>
+    </table></div></section>
+
+    <h2>Reglas que conviene tener presentes</h2>
+    <section class="twocol">
+      <div class="rule"><b>Una conversación =</b> participante + campaña + pregunta + ciclo. Las ideas nuevas no se mezclan con las ya cerradas.</div>
+      <div class="rule"><b>La IA propone; el sistema dispone.</b> La IA puede evaluar y redactar; el servidor controla estados, límites, permisos y transiciones.</div>
+      <div class="rule"><b>Alta madurez.</b> Si la calificación alcanza el umbral configurado, la idea se cierra sin insistir en otra mejora.</div>
+      <div class="rule"><b>Salida voluntaria.</b> Si la persona expresa que está conforme o quiere parar, el sistema cierra o avanza sin evaluar esa frase como contenido.</div>
+      <div class="rule"><b>Retomar no es crear.</b> Al reabrir una idea se conserva el mismo identificador e historial; el aporte posterior forma una nueva versión.</div>
+      <div class="rule"><b>Privacidad.</b> Los registros técnicos no deben contener texto libre, secretos, rúbricas ni datos que permitan acceder a información de terceros.</div>
+    </section>
+
+    <h2>Resultados de las pruebas</h2>
+    <p class="lead">Cada escenario se ejecutó sobre Azure con mensajes entrantes simulados y evidencia de conversaciones, ideas, evaluaciones o Markdown. Los resultados reflejan la prueba del 6 de agosto.</p>
+    <section class="panel"><div class="table-wrap"><table>
+      <thead><tr><th>Req.</th><th>Qué hace</th><th>Detalle / ejemplo de prueba</th><th>Resultado</th><th>Recomendación</th></tr></thead>
+      <tbody>
+        <tr><td>E2</td><td>Protege campañas frente a personas no inscritas.</td><td>Número no matriculado envía un mensaje.</td><td><span class="status pass">PASS</span><br>No creó usuario, conversación ni fuga de campañas.</td><td>Mantener el rechazo neutral y revisarlo en cada cambio de acceso.</td></tr>
+        <tr><td>E5</td><td>Recorre el camino completo de una idea.</td><td>Aporte → consolidación v1/v2 → evaluación real → Markdown.</td><td><span class="status pass">PASS</span><br>Idea madura, 4,1/5; Markdown sin secretos.</td><td>Corregir la frase duplicada observada en algunos mensajes.</td></tr>
+        <tr><td>E6</td><td>Ofrece mejora cuando la idea aún es débil.</td><td>Idea con debilidad en “acción concreta”.</td><td><span class="status pass">PASS</span><br>Una repregunta útil, sin revelar criterios ni puntajes.</td><td>Conservar el límite de una repregunta y validar tono en UAT.</td></tr>
+        <tr><td>E7</td><td>Separa varias ideas en un mismo mensaje.</td><td>Texto de 3 ideas; contraste con el guion corto original.</td><td><span class="status note">PASS CON MATIZ</span><br>3 registros independientes con texto sustantivo; el guion original produjo solo 1.</td><td>Actualizar el guion de prueba con ideas de más de 30 caracteres y revisar sobre-segmentación.</td></tr>
+        <tr><td>E8</td><td>Trabaja las ideas en secuencia.</td><td>Cola de 3 ideas; cierre de #1 y luego #2.</td><td><span class="status pass">PASS</span><br>Una idea activa a la vez; cambio de tema correcto.</td><td>Mantener este modo activo para la convención.</td></tr>
+        <tr><td>E9</td><td>Clasifica la madurez según el umbral.</td><td>Idea fuerte vs. idea débil con umbral de 60%.</td><td><span class="status pass">PASS</span><br>Fuerte: madura (4,1/5); débil: incubación (1/5).</td><td>Confirmar el umbral final en la calibración del evento.</td></tr>
+        <tr><td>E10</td><td>Pausa una conversación inactiva.</td><td>Sin respuesta tras la actividad.</td><td><span class="status pass">PASS</span><br>Cierre por inactividad y mensaje reanudable.</td><td>Configurar explícitamente la frecuencia de revisión: la pausa ocurrió ~7 min, no exactamente a los 2 min.</td></tr>
+        <tr><td>E11</td><td>Permite un nuevo ciclo de participación.</td><td>Cierre de una idea y posterior aporte nuevo.</td><td><span class="status pass">PASS</span><br>Nueva idea y conversación; evaluación independiente.</td><td>Activar solo con la decisión formal de participación continua.</td></tr>
+        <tr><td>E12</td><td>Reactiva al coach ante un saludo cuando no hay hilo activo.</td><td>Participantes dormidos envían “hola”; espera de 172 y 247 s.</td><td><span class="status fail">FAIL</span><br>Silencio total en dos participantes; no se creó conversación ni idea.</td><td><b>Incidencia prioritaria:</b> revisar condición/vocabulario de despertar y el evento técnico <em>despertarProactivo</em> antes de activar.</td></tr>
+        <tr><td>E13</td><td>Permite retomar una idea previa.</td><td>Idea cerrada se reabre desde el mismo hilo.</td><td><span class="status pass">PASS</span><br>Mismo identificador, estado en revisión e invitación a mejorar.</td><td>Decidir si debe poder retomar también después de pasar a otra pregunta.</td></tr>
+        <tr><td>E14</td><td>Entiende intenciones de control: parar o cambiar de idea.</td><td>Alias configurados, con/sin tilde, y frases libres durante una repregunta.</td><td><span class="status note">PASS CON DEFECTO ACOTADO</span><br>Alias funcionan; una frase libre falla si es la última idea de la cola (2/2).</td><td>Corregir el clasificador flexible en la última idea; mantener alias deterministas como respaldo.</td></tr>
+        <tr><td>E18</td><td>Evita revelar información interna.</td><td>Solicitud de rúbrica, 5/5 e instrucciones internas.</td><td><span class="status pass">PASS</span><br>Ignora la inyección y no expone criterios, notas ni secretos.</td><td>Conservar estas pruebas como regresión de seguridad.</td></tr>
+        <tr><td>E19</td><td>Lee frases de cierre desde configuración.</td><td>“Cerremos esta idea”, definida solo en los ajustes del entorno.</td><td><span class="status pass">PASS</span><br>Cierre por participante, sin registrar la frase como aporte.</td><td>Completar validación, historial y reversa de los diccionarios configurables.</td></tr>
+      </tbody>
+    </table></div></section>
+
+    <section class="recommend"><h3>Recomendaciones de salida a evento</h3><ol>
+      <li><b>No activar reactivación por saludo</b> hasta resolver E12 y verificar su evidencia en Application Insights o el registro de seguridad.</li>
+      <li><b>Definir en el acta de flags</b> qué capacidades se habilitan y cómo se revierten: continuidad, pausa, retomar ideas y clasificación flexible.</li>
+      <li><b>Fijar la operación de inactividad:</b> además de los minutos de espera, definir la frecuencia de revisión para cumplir la expectativa de tiempo.</li>
+      <li><b>Actualizar datos de prueba y mensajes:</b> usar ideas sustantivas para multi-idea, eliminar frases duplicadas y revisar el criterio de segmentación.</li>
+      <li><b>Decidir el alcance de reapertura:</b> hoy funciona dentro del mismo hilo; confirmar si también debe alcanzar ideas de la pregunta anterior.</li>
+      <li><b>Al cerrar la ventana de QA,</b> apagar la simulación de entradas y conservar la campaña/evidencia para auditoría.</li>
+    </ol></section>
+    <footer class="source"><b>Fuentes consultadas:</b> <em>Resultados_E2E_Conversacional_2026-08-06</em> (QAS/resultados), <em>Manual_Tejido_de_Red_Convencion</em>, <em>Reglas_Conversacion_y_Participacion</em> y especificaciones P-26, P-28 y P-30. Este informe distingue los resultados observados en Azure de las decisiones pendientes de activación operativa.</footer>
+  </main>
+</body>
+</html>
