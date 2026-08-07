@@ -93,10 +93,38 @@ Todos los recursos siguientes se crean **dentro de este grupo** y en la **misma 
 
 4. **TTL** (expiración automática) en `security` y `leases`:
    - Abre el contenedor → **Settings** (Scale & Settings) → **Time to Live** → selecciona **On (no default)** → **Save**. Esto permite que cada documento defina su propio `ttl` (lo hace la app para los OTP y el dedupe del webhook).
-5. **Unique key** en `users` (opcional): al crear el contenedor `users`, en **Unique keys** agrega **exactamente** `/whatsappNormalizado`.
-   - ⚠️ **NO pongas `/pk`** como unique key (es la partition key, y la confusión es fácil): como todos los usuarios comparten `pk = "usuario"`, una unique key en `/pk` hace que **el segundo usuario y todos los siguientes fallen** con `Conflict (409)`. Si te pasa, el síntoma es que sólo puedes crear un usuario.
-   - Las unique keys de Cosmos son **inmutables**: si quedó mal, hay que **borrar y recrear** el contenedor (con `/whatsappNormalizado` o sin unique key).
-   - La unique key es **opcional**: la app ya valida unicidad por código, así que dejarla **vacía** es una opción segura y evita este problema por completo.
+5. **Unique key** en `users` (**obligatoria**): al crear el contenedor `users`, en **Unique keys**
+   agrega **exactamente** `/claveUnicidad`. Esto solo se puede hacer **al crear** el contenedor.
+   - **Ya NO se usa `/whatsappNormalizado`** (cambio de `I-08`, 2026-08-07). Un número de WhatsApp se
+     puede reasignar de una persona a otra: el titular anterior queda **inactivo conservando su
+     número**, así que hay varios documentos con el mismo `whatsappNormalizado` y esa unique key haría
+     fallar la reasignación. `claveUnicidad` es un campo derivado que la app calcula sola
+     (`wa|<numero>` si el usuario está activo, `hist|<id>` si está inactivo, `tag|<id>` en las tags,
+     `seq|<id>` en el contador). Ver `03 §3.1`.
+   - ⚠️ **NO pongas `/pk`** como unique key (es la partition key, y la confusión es fácil): como todos
+     los usuarios comparten `pk = "usuario"`, una unique key en `/pk` hace que **el segundo usuario y
+     todos los siguientes fallen** con `Conflict (409)`. Si te pasa, el síntoma es que sólo puedes
+     crear un usuario.
+   - ⚠️ **Tampoco la dejes vacía.** Antes esta unique key era opcional; ahora es la única barrera que
+     impide que queden **dos usuarios activos con el mismo teléfono**, cosa que rompería el
+     enrutamiento de WhatsApp. La app valida primero (para dar un mensaje claro), pero la base es la
+     red de seguridad.
+   - Las unique keys de Cosmos son **inmutables**: si quedó mal, hay que **borrar y recrear** el
+     contenedor. Ver el paso 6.
+
+6. **Recreación del contenedor `users`** (aplica al entorno actual, `I-08 §3.2`). El entorno se puede
+   borrar y volver a sembrar, así que no hay migración de datos; el orden importa:
+   1. Borra y vuelve a crear `users` con `/pk` y unique key `/claveUnicidad` (paso 5).
+   2. Borra y recrea también los contenedores que referencian `usuarioId` —`campaigns`,
+      `participants`, `conversations`, `responses`, `security`— para no dejar documentos huérfanos
+      apuntando a ids que ya no existen.
+   3. Siembra **solo el usuario administrador**, con `codigoUsuario = 1`, `estado = "activo"` y
+      `claveUnicidad = "wa|<número del admin>"`, más el documento contador
+      `{ "id": "seq_usuario", "pk": "secuencia", "type": "Secuencia", "claveUnicidad": "seq|seq_usuario", "ultimoValor": 1 }`.
+   4. **Verifica el guardarraíl:** intenta crear un segundo usuario **activo** con el número del admin
+      → debe responder **`409`**. Si crea el segundo usuario, la unique key quedó mal y hay que repetir
+      desde el paso 1.
+   - Hazlo **antes del freeze** y antes de cualquier carga real de participantes.
 
 ---
 
@@ -304,7 +332,10 @@ La app lee su configuración de aquí. En el App Service → **Settings → Envi
 
 - [ ] Grupo de recursos creado (§1).
 - [ ] Cosmos serverless + base `eltejido` + 8 contenedores con sus partition keys (§2).
-- [ ] TTL activado en `security` y `leases`; unique key en `users` (§2.1).
+- [ ] TTL activado en `security` y `leases`; unique key **`/claveUnicidad`** en `users` (§2.1 pasos 5–6).
+- [ ] Verificado que crear un segundo usuario **activo** con un número ya usado devuelve **`409`**
+      (§2.1 paso 6.4). Si no, la unique key quedó mal y el contenedor hay que recrearlo.
+- [ ] Semilla cargada: usuario administrador con `codigoUsuario = 1` + documento `seq_usuario`.
 - [ ] Storage + contenedor `markdown` privado (§3).
 - [ ] Application Insights + connection string copiada (§4).
 - [ ] Key Vault (RBAC) + secretos `jwt-sign`, `otp-salt`, `wa-verify-token` (§5); `llm-key`, `wa-token`, `wa-appsec` cuando estén disponibles.

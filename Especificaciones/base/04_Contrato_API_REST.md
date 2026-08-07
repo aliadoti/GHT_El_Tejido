@@ -121,63 +121,140 @@ Devuelve el usuario de la sesión actual (para que el SPA restaure estado). `200
 ### 5.1 Usuarios — `REQ §12`, `§8.2`
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/admin/usuarios` | Lista/filtra (`rol, estado, area, empresa, tag, q`(nombre/número)). |
-| POST | `/api/admin/usuarios` | Crea usuario (participante/admin/visor). Valida número E.164 único (`409` si duplicado). |
+| GET | `/api/admin/usuarios` | Lista/filtra (`rol, estado, area, empresa, empresaId, sede, tag, idioma, q`(nombre/número/email/`codigoUsuario`)). |
+| POST | `/api/admin/usuarios` | Crea usuario (participante/admin/visor). Valida número E.164 **único entre activos** (`409` si ya hay un activo con ese número). |
 | GET | `/api/admin/usuarios/{id}` | Detalle. |
-| PUT | `/api/admin/usuarios/{id}` | Actualiza datos, área, empresa, tags, propiedades. |
-| PATCH | `/api/admin/usuarios/{id}/estado` | Activa/inactiva. |
+| PUT | `/api/admin/usuarios/{id}` | Actualiza datos, empresa, sede, cargo, tags, propiedades. **No** cambia `codigoUsuario` ni el número. |
+| PATCH | `/api/admin/usuarios/{id}/estado` | Activa/inactiva. Activar falla con `409` si ya hay otro activo con el mismo número. |
+| GET | `/api/admin/usuarios/por-numero/{numero}` | Histórico del número: el activo (si lo hay) + los inactivos, por `creadoEn` (`I-08 §3.1.f`). |
+| POST | `/api/admin/usuarios/{id}/reasignar-numero` | Reasignación manual: inactiva al titular y crea el nuevo (`I-08 §4.4`). |
 | POST | `/api/admin/usuarios/carga-masiva` | Alta/actualización en lote desde archivo (`I-08`). Ver sub-sección. |
+| GET | `/api/admin/usuarios/plantilla-carga` | Descarga la plantilla vacía (`.xlsx`) con la cabecera oficial. |
 
 Request de creación (ejemplo):
 ```json
-{ "nombre": "Ana Pérez", "numero": "573001112233", "rol": "participante", "area": "Operaciones", "empresa": "GHT", "tags": ["t_area_oper"], "propiedadesDinamicas": {} }
+{
+  "nombre": "Ana Pérez", "numero": "573001112233", "rol": "participante",
+  "email": "ana.perez@ght.com", "empresa": "Flores El Aljibe", "empresaId": "AL", "sede": "AL",
+  "cargo": "Coordinadora", "area": "Operaciones", "antiguedadAnios": 16.391666, "idioma": "es",
+  "usuarioWhatsapp": null, "tags": ["t_area_oper"], "propiedadesDinamicas": {}
+}
 ```
-El backend **normaliza** el número (`06 §2`); si el formato es inválido → `400`.
+- Obligatorios: **`nombre`** y **`numero`** (`I-08 §3`). `area`, `empresa`, `empresaId`, `sede`,
+  `cargo`, `email` y `antiguedadAnios` son opcionales. `idioma` ∈ `es | en`, default `es`.
+- El backend **normaliza** el número (`06 §2`); si el formato es inválido → `400`.
+- `codigoUsuario` (`number`, secuencial legible como `U-000042`) es **de solo lectura**: lo asigna el
+  servidor al crear y no cambia nunca (`03 §3.1.1`). Se devuelve en todas las respuestas de usuario.
+- `usuarioWhatsapp` (`string?`, opcional) se captura **solo por API/portal**; la carga masiva lo ignora
+  (`03 §3.1`). No participa aún en el enrutamiento.
+- `email`, si viene, debe ser único **entre activos** → `409` si ya lo tiene otro usuario activo.
+
+**Response de usuario (DTO)** — se agregan de forma **aditiva** `codigoUsuario`, `email`, `empresaId`,
+`sede`, `cargo`, `antiguedadAnios`, `idioma` y `usuarioWhatsapp` al DTO existente. Los clientes que
+ignoren los campos nuevos siguen funcionando.
+
+**Reasignación manual** `POST /api/admin/usuarios/{id}/reasignar-numero`:
+```json
+{ "nombre": "NUEVO TITULAR", "email": null, "empresaId": "AL", "sede": "AL", "cargo": "GERENTE" }
+```
+Inactiva al usuario `{id}` y **crea uno nuevo** con el mismo número (nuevo `id`, nuevo
+`codigoUsuario`, `estado = activo`), sin heredar rol, tags ni historial. Respuesta `201` con el usuario
+nuevo y el `codigoUsuario` del anterior. El histórico de campañas queda colgado del `id` anterior. Los
+dos pasos van ordenados (primero inactivar) por la unique key `/claveUnicidad` de `03 §3.1`; si el alta
+falla, se revierte la inactivación → `409`/`500` sin dejar el número sin titular.
 
 #### Carga masiva de participantes — `I-08`, `REQ §12`, `§26.3`
-> Cambio **aditivo** (una ruta nueva). No modifica `03`: usa las entidades existentes
-> `Usuario`/`Tag`/`ParticipanteCampania`. El alta individual (`POST /api/admin/usuarios`) sigue
-> disponible sin cambios. Sprint 1a entrega **solo CSV** (sin dependencia nueva); `.xlsx` queda como
-> lector pluggable para una entrega posterior (`I-08 §7`).
+> **Revisión 2026-08-07 (I-08).** La plantilla anterior (`Nombre | WhatsApp | Area | Empresa | Tags`)
+> **queda reemplazada** por la plantilla oficial de GHT, de 9 columnas. Se agregan los parámetros
+> `modo` y `reasignaciones`, el resultado `reasignado` y motivos de rechazo nuevos. Esta revisión
+> **sí** toca `03` (campos nuevos de `Usuario`, `codigoUsuario`, `claveUnicidad`, `Secuencia`) y
+> soporta **`.xlsx`** además de `.csv`. El alta individual sigue disponible.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/admin/usuarios/carga-masiva` | Sube un archivo de participantes y hace **upsert por número normalizado** (`06 §2`). `multipart/form-data`, rol `admin` + CSRF. Una fila mala **no aborta** el lote. |
+| POST | `/api/admin/usuarios/carga-masiva` | Sube un archivo de participantes y hace **upsert por número normalizado entre activos** (`06 §2`). `multipart/form-data`, rol `admin` + CSRF. Una fila mala **no aborta** el lote. |
 
 **Request** (`multipart/form-data`):
-- Campo `archivo` (requerido): el archivo `.csv` (UTF-8). Tamaño máximo configurable
-  (`Seguridad:CargaMasivaMaxBytes`, default **2 MB**); si se excede → `400`.
-- Query o campo `campaniaId` (opcional): si se envía, los usuarios creados/actualizados se **asocian**
+- Campo `archivo` (requerido): `.xlsx` o `.csv` (UTF-8). Tamaño máximo configurable
+  (`Seguridad:CargaMasivaMaxBytes`, default **2 MB**); si se excede → `400`. Otra extensión → `400`.
+- Campo/query `campaniaId` (opcional): si se envía, los usuarios creados/actualizados se **asocian**
   a esa campaña al terminar el lote (reutiliza la asociación de `§5.3`; campaña inexistente → `404`).
+- Campo/query `modo` (opcional) ∈ `upsert` (**default**) | `solo_actualizar`.
+  En `solo_actualizar` **no se crea nada**: un teléfono sin usuario activo → `no_encontrado`.
+- Campo `reasignaciones` (opcional, JSON): resolución de los conflictos de titular detectados en una
+  llamada previa sobre **el mismo archivo** (ver más abajo).
+  ```json
+  [{ "fila": 7, "accion": "reasignar" }, { "fila": 9, "accion": "corregir_nombre" }]
+  ```
+  `accion` ∈ `reasignar` | `corregir_nombre` | `omitir`. Una fila no listada que vuelva a dar
+  conflicto se reporta otra vez como `conflicto_titular` sin escribir nada.
 
-**Plantilla CSV** (fila de cabecera obligatoria, columnas fijas; `Tags` separadas por `;`):
+**Plantilla oficial** (hoja única, **fila 1 = cabecera obligatoria**, 9 columnas en este orden exacto).
+Descargable vacía desde `GET /api/admin/usuarios/plantilla-carga`. Equivalente CSV:
 ```csv
-Nombre,WhatsApp,Area,Empresa,Tags
-Ana Perez,573001112233,Operaciones,GHT,t_area_oper;t_lider
+Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono
+Flores El Aljibe,AL,AL,CELY FARIAS EDGAR FELIPE,GERENTE 2 EAI,felipe.celyf@floreselaljibe.com,16.391666,es,573001112233
 ```
+| Columna | Campo | Obligatorio |
+|---|---|---|
+| `Empresa` | `empresa` | No |
+| `ID Empresa` | `empresaId` | No |
+| `Sede` | `sede` | No |
+| `Nombre` | `nombre` | **Sí** |
+| `Cargo` | `cargo` | No |
+| `Email` | `email` | No (único entre activos si viene) |
+| `Antigüedad en la empresa en años` | `antiguedadAnios` (decimal) | No |
+| `Idioma` | `idioma` (`es`\|`en`, default `es`) | No |
+| `Telefono` | `whatsappNormalizado` — **clave de upsert** | **Sí** |
 
-**Response `200`** — reporte por fila (sin PII: solo `usuarioId`, resultado y motivo):
+- Cabecera distinta o columnas fuera de orden → **`400`**, el lote no se procesa.
+- **No hay columna `Tags`**: si `ID Empresa` viene, se asegura la tag `t_emp_<idEmpresa>`
+  (`tipoTag=empresa`, creada si falta) sin borrar las tags puestas a mano.
+- `codigoUsuario` y `usuarioWhatsapp` **nunca** se leen del archivo (`03 §3.1`).
+
+**Response `200`** — reporte por fila (sin PII: solo ids, resultado y motivo):
 ```json
 {
-  "totalFilas": 3,
-  "creados": 2,
-  "actualizados": 0,
+  "totalFilas": 4,
+  "creados": 1,
+  "actualizados": 1,
+  "reasignados": 1,
   "rechazados": 1,
-  "asociados": 2,
+  "asociados": 3,
   "filas": [
-    { "fila": 2, "resultado": "creado",     "usuarioId": "u_8f3c...", "motivo": null },
-    { "fila": 3, "resultado": "actualizado", "usuarioId": "u_1a2b...", "motivo": null },
-    { "fila": 4, "resultado": "rechazado",   "usuarioId": null,        "motivo": "numero_invalido" }
+    { "fila": 2, "resultado": "creado",       "usuarioId": "u_8f3c...", "codigoUsuario": 131, "motivo": null },
+    { "fila": 3, "resultado": "actualizado",  "usuarioId": "u_1a2b...", "codigoUsuario": 42,  "motivo": null },
+    { "fila": 4, "resultado": "reasignado",   "usuarioId": "u_9d4e...", "codigoUsuario": 132, "motivo": null,
+      "usuarioIdAnterior": "u_5c7f...", "codigoUsuarioAnterior": 77 },
+    { "fila": 5, "resultado": "rechazado",    "usuarioId": null,        "codigoUsuario": null, "motivo": "numero_invalido" }
   ]
 }
 ```
-- `resultado` ∈ `creado | actualizado | rechazado`. `motivo` (solo en `rechazado`) ∈
-  `fila_incompleta` (falta `Nombre/WhatsApp/Area/Empresa`), `numero_invalido` (no normaliza a E.164),
-  `duplicado_en_archivo` (número repetido en el archivo: **el primero gana**, el resto se rechaza).
-- **Idempotencia:** re-subir el mismo archivo produce `actualizado` (no duplica). Las `Tags` que no
-  existan en el catálogo se **crean** (`tipoTag=importado`).
-- La operación queda auditada en `LogSeguridad` (`AccionAdministrativa`, acción `carga_masiva`) con
-  conteos y `correlationId`; **sin números ni nombres**.
+- `resultado` ∈ `creado | actualizado | reasignado | rechazado`.
+- `motivo` (solo en `rechazado`) ∈
+  `fila_incompleta` (falta `Nombre` o `Telefono`) · `numero_invalido` (no normaliza a E.164) ·
+  `email_invalido` · `duplicado_en_archivo` (teléfono repetido: **el primero gana**) ·
+  `email_duplicado` (el email ya es de otro usuario **activo**) · `conflicto_titular` (ver abajo) ·
+  `idioma_invalido` · `antiguedad_invalida` · `no_encontrado` (solo en `modo=solo_actualizar`) ·
+  `reasignacion_incompleta` (falló la compensación; el número queda sin activo, recuperable a mano).
+
+**Conflicto de titular** (`I-08 §4.4`) — el teléfono ya tiene un usuario activo y el `Nombre` del
+archivo **no coincide**. La carga **no decide sola** si es un typo o un cambio de titular:
+- Nombres muy similares (normalizados y con similitud ≥ 0,85) se tratan como **corrección** →
+  `actualizado`, sin conflicto.
+- Si no, la fila sale `rechazado(conflicto_titular)` y **no se escribe nada**. La respuesta incluye
+  `usuarioIdAnterior`, `codigoUsuarioAnterior` y `nombreActual`/`nombrePropuesto` para que el portal
+  muestre *actual vs. propuesto*. El admin reenvía el mismo archivo con `reasignaciones`.
+- `reasignar` inactiva al titular y crea uno nuevo (nuevo `id` y `codigoUsuario`), sin heredar rol,
+  tags ni historial → resultado `reasignado`.
+
+**Otras reglas**
+- **Idempotencia:** re-subir el mismo archivo produce `actualizado` (no duplica).
+- **Qué se conserva al actualizar:** `codigoUsuario`, `usuarioWhatsapp`, `rol`, `estado`, `creadoEn`,
+  tags manuales y `propiedadesDinamicas`. Un campo opcional **vacío** en el archivo **no borra** el
+  valor existente.
+- La operación queda auditada en `LogSeguridad` (`AccionAdministrativa`, acción `carga_masiva`; las
+  reasignaciones además con acción propia) con conteos y `correlationId`; **sin números ni nombres**.
 
 ### 5.2 Tags — `REQ §13`
 | Método | Ruta | Descripción |

@@ -9,8 +9,57 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **▶▶ NUEVO 2026-08-07 — `I-08 v2` CARGA MASIVA REABIERTA. SPEC LISTA, SIN CÓDIGO AÚN.
+> PENDIENTE DE CONFIRMAR SU PRIORIDAD FRENTE A `P-31` ANTES DE ARRANCAR.**
+> GHT entregó la plantilla oficial (`Información asistentes convención gerentes 2026 V1.xlsx`, 129
+> filas) y sus columnas **no son** las de la plantilla que se implementó en julio. I-08 figuraba `DONE`
+> (backend 15-jul, UI 20-jul); **vuelve a estar abierta**. Columnas oficiales, en orden fijo:
+> `Empresa | ID Empresa | Sede | Nombre | Cargo | Email | Antigüedad en la empresa en años | Idioma | Telefono`.
+> Esto **cierra el insumo pendiente de Munir** (ítem 22): las variables demográficas son estas.
+>
+> **Decisiones del usuario (2026-08-07), ya incorporadas a la spec:**
+> 1. Los campos nuevos van **de primer nivel** en `Usuario`, no en `propiedadesDinamicas`.
+> 2. **Obligatorios solo `Nombre` y `Telefono`** (sin teléfono no hay WhatsApp). **`Email` deja de ser
+>    obligatorio**; si viene, es único entre activos. `area`/`empresa` dejan de ser requeridos en
+>    `Usuario.Crear`.
+> 3. **`codigoUsuario`**: identificador secuencial legible (`U-000042`) vía documento `Secuencia` con
+>    ETag y reserva de bloque por lote. El `id` técnico sigue siendo `u_<guid>` para no migrar las
+>    referencias de `03`.
+> 4. **Un número puede reasignarse entre personas**: a lo sumo **un usuario `activo` por teléfono**;
+>    el anterior queda `inactivo` conservando número e historial. La trazabilidad de campañas cuelga
+>    del `id` viejo.
+> 5. **Conflicto de titular**: nombre distinto sobre teléfono existente **no** se resuelve solo →
+>    `rechazado(conflicto_titular)` y el admin decide por fila (`corregir_nombre`/`reasignar`/`omitir`).
+>    Similitud ≥ 0,85 se trata como typo y actualiza sin conflicto.
+> 6. **`usuarioWhatsapp`** opcional (identificación por usuario de WhatsApp), solo portal, **no** se
+>    carga del archivo y **no** participa aún en el enrutamiento.
+> 7. Modo **`solo_actualizar`** para actualización masiva por teléfono sin crear registros.
+> 8. **Antigüedad decimal** sin redondear; **`Idioma` default `es`** (`es|en`).
+>
+> **Dos trampas encontradas al especificar, que hay que respetar al implementar:**
+> - **La unique key de `users` cambia a `/claveUnicidad`** (campo derivado: `wa|<numero>` si activo,
+>   `hist|<id>` si inactivo, `tag|<id>`, `seq|<id>`). No basta con quitar la de
+>   `/whatsappNormalizado`: Cosmos trata el path ausente como `null` y **también lo hace único**, con
+>   lo que las `Tag` del mismo contenedor colisionarían entre sí. Las unique keys son **inmutables** →
+>   hay que **recrear el contenedor**. El usuario confirmó que **la base se puede borrar y recrear con
+>   solo el admin**, así que **no hay backfill ni migración** (`I-08 §3.2`).
+> - **`ObtenerUsuarioPorNumeroAsync` debe filtrar `estado = activo`**, dentro del repositorio (los 7
+>   puntos de uso lo requieren por igual). Si no, un mensaje entrante puede resolverse al titular
+>   anterior. Ajustar también `RepositoriosMemoria`, que hoy hace `FirstOrDefault` sin filtrar, o las
+>   pruebas pasarán con un comportamiento distinto al de producción. Se agrega
+>   `ListarUsuariosPorNumeroAsync` para el histórico.
+>
+> **Orden de implementación** en `I-08 §8`. El paso 3 (recrear la base + semilla + verificar el `409`)
+> **bloquea** todo lo que sigue y conviene hacerlo apenas el esquema esté cerrado.
+> **Por ahora NO se carga ningún dato**: la carga real es un paso del freeze y GHT todavía debe
+> entregar el archivo con la columna `Telefono` diligenciada (§9 de la spec).
+> Spec: `Iniciativas/I-08_Carga_Masiva_Participantes.md`; plantilla vacía en
+> `Iniciativas/plantillas/plantilla_participantes_v1.{xlsx,csv}`; contratos ya actualizados en
+> `03 §2/§3.1/§3.1.1/§3.2/§5/§6`, `04 §5.1`, `06 §2.1/§3.2` y `Guia_Azure_Portal §2.1`;
+> supuesto `SUPUESTOS.md#carga-masiva-plantilla-oficial-i08-v2`.
+>
 > **▶ INICIATIVA OBJETIVO 2026-08-06 — `P-31` EN CURSO LOCAL (1/3 cortes).
-> ES EL SIGUIENTE CAMBIO DE CÓDIGO.** Viene de REQ-052 (GHT, 2026-08-06): los participantes quieren
+> ERA EL SIGUIENTE CAMBIO DE CÓDIGO (ver el bloque de `I-08 v2` arriba).** Viene de REQ-052 (GHT, 2026-08-06): los participantes quieren
 > visibilidad del progreso de su idea. Hoy la versión consolidada de I-19 solo se muestra al confirmar
 > (§4.1) o al reabrir (§4.7); en el coaching normal (P-25) nunca, y al cruzar el umbral base la rama
 > `madura` de `ConfirmarOCorregirIdeaAsync` cierra idea e hilo sin mostrarla.
@@ -256,14 +305,14 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 2 | `P-10` cupos + rate por número + costo LLM | Sprint 1a | Claude | **DONE** (2026-07-14; backend verde 294, committeado) |
 | 3 | **`D5` banco de calibración** | Sprint 1a | **Codex** | **DONE** (2026-07-14 por Claude Opus 4.8 por decisión del usuario; backend/tooling verde 315; librería + golden set 24 + runner opt-in fuera de CI; baseline pendiente de corrido real) |
 | 4 | **`I-16` fix de calificación en Markdown** | Sprint 1a | **Claude** | **DONE** (2026-07-15; backend verde, regresión determinística) |
-| 5 | **`I-08` carga masiva (backend)** | Sprint 1a | **Codex** | **DONE** (2026-07-15; backend verde 335; CSV-only, `04 §5.1` aditivo, UI pendiente Sprint 1b) |
+| 5 | **`I-08` carga masiva (backend)** | Sprint 1a | **Codex** | **DONE (2026-07-15) — SUPERADO por `I-08 v2`** (ítem 22a). Backend verde 335 con plantilla `Nombre\|WhatsApp\|Area\|Empresa\|Tags`, que **ya no es la oficial**. El puerto `ILectorArchivoParticipantes` y el esqueleto de reporte se reutilizan; el lector CSV y `ServicioCargaMasiva` se reescriben. |
 | 6 | **`I-06` multi-idea (diseño)** | Sprint 1a | **Claude** | **DONE** (2026-07-15; diseño documental, contratos/rollback/cupos/observabilidad definidos) |
 | 7 | **`I-09` tejido colectivo (diseño)** | Sprint 1a | **Codex** | **DONE** (2026-07-15; diseño documental, contratos/puerto/inyección/rollback definidos; `03 §3.3` field `tejidoColectivo` aditivo; Opción A léxica, B embeddings diferida) |
 | 8 | **`I-01` activar umbral en staging** | Sprint 1a | **Claude** | **DONE parcial / BLOCKED** (2026-07-15; runbook + observabilidad `LogSeguridad(cierreUmbralAnticipado)` + regresión, verde 335; cierre real bloqueado en baseline D5 real + freeze I-11 + flip humano; `SUPUESTOS.md#activacion-umbral-i01`) |
 | 9 | **`I-06` multi-idea (implementación)** | Sprint 1b | **Codex** | **DONE local** (código, pruebas y documentación; flags apagados hasta D5/UAT/costo en staging) |
 | 10 | **`I-09` tejido colectivo (core)** | Sprint 1b | **Claude** | **DONE local** (2026-07-17; Opción A léxica, inyección delimitada/sanitizada, degradación autocontenida, flags apagados, observabilidad; verde 367; costo/latencia en staging pendiente) |
 | 11 | `I-05` parafraseo | Sprint 1b | Codex | **DONE local 2026-07-20** (decisión de usuario: flag por campaña false + kill-switch; salida/persistencia opcional, truncado determinista, regresión verde; baseline D5 real pendiente) |
-| 12 | `I-08` carga masiva (UI) | Sprint 1b | Claude | **DONE** (2026-07-20; panel en `/usuarios`, consume `POST /api/admin/usuarios/carga-masiva` sin alterar `04 §5.1`; frontend lint/test 10/10/build verde; backend sin cambios) |
+| 12 | `I-08` carga masiva (UI) | Sprint 1b | Claude | **DONE (2026-07-20) — AMPLIACIÓN PENDIENTE en `I-08 v2`** (ítem 22a). El panel en `/usuarios` sigue sirviendo de base; falta aceptar `.xlsx`, el selector de `modo`, la **resolución de conflictos de titular** por fila, la descarga de la plantilla vacía y el histórico del número en la ficha de usuario. |
 | 13 | `I-03` follow-ups eje débil | Sprint 1b | Codex | **DONE local** (2026-07-21, Claude Fable 5; pista de foco + `CalculadorEjeDebil` + `FiltroSalidaRubrica`, salvaguarda siempre-on sin flag; backend verde 394; sin cambio de contratos; D5 real contra staging pendiente) |
 | 14 | `P-13` umbral de cierre por campaña | Sprint 1b–2 | Claude | **DONE local 2026-07-21** — override nullable por campaña, default numérico heredable y kill-switch booleano global; API/Cosmos/portal/telemetría, backend verde 400; D5 real + calibración I-01 en staging pendientes |
 | 15 | `I-10` flag base previa/blanco | ~~Sprint 2~~ | Codex | **⛔ DIFERIDA (Capa 3, reunión 20-jul)** — es la UI del tejido I-09, también diferido; **no implementar** para el Hito. El campo ya existe y queda OFF. |
@@ -281,7 +330,8 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 19 | `P-07` consentimiento de datos | ~~Sprint 2~~ | Codex | **⛔ DIFERIDA (reunión 20-jul)** — consentimiento innecesario en herramienta interna (IP de GHT); no implementar para el Hito |
 | 20 | `P-10` costo LLM + rate por número | Sprint 2 | Claude | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
 | 21 | `P-09` monitoreo día-D | Pruebas 4–8 ago | Codex | **Panel DIFERIDO (reunión 20-jul)** — basta health-check; se conservan `/health(/ready)`, logs de entrega, **acta de flags + runbook** (esos sí son entregables del go-live) |
-| 22 | `I-08` carga real (+ variables demográficas de Munir) | Freeze 8–9 ago | Claude | TODO — extender columnas de la plantilla con las variables demográficas que entregue Munir |
+| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **antes del freeze** | **por asignar** | **TODO — spec y contratos LISTOS 2026-08-07, sin código.** Reescribe la plantilla a las 9 columnas de GHT; `codigoUsuario` secuencial, `usuarioWhatsapp`, un solo activo por teléfono con reasignación, conflicto de titular, modo `solo_actualizar`, lector `.xlsx` (ClosedXML). **Incluye recrear el contenedor `users` con unique key `/claveUnicidad`** (paso bloqueante, §8 de la spec). Confirmar prioridad frente a `P-31` antes de arrancar. |
+| 22 | `I-08` carga real de la lista de GHT | Freeze 8–9 ago | Claude | **TODO — BLOCKED por 22a y por GHT.** Las variables demográficas de Munir **ya llegaron**: son las columnas de la plantilla oficial (insumo cerrado). Falta que GHT entregue el archivo con **`Telefono` diligenciado** (en la V1 esa columna viene vacía en las 129 filas, igual que `Empresa` e `Idioma`). **No cargar nada hasta entonces.** |
 | 23 | **cierre por inactividad ~5 min** (granularidad sub-hora) | Sprint 2 | Claude | **DONE local dentro de I-17 (2026-07-22).** Cierre sub-hora, parametrizable por campaña, con interruptor global apagado por defecto; backend verde 420. |
 | 24 | **`P-21` multi-número de WhatsApp** | A coordinar (fuera de ruta crítica) | Codex | **DONE local 2026-07-25.** Misma WABA/App; `metadata.phone_number_id` llega al orquestador y todas las respuestas salen por ese número. `IWhatsAppGateway` acepta emisor opcional; `configConversacional.numeroWhatsAppSaliente` guarda un alias por campaña y el fallback legacy/predeterminado conserva el comportamiento actual. Sin secretos nuevos; backend 473/473 verde. |
 | 25 | **`P-22` UX de Campañas** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Creación bajo demanda, pasos numerados con completitud y nombre accesible, enlace contextual a Envíos con id real, fieldsets con ayuda y estados vacíos. Preserva P-16/P-18/P-19/P-20 y no cambia contratos. Prettier, 21/21 pruebas Angular y build de producción verdes con Node 24.15.0. |

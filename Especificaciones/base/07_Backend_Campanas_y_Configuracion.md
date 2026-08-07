@@ -12,9 +12,21 @@
 
 ### 1.1 Usuarios
 CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
-- Crear/editar valida y normaliza el número (`06 §2`); unicidad de `whatsappNormalizado` (`409` si duplicado), validada en código además de la unique key de Cosmos (`03 §5`).
-- Asigna `area`, `empresa`, `tags[]`, `propiedadesDinamicas{}` y `rol`.
-- Activar/inactivar por `PATCH .../estado` (no se borran físicamente).
+- Crear/editar valida y normaliza el número (`06 §2`); unicidad de `whatsappNormalizado` **entre
+  usuarios activos** (`409` si ya hay un activo con ese número), validada en código además de la
+  unique key `/claveUnicidad` de Cosmos (`03 §3.1`, `§5`). Un número **sí** puede repetirse en
+  usuarios inactivos: es el histórico de una reasignación (`I-08 §3.1.d`).
+- Asigna `area`, `empresa`, `empresaId`, `sede`, `cargo`, `email`, `antiguedadAnios`, `idioma`,
+  `usuarioWhatsapp`, `tags[]`, `propiedadesDinamicas{}` y `rol`. **Obligatorios: `nombre` y el
+  número**; el resto es opcional (`I-08 §3`).
+- `codigoUsuario` (secuencial legible `U-000042`) lo asigna el servidor al crear y es **de solo
+  lectura**: no cambia nunca, ni al editar ni al inactivar (`03 §3.1.1`).
+- Activar/inactivar por `PATCH .../estado` (no se borran físicamente). **Activar falla con `409`** si
+  ya hay otro activo con el mismo número.
+- Reasignación de número (`POST .../reasignar-numero`, `04 §5.1`): inactiva al titular y crea un
+  usuario nuevo con el mismo número, sin heredar rol, tags ni historial. Orden obligatorio: inactivar
+  antes de crear (lo impone la unique key). `GET /api/admin/usuarios/por-numero/{numero}` devuelve el
+  histórico.
 
 ### 1.2 Tags (`REQ §13`)
 - CRUD vía `/api/admin/tags`. Parametrizables; iniciales `area` y `empresa` pero la lista **no** está quemada (`REQ §13.2.7`).

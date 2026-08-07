@@ -119,13 +119,29 @@ página en vez de cambiar de sección, o el contenido activo no tiene un nombre 
 
 ### ✅ I-08 — Cargar participantes en lote (Excel/CSV)
 **Qué es:** subir muchos participantes de una vez con un archivo, en lugar de uno por uno.
-1. En el portal, ve a la pantalla de **Usuarios** y busca la opción de **cargar archivo**.
-2. Sube un archivo con la lista (nombre, WhatsApp, área, empresa, etiquetas).
+1. En el portal, ve a la pantalla de **Usuarios**, **descarga la plantilla vacía** y llénala. Las
+   columnas son las de GHT: *Empresa, ID Empresa, Sede, Nombre, Cargo, Email, Antigüedad en la empresa
+   en años, Idioma, Telefono*. **Solo Nombre y Telefono son obligatorios** (sin teléfono no hay
+   WhatsApp).
+2. Sube el archivo (`.xlsx` o `.csv`) con la opción de **cargar archivo**.
 3. **Deberías ver:** un **resumen** que dice cuántos se crearon, cuántos se actualizaron y cuántos se
-   rechazaron, con el **motivo** de cada rechazo (por ejemplo, un número mal escrito).
-4. Vuelve a subir el mismo archivo: **no debe duplicar** a nadie.
-**Algo va mal si:** una fila con un error tumba toda la carga (debería rechazar solo esa fila), o se
-crean participantes repetidos.
+   rechazaron, con el **motivo** de cada rechazo (por ejemplo, un número mal escrito). Cada persona
+   creada recibe un **código de usuario** consecutivo (`U-000042`) que ya no cambia nunca.
+4. Vuelve a subir el mismo archivo: **no debe duplicar** a nadie, y los códigos de usuario deben ser
+   los mismos.
+5. **Prueba el cambio de titular:** cambia el nombre de una persona en el archivo por otro
+   completamente distinto y vuelve a subirlo. El sistema **no debe decidir solo**: esa fila queda
+   marcada como *conflicto* mostrando el nombre actual y el propuesto, y tú eliges si es una
+   corrección de nombre o si el teléfono pasó a otra persona. Solo si eliges **reasignar**, la persona
+   anterior queda inactiva y se crea un registro nuevo — sus aportes de campañas anteriores **siguen
+   siendo suyos**, no del nuevo titular.
+6. Si solo quieres completar datos (por ejemplo el idioma) sin crear a nadie, usa el modo
+   **"solo actualizar"**: los teléfonos que no existan se reportan como *no encontrado*.
+
+**Algo va mal si:** una fila con un error tumba toda la carga (debería rechazar solo esa fila), se
+crean participantes repetidos, el sistema **inactiva a alguien solo porque su nombre tenía una tilde
+distinta**, o después de reasignar un teléfono los aportes viejos aparecen bajo el nombre del nuevo
+titular.
 
 ### ✅ P-03 — Reiniciar datos para volver a probar
 **Qué es:** dejar una conversación "como nueva" sin borrar la campaña, para repetir pruebas.

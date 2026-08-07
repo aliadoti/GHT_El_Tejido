@@ -72,23 +72,62 @@ La idea es realizable con recursos razonables. 0 = irrealizable; 5 = claramente 
 
 ---
 
-## 5. Archivo de carga masiva (I-08) — `participantes_QA.csv`
+## 5. Archivo de carga masiva (I-08 v2) — `participantes_QA.xlsx` / `.csv`
 
-Columnas fijas: `Nombre | WhatsApp | Area | Empresa | Tags` (tags separadas por `;`). Incluye casos sucios a propósito:
+> **Actualizado 2026-08-07 (`I-08 v2`).** La plantilla anterior
+> (`Nombre | WhatsApp | Area | Empresa | Tags`) **ya no aplica**. La oficial tiene **9 columnas en
+> orden fijo** y el formato primario es **`.xlsx`**; el CSV es el respaldo. Plantilla vacía en
+> `Especificaciones/Iniciativas/plantillas/plantilla_participantes_v1.{xlsx,csv}` o vía
+> `GET /api/admin/usuarios/plantilla-carga`.
+
+Columnas: `Empresa | ID Empresa | Sede | Nombre | Cargo | Email | Antigüedad en la empresa en años | Idioma | Telefono`.
+Obligatorios: **`Nombre`** y **`Telefono`**. Incluye casos sucios a propósito:
 
 ```csv
-Nombre,WhatsApp,Area,Empresa,Tags
-Ana Pérez,573001112201,Ventas,ACME,piloto;ventas
-Beto Ríos,573001112202,Costos,ACME,piloto
-Carla Díaz,3001112203,Operaciones,ACME,piloto
-Diego Luna,ABC123,TI,ACME,piloto
-Elsa Mora,573001112205,,ACME,
-Ana Pérez,573001112201,Ventas,ACME,duplicada
+Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono
+ACME,AC,AC,Ana Pérez,Gerente,ana.perez@acme.com,16.391666,es,573001112201
+ACME,AC,AC,Beto Ríos,Gerente 2,beto.rios@acme.com ,3.96,,573001112202
+ACME,AC,AC,Carla Díaz,,,,,3001112203
+ACME,AC,AC,Diego Luna,Gerente,diego.luna@acme.com,1.5,en,ABC123
+,,,Elsa Mora,,elsa.mora@acme.com,,es,573001112205
+ACME,AC,AC,Ana Pérez,Gerente,otra.ana@acme.com,16.39,es,573001112201
+ACME,AC,AC,Fabio Sanz,Gerente,ana.perez@acme.com,2.0,es,573001112206
+ACME,AC,AC,Gina Ruiz,Gerente,gina.ruiz@acme.com,4.0,pt,573001112207
 ```
 
-**Resultado esperado del reporte (ADM-08):** Ana/Beto/Carla/Elsa → `creado` (Carla se normaliza a E.164); `ABC123` → `rechazado(numero_invalido)`; fila de Elsa con Empresa vacía se acepta si Empresa no es obligatoria (si lo es → `rechazado(fila_incompleta)`, ajustar según validación real); la 2ª Ana → `rechazado(duplicado_en_archivo)`. Re-subir (ADM-09) → los válidos pasan a `actualizado`, sin duplicar.
+**Resultado esperado del reporte (ADM-08):**
 
-> También preparar una versión `.xlsx` equivalente para probar ClosedXML (I-08 lee xlsx; CSV es el respaldo).
+| Fila | Caso | Esperado |
+|---|---|---|
+| Ana | completa y válida | `creado` |
+| Beto | email con **espacio final**, `Idioma` vacío | `creado`; email normalizado, `idioma = es` |
+| Carla | sin `Cargo`, sin `Email`, sin `Antigüedad`; número local | `creado` (se normaliza a E.164) — **email ya no es obligatorio** |
+| Diego | `ABC123` | `rechazado(numero_invalido)` |
+| Elsa | sin `Empresa`/`ID Empresa`/`Sede`/`Cargo` | `creado` — solo `Nombre` y `Telefono` son obligatorios |
+| Ana (2ª) | teléfono repetido en el archivo | `rechazado(duplicado_en_archivo)` — el primero gana |
+| Fabio | email ya usado por Ana (activa) | `rechazado(email_duplicado)` |
+| Gina | `Idioma = pt` | `rechazado(idioma_invalido)` |
+
+Además: `Antigüedad` se guarda **decimal sin redondear** (`16.391666`); se crea/asegura la tag
+`t_emp_ac`; cada creado recibe un `codigoUsuario` consecutivo. Re-subir (ADM-09) → los válidos pasan a
+`actualizado`, sin duplicar y **sin cambiar `codigoUsuario`**.
+
+### 5.1 Archivo de conflicto de titular — `participantes_QA_conflicto.xlsx`
+Mismo teléfono de Ana (`573001112201`) con otro nombre, para ADM-08b:
+```csv
+Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono
+ACME,AC,AC,ANA PEREZ,Gerente,ana.perez@acme.com,16.4,es,573001112201
+ACME,AC,AC,RODRIGO NUEVO,Gerente,rodrigo.nuevo@acme.com,0.5,es,573001112202
+```
+- `ANA PEREZ` vs `Ana Pérez`: solo difiere en tildes y mayúsculas → similitud ≥ 0,85 → **`actualizado`
+  sin conflicto** (es un typo, no un cambio de titular).
+- `RODRIGO NUEVO` sobre el teléfono de Beto → **`rechazado(conflicto_titular)`**, sin escribir nada.
+  Reenviar con `reasignaciones=[{fila:3,accion:"reasignar"}]` → Beto queda `inactivo`, Rodrigo
+  `creado` con nuevo `id` y nuevo `codigoUsuario`, resultado `reasignado`.
+
+### 5.2 Archivo para `modo=solo_actualizar`
+El mismo `participantes_QA.xlsx` con un teléfono que no existe (`573009999999`) → `no_encontrado`,
+sin alta. Sirve para verificar que el modo **nunca** crea registros.
 
 ---
 

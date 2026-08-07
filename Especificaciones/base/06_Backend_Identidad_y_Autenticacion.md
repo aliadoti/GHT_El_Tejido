@@ -23,6 +23,26 @@ Reglas (`REQ §10.2`, `§12.2.2`):
 - La normalización es **centralizada y única** (`ARQ §16`): toda comparación (login, resolución de participante, unicidad) usa el mismo método.
 - La pantalla de login muestra instrucciones y ejemplos (Colombia `573001112233`, EE. UU. `13055551234`) (`REQ §10.2`).
 
+### 2.1 Resolución por número: siempre entre activos (`I-08 §3.1.f`)
+
+Un número de WhatsApp puede **reasignarse** de una persona a otra (rotación de línea corporativa).
+El titular anterior queda en `estado = inactivo` **conservando su número** y su historial, y el nuevo
+titular es un documento distinto (`03 §3.1`). Por lo tanto puede haber **varios `Usuario` con el mismo
+`whatsappNormalizado`**, pero **a lo sumo uno `activo`**.
+
+- `IRepositorioUsuarios.ObtenerUsuarioPorNumeroAsync` devuelve **solo el usuario activo**. El filtro
+  vive **dentro del repositorio**, no en cada llamador: los puntos de uso —resolución de participante
+  (`§3.2`), login admin (`§4`), alta y edición individual (`04 §5.1`), carga masiva (`I-08`) y los
+  endpoints de simulación— lo requieren por igual.
+- `ListarUsuariosPorNumeroAsync` devuelve activo + inactivos por `creadoEn`. Es el **único** camino
+  para ver el histórico (ficha del portal, auditoría de reasignaciones) y no debe usarse para resolver
+  identidad.
+- **Efecto buscado:** un mensaje entrante desde un número cuyo único registro está inactivo **no
+  resuelve participante** → `NoAutorizado(NoMatriculado)` y el flujo de rechazo habitual, en vez de
+  atribuirse al titular anterior. Igual para el login admin.
+- La unicidad "un solo activo por número" se valida en aplicación y la respalda la unique key
+  `/claveUnicidad` del contenedor `users` (`03 §3.1`, `§5`).
+
 ---
 
 ## 3. Identidad y matrícula
@@ -47,9 +67,10 @@ acepta ids enviados por el cliente sin revalidarlos.
 ### 3.2 Algoritmo (`REQ §26.3`)
 ```
 1. Normaliza el número.
-2. Busca Usuario por whatsappNormalizado (contenedor users).
+2. Busca Usuario ACTIVO por whatsappNormalizado (contenedor users; §2.1 — los inactivos
+   con ese mismo número son histórico de reasignación y no se consideran).
    - Si no existe → NoAutorizado(NoMatriculado).
-3. Verifica usuario.estado == activo → si no, NoAutorizado(Inactivo).
+3. Verifica usuario.estado == activo → redundante con el paso 2, se conserva como guardarraíl.
 4. Verifica rol == participante (los admin/visor no participan por WhatsApp).
 5. Busca todas las asociaciones `ParticipanteCampania.estado=activo` y carga sus campañas.
 6. Conserva solo campañas `estado=activa` con al menos una pregunta activa y donde:

@@ -4,6 +4,47 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-07 (Claude Opus 5, Arquitecto/PM tecnico): **`I-08` REABIERTA como
+  `I-08 v2`. SOLO DOCUMENTACION — cero cambios de codigo; queda todo listo para implementar.**
+  GHT entrego la plantilla oficial (`Información asistentes convención gerentes 2026 V1.xlsx`, 129
+  filas) y sus columnas **no son** las que se implementaron en julio. I-08 figuraba DONE (backend
+  15-jul, UI 20-jul) y **vuelve a estar abierta**. Columnas oficiales, orden fijo:
+  `Empresa | ID Empresa | Sede | Nombre | Cargo | Email | Antigüedad en la empresa en años | Idioma | Telefono`.
+  Esto **cierra el insumo pendiente de Munir** (variables demograficas): no era una extension aditiva
+  de columnas como suponia el indice, sino una plantilla completa que reemplaza a la anterior.
+  **Decisiones del usuario:** campos nuevos **de primer nivel** en `Usuario` (`empresaId`, `sede`,
+  `cargo`, `email`, `antiguedadAnios`, `idioma`); **obligatorios solo `Nombre` y `Telefono`** (sin
+  telefono no hay WhatsApp), **`Email` deja de serlo** y `area`/`empresa` dejan de ser requeridos en
+  `Usuario.Crear`; **`codigoUsuario`** autonumerico legible (`U-000042`) via documento `Secuencia` con
+  ETag y reserva de bloque por lote, manteniendo el `id` tecnico `u_<guid>` para no migrar las
+  referencias de `03`; **un numero puede reasignarse entre personas** con a lo sumo **un activo por
+  telefono** (el anterior queda inactivo conservando numero e historial, y la trazabilidad de
+  campanias cuelga del `id` viejo); **conflicto de titular** que no se resuelve solo (el admin decide
+  por fila `corregir_nombre`/`reasignar`/`omitir`; similitud >= 0,85 se trata como typo);
+  **`usuarioWhatsapp`** opcional solo-portal que no participa aun en el enrutamiento; modo
+  **`solo_actualizar`**; antigüedad decimal e `Idioma` default `es`.
+  **Dos hallazgos que condicionaron el diseno y hay que respetar al codificar:** (1) la unique key
+  `/whatsappNormalizado` deja de ser viable y **no basta con quitarla** —Cosmos trata el path ausente
+  como `null` y tambien lo hace unico, con lo que las `Tag` del mismo contenedor colisionarian entre
+  si—, asi que se introduce **`claveUnicidad`** (`wa|<numero>` / `hist|<id>` / `tag|<id>` /
+  `seq|<id>`) con **unique key `/claveUnicidad`**, calculada solo en el mapeo del repositorio, lo que
+  obliga a **inactivar antes de crear** al reasignar; (2) **`ObtenerUsuarioPorNumeroAsync` debe
+  filtrar `estado = activo`** dentro del repositorio —los 7 puntos de uso lo requieren por igual— o un
+  mensaje entrante puede resolverse al **titular anterior**; ojo con `RepositoriosMemoria`, que hoy
+  hace `FirstOrDefault` sin filtrar.
+  **El usuario confirmo que la base se puede borrar y recrear con solo el admin** → **no hay backfill
+  ni migracion**, pero **recrear el contenedor `users` es un paso bloqueante** (las unique keys de
+  Cosmos son inmutables) que va antes de tocar el codigo de carga.
+  **Por ahora NO se carga ningun dato:** la V1 del archivo trae `Telefono`, `Idioma` y `Empresa`
+  vacias en las 129 filas; sin telefono ninguna fila entra. Falta que GHT entregue la V2 diligenciada.
+  **Pendiente de decision del usuario:** la prioridad de `I-08 v2` frente a `P-31` (en curso local
+  1/3). Docs actualizados: `Iniciativas/I-08_Carga_Masiva_Participantes.md` (reescrita),
+  `Iniciativas/plantillas/plantilla_participantes_v1.{xlsx,csv}` (nuevas), `base/03` (§2, §3.1, §3.1.1
+  `Secuencia`, §3.2 `Tag`, §5, §6), `base/04 §5.1`, `base/06` (§2.1 nuevo, §3.2),
+  `Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md` (§2.1 pasos 5–6 y checklist),
+  `Iniciativas/TODO.md` (items 5, 12, 22 y nuevo 22a), `Iniciativas/00_Indice` (§1.1, decisiones,
+  insumos externos), `SUPUESTOS.md#carga-masiva-plantilla-oficial-i08-v2` (y cabecera de superado en
+  `#carga-masiva-participantes`), QAS.
 - Ultima actualizacion: 2026-08-06 (Backend/SDET): **`P-31` corte 1/3 y el enganche base del corte 2
   estan implementados localmente.** Perillas independientes apagadas por defecto, precedencia,
   opt-out, persistencia compatible y composicion idempotente; build Release y 736 pruebas verdes.

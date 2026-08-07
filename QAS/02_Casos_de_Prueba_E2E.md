@@ -301,19 +301,48 @@
 - **Criterio de aprobación:** snapshots poblados; regeneración produce Markdown consistente sin secretos. Determinista (estructura).
 - **Ambiente:** sim.
 
-### ADM-08 | Carga masiva CSV/XLSX: reporte por fila (I-08)
-- **Prioridad:** CORE · **I-08**
-- **Precondición:** archivo con columnas `Nombre | WhatsApp | Area | Empresa | Tags` (ver `04_*`), incluyendo filas válidas, un número inválido, una fila incompleta y un duplicado interno.
-- **Pasos:** subir el archivo (opcional `campaniaId`); ver el reporte.
-- **Resultado esperado:** filas válidas → `creado`; número mal formado → `rechazado(numero_invalido)`; incompleta → `rechazado(fila_incompleta)`; duplicado interno → primero `creado`, resto `rechazado(duplicado_en_archivo)`; una fila mala **no** aborta el lote.
-- **Criterio de aprobación:** conteos coinciden con lo esperado; el lote se procesó completo; sin PII en logs (solo conteos/motivos). Determinista.
+### ADM-08 | Carga masiva XLSX/CSV: reporte por fila (I-08 v2)
+- **Prioridad:** CORE · **I-08 v2**
+- **Precondición:** `participantes_QA.xlsx` con la cabecera oficial de **9 columnas** (`04_* §5`), incluyendo filas válidas, un número inválido, filas con opcionales vacíos, un duplicado interno, un email repetido y un idioma inválido.
+- **Pasos:** subir el archivo (opcional `campaniaId`); ver el reporte. Repetir con el `.csv` equivalente.
+- **Resultado esperado:** filas válidas → `creado`; número mal formado → `rechazado(numero_invalido)`; sin `Nombre` o sin `Telefono` → `rechazado(fila_incompleta)`; **sin `Email`/`Cargo`/`Empresa` → se crea igual**; duplicado interno de teléfono → primero `creado`, resto `rechazado(duplicado_en_archivo)`; email de otro activo → `rechazado(email_duplicado)`; `Idioma` fuera de `{es,en}` → `rechazado(idioma_invalido)`; una fila mala **no** aborta el lote. Cada creado trae `codigoUsuario` consecutivo; antigüedad decimal sin redondear.
+- **Criterio de aprobación:** conteos coinciden con la tabla de `04_* §5`; el lote se procesó completo; sin PII en logs ni en el reporte (solo ids, conteos y motivos). Determinista.
 - **Ambiente:** sim.
 
-### ADM-09 | Carga masiva idempotente
-- **Prioridad:** CORE · **I-08**
+### ADM-08a | Cabecera inválida aborta el lote (I-08 v2)
+- **Prioridad:** CORE · **I-08 v2**
+- **Pasos:** subir un archivo con las columnas en otro orden o con la cabecera vieja (`Nombre,WhatsApp,Area,Empresa,Tags`).
+- **Resultado esperado:** **`400`**, ninguna fila procesada, ningún usuario creado.
+- **Criterio de aprobación:** el maestro queda idéntico al estado previo. Determinista.
+- **Ambiente:** sim.
+
+### ADM-08b | Conflicto de titular y reasignación de número (I-08 v2)
+- **Prioridad:** CORE · **I-08 v2**
+- **Precondición:** ADM-08 ejecutado; `participantes_QA_conflicto.xlsx` (`04_* §5.1`).
+- **Pasos:** (1) subir el archivo de conflicto; (2) reenviarlo con `reasignaciones=[{fila:3,accion:"reasignar"}]`; (3) consultar `GET /api/admin/usuarios/por-numero/{numero}`.
+- **Resultado esperado:** (1) nombre con solo diferencias de tildes/mayúsculas → `actualizado` **sin** conflicto; nombre distinto → `rechazado(conflicto_titular)` con `codigoUsuarioAnterior` y **nada escrito**. (2) tras autorizar: anterior `inactivo`, nuevo `creado` con nuevo `id` y nuevo `codigoUsuario`, resultado `reasignado`, sin heredar rol ni tags. (3) el histórico devuelve ambos, ordenados por `creadoEn`.
+- **Criterio de aprobación:** las conversaciones y evaluaciones previas siguen apuntando al `id` anterior (**trazabilidad intacta**) y no aparecen bajo el nuevo usuario; la reasignación queda en `LogSeguridad` sin PII. Determinista.
+- **Ambiente:** sim.
+
+### ADM-08c | Un solo activo por teléfono — guardarraíl de base (I-08 v2)
+- **Prioridad:** CORE · **I-08 v2**
+- **Pasos:** (1) intentar crear por API un segundo usuario **activo** con un número ya usado por otro activo; (2) intentar reactivar (`PATCH …/estado`) a un usuario inactivo cuyo número ya tiene titular activo; (3) enviar un webhook entrante desde un número cuyo único registro está **inactivo**.
+- **Resultado esperado:** (1) y (2) → **`409`**; (3) → **no resuelve participante**, cae en `rechazoParticipacion` y **no** se atribuye al titular anterior.
+- **Criterio de aprobación:** nunca coexisten dos activos con el mismo número, ni siquiera saltándose la validación de aplicación (lo respalda la unique key `/claveUnicidad`). Determinista.
+- **Ambiente:** sim + Cosmos real (el `409` de (1) solo se verifica de verdad contra Cosmos).
+
+### ADM-09 | Carga masiva idempotente (I-08 v2)
+- **Prioridad:** CORE · **I-08 v2**
 - **Pasos:** re-subir el mismo archivo válido.
-- **Resultado esperado:** las filas repetidas → `actualizado` (upsert por número normalizado), **sin** duplicar usuarios.
-- **Criterio de aprobación:** 0 usuarios duplicados; conteo `actualizado` = filas válidas. Determinista.
+- **Resultado esperado:** las filas repetidas → `actualizado` (upsert por número normalizado **entre activos**), **sin** duplicar usuarios y **sin** cambiar `codigoUsuario` ni `usuarioWhatsapp`. Un campo opcional vacío en el archivo **no borra** el valor previo; `rol`, `estado` y tags manuales se conservan.
+- **Criterio de aprobación:** 0 usuarios duplicados; conteo `actualizado` = filas válidas; `codigoUsuario` estable. Determinista.
+- **Ambiente:** sim.
+
+### ADM-09a | Modo `solo_actualizar` (I-08 v2)
+- **Prioridad:** CORE · **I-08 v2**
+- **Pasos:** subir con `modo=solo_actualizar` un archivo que mezcle teléfonos existentes y uno inexistente (`04_* §5.2`).
+- **Resultado esperado:** los existentes → `actualizado`; el inexistente → `rechazado(no_encontrado)`, **sin crear nada** (tampoco si hay un inactivo con ese número).
+- **Criterio de aprobación:** conteo `creados = 0`. Determinista.
 - **Ambiente:** sim.
 
 ### ADM-10 | P-03 reinicio por participante → cold-start real

@@ -85,7 +85,9 @@ Registrar la decisión y quién la firma. **Un flag solo va ON si pasó carga + 
 
 ### 2.6 Freeze (8–9 ago)
 - [ ] Code freeze aplicado.
-- [ ] Carga real de participantes (I-08) ejecutada y verificada (reporte por fila sin rechazos inesperados).
+- [ ] Contenedor `users` recreado con unique key **`/claveUnicidad`** y semilla del admin (`codigoUsuario = 1` + documento `seq_usuario`); verificado que un segundo activo con el mismo teléfono devuelve **`409`** (`I-08 §3.2`, `Guia_Azure_Portal §2.1` paso 6).
+- [ ] Archivo de GHT recibido **con `Telefono` diligenciado** (la V1 lo trae vacío en las 129 filas; sin teléfono ninguna fila entra).
+- [ ] Carga real de participantes (I-08 v2) ejecutada y verificada (reporte por fila sin rechazos inesperados; **cero `conflicto_titular` sin resolver**).
 - [ ] **Dry-run E2E completo** con datos reales (1 participante real de punta a punta).
 - [ ] Rúbrica/prompts/seeds congelados; rúbrica **no** en estado `borrador`.
 - [ ] `Seguridad:PermitirReinicioDatos=false`; `Simulacion:Habilitada=false`.

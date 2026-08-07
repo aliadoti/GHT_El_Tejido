@@ -23,7 +23,7 @@
 
 | Contenedor | Tipos (`type`) que aloja | Partition key | TTL | Justificación |
 |---|---|---|---|---|
-| `users` | `Usuario`, `Tag` | `/pk` (= `tipo` lógico: `"usuario"` o `"tag"`) | No | Catálogo pequeño; lectura por número e id. |
+| `users` | `Usuario`, `Tag`, `Secuencia` | `/pk` (= `tipo` lógico: `"usuario"`, `"tag"` o `"secuencia"`) | No | Catálogo pequeño; lectura por número e id. Unique key `/claveUnicidad` (`§3.1`). |
 | `campaigns` | `Campania` (con mensajes y preguntas embebidos) | `/id` | No | Unidad de configuración; se lee completa. |
 | `participants` | `ParticipanteCampania`, `EnvioMensaje` | `/campaniaId` | No | Consultas y envíos siempre por campaña. |
 | `conversations` | `Conversacion`, `Mensaje`, `EnrutamientoAporte` | `/campaniaId` | No | Hilo conversacional agrupado por campaña; P-26 usa una partición interna por usuario antes de conocer la campaña. |
@@ -50,21 +50,103 @@ Notas (`ARQ §9`):
   "id": "u_8f3c...",
   "type": "Usuario",
   "pk": "usuario",
+  "codigoUsuario": 42,
+  "claveUnicidad": "wa|573001112233",
   "nombre": "Ana Pérez",
   "whatsappNormalizado": "573001112233",
+  "usuarioWhatsapp": null,
   "rol": "participante",
   "estado": "activo",
+  "email": "ana.perez@ght.com",
+  "empresa": "Flores El Aljibe",
+  "empresaId": "AL",
+  "sede": "AL",
+  "cargo": "Coordinadora",
   "area": "Operaciones",
-  "empresa": "GHT",
+  "antiguedadAnios": 16.391666,
+  "idioma": "es",
   "tags": ["t_area_oper", "t_emp_ght"],
-  "propiedadesDinamicas": { "cargo": "Coordinadora" },
+  "propiedadesDinamicas": {},
   "creadoEn": "2026-06-10T12:00:00Z",
   "actualizadoEn": "2026-06-10T12:00:00Z"
 }
 ```
 - `rol` ∈ `participante` | `admin` | `visor`.
 - `estado` ∈ `activo` | `inactivo`.
-- `whatsappNormalizado` es **único**; sirve de identificador funcional (`REQ §12.2.1`). Garantizar unicidad en la capa de aplicación (consulta previa) ya que Cosmos no impone unicidad cross-partición salvo unique keys; **se DEBE configurar una unique key policy** sobre `whatsappNormalizado` por partición (ver `Guia_Azure_Portal §` contenedor `users`) y validar también en código.
+- **Campos obligatorios del maestro:** `nombre` y `whatsappNormalizado`. `area`, `empresa`,
+  `empresaId`, `sede`, `cargo`, `email` y `antiguedadAnios` son **opcionales** (`I-08 §3`); un
+  documento sin ellos es válido.
+
+**Identificadores (`I-08 §3.1`)**
+- `id` (`u_<guid>`) es el identificador **técnico** y el que referencian `ParticipanteCampania`,
+  `Conversacion`, `EnvioMensaje`, `EnrutamientoAporte`, `Evaluacion` y `LogSeguridad`. No cambia nunca.
+- `codigoUsuario` (`number`, **requerido**) es el identificador **secuencial y legible** del maestro
+  (se muestra como `U-000042`). Único e inmutable; acompaña al usuario aunque quede inactivo. Lo
+  asigna el documento `Secuencia` (§3.1.1), nunca el cliente.
+- `usuarioWhatsapp` (`string?`, opcional, **aditivo**, default `null`): identificador de WhatsApp por
+  usuario, no por número. Se captura solo desde el portal; **no** se carga desde CSV/Excel y **no**
+  participa aún en el enrutamiento ni en la resolución de participante (`05`, `06 §2`). Reservado para
+  cuando se habilite esa vía de identificación.
+
+**Unicidad del número — un solo activo por teléfono (`I-08 §3.1.d/e`)**
+- `whatsappNormalizado` es el identificador **funcional** (`REQ §12.2.1`), pero **ya no es único a
+  secas**: es único **entre usuarios `activo`**. Un número puede reasignarse de una persona a otra
+  (rotación de línea corporativa); al reasignar, el titular anterior pasa a `estado = inactivo`
+  conservando su número y su historial, y se crea un documento nuevo (nuevo `id`, nuevo
+  `codigoUsuario`) para el nuevo titular. Así la trazabilidad de campañas no se le atribuye a quien
+  no participó.
+- Por eso **no se puede** usar una unique key sobre `/whatsappNormalizado` (habría varios documentos
+  con el mismo valor), y tampoco basta con quitarla: Cosmos trata el path ausente como `null` y
+  también lo hace único, de modo que las `Tag` del mismo contenedor colisionarían entre sí.
+- Solución: **`claveUnicidad`** (`string`, **requerido en todo documento de `users`**), campo derivado
+  con la unique key del contenedor:
+
+  | Documento | `claveUnicidad` |
+  |---|---|
+  | `Usuario` con `estado = activo` | `wa\|<whatsappNormalizado>` |
+  | `Usuario` con `estado = inactivo` | `hist\|<id>` (único por construcción) |
+  | `Tag` | `tag\|<id>` |
+
+- **Unique key policy** del contenedor `users`: **`/claveUnicidad`** (ver `§8` y
+  `Guia_Azure_Portal §2.1`). Como todos los `Usuario` comparten `pk = "usuario"`, la unicidad es
+  efectivamente global para el maestro. Un segundo activo con el mismo número falla con **`409`**.
+- El campo se calcula **exclusivamente** en el mapeo a documento del repositorio Cosmos, nunca en el
+  dominio ni en un servicio, para que no pueda desincronizarse del `estado`.
+- La aplicación **igual valida primero** (consulta previa filtrada por `estado = activo`) para devolver
+  un motivo tipificado en vez de un `409` crudo; la unique key es la red de seguridad.
+- **Orden obligatorio al reasignar:** primero inactivar al titular (su clave pasa a `hist|…`), luego
+  crear al nuevo. Al revés, la unique key rechaza la operación.
+- `email`, si viene, también es único **entre activos**; se valida solo en aplicación (es nullable, no
+  admite unique key).
+
+**Resolución por número (`06 §2`)**
+- Toda consulta que responda "el participante de este número" filtra por `estado = activo`
+  (`ObtenerUsuarioPorNumeroAsync`). Un número cuyo único registro está inactivo **no resuelve
+  participante** y cae en el flujo de rechazo existente.
+- Para ver el histórico (ficha del portal, auditoría de reasignaciones) existe
+  `ListarUsuariosPorNumeroAsync`, que devuelve activo + inactivos ordenados por `creadoEn`.
+
+#### 3.1.1 `Secuencia` (contenedor `users`) — `I-08 §3.1.b`
+
+Contador para `codigoUsuario`. Cosmos no tiene autoincremento; se emula con un documento único y
+concurrencia optimista.
+
+```json
+{
+  "id": "seq_usuario",
+  "type": "Secuencia",
+  "pk": "secuencia",
+  "claveUnicidad": "seq|seq_usuario",
+  "ultimoValor": 130,
+  "actualizadoEn": "2026-08-07T12:00:00Z"
+}
+```
+- Se incrementa con **ETag** (`If-Match`); ante `412` se reintenta (backoff corto, tope de reintentos).
+- En carga masiva se **reserva un bloque** de N valores en una sola operación (N = filas a crear) para
+  no golpear el contador fila por fila.
+- Semilla: `ultimoValor = 1`, correspondiente al usuario administrador (`U-000001`). **No hay
+  backfill**: la base se recrea desde cero (`I-08 §3.2`).
+- Lleva `claveUnicidad` como cualquier documento de `users`, para no colisionar con la unique key.
 
 ### 3.2 `Tag` (contenedor `users`) — `REQ §29.2`, `§13`
 
@@ -73,6 +155,7 @@ Notas (`ARQ §9`):
   "id": "t_area_oper",
   "type": "Tag",
   "pk": "tag",
+  "claveUnicidad": "tag|t_area_oper",
   "nombre": "Operaciones",
   "tipoTag": "area",
   "descripcion": "Área de operaciones",
@@ -82,6 +165,12 @@ Notas (`ARQ §9`):
 ```
 - `tipoTag` parametrizable; iniciales `area` y `empresa` (`REQ §13.1`). No quemar la lista en código (`REQ §13.2.7`).
 - `estado` ∈ `activo` | `inactivo`.
+- `claveUnicidad` = `tag|<id>` (**obligatorio**, `I-08 §3.1.e`). No tiene relación con WhatsApp: la
+  `Tag` comparte contenedor con `Usuario` y la unique key `/claveUnicidad` haría colisionar entre sí a
+  todos los documentos que omitieran el campo (Cosmos trata el path ausente como `null` y lo considera
+  un valor único más). Se calcula en el mapeo a documento del repositorio.
+- La carga masiva crea las tags de empresa faltantes como `t_emp_<idEmpresa>` con `tipoTag = "empresa"`
+  (`I-08 §3`).
 
 ### 3.3 `Campania` (contenedor `campaigns`) — `REQ §29.3`, `§11`
 
@@ -732,7 +821,14 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 
 - **Indexado por defecto** (automático) en todos los contenedores; suficiente para los filtros del portal (`ARQ §9`).
 - **TTL habilitado** en `security` (por documento, vía campo `ttl`) y en `leases` (`ttl`). El resto sin TTL.
-- **Unique key policy** en `users`: `whatsappNormalizado` (más el discriminador para no colisionar `Usuario`/`Tag`; en la práctica, unique key sobre `/whatsappNormalizado` aplica solo a documentos que lo tengan). Validar además en aplicación.
+- **Unique key policy** en `users`: **`/claveUnicidad`** (`I-08 §3.1.e`, detalle en `§3.1`). **No** se
+  usa `/whatsappNormalizado`: con la reasignación de números conviven varios documentos con el mismo
+  valor (un activo + N inactivos), y dejar el path ausente tampoco sirve porque Cosmos trata la
+  ausencia como `null` y también la hace única, con lo que las `Tag` colisionarían entre sí. Todo
+  documento de `users` (`Usuario`, `Tag`, `Secuencia`) debe poblar `claveUnicidad`. Validar además en
+  aplicación, que es quien devuelve el motivo tipificado; el `409` de la base es la red de seguridad.
+- ⚠️ Las unique keys de Cosmos son **inmutables**: se fijan al crear el contenedor. Cambiarlas exige
+  borrar y recrear `users` (`I-08 §3.2`, `Guia_Azure_Portal §2.1`).
 - Si el RU sube, afinar la política de indexado excluyendo rutas grandes (`contenidoMarkdown`, `contenido` de prompts) de los índices de query que no se filtran. **No** es necesario en MVP.
 
 ---
@@ -741,7 +837,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 
 | Entidad | Contenedor | Spec que la usa |
 |---|---|---|
-| Usuario, Tag | `users` | 06, 07 |
+| Usuario, Tag, Secuencia | `users` | 06, 07, `I-08` |
 | Campania (+ mensajes, preguntas) | `campaigns` | 07 |
 | ParticipanteCampania, EnvioMensaje | `participants` | 05, 07 |
 | Conversacion, Mensaje, EnrutamientoAporte | `conversations` | 05, 06, P-26 |
