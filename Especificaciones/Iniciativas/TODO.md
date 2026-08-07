@@ -9,8 +9,26 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **▶▶ NUEVO 2026-08-07 — `I-08 v2` CARGA MASIVA REABIERTA. SPEC LISTA, SIN CÓDIGO AÚN.
-> PENDIENTE DE CONFIRMAR SU PRIORIDAD FRENTE A `P-31` ANTES DE ARRANCAR.**
+> **▶▶ INICIATIVA EN CURSO 2026-08-07 — `I-08 v2` CARGA MASIVA. CORTE 1 DE 7 DONE LOCAL
+> (commit `63fa3e7`). ▶ SIGUIENTE: PASO 3 DE `§8` — RECREAR EL CONTENEDOR `users`.**
+> **Corte 1 (pasos 1 y 2 de `§8`) entregado:** `Usuario` con `codigoUsuario` (obligatorio, lo asigna
+> la secuencia), `usuarioWhatsapp`, `empresaId`, `sede`, `cargo`, `email`, `antiguedadAnios`
+> (`decimal?` sin redondear) e `idioma` (`es|en`, default `es`); `area`/`empresa` **opcionales**;
+> `claveUnicidad` derivada **solo** en el mapeo a documento; `ObtenerUsuarioPorNumeroAsync` filtra
+> `estado = activo` dentro del repositorio (Cosmos, memoria y los 6 dobles de prueba) y aparece
+> `ListarUsuariosPorNumeroAsync`; contador `Secuencia` (`seq_usuario`) con ETag, reintento en
+> `412`/`409` y reserva por bloque; DTO de `04 §5.1` ampliado de forma aditiva. Backend **762**
+> (685 unitarias + 77 de integración), build Release `-warnaserror`, `dotnet format` y
+> `git diff --check` limpios. **Sin push, sin desplegar y sin recrear la base.**
+> ⚠️ **El paso 3 (recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el
+> `409`) bloquea los pasos 4-7 y es IRREVERSIBLE** — las unique keys de Cosmos son inmutables. El
+> esquema ya está cerrado en código, así que es el momento de hacerlo. Detalle en `AVANCES.md`
+> ("Próximo paso") y en `I-08 §3.2`.
+> `P-31` quedó **DONE 3/3 y desplegado** (commit `6d02492`), así que liberó la ruta. `I-08 v2` es lo
+> único que bloquea el freeze (8–9 ago).
+> ⚠️ **P-31 ya está desplegado:** la recreación de la base borrará el estado del entorno donde se
+> validó. No se pierde código ni configuración, pero conviene **repetir la prueba de humo de P-31**
+> (`QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`) después de recrear y sembrar.
 > GHT entregó la plantilla oficial (`Información asistentes convención gerentes 2026 V1.xlsx`, 129
 > filas) y sus columnas **no son** las de la plantilla que se implementó en julio. I-08 figuraba `DONE`
 > (backend 15-jul, UI 20-jul); **vuelve a estar abierta**. Columnas oficiales, en orden fijo:
@@ -58,8 +76,22 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > `03 §2/§3.1/§3.1.1/§3.2/§5/§6`, `04 §5.1`, `06 §2.1/§3.2` y `Guia_Azure_Portal §2.1`;
 > supuesto `SUPUESTOS.md#carga-masiva-plantilla-oficial-i08-v2`.
 >
-> **▶ INICIATIVA OBJETIVO 2026-08-06 — `P-31` EN CURSO LOCAL (1/3 cortes).
-> ERA EL SIGUIENTE CAMBIO DE CÓDIGO (ver el bloque de `I-08 v2` arriba).** Viene de REQ-052 (GHT, 2026-08-06): los participantes quieren
+> **✅ `P-31` DONE 3/3 Y DESPLEGADO (2026-08-07).** Commits `6ba6ce0` (corte 1, perilla/política),
+> `32794fb` (corte 2, auditoría y enganche) y `6d02492` (corte 3, E2E simulada: inicio → aporte sobre
+> umbral → resumen → mejora sin repetirlo). Validación verde: build Release, **664 unitarias + 77 de
+> integración**, formato y `git diff --check` limpios. Guía simple:
+> `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. Verificado en código: `ResolverUmbralResumen` ya
+> se consume en `OrquestadorConversacion` (en el corte 1 solo se calculaba, sin efecto observable).
+> **Flags siguen OFF** (`Conversacion:ResumenConsolidacionHabilitado` + opt-out por campaña):
+> encenderlos exige D5 real, UAT y acta de flags. **Calibración pendiente (decisión de negocio):** con
+> `umbralCierreAnticipado=0.6`, el umbral de resumen útil está entre **0.40 y 0.55**; si GHT lo quiere
+> al 70 %, hay que subir el umbral base y eso mueve la distribución maduro/incubación de D5.
+> **Decisión abierta, fuera de alcance:** consulta bajo demanda del consolidado ("¿cómo va mi idea?").
+> **`DT-P27-01` corte 2 sigue abierto**; retomar después de `I-08 v2`.
+>
+> <details><summary>Contexto original de P-31 (histórico)</summary>
+>
+> Viene de REQ-052 (GHT, 2026-08-06): los participantes quieren
 > visibilidad del progreso de su idea. Hoy la versión consolidada de I-19 solo se muestra al confirmar
 > (§4.1) o al reabrir (§4.7); en el coaching normal (P-25) nunca, y al cruzar el umbral base la rama
 > `madura` de `ConfirmarOCorregirIdeaAsync` cierra idea e hilo sin mostrarla.
@@ -87,9 +119,13 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`; requerimiento:
 > `Client_partner/.../Nuevas iniciativas/REQ-052_Visibilidad_progreso_de_la_idea.md`; supuesto:
 > `SUPUESTOS.md#resumen-consolidacion-p31`.
-> **`DT-P27-01` corte 2 sigue abierto pero cede prioridad ante P-31.**
+>
+> </details>
+>
 > **Pendiente de especificar:** soporte de **inglés** en el chatbot (segunda solicitud del 2026-08-06);
-> en análisis de alcance, no arrancar sin spec.
+> en análisis de alcance, no arrancar sin spec. **Nota:** `I-08 v2` ya incorpora la columna `Idioma`
+> (`es|en`) como campo de primer nivel de `Usuario`, así que la carga masiva **no** bloquea esa
+> iniciativa: el dato quedará disponible cuando se especifique.
 >
 > **ESTADO VIGENTE 2026-08-04 — `P-30` COMPLETA local (3/3).** El participante puede pedir retomar
 > una idea histórica propia dentro de la campaña y pregunta resueltas por P-26, elegirla por número o
@@ -218,9 +254,15 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: `P-31` — resumen de la consolidación al alcanzar un umbral propio
-(1/3 cortes local).** Siguiente: completar diagnóstico, telemetría y pruebas E2E/QAS. No desplegar,
-hacer push ni modificar configuración remota.
+**Iniciativa objetivo vigente: `I-08 v2` — carga masiva con la plantilla oficial de GHT
+(ítem 22a).** Orden de `I-08 §8`: ~~dominio y `03`~~ ✅ → ~~repositorio (filtro `estado = activo` +
+`claveUnicidad`)~~ ✅ → **▶ recrear la base y sembrar** (paso irreversible que bloquea el resto) →
+lectores `.xlsx`/`.csv` → servicio → endpoint → portal.
+Tras recrear, repetir la prueba de humo de P-31 (`QAS/14_*`). **No cargar datos reales**: falta que
+GHT entregue el archivo con `Telefono` diligenciado.
+
+`P-31` quedó **DONE 3/3 y desplegado** el 2026-08-07 (commit `6d02492`); sus flags siguen OFF a la
+espera de D5 real, UAT y acta de flags. `DT-P27-01` corte 2 se retoma después de `I-08 v2`.
 
 ---
 
@@ -330,7 +372,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 19 | `P-07` consentimiento de datos | ~~Sprint 2~~ | Codex | **⛔ DIFERIDA (reunión 20-jul)** — consentimiento innecesario en herramienta interna (IP de GHT); no implementar para el Hito |
 | 20 | `P-10` costo LLM + rate por número | Sprint 2 | Claude | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
 | 21 | `P-09` monitoreo día-D | Pruebas 4–8 ago | Codex | **Panel DIFERIDO (reunión 20-jul)** — basta health-check; se conservan `/health(/ready)`, logs de entrega, **acta de flags + runbook** (esos sí son entregables del go-live) |
-| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **antes del freeze** | **por asignar** | **TODO — spec y contratos LISTOS 2026-08-07, sin código.** Reescribe la plantilla a las 9 columnas de GHT; `codigoUsuario` secuencial, `usuarioWhatsapp`, un solo activo por teléfono con reasignación, conflicto de titular, modo `solo_actualizar`, lector `.xlsx` (ClosedXML). **Incluye recrear el contenedor `users` con unique key `/claveUnicidad`** (paso bloqueante, §8 de la spec). Confirmar prioridad frente a `P-31` antes de arrancar. |
+| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **EN CURSO — antes del freeze** | **Claude** | **CORTE 1 DE 7 DONE local 2026-08-07 (commit `63fa3e7`)** — pasos 1 y 2 de `§8`: `Usuario` con `codigoUsuario`/`usuarioWhatsapp`/`empresaId`/`sede`/`cargo`/`email`/`antiguedadAnios`/`idioma`, `area`-`empresa` opcionales, `claveUnicidad` derivada solo en el mapeo, filtro `estado = activo` en `ObtenerUsuarioPorNumeroAsync` + `ListarUsuariosPorNumeroAsync`, contador `Secuencia` con ETag y reserva por bloque, DTO `04 §5.1` aditivo. Backend **762** (685+77), build/format/diff verdes; sin push ni despliegue. **▶ Siguiente: paso 3 — recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el `409`. Irreversible y bloquea los pasos 4-7**; tras recrear, repetir la prueba de humo de P-31. Faltan además lectores `.xlsx`/`.csv`, servicio (modos + conflicto de titular + reasignación), endpoint y portal. |
 | 22 | `I-08` carga real de la lista de GHT | Freeze 8–9 ago | Claude | **TODO — BLOCKED por 22a y por GHT.** Las variables demográficas de Munir **ya llegaron**: son las columnas de la plantilla oficial (insumo cerrado). Falta que GHT entregue el archivo con **`Telefono` diligenciado** (en la V1 esa columna viene vacía en las 129 filas, igual que `Empresa` e `Idioma`). **No cargar nada hasta entonces.** |
 | 23 | **cierre por inactividad ~5 min** (granularidad sub-hora) | Sprint 2 | Claude | **DONE local dentro de I-17 (2026-07-22).** Cierre sub-hora, parametrizable por campaña, con interruptor global apagado por defecto; backend verde 420. |
 | 24 | **`P-21` multi-número de WhatsApp** | A coordinar (fuera de ruta crítica) | Codex | **DONE local 2026-07-25.** Misma WABA/App; `metadata.phone_number_id` llega al orquestador y todas las respuestas salen por ese número. `IWhatsAppGateway` acepta emisor opcional; `configConversacional.numeroWhatsAppSaliente` guarda un alias por campaña y el fallback legacy/predeterminado conserva el comportamiento actual. Sin secretos nuevos; backend 473/473 verde. |
@@ -346,7 +388,8 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 34 | **`P-28` despertar proactivo del coach** | **DONE local 2026-08-04 (3/3)** | Codex | Saludo breve con flag global OFF, vocabulario determinista, redacción/fallback, selección P-26 sin convertir saludo en aporte, telemetría sin texto, Cosmos/E2E/QAS. Siguiente: P-29 corte 1. |
 | 35 | **`P-29` cierre conversacional por tiempo** | **DONE local 2026-08-04 (2/2)** | **Claude** | Kill-switch `CierrePorTiempoHabilitado` (OFF), `promptRefs.cierre` con acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 (sin temporizador, umbral, estado ni motivo nuevos) y lo omite fuera de la ventana de 24 h o con campaña no activa. Backend 723/723, build/format/diff verdes. |
 | 36 | **`P-30` retomar ideas del pasado** | **DONE local 2026-08-04 (3/3)** | **Codex** | Selector histórico determinista por participante, campaña y pregunta, sin filtro por estado/ciclo; selección por número o título/resumen exacto, misma idea y conversación reabiertas, curaduría suspendida, kill-switch OFF, Cosmos, telemetría sin texto, E2E y QAS. Backend 729/729, build/format/diff verdes. |
-| **37** | **`P-31` resumen de la consolidación al alcanzar un umbral propio** | **▶ PRÓXIMA — inmediata** | **por asignar** | **ESPECIFICADA 2026-08-06 — 0/3 cortes. ES EL SIGUIENTE CAMBIO DE CÓDIGO.** REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea (campos aditivos en `IdeaConsolidada` + Cosmos) y **sin depender de los flags de P-27**. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF + opt-out por campaña. Corte 1 = perilla/política/dominio sin efecto observable; 2 = acto `ResumirAvance` y enganche en `ConfirmarOCorregirIdeaAsync`; 3 = E2E simulada, QAS y cierre. **Decisión abierta:** consulta bajo demanda del consolidado (fuera de alcance hasta decidirla). Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`. |
+| **37** | **`P-31` resumen de la consolidación al alcanzar un umbral propio** | 2026-08-06/07 | Codex/Claude | **DONE 3/3 y DESPLEGADO (2026-08-07).** Commits `6ba6ce0` · `32794fb` · `6d02492`. Build Release, **664 unitarias + 77 integración**, formato y `git diff --check` verdes. E2E simulada: inicio → aporte sobre umbral → resumen → mejora sin repetirlo. Guía: `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. **Flags OFF**; encenderlos exige D5 real + UAT + acta de flags, y elegir el umbral (rango útil 0.40–0.55 con base 0.6). Consulta bajo demanda del consolidado sigue **fuera de alcance**. Detalle original ↓ |
+| ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea (campos aditivos en `IdeaConsolidada` + Cosmos) y **sin depender de los flags de P-27**. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF + opt-out por campaña. Corte 1 = perilla/política/dominio sin efecto observable; 2 = acto `ResumirAvance` y enganche en `ConfirmarOCorregirIdeaAsync`; 3 = E2E simulada, QAS y cierre. **Decisión abierta:** consulta bajo demanda del consolidado (fuera de alcance hasta decidirla). Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **EN PAUSA — 1/2 DONE local 2026-08-05; cede prioridad a P-31** | Codex | Corte 1: lectura desde config, fallback a los defaults compilados y normalización compartida, backend 730/730. Corte 2 pendiente (retomar tras P-31): validar vacíos/duplicados/límite, descartar con registro seguro e implementar historial/rollback. No permitir edición por campaña, no modificar alias ni activar P-27. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
 | DT-P27-02 | **Calibración del clasificador P-27 (cierre sobre la última idea)** | **BACKLOG post-convención** | — | Borde detectado en la E2E conversacional desplegada (E14, 2026-08-06): una variante libre no-alias sobre la **última idea de la cola** (`QUEDAN_UNIDADES_PENDIENTES=no`) se clasifica `aportar` en vez de finalizar. Degrada seguro (no corta la idea) y los alias deterministas sí funcionan → severidad baja, no bloqueante. Ajuste **solo del prompt de sistema** de `ClasificadorIntencionControl`; **no desplegar sin pasar D5** (regresión clave: no aumentar cierres falsos de ideas con contenido). Spec: `Iniciativas/DT-P27-02_Calibracion_Clasificador_Cierre_Ultima_Idea.md`. |
@@ -405,29 +448,32 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: completar `P-31` corte 2 de 3 — diagnóstico, telemetría y pruebas focalizadas.**
-   Lee primero `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md` completa (§7 contratos y §11
-   cortes). Entrega: `Conversacion:UmbralResumenConsolidacion` +
-   `Conversacion:ResumenConsolidacionHabilitado` en `OpcionesConversacion`; overrides
-   `configConversacional.umbralResumenConsolidacion` / `.resumenConsolidacion` y
-   `Pregunta.umbralResumenConsolidacion`; `ResolverUmbralResumen` + `OrigenUmbralResumen` en
-   `PoliticaLimitesConversacion` **reutilizando** `UmbralAlcanzado`/`ValorUmbral`; campos
-   `ResumenEnviadoEn` / `ResumenEnviadoEnVersion` en `IdeaConsolidada` propagados por
-   `Crear`/`Restaurar`/`CrearEstado` y las transiciones existentes, más su mapeo en
-   `IdeaConsolidadaCosmosDocument` (ausente ⇒ `null`); y el diagnóstico de arranque en
-   `ServicioPreparacion` cuando `umbralResumen >= umbralBase`. **Nada dispara todavía** y la regresión
-   completa debe quedar verde **sin cambiar una sola expectativa existente**.
+1. **ARRANCA AQUÍ: `I-08 v2` paso 3 de `§8` — recrear el contenedor `users` y sembrar.
+   IRREVERSIBLE y BLOQUEA los pasos 4-7.** El corte 1 ya cerró el esquema en código (commit
+   `63fa3e7`), así que este es el momento. Procedimiento en
+   `Iniciativas/I-08_Carga_Masiva_Participantes.md §3.2` y `Guia_Azure_Portal §2.1`:
+   1. Borrar y recrear `users` con `pk = /pk` y **unique key `/claveUnicidad`** (ya **no**
+      `/whatsappNormalizado`); verificar que no quedó `/pk` como unique key.
+   2. Recrear los contenedores que referencian `usuarioId` (`campaigns`, `conversations`,
+      `security`, …) para no dejar huérfanos.
+   3. Sembrar **solo el admin**: `POST /diagnostico/simulacion/admin-inicial` ya reserva el código y
+      devuelve `U-000001`, creando de paso el documento `Secuencia`.
+   4. Verificar el guardarraíl: un segundo usuario **activo** con el número del admin debe dar `409`.
+   5. **Repetir la prueba de humo de P-31** (`QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`): la
+      recreación borra el estado del entorno donde se validó.
+   **No cargar datos reales** hasta que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-2. **Después: `P-31` cortes 2 y 3.** Corte 2 = acto `ResumirAvance` en I-20, inserción server-side del
-   texto consolidado, respaldo determinista, enganche en la rama de coaching de
-   `ConfirmarOCorregirIdeaAsync`, marcado idempotente y telemetría
-   `LogSeguridad(resumenConsolidacion)`. Corte 3 = E2E simulada vía DT-QA-01, casos QAS y cierre
-   documental.
+2. **Después: `I-08 v2` pasos 4-7.** 4 = lectores `.xlsx` (ClosedXML) y `.csv` con las 9 columnas y
+   cabecera exacta; 5 = `ServicioCargaMasiva` reescrito (modos `upsert`/`solo_actualizar`, conflicto
+   de titular con similitud ≥ 0,85, reasignación con compensación, reserva de bloque de códigos,
+   reporte por fila con motivos tipificados); 6 = endpoint y request DTOs de `04 §5.1` (`modo`,
+   `reasignaciones`, campos nuevos en alta/edición, `POST /usuarios/{id}/reasignar-numero`, descarga
+   de plantilla); 7 = portal (upload, resolución de conflictos, ficha con histórico del número).
 
 3. **Deuda técnica en pausa: `DT-P27-01` corte 2 de 2.** Validar cada lista tras normalizar (vacíos,
    duplicados, límite); ante invalidez usar el default y registrar solo el motivo; completar
    historial/rollback y cerrar `Reglas`, QAS, `TODO.md` y `AVANCES.md`. No tocar alias vigentes ni
-   activar P-27. **Cede prioridad a P-31**; retomar al cerrar los 3 cortes.
+   activar P-27. **Cede prioridad a `I-08 v2`**; retomar al cerrarla.
 
 4. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por
