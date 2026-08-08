@@ -2,7 +2,7 @@
 
 > **Origen:** hoja `Iniciativas`. **Tipo:** Desarrollo · **Prioridad:** Media-Alta ·
 > **Ventana:** rama deseable / post-convención · **Dependencia:** I-06, I-09.
-> No bloquea el 10-ago; se desarrolla en branch sin tocar producción.
+> No bloquea el 12-ago; se desarrolla en branch sin tocar producción.
 
 ## 1. Alcance
 Sobre la pantalla de Resultados actual: **ranking de ideas por score**, filtros por tag/eje de

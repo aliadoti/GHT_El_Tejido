@@ -19,11 +19,12 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > 💡 **`ng test`/`ng build` SÍ corren en esta máquina** pese al Node 22.17, con un Node temporal:
 > `npx -y -p node@24.15.0 node ./node_modules/@angular/cli/bin/ng.js test --watch=false`.
 > `tsc` solo **no basta**: pasó limpio mientras el compilador de Angular encontraba tres roturas reales.
-> **Falta únicamente el despliegue** (cortes 2, 3 y 4 sin push; el 1 ya está en producción).
+> **`I-08 v2` DESPLEGADO** el 2026-08-07 y validado contra Azure en la corrida conversacional del
+> 2026-08-08 (`QAS/resultados/Resultados_E2E_Conversacional_20260807.md`): **13 casos PASS, 0 fallos**.
 >
-> ⚠️ **Fechas por reconciliar (2026-08-07):** el freeze se movió al **11-ago**, pero el hito de envío
-> del mensaje de inicio sigue en **10-ago**, o sea *antes* del freeze. Los documentos ya dicen 11-ago
-> para el freeze; falta confirmar si el hito también se corre.
+> 📅 **Fechas vigentes (confirmadas 2026-08-08): freeze 11-ago, hito de envío 12-ago.** Ambas se
+> corrieron dos días respecto del plan original (freeze 8–9, hito 10-ago). Todos los documentos ya lo
+> reflejan.
 > **Paso 3 hecho por el usuario (2026-08-07):** `users` recreado con unique key `/claveUnicidad`,
 > admin `U-000001` sembrado, purga de campañas ejecutada desde el portal (5 campañas, 27
 > conversaciones, 81 respuestas, 189 participantes). `security`, `config` y `leases` se conservaron a
@@ -300,7 +301,7 @@ espera de D5 real, UAT y acta de flags. `DT-P27-01` corte 2 se retoma después d
 
 ### 1. Contexto del proyecto
 
-**El Tejido** es un sistema que captura ideas por WhatsApp, las evalúa con un LLM usando una rúbrica en Markdown, responde retroalimentación breve (con revisión determinista y salidas naturales), guarda trazabilidad completa, genera artefactos Markdown y los expone en un portal administrativo con login por OTP de WhatsApp. **El MVP está DONE y desplegado en Azure (CD por push a `main`).** El trabajo actual es el **backlog de iniciativas** de la reunión GHT (9-jul-2026), con **Hito inamovible: envío del mensaje de inicio de campaña el 10-ago-2026**.
+**El Tejido** es un sistema que captura ideas por WhatsApp, las evalúa con un LLM usando una rúbrica en Markdown, responde retroalimentación breve (con revisión determinista y salidas naturales), guarda trazabilidad completa, genera artefactos Markdown y los expone en un portal administrativo con login por OTP de WhatsApp. **El MVP está DONE y desplegado en Azure (CD por push a `main`).** El trabajo actual es el **backlog de iniciativas** de la reunión GHT (9-jul-2026), con **Hito inamovible: envío del mensaje de inicio de campaña el 12-ago-2026**.
 
 **La especificación de la iniciativa y el estado del código son tu fuente de verdad.** Antes de escribir una sola línea de código, **lee y analiza en este orden**:
 
@@ -426,7 +427,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
 | DT-P27-02 | **Calibración del clasificador P-27 (cierre sobre la última idea)** | **BACKLOG post-convención** | — | Borde detectado en la E2E conversacional desplegada (E14, 2026-08-06): una variante libre no-alias sobre la **última idea de la cola** (`QUEDAN_UNIDADES_PENDIENTES=no`) se clasifica `aportar` en vez de finalizar. Degrada seguro (no corta la idea) y los alias deterministas sí funcionan → severidad baja, no bloqueante. Ajuste **solo del prompt de sistema** de `ClasificadorIntencionControl`; **no desplegar sin pasar D5** (regresión clave: no aumentar cierres falsos de ideas con contenido). Spec: `Iniciativas/DT-P27-02_Calibracion_Clasificador_Cierre_Ultima_Idea.md`. |
 
-- **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
+- **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables + DIFERIDAS a Capa 3 por la reunión 20-jul):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12` **+ `I-09`/`I-10` (tejido colectivo), `P-07` (consentimiento) y el panel de `P-09`**. (`P-13` salió de deseables y entró al MVP como ítem 14.)
 
 **Dependencias duras (actualizada 2026-08-04):** `I-06 + I-03 + I-17 + P-15` → `I-18` **✓**;

@@ -7,7 +7,7 @@
 > el sistema debe poder **enviar y responder por cualquiera de los dos números**.
 > **Tipo:** Desarrollo (aditivo, tamaño medio; toca el WhatsApp Gateway de punta a punta) ·
 > **Prioridad:** Media-Alta (habilita QA con número dedicado sin contaminar producción) ·
-> **Ventana:** a coordinar con el usuario (no está en la ruta crítica del Hito del 10-ago, pero
+> **Ventana:** a coordinar con el usuario (no está en la ruta crítica del Hito del 12-ago, pero
 > desbloquea pruebas E2E reales sin usar el número de producción).
 > **Dependencia:** ninguna dura. Comparte el contenedor de config por campaña con P-13/I-06/I-17 (sin
 > conflicto). Reutiliza el mismo `wa-token`, `wa-appsec` y `wa-verify-token` (misma WABA/App: **no se

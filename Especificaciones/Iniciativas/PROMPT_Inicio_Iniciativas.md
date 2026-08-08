@@ -25,7 +25,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 
 ### 1. Contexto del proyecto
 
-**El Tejido** es un sistema que captura ideas por WhatsApp, las evalúa con un LLM usando una rúbrica en Markdown, responde retroalimentación breve (con revisión determinista y salidas naturales), guarda trazabilidad completa, genera artefactos Markdown y los expone en un portal administrativo con login por OTP de WhatsApp. **El MVP está DONE y desplegado en Azure (CD por push a `main`).** El trabajo actual es el **backlog de iniciativas** de la reunión GHT (9-jul-2026), con **Hito inamovible: envío del mensaje de inicio de campaña el 10-ago-2026**.
+**El Tejido** es un sistema que captura ideas por WhatsApp, las evalúa con un LLM usando una rúbrica en Markdown, responde retroalimentación breve (con revisión determinista y salidas naturales), guarda trazabilidad completa, genera artefactos Markdown y los expone en un portal administrativo con login por OTP de WhatsApp. **El MVP está DONE y desplegado en Azure (CD por push a `main`).** El trabajo actual es el **backlog de iniciativas** de la reunión GHT (9-jul-2026), con **Hito inamovible: envío del mensaje de inicio de campaña el 12-ago-2026**.
 
 **La especificación de la iniciativa y el estado del código son tu fuente de verdad.** Antes de escribir una sola línea de código, **lee y analiza en este orden**:
 
@@ -94,7 +94,7 @@ El orden y las ventanas salen de `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md �
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7); `I-10` flag por campaña; `I-12` seed thoughts; `I-13` decisión agnóstica-vs-tailored; `I-14` tags; `P-07` consentimiento; `P-10` restante (costo LLM + rate por número); resiliencia LLM (D6).
 - **Pruebas (4–8 ago):** UAT conjunta; calibración con el banco como árbitro; `P-09` workbook + runbook; acta de flags del día-D (6-ago).
 - **Freeze (11 ago):** code freeze; carga real (`I-08`); dry-run E2E; congelar rúbrica/prompts/seeds.
-- **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
+- **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12`.
 
 **Dependencias duras (ruta crítica):** `P-01/P-02 (Meta)` → `I-11 (rúbrica)` → `I-03` · `I-12 (seeds)` → `I-04/I-13` · `P-10 cupos` → `I-01 (activar)` · `I-09` → `I-10` · `I-08` → carga real del freeze · `P-07` → apertura a participantes reales.

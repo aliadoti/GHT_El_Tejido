@@ -14,7 +14,7 @@
 > · **Ventana:** semana de Pruebas (4–8 ago) · **Riesgo:** Bajo. Cubre REQ §30, ARQ §13; specs base `10 §6`.
 
 ## 1. Qué pide / por qué
-Ver en tiempo casi real la salud de **envíos/entregas/errores** para operar el 10-ago sin entrar
+Ver en tiempo casi real la salud de **envíos/entregas/errores** para operar el 12-ago sin entrar
 a Cosmos ni al Log Stream.
 
 ## 2. Estado actual del build
@@ -33,7 +33,7 @@ Parcial: `TrabajadorWebhook` ya loguea estados de entrega (`sent/delivered/read/
    meter código nuevo antes del freeze.
 3. **Runbook del día-D (T-40):** por cada síntoma del dashboard, qué flag apagar
    (`SegmentacionIdeas`, `tejidoColectivo`, `UmbralCierreAnticipado`, cupos) y el procedimiento de
-   rollback. Nunca hotfix en caliente el 10-ago.
+   rollback. Nunca hotfix en caliente el 12-ago.
 
 ### 3.4 Acta de flags del día-D (6-ago) — decisión registrada, no omisión
 Cada flag queda **ON solo si pasó** su precondición (calibración/carga/UAT/costo); en el acta se marca

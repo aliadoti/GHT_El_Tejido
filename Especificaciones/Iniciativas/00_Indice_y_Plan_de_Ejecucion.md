@@ -4,7 +4,7 @@
 > la versión `_ACT` añade P-01 con billing Meta RESUELTO y P-12) + hojas `Cronograma` y
 > `Priorizacion`. Complementa a `Especificaciones/planes/plan_hito_1.md` (diseño extendido) y a
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
-> **Hito inamovible:** 10-ago-2026, envío del mensaje de inicio de campaña.
+> **Hito inamovible:** 12-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
 > **Última revisión: 2026-08-07 — `P-31` DONE 3/3 y desplegado; el siguiente cambio de código es
 > `I-08 v2`.**
@@ -128,7 +128,7 @@
 
 ### 1.3 Alcance comprometido para la convención (re-priorizado con GHT, reunión 2026-07-20)
 
-**Dentro del alcance — deben quedar listas/validadas para el Hito del 10-ago:**
+**Dentro del alcance — deben quedar listas/validadas para el Hito del 12-ago:**
 I-01, I-02, I-03 ✓, I-04, I-05 ✓, I-06 ✓, I-07, I-08 ✓, I-11 ✓, I-12, I-13, I-14, I-16 ✓,
 **I-17 (BD de dos niveles)**, **I-18 (coaching secuencial; DONE local)** y
 **I-19 (consolidación progresiva; WIP local)**,
@@ -232,7 +232,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
   flags del día-D (6-ago)**. Responsable: humano/ops.
   Ver `Especificaciones/planes/Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **Freeze (11 ago):** code freeze; carga real (I-08); dry-run E2E; congelar rúbrica/prompts/seeds.
-- **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según
+- **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según
   runbook, nunca hotfix en caliente.
 - **Post (rama de deseables / Capa 3):** P-04, P-11, P-08, P-06, P-05, I-15, P-12 y — **movidas aquí
   por la reunión del 20-jul** — **I-09/I-10 (tejido colectivo), P-07 (consentimiento) y el panel de

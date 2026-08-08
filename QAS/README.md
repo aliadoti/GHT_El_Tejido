@@ -1,6 +1,6 @@
 # QAS — Paquete de QA · El Tejido
 
-Paquete completo de pruebas E2E para validar **El Tejido** antes de producción (**Hito 10-ago-2026**), ejecutable por **1 tester manual**, enfoque **risk-based**.
+Paquete completo de pruebas E2E para validar **El Tejido** antes de producción (**Hito 12-ago-2026**), ejecutable por **1 tester manual**, enfoque **risk-based**.
 
 ## Contenido
 

@@ -1,6 +1,6 @@
 # 03 — Smoke Post-Deploy y Checklist Día-D (Go/No-Go)
 
-> **Uso:** el smoke se corre tras **cada despliegue**; el checklist día-D es el **gate final** antes del envío del 10-ago.
+> **Uso:** el smoke se corre tras **cada despliegue**; el checklist día-D es el **gate final** antes del envío del 12-ago.
 > Marca cada ítem `OK / FALLA / N/A`. **Cualquier FALLA en un ítem CORE = No-Go** hasta cierre del defecto.
 
 ---
@@ -85,9 +85,8 @@ Registrar la decisión y quién la firma. **Un flag solo va ON si pasó carga + 
 
 ### 2.6 Freeze (11 ago)
 
-> ⚠️ **Fecha por reconciliar (2026-08-07).** El freeze se movió al **11-ago**, pero el hito de envío
-> del mensaje de inicio sigue documentado como **10-ago**, es decir *antes* del freeze. Confirmar cuál
-> de las dos fechas se mueve antes de ejecutar este bloque.
+> **Fechas vigentes (confirmadas 2026-08-08):** freeze **11-ago**, hito de envío **12-ago**. Ambas se
+> corrieron dos días respecto del plan original (freeze 8–9, hito 10).
 
 - [ ] Code freeze aplicado.
 - [ ] Contenedor `users` recreado con unique key **`/claveUnicidad`** y semilla del admin (`codigoUsuario = 1` + documento `seq_usuario`); verificado que un segundo activo con el mismo teléfono devuelve **`409`** (`I-08 §3.2`, `Guia_Azure_Portal §2.1` paso 6).

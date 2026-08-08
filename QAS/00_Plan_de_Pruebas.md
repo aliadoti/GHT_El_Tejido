@@ -1,6 +1,6 @@
 # 00 — Plan de Pruebas E2E · El Tejido
 
-> **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 10-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
+> **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 12-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
 > **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
 > **Última revisión del estado real:** 2026-07-23.
 
@@ -56,7 +56,7 @@ Priorización por riesgo × impacto de go-live. Cada área tiene un peso que det
 | **R11** | Multi-idea (I-06), tejido (I-09), parafraseo (I-05) bajo flag | Costo/latencia y regresión al encender | Ext — FLG-* |
 | **R12** | Carga masiva sucia (I-08) | Lista real del freeze mal cargada | CORE — ADM-08 |
 
-**Definición de CORE (go/no-go):** conjunto mínimo que **debe pasar** para autorizar el envío del 10-ago. Está marcado caso por caso en `02_Casos_de_Prueba_E2E.md` y consolidado en `03_Smoke_y_Checklist_Dia_D.md`. Todo lo demás es suite extendida (mejora la confianza; su falla se gestiona por severidad, no bloquea automáticamente).
+**Definición de CORE (go/no-go):** conjunto mínimo que **debe pasar** para autorizar el envío del 12-ago. Está marcado caso por caso en `02_Casos_de_Prueba_E2E.md` y consolidado en `03_Smoke_y_Checklist_Dia_D.md`. Todo lo demás es suite extendida (mejora la confianza; su falla se gestiona por severidad, no bloquea automáticamente).
 
 ---
 

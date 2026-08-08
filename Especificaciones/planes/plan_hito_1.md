@@ -9,16 +9,16 @@
 > incubación)**; nombre confirmado **"Tejido de Red"** (no "Bright Insights/Idea"). Se conserva como
 > referencia de diseño de fondo (mitigación R-01, frentes A–D), no como estado vigente.
 >
-> **Ruta crítica hacia el go-live del 10-ago-2026.** Documento técnico de ingeniería,
+> **Ruta crítica hacia el go-live del 12-ago-2026.** Documento técnico de ingeniería,
 > escrito desde el rol de **Arquitecto de la solución + equipo de desarrollo** que construyó el MVP.
 > Deriva de: `Plan_Trabajo_El_Tejido.xlsx` (hojas `Timeline`, `Iniciativas`, `Priorizacion`,
 > `Insumos_de_GHT`), la reunión de demo del 9-jul-2026, el estado real del build en
 > `AVANCES.md` (Fase 11) y las especificaciones `03/04/05/08/10`.
 >
 > **Fecha de corte del plan:** 11-jul-2026 · **Hito:** envío del mensaje de inicio de campaña a los
-> participantes reales de la convención el **10-ago-2026** · **Convención (supuesto):** ≈ 24-sep-2026.
+> participantes reales de la convención el **12-ago-2026** · **Convención (supuesto):** ≈ 24-sep-2026.
 >
-> Alcance de este documento: **Línea de Tiempo 1 (lo indispensable para el 10-ago)**. La rama de
+> Alcance de este documento: **Línea de Tiempo 1 (lo indispensable para el 12-ago)**. La rama de
 > deseables (P-04, P-05, P-06, P-08, P-11, P-12) queda **referenciada** en §10, no detallada.
 
 ---
@@ -79,7 +79,7 @@ el LLM entra a partir del segundo turno. El evaluador (spec `08`) es **agnóstic
 
 ---
 
-## 2. Estrategia del Hito 1 (backtracking desde el 10-ago)
+## 2. Estrategia del Hito 1 (backtracking desde el 12-ago)
 
 El enfoque acordado con GHT es **backtracking**: fijar la ruta crítica ("lo básico"), congelar alcance,
 probar y sacar un branch para lo deseable. Traducido a ingeniería, el Hito 1 se organiza en **cuatro
@@ -87,7 +87,7 @@ frentes** que avanzan en paralelo con dependencias explícitas:
 
 | Frente | Objetivo | Iniciativas | Dueño técnico |
 |---|---|---|---|
-| **A. Desbloqueo de entrega** | Que el mensaje salga el 10-ago | P-01, P-02 | Aliado TI + GHT (gestión Meta) |
+| **A. Desbloqueo de entrega** | Que el mensaje salga el 12-ago | P-01, P-02 | Aliado TI + GHT (gestión Meta) |
 | **B. Calidad conversacional del coach** | Prompts, rúbrica, salida natural | I-01, I-03, I-04, I-05, I-11, I-12, I-13 | Aliado TI (backend/prompts) + GHT (contenido) |
 | **C. Núcleo "tejido"** | Multi-idea + base común | I-06, I-09, I-10 | Aliado TI (backend) |
 | **D. Operación y seguridad de producción** | Carga, segmentación, guardrails, monitoreo, consentimiento | I-08, I-14, I-16, P-03, P-07, P-09, P-10 | Aliado TI |
@@ -109,7 +109,7 @@ Freeze    (11 ago)  · Congelación de alcance + carga real + dry-run E2E
 HITO      (10 ago)   · Envío en vivo
 ```
 
-### 2.2 Ruta crítica (lo que, si se atrasa, mueve el 10-ago)
+### 2.2 Ruta crítica (lo que, si se atrasa, mueve el 12-ago)
 
 `P-01/P-02 (Meta)` → `I-11 (rúbrica)` → `I-03/I-04 (prompts que dependen de rúbrica y seed thoughts)` →
 `I-06 + I-09 (núcleo tejido)` → `Pruebas conjuntas` → `Freeze + dry-run` → **Hito**. Todo lo demás es
@@ -452,7 +452,7 @@ Lo que convierte un MVP demostrable en algo **operable el día de la convención
   el umbral de costo de campaña se dispara alerta (y corte si configurado); test unit de los contadores.
 
 ### P-09 · Panel de monitoreo en vivo (día-D)
-- **Qué / por qué:** salud de envíos/entregas/errores en tiempo real para operar el 10-ago.
+- **Qué / por qué:** salud de envíos/entregas/errores en tiempo real para operar el 12-ago.
 - **Estado hoy:** **parcial** — existen logs de entrega y el `TrabajadorWebhook` loguea estados
   (`sent/read/failed` con code).
 - **Diseño técnico:** (1) para el Hito basta un **dashboard de App Insights** (workbook) con: envíos por
@@ -584,7 +584,7 @@ decisión registrada), P-01/P-02 resueltos, dry-run exitoso, alcance congelado y
 
 ## 10. Fuera de alcance del Hito 1 (rama deseable — solo referencia)
 
-Post-go-live, sobre la misma estructura, sin bloquear el 10-ago (Línea de Tiempo 2 del plan):
+Post-go-live, sobre la misma estructura, sin bloquear el 12-ago (Línea de Tiempo 2 del plan):
 **P-04** dashboard/analítica de resultados · **P-11** informe consolidado de la base de conocimiento ·
 **P-08** recordatorios/nudges · **P-05** capa de Insights (yuxtaposición thought→insight→meaning, se apoya
 en la recuperación de I-09) · **P-06** post-procesamiento/destilación por lotes (idea de Munir) ·
