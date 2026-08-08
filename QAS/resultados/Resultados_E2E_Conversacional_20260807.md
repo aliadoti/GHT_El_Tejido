@@ -85,6 +85,39 @@ delta que mirar; (b) **no existe endpoint admin para el log de seguridad** —`/
 Explorer** (query sobre `security` por `tipoEvento="despertarProactivo"`), y valorar exponer una consulta
 de log de seguridad al admin. Sin eso, cualquier corrida automatizada dejará E12 como no concluyente.
 
+**O-11 · Verificación del pipeline de evaluación con `DT-QA-02` (2026-08-08) — cierra la duda abierta.**
+Con `GET /api/admin/evaluaciones` desplegado se pudo enumerar lo que antes era invisible:
+
+| Campaña | total | enlazadas | huérfanas | superadas | sin versión de idea |
+|---|---|---|---|---|---|
+| A (sin segmentación) | 4 | 4 | 0 | 0 | 0 |
+| B (con segmentación) | 4 | 4 | 0 | 0 | 0 |
+
+**Todas las evaluaciones se persistieron y quedaron correctamente enlazadas**, con `ideaId` y
+`versionIdeaId` presentes en todas (ninguna en `sin_version_idea`, que según `03 §3.9` es lo que
+impediría promover una idea a madura).
+
+Calificaciones observadas y su desenlace:
+
+| Participante | Caso | `calificacionTotal` | `recomendacion` del LLM | `nivelMadurez` sellado |
+|---|---|---|---|---|
+| P6 | E5 idea fuerte | **3.5** | `repreguntar` | **`maduro`** (cerró) |
+| P7 | E6 idea floja | 3 y 1.2 | `repreguntar` | `incubacion` |
+| P8 | E18 injection | 1 | `repreguntar` | `incubacion` |
+| P3 | E19 cierre por frase | 3 | `repreguntar` | `incubacion` |
+
+**Dos conclusiones que importan:**
+1. **El umbral manda sobre el LLM.** En los cuatro casos el modelo recomendó `repreguntar` —seguir
+   preguntando—, y aun así P6 se selló como **maduro** y cerró, porque su calificación cruzó
+   `umbralCierreAnticipado=0.6`. Es exactamente R-01 («el LLM propone, el sistema dispone») funcionando
+   en producción: la decisión de madurez es determinista, no la opina el modelo.
+2. **Una idea cerrada por el participante conserva su evaluación.** P3 tiene
+   `eval_7a4694fd…` con calificación 3, enlazada a su idea y a su versión. No quedó huérfana. Su
+   `incubacion` no viene de falta de evaluación sino de que la nota no alcanzó el umbral y el ciclo se
+   interrumpió antes de una segunda vuelta.
+   → **Corrige una afirmación previa de esta corrida:** se dijo que las ideas cerradas temprano no
+   tenían evaluación. Es falso; la tienen, enlazada y con nota.
+
 **O-10 · Las dos listas de frases de finalización YA están configuradas en App Settings, y son mucho más
 amplias que los defaults.** `Conversacion__FrasesFinalizarIdea` tiene **23** entradas y
 `…FrasesFinalizarParticipacion` **21**, mientras el código compila solo 6 y 6. Consecuencias:
@@ -129,6 +162,12 @@ consecutivos `U-000002`..`U-000010`, sin saltos.
 
 Se confirmó además, de paso, que **`DT-P27-01` corte 1 opera en producción** (E19) y que **`I-08 v2`**
 asigna códigos consecutivos sin saltos.
+
+**Cierre de la duda sobre el pipeline de evaluación (2026-08-08, con `DT-QA-02` desplegado):** las 8
+evaluaciones de la ventana están **persistidas y enlazadas**, sin huérfanas ni casos
+`sin_version_idea`. La clasificación de madurez la decide el **umbral determinista**, no la
+recomendación del LLM —que en los 4 casos dijo `repreguntar`— y una idea cerrada por el participante
+**conserva su evaluación y su nota**. Detalle en O-11.
 
 **Cinco correcciones llevadas a los documentos de QAS** para que la próxima corrida no tropiece con lo
 mismo: O-1 (dedupe), O-3 (dos campañas), O-7 (E12 solo se verifica en Data Explorer), O-9 (el alias de
