@@ -11,6 +11,7 @@ import {
   Evaluacion,
   IdeaConsolidada,
   JobEnvio,
+  ModoCargaMasiva,
   PagedResult,
   ParticipanteCampania,
   ParticipantePreview,
@@ -19,7 +20,9 @@ import {
   ReporteCargaMasiva,
   ReportePurgaCampanias,
   ReporteReinicioDatos,
+  ResolucionConflictoTitular,
   Respuesta,
+  ResultadoReasignacionNumero,
   Rubrica,
   TagAdmin,
   UsuarioAdmin,
@@ -45,15 +48,62 @@ export class AdminApiService {
     return this.api.patch<UsuarioAdmin>(`/api/admin/usuarios/${id}/estado`, { estado });
   }
 
-  // I-08 (04 §5.1): sube CSV de participantes; upsert por numero normalizado, reporte por fila.
-  cargaMasivaUsuarios(archivo: File, campaniaId?: string) {
+  // I-08 v2 (04 §5.1): historico de titulares de un numero (activo + inactivos).
+  usuariosPorNumero(numero: string) {
+    return this.api.get<UsuarioAdmin[]>(
+      `/api/admin/usuarios/por-numero/${encodeURIComponent(numero)}`,
+    );
+  }
+
+  // I-08 v2 §4.4: reasignacion manual; inactiva al titular y crea uno nuevo con el mismo numero.
+  reasignarNumero(
+    id: string,
+    body: {
+      nombre: string;
+      email?: string | null;
+      empresaId?: string | null;
+      sede?: string | null;
+      cargo?: string | null;
+    },
+  ) {
+    return this.api.post<ResultadoReasignacionNumero>(
+      `/api/admin/usuarios/${id}/reasignar-numero`,
+      body,
+    );
+  }
+
+  /**
+   * I-08 v2 (04 §5.1): sube el roster (.xlsx o .csv) y devuelve el reporte por fila.
+   * `resoluciones` solo viaja en la segunda pasada, cuando el admin ya decidio que hacer con las
+   * filas que quedaron en conflicto de titular; se reenvia el mismo archivo.
+   */
+  cargaMasivaUsuarios(
+    archivo: File,
+    opciones?: {
+      campaniaId?: string;
+      modo?: ModoCargaMasiva;
+      resoluciones?: ResolucionConflictoTitular[];
+    },
+  ) {
     const formulario = new FormData();
     formulario.append('archivo', archivo, archivo.name);
+    if (opciones?.modo) {
+      formulario.append('modo', opciones.modo);
+    }
+    if (opciones?.resoluciones?.length) {
+      formulario.append('reasignaciones', JSON.stringify(opciones.resoluciones));
+    }
+
     return this.api.post<ReporteCargaMasiva>(
       '/api/admin/usuarios/carga-masiva',
       formulario,
-      campaniaId ? { campaniaId } : undefined,
+      opciones?.campaniaId ? { campaniaId: opciones.campaniaId } : undefined,
     );
+  }
+
+  // I-08 v2: plantilla vacia con la cabecera oficial, generada por el servidor.
+  descargarPlantillaCarga() {
+    return this.api.getBlob('/api/admin/usuarios/plantilla-carga');
   }
 
   tags(query?: Record<string, string | number | undefined>) {

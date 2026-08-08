@@ -7,11 +7,17 @@ import { AuthService } from '../../core/auth.service';
 import { NotificacionesService } from '../../core/notificaciones.service';
 import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
+import {
+  CargaMasivaPanel,
+  FichaUsuarioPanel,
+  FormularioReasignacion,
+  SolicitudCargaMasiva,
+} from './usuarios.panels';
 
 @Component({
   selector: 'app-usuarios-page',
   standalone: true,
-  imports: [FormsModule, EstadoAccesibleComponent],
+  imports: [FormsModule, EstadoAccesibleComponent, CargaMasivaPanel, FichaUsuarioPanel],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -46,8 +52,28 @@ import { formatApiError } from '../../shared-error';
             </select>
           </label>
           <label>
+            ID empresa
+            <input name="empresaId" [(ngModel)]="filtroEmpresaId" placeholder="AL, GR, FF…" />
+          </label>
+          <label>
+            Sede
+            <input name="sede" [(ngModel)]="filtroSede" />
+          </label>
+          <label>
+            Idioma
+            <select name="idioma" [(ngModel)]="filtroIdioma">
+              <option value="">Todos</option>
+              <option value="es">Español</option>
+              <option value="en">Inglés</option>
+            </select>
+          </label>
+          <label>
             Busqueda
-            <input name="q" [(ngModel)]="filtroBusqueda" placeholder="Nombre o numero" />
+            <input
+              name="q"
+              [(ngModel)]="filtroBusqueda"
+              placeholder="Nombre, número, correo o código"
+            />
           </label>
           <button class="primary-button" type="submit">Filtrar</button>
         </form>
@@ -63,25 +89,30 @@ import { formatApiError } from '../../shared-error';
             <table>
               <thead>
                 <tr>
-                  <th>Nombre</th>
-                  <th>Numero</th>
-                  <th>Rol</th>
-                  <th>Area</th>
-                  <th>Estado</th>
+                  <th scope="col">Código</th>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Numero</th>
+                  <th scope="col">Rol</th>
+                  <th scope="col">Empresa</th>
+                  <th scope="col">Estado</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 @for (usuario of usuarios(); track usuario.id) {
                   <tr>
+                    <td>{{ usuario.codigoUsuarioLegible }}</td>
                     <td>{{ usuario.nombre }}</td>
                     <td>{{ usuario.whatsappNormalizado }}</td>
                     <td>{{ usuario.rol }}</td>
-                    <td>{{ usuario.area }}</td>
+                    <td>{{ usuario.empresaId ?? usuario.empresa ?? '—' }}</td>
                     <td>
                       <span class="status-badge">{{ usuario.estado }}</span>
                     </td>
                     <td>
+                      <button type="button" class="table-button" (click)="abrirFicha(usuario)">
+                        Ver ficha
+                      </button>
                       @if (auth.isAdmin()) {
                         <button
                           type="button"
@@ -98,7 +129,7 @@ import { formatApiError } from '../../shared-error';
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="6" class="empty-cell">No hay usuarios para el filtro actual.</td>
+                    <td colspan="7" class="empty-cell">No hay usuarios para el filtro actual.</td>
                   </tr>
                 }
               </tbody>
@@ -126,10 +157,36 @@ import { formatApiError } from '../../shared-error';
                 <option value="visor">Visor</option>
               </select>
             </label>
-            <label>Area <input name="area" [(ngModel)]="nuevoUsuario.area" required /></label>
             <label
-              >Empresa <input name="empresa" [(ngModel)]="nuevoUsuario.empresa" required
+              >Correo <input name="email" type="email" [(ngModel)]="nuevoUsuario.email"
             /></label>
+            <label>Empresa <input name="empresa" [(ngModel)]="nuevoUsuario.empresa" /></label>
+            <label
+              >ID empresa <input name="empresaId" [(ngModel)]="nuevoUsuario.empresaId"
+            /></label>
+            <label>Sede <input name="sede" [(ngModel)]="nuevoUsuario.sede" /></label>
+            <label>Cargo <input name="cargo" [(ngModel)]="nuevoUsuario.cargo" /></label>
+            <label>Area <input name="area" [(ngModel)]="nuevoUsuario.area" /></label>
+            <label>
+              Antiguedad (años)
+              <input
+                name="antiguedadAnios"
+                type="number"
+                step="0.000001"
+                [(ngModel)]="nuevoUsuario.antiguedadAnios"
+              />
+            </label>
+            <label>
+              Idioma
+              <select name="idiomaNuevo" [(ngModel)]="nuevoUsuario.idioma">
+                <option value="es">Español</option>
+                <option value="en">Inglés</option>
+              </select>
+            </label>
+            <label>
+              Usuario de WhatsApp
+              <input name="usuarioWhatsapp" [(ngModel)]="nuevoUsuario.usuarioWhatsapp" />
+            </label>
             <label
               >Tags <input name="tags" [(ngModel)]="tagsTexto" placeholder="t_area,t_empresa"
             /></label>
@@ -139,6 +196,16 @@ import { formatApiError } from '../../shared-error';
           </form>
         </section>
       </div>
+
+      @if (fichaUsuario(); as ficha) {
+        <app-ficha-usuario-panel
+          [usuario]="ficha"
+          [historico]="historicoNumero()"
+          [esAdmin]="auth.isAdmin()"
+          (reasignar)="reasignarNumero($event)"
+          (cerrar)="cerrarFicha()"
+        />
+      }
 
       <section class="panel">
         <div class="panel-heading">
@@ -178,74 +245,13 @@ import { formatApiError } from '../../shared-error';
       </section>
 
       @if (auth.isAdmin()) {
-        <section class="panel">
-          <div class="panel-heading">
-            <h3>Carga masiva de participantes (CSV)</h3>
-          </div>
-          <p id="instrucciones-carga-csv" class="muted">
-            Columnas fijas con cabecera: <code>Nombre, WhatsApp, Area, Empresa, Tags</code> (tags
-            separadas por <code>;</code>). Una fila mala no aborta el lote; re-subir el mismo
-            archivo actualiza en vez de duplicar.
-          </p>
-          <form class="inline-form" (ngSubmit)="cargarArchivo()">
-            <label for="archivoCarga">Archivo CSV de participantes</label>
-            <input
-              id="archivoCarga"
-              type="file"
-              accept=".csv"
-              aria-describedby="instrucciones-carga-csv"
-              (change)="onArchivoSeleccionado($event)"
-            />
-            <label>
-              Asociar a campania (opcional)
-              <select name="campaniaCarga" [(ngModel)]="campaniaIdCarga">
-                <option value="">Sin asociar</option>
-                @for (campania of campanias(); track campania.id) {
-                  <option [value]="campania.id">{{ campania.nombre }}</option>
-                }
-              </select>
-            </label>
-            <button
-              class="primary-button"
-              type="submit"
-              [disabled]="!archivoCarga() || cargandoArchivo()"
-            >
-              {{ cargandoArchivo() ? 'Cargando...' : 'Cargar archivo' }}
-            </button>
-          </form>
-
-          @if (reporteCarga(); as reporte) {
-            <p class="muted">
-              Total: {{ reporte.totalFilas }} · Creados: {{ reporte.creados }} · Actualizados:
-              {{ reporte.actualizados }} · Rechazados: {{ reporte.rechazados }} · Asociados:
-              {{ reporte.asociados }}
-            </p>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fila</th>
-                    <th>Resultado</th>
-                    <th>Usuario</th>
-                    <th>Motivo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (fila of reporte.filas; track fila.fila) {
-                    <tr>
-                      <td>{{ fila.fila }}</td>
-                      <td>
-                        <span class="status-badge">{{ fila.resultado }}</span>
-                      </td>
-                      <td>{{ fila.usuarioId ?? '—' }}</td>
-                      <td>{{ fila.motivo ?? '—' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
-        </section>
+        <app-carga-masiva-panel
+          [campanias]="campanias()"
+          [reporte]="reporteCarga()"
+          [cargando]="cargandoArchivo()"
+          (cargar)="cargarArchivo($event)"
+          (descargarPlantilla)="descargarPlantilla()"
+        />
       }
     </section>
   `,
@@ -260,29 +266,25 @@ export class UsuariosPage {
   protected readonly campanias = signal<Campania[]>([]);
   protected readonly error = signal('');
   protected readonly editandoId = signal<string | null>(null);
+  protected readonly fichaUsuario = signal<UsuarioAdmin | null>(null);
+  protected readonly historicoNumero = signal<UsuarioAdmin[]>([]);
 
   protected filtroRol = '';
   protected filtroEstado = '';
   protected filtroBusqueda = '';
+  protected filtroEmpresaId = '';
+  protected filtroSede = '';
+  protected filtroIdioma = '';
   protected tagsTexto = '';
-  protected nuevoUsuario = {
-    nombre: '',
-    numero: '',
-    rol: 'participante',
-    area: '',
-    empresa: '',
-  };
+  protected nuevoUsuario = formularioUsuarioVacio();
   protected nuevoTag = {
     nombre: '',
     tipoTag: '',
     descripcion: '',
   };
 
-  protected readonly archivoCarga = signal<File | null>(null);
   protected readonly cargandoArchivo = signal(false);
   protected readonly reporteCarga = signal<ReporteCargaMasiva | null>(null);
-  protected campaniaIdCarga = '';
-  private inputArchivoEl: HTMLInputElement | null = null;
 
   constructor() {
     this.load();
@@ -294,6 +296,9 @@ export class UsuariosPage {
         rol: this.filtroRol,
         estado: this.filtroEstado,
         q: this.filtroBusqueda,
+        empresaId: this.filtroEmpresaId,
+        sede: this.filtroSede,
+        idioma: this.filtroIdioma,
         pageSize: 50,
       })
       .subscribe({
@@ -313,42 +318,92 @@ export class UsuariosPage {
     });
   }
 
-  onArchivoSeleccionado(evento: Event) {
-    const input = evento.target as HTMLInputElement;
-    this.inputArchivoEl = input;
-    this.archivoCarga.set(input.files?.item(0) ?? null);
+  cargarArchivo(solicitud: SolicitudCargaMasiva) {
+    this.cargandoArchivo.set(true);
+    this.api
+      .cargaMasivaUsuarios(solicitud.archivo, {
+        campaniaId: solicitud.campaniaId || undefined,
+        modo: solicitud.modo,
+        resoluciones: solicitud.resoluciones,
+      })
+      .subscribe({
+        next: (reporte) => {
+          this.cargandoArchivo.set(false);
+          this.reporteCarga.set(reporte);
+          const conflictos = reporte.filas.filter((f) => f.motivo === 'conflicto_titular').length;
+          const resumen =
+            `Carga completada: ${reporte.creados} creados, ${reporte.actualizados} actualizados, ` +
+            `${reporte.reasignados} reasignados, ${reporte.rechazados} rechazados.`;
+          if (conflictos > 0) {
+            // Un conflicto no es un fallo: es una decision que el admin debe tomar (I-08 §4.4).
+            this.notificaciones.info(
+              `${resumen} Hay ${conflictos} teléfono(s) que ya son de otra persona y esperan tu decisión.`,
+            );
+          } else {
+            this.notificaciones.exito(resumen);
+          }
+          this.load();
+        },
+        error: (err: unknown) => {
+          this.cargandoArchivo.set(false);
+          this.notificaciones.error(formatApiError(err));
+        },
+      });
   }
 
-  cargarArchivo() {
-    const archivo = this.archivoCarga();
-    if (!archivo) {
+  descargarPlantilla() {
+    this.api.descargarPlantillaCarga().subscribe({
+      next: (blob) => descargar(blob, 'plantilla_participantes_v1.xlsx'),
+      error: (err: unknown) => this.notificaciones.error(formatApiError(err)),
+    });
+  }
+
+  abrirFicha(usuario: UsuarioAdmin) {
+    this.fichaUsuario.set(usuario);
+    this.historicoNumero.set([]);
+    this.api.usuariosPorNumero(usuario.whatsappNormalizado).subscribe({
+      next: (historico) => this.historicoNumero.set(historico),
+      error: (err: unknown) => this.error.set(formatApiError(err)),
+    });
+  }
+
+  cerrarFicha() {
+    this.fichaUsuario.set(null);
+    this.historicoNumero.set([]);
+  }
+
+  reasignarNumero(formulario: FormularioReasignacion) {
+    const usuario = this.fichaUsuario();
+    if (!usuario) {
       return;
     }
 
-    this.cargandoArchivo.set(true);
-    this.api.cargaMasivaUsuarios(archivo, this.campaniaIdCarga || undefined).subscribe({
-      next: (reporte) => {
-        this.cargandoArchivo.set(false);
-        this.reporteCarga.set(reporte);
-        this.archivoCarga.set(null);
-        if (this.inputArchivoEl) {
-          this.inputArchivoEl.value = '';
-        }
-        this.notificaciones.exito(
-          `Carga masiva completada: ${reporte.creados} creados, ${reporte.actualizados} actualizados, ${reporte.rechazados} rechazados.`,
-        );
-        this.load();
-      },
-      error: (err: unknown) => {
-        this.cargandoArchivo.set(false);
-        this.notificaciones.error(formatApiError(err));
-      },
-    });
+    this.api
+      .reasignarNumero(usuario.id, {
+        nombre: formulario.nombre,
+        email: formulario.email || null,
+        empresaId: formulario.empresaId || null,
+        sede: formulario.sede || null,
+        cargo: formulario.cargo || null,
+      })
+      .subscribe({
+        next: (resultado) => {
+          this.notificaciones.exito(
+            `Teléfono reasignado a ${resultado.usuario.nombre} (${resultado.usuario.codigoUsuarioLegible}). ` +
+              'El titular anterior quedó inactivo conservando su historial.',
+          );
+          this.cerrarFicha();
+          this.load();
+        },
+        error: (err: unknown) => this.notificaciones.error(formatApiError(err)),
+      });
   }
 
   guardarUsuario() {
     const body = {
       ...this.nuevoUsuario,
+      antiguedadAnios:
+        this.nuevoUsuario.antiguedadAnios === '' ? null : Number(this.nuevoUsuario.antiguedadAnios),
       tags: this.tagsTexto
         .split(',')
         .map((item) => item.trim())
@@ -372,8 +427,15 @@ export class UsuariosPage {
       nombre: usuario.nombre,
       numero: usuario.whatsappNormalizado,
       rol: usuario.rol,
-      area: usuario.area,
-      empresa: usuario.empresa,
+      area: usuario.area ?? '',
+      empresa: usuario.empresa ?? '',
+      empresaId: usuario.empresaId ?? '',
+      sede: usuario.sede ?? '',
+      cargo: usuario.cargo ?? '',
+      email: usuario.email ?? '',
+      antiguedadAnios: usuario.antiguedadAnios ?? '',
+      idioma: usuario.idioma ?? 'es',
+      usuarioWhatsapp: usuario.usuarioWhatsapp ?? '',
     };
     this.tagsTexto = (usuario.tags ?? []).join(',');
   }
@@ -384,13 +446,7 @@ export class UsuariosPage {
 
   private resetFormulario() {
     this.editandoId.set(null);
-    this.nuevoUsuario = {
-      nombre: '',
-      numero: '',
-      rol: 'participante',
-      area: '',
-      empresa: '',
-    };
+    this.nuevoUsuario = formularioUsuarioVacio();
     this.tagsTexto = '';
   }
 
@@ -412,4 +468,31 @@ export class UsuariosPage {
         error: (err: unknown) => this.error.set(formatApiError(err)),
       });
   }
+}
+
+function formularioUsuarioVacio() {
+  return {
+    nombre: '',
+    numero: '',
+    rol: 'participante',
+    area: '',
+    empresa: '',
+    empresaId: '',
+    sede: '',
+    cargo: '',
+    email: '',
+    antiguedadAnios: '' as number | string,
+    idioma: 'es',
+    usuarioWhatsapp: '',
+  };
+}
+
+/** Dispara la descarga del blob con el nombre sugerido, sin dejar el object URL colgando. */
+function descargar(blob: Blob, nombreArchivo: string) {
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  enlace.click();
+  URL.revokeObjectURL(url);
 }

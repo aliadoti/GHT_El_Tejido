@@ -27,6 +27,11 @@ export class ApiClient {
     return this.http.delete<T>(url);
   }
 
+  /// Descarga binaria (I-08: plantilla .xlsx de carga masiva).
+  getBlob(url: string) {
+    return this.http.get(url, { responseType: 'blob' });
+  }
+
   private toParams(query?: Record<string, QueryValue>) {
     let params = new HttpParams();
     for (const [key, value] of Object.entries(query ?? {})) {

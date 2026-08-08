@@ -37,6 +37,11 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
         return usuario ?? throw new ErrorNoEncontrado("El usuario no existe.");
     }
 
+    public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+        string numero,
+        CancellationToken cancellationToken)
+        => _usuarios.ListarUsuariosPorNumeroAsync(_normalizador.Normalizar(numero), cancellationToken);
+
     public async Task<Usuario> CrearUsuarioAsync(
         SolicitudCrearUsuario solicitud,
         CancellationToken cancellationToken)

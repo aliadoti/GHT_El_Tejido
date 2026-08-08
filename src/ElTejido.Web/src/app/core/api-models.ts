@@ -33,16 +33,34 @@ export interface MeResponse {
 
 export interface UsuarioAdmin {
   id: string;
+  // I-08 v2: identificador secuencial legible del maestro. Lo asigna el servidor y no cambia nunca.
+  codigoUsuario: number;
+  codigoUsuarioLegible: string;
   nombre: string;
   whatsappNormalizado: string;
+  usuarioWhatsapp?: string | null;
   rol: 'admin' | 'visor' | 'participante' | string;
   estado: 'activo' | 'inactivo' | string;
-  area: string;
-  empresa: string;
+  // area y empresa dejaron de ser obligatorios con la plantilla oficial de GHT.
+  area?: string | null;
+  empresa?: string | null;
+  empresaId?: string | null;
+  sede?: string | null;
+  cargo?: string | null;
+  email?: string | null;
+  antiguedadAnios?: number | null;
+  idioma: string;
   tags: string[];
   propiedadesDinamicas: Record<string, unknown>;
   creadoEn: string;
   actualizadoEn: string;
+}
+
+// I-08 v2 §4.4: resultado de una reasignacion manual de numero.
+export interface ResultadoReasignacionNumero {
+  usuario: UsuarioAdmin;
+  usuarioIdAnterior: string;
+  codigoUsuarioAnterior: number;
 }
 
 export interface TagAdmin {
@@ -347,18 +365,36 @@ export interface ArtefactoMarkdown {
 // I-08: reporte por fila de la carga masiva de participantes (04 §5.1). Sin PII: solo usuarioId.
 export interface ResultadoFilaCarga {
   fila: number;
-  resultado: 'creado' | 'actualizado' | 'rechazado' | string;
+  resultado: 'creado' | 'actualizado' | 'reasignado' | 'rechazado' | string;
   usuarioId: string | null;
   motivo?: string | null;
+  codigoUsuario?: number | null;
+  // Solo en conflicto_titular y en reasignaciones: permiten mostrar actual vs. propuesto.
+  usuarioIdAnterior?: string | null;
+  codigoUsuarioAnterior?: number | null;
+  nombreActual?: string | null;
+  nombrePropuesto?: string | null;
 }
 
 export interface ReporteCargaMasiva {
   totalFilas: number;
   creados: number;
   actualizados: number;
+  reasignados: number;
   rechazados: number;
   asociados: number;
   filas: ResultadoFilaCarga[];
+}
+
+// I-08 v2 §4.3: modos de carga.
+export type ModoCargaMasiva = 'upsert' | 'solo_actualizar';
+
+// I-08 v2 §4.4: decision del admin sobre una fila en conflicto de titular.
+export type AccionConflictoTitular = 'corregir_nombre' | 'reasignar' | 'omitir';
+
+export interface ResolucionConflictoTitular {
+  fila: number;
+  accion: AccionConflictoTitular;
 }
 
 // P-03: reporte de conteos que devuelven los endpoints de reinicio de datos.

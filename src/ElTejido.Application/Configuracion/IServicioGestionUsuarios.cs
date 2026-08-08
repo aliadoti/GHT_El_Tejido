@@ -12,6 +12,14 @@ public interface IServicioGestionUsuarios
 
     Task<Usuario> ObtenerUsuarioAsync(string id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Historico de titulares de un numero: el activo y los inactivos, por <c>creadoEn</c>
+    /// (I-08 §3.1.f, 11 §Usuarios). Es el unico camino para ver inactivos desde el portal.
+    /// </summary>
+    Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+        string numero,
+        CancellationToken cancellationToken);
+
     Task<Usuario> CrearUsuarioAsync(
         SolicitudCrearUsuario solicitud,
         CancellationToken cancellationToken);

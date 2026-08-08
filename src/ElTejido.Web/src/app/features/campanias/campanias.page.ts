@@ -422,8 +422,14 @@ export class CampaniasPage {
     });
     this.api.usuarios({ rol: 'participante', pageSize: 500 }).subscribe({
       next: (page) => {
-        this.areasDisponibles.set(this.distinct(page.items.map((usuario) => usuario.area)));
-        this.empresasDisponibles.set(this.distinct(page.items.map((usuario) => usuario.empresa)));
+        // area y empresa son opcionales desde la plantilla oficial (I-08 v2): se descartan los vacios
+        // para no ofrecer un filtro en blanco.
+        this.areasDisponibles.set(
+          this.distinct(page.items.map((usuario) => usuario.area).filter(esTextoConDato)),
+        );
+        this.empresasDisponibles.set(
+          this.distinct(page.items.map((usuario) => usuario.empresa).filter(esTextoConDato)),
+        );
         this.nombresUsuarios.set(
           new Map(
             page.items.map((usuario: UsuarioAdmin) => [
@@ -474,4 +480,9 @@ export class CampaniasPage {
     this.error.set(mensaje);
     this.notificaciones.error(mensaje);
   }
+}
+
+/** Type guard para descartar los campos opcionales vacios al construir listas de filtro. */
+function esTextoConDato(valor: string | null | undefined): valor is string {
+  return typeof valor === 'string' && valor.trim().length > 0;
 }

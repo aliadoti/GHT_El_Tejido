@@ -179,17 +179,22 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     fixture.detectChanges();
 
     const comp = fixture.componentInstance as unknown as {
-      archivoCarga: { set: (v: File | null) => void };
-      campaniaIdCarga: string;
-      cargarArchivo: () => void;
+      cargarArchivo: (solicitud: {
+        archivo: File;
+        modo: string;
+        campaniaId: string;
+        resoluciones: unknown[];
+      }) => void;
       reporteCarga: () => ReporteCargaMasiva | null;
     };
-    const archivo = new File(['Nombre,WhatsApp,Area,Empresa,Tags\n'], 'participantes.csv', {
-      type: 'text/csv',
-    });
-    comp.archivoCarga.set(archivo);
-    comp.campaniaIdCarga = 'c_1';
-    comp.cargarArchivo();
+    const archivo = new File(
+      [
+        'Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono\n',
+      ],
+      'participantes.csv',
+      { type: 'text/csv' },
+    );
+    comp.cargarArchivo({ archivo, modo: 'upsert', campaniaId: 'c_1', resoluciones: [] });
 
     const post = http.expectOne(
       (r) => r.url === '/api/admin/usuarios/carga-masiva' && r.method === 'POST',
@@ -206,6 +211,7 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       totalFilas: 2,
       creados: 1,
       actualizados: 0,
+      reasignados: 0,
       rechazados: 1,
       asociados: 1,
       filas: [
@@ -227,7 +233,8 @@ describe('Portal admin E2E (recorrido SPA)', () => {
 
     expect(comp.reporteCarga()).toEqual(reporte);
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(texto).toContain('numero_invalido');
+    // El motivo se muestra traducido al lenguaje del administrador, no como codigo tecnico.
+    expect(texto).toContain('El teléfono no es un número válido');
     expect(texto).not.toMatch(/57300\d{7}/);
   });
 
@@ -533,12 +540,15 @@ describe('Portal admin E2E (recorrido SPA)', () => {
   function usuario(id: string, nombre: string): UsuarioAdmin {
     return {
       id,
+      codigoUsuario: 1,
+      codigoUsuarioLegible: 'U-000001',
       nombre,
       whatsappNormalizado: '573001112233',
       rol: 'participante',
       estado: 'activo',
       area: 'Operaciones',
       empresa: 'GHT',
+      idioma: 'es',
       tags: [],
       propiedadesDinamicas: {},
       creadoEn: '2026-06-14T00:00:00Z',

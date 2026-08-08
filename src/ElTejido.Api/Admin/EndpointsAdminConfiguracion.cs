@@ -29,6 +29,7 @@ internal static class EndpointsAdminConfiguracion
         // X-CSRF-Token propio, no el token antiforgery.
         usuarios.MapPost("/carga-masiva", CargaMasivaUsuariosAsync).DisableAntiforgery();
         usuarios.MapGet("/plantilla-carga", DescargarPlantillaCargaAsync);
+        usuarios.MapGet("/por-numero/{numero}", ListarUsuariosPorNumeroAsync);
         usuarios.MapGet("/{id}", ObtenerUsuarioAsync);
         usuarios.MapPut("/{id}", ActualizarUsuarioAsync);
         usuarios.MapPost("/{id}/reasignar-numero", ReasignarNumeroUsuarioAsync);
@@ -266,6 +267,23 @@ internal static class EndpointsAdminConfiguracion
                 usuarioIdAnterior = resultado.UsuarioIdAnterior,
                 codigoUsuarioAnterior = resultado.CodigoUsuarioAnterior,
             });
+    }
+
+    /// <summary>
+    /// Historico de titulares de un numero (11 §Usuarios): el activo y los inactivos, por
+    /// <c>creadoEn</c>. Es el unico camino para ver inactivos, porque el listado y la resolucion por
+    /// numero filtran por activo (I-08 §3.1.f).
+    /// </summary>
+    private static async Task<IResult> ListarUsuariosPorNumeroAsync(
+        string numero,
+        HttpContext contexto,
+        CancellationToken cancellationToken)
+    {
+        var usuarios = await ResolverServicio(contexto).ListarUsuariosPorNumeroAsync(
+            RequerirTexto(numero, "numero"),
+            cancellationToken);
+
+        return Results.Ok(usuarios.Select(MapearUsuario).ToArray());
     }
 
     /// <summary>Descarga la plantilla vacia con la cabecera oficial (04 §5.1, I-08 §4.5).</summary>

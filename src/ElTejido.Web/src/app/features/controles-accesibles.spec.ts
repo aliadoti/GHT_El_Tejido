@@ -109,15 +109,17 @@ describe('controles accesibles', () => {
       ['tagNombre', 'Nombre de la etiqueta'],
       ['tagTipo', 'Tipo de la etiqueta'],
       ['tagDescripcion', 'Descripción de la etiqueta'],
-      ['archivoCarga', 'Archivo CSV de participantes'],
+      // I-08 v2: la plantilla oficial reemplaza a la anterior y acepta .xlsx ademas de .csv.
+      ['archivoCarga', 'Archivo de participantes (.xlsx o .csv)'],
     ]) {
       expect(element.querySelector(`label[for="${id}"]`)?.textContent?.trim()).toBe(texto);
     }
 
     const archivo = element.querySelector<HTMLInputElement>('#archivoCarga');
-    expect(archivo?.getAttribute('aria-describedby')).toBe('instrucciones-carga-csv');
-    expect(element.querySelector('#instrucciones-carga-csv')?.textContent).toContain(
-      'Nombre, WhatsApp, Area, Empresa, Tags',
+    expect(archivo?.getAttribute('accept')).toBe('.xlsx,.csv');
+    expect(archivo?.getAttribute('aria-describedby')).toBe('instrucciones-carga');
+    expect(element.querySelector('#instrucciones-carga')?.textContent).toContain(
+      'Antigüedad en la empresa en años',
     );
   });
 });
