@@ -199,9 +199,29 @@ internal sealed class UsersCosmosContainer : IUsersCosmosContainer
             filters.Add($"ARRAY_CONTAINS(c.tags, @tag{index})");
         }
 
+        if (filtro.EmpresaId is not null)
+        {
+            filters.Add("c.empresaId = @empresaId");
+        }
+
+        if (filtro.Sede is not null)
+        {
+            filters.Add("c.sede = @sede");
+        }
+
+        if (filtro.Idioma is not null)
+        {
+            filters.Add("c.idioma = @idioma");
+        }
+
         if (filtro.Busqueda is not null)
         {
-            filters.Add("(CONTAINS(LOWER(c.nombre), @busqueda) OR CONTAINS(c.whatsappNormalizado, @busqueda))");
+            // Texto libre sobre nombre, numero, email y codigo legible (04 §5.1). El codigo se compara
+            // como texto para que "42" encuentre a U-000042 sin exigir el formato completo.
+            filters.Add(
+                "(CONTAINS(LOWER(c.nombre), @busqueda) OR CONTAINS(c.whatsappNormalizado, @busqueda) " +
+                "OR CONTAINS(LOWER(c.email ?? ''), @busqueda) " +
+                "OR CONTAINS(ToString(c.codigoUsuario), @busqueda))");
         }
 
         var query = new QueryDefinition($"SELECT * FROM c WHERE {string.Join(" AND ", filters)}")
@@ -238,6 +258,21 @@ internal sealed class UsersCosmosContainer : IUsersCosmosContainer
         {
             query.WithParameter($"@tag{tagIndex}", tag);
             tagIndex++;
+        }
+
+        if (filtro.EmpresaId is not null)
+        {
+            query.WithParameter("@empresaId", filtro.EmpresaId);
+        }
+
+        if (filtro.Sede is not null)
+        {
+            query.WithParameter("@sede", filtro.Sede);
+        }
+
+        if (filtro.Idioma is not null)
+        {
+            query.WithParameter("@idioma", filtro.Idioma);
         }
 
         if (filtro.Busqueda is not null)

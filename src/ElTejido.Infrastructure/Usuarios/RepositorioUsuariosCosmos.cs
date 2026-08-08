@@ -143,7 +143,10 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
                 filtro.Area,
                 filtro.Empresa,
                 filtro.Tags,
-                filtro.Busqueda),
+                filtro.Busqueda,
+                filtro.EmpresaId,
+                filtro.Sede,
+                filtro.Idioma),
             cancellationToken);
 
         return documents

@@ -3,9 +3,11 @@ using System.Net.Http.Json;
 using ElTejido.Application.Auth;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Usuarios;
+using ElTejido.Application.Usuarios.CargaMasiva;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Usuarios;
+using ElTejido.Infrastructure.Usuarios;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -88,6 +90,99 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         cuerpo!.Error.Code.Should().Be("CONFLICT");
     }
 
+    // --- I-08 v2 (04 §5.1): campos del maestro, reasignacion manual y plantilla ---
+
+    [Fact]
+    public async Task Usuarios_AltaConCamposDeLaPlantilla_LosDevuelveEnElDto()
+    {
+        var repositorio = new RepositorioUsuariosMemoria();
+        using var fabrica = Construir(repositorio);
+        using var client = CrearClienteConSesion(fabrica, SesionesFake.TokenAdmin);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/usuarios",
+            new
+            {
+                nombre = "ANA PEREZ",
+                numero = "573001112233",
+                rol = "participante",
+                email = "ana@ght.com",
+                empresaId = "AL",
+                sede = "FF - ADM",
+                cargo = "Coordinadora",
+                antiguedadAnios = 16.391666m,
+                idioma = "en",
+                usuarioWhatsapp = "ana.perez",
+            });
+
+        creacion.StatusCode.Should().Be(HttpStatusCode.Created);
+        var creado = await creacion.Content.ReadFromJsonAsync<UsuarioDto>();
+        // area y empresa ya no son obligatorios: el alta pasa sin ellos (I-08 §3.1.h).
+        creado!.CodigoUsuario.Should().Be(1);
+        creado.CodigoUsuarioLegible.Should().Be("U-000001");
+        creado.Email.Should().Be("ana@ght.com");
+        creado.EmpresaId.Should().Be("AL");
+        creado.Sede.Should().Be("FF - ADM");
+        creado.Cargo.Should().Be("Coordinadora");
+        creado.AntiguedadAnios.Should().Be(16.391666m);
+        creado.Idioma.Should().Be("en");
+        creado.UsuarioWhatsapp.Should().Be("ana.perez");
+
+        using var porEmpresa = await client.GetAsync("/api/admin/usuarios?empresaId=AL&idioma=en");
+        var pagina = await porEmpresa.Content.ReadFromJsonAsync<PaginaUsuariosDto>();
+        pagina!.Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Usuarios_ReasignarNumero_InactivaAlTitularYCreaAlNuevo()
+    {
+        var repositorio = new RepositorioUsuariosMemoria(CrearUsuario("u_1", "573001112233"));
+        using var fabrica = Construir(repositorio);
+        using var client = CrearClienteConSesion(fabrica, SesionesFake.TokenAdmin);
+
+        using var respuesta = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/usuarios/u_1/reasignar-numero",
+            new { nombre = "CARLOS RODRIGUEZ", empresaId = "AL" });
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.Created);
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<ReasignacionDto>();
+        cuerpo!.UsuarioIdAnterior.Should().Be("u_1");
+        cuerpo.Usuario.Id.Should().NotBe("u_1");
+        cuerpo.Usuario.Nombre.Should().Be("CARLOS RODRIGUEZ");
+        cuerpo.Usuario.WhatsappNormalizado.Should().Be("573001112233");
+        cuerpo.Usuario.Estado.Should().Be("activo");
+
+        // El anterior conserva su numero e historial, inactivo.
+        using var detalleAnterior = await client.GetAsync("/api/admin/usuarios/u_1");
+        var anterior = await detalleAnterior.Content.ReadFromJsonAsync<UsuarioDto>();
+        anterior!.Estado.Should().Be("inactivo");
+        anterior.WhatsappNormalizado.Should().Be("573001112233");
+    }
+
+    [Fact]
+    public async Task Usuarios_DescargaPlantillaVacia()
+    {
+        var repositorio = new RepositorioUsuariosMemoria();
+        using var fabrica = Construir(repositorio);
+        using var client = CrearClienteConSesion(fabrica, SesionesFake.TokenAdmin);
+
+        using var respuesta = await client.GetAsync("/api/admin/usuarios/plantilla-carga");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        respuesta.Content.Headers.ContentType!.MediaType.Should()
+            .Be("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        // Lo que se descarga tiene que poder volver a entrar por el lector.
+        var bytes = await respuesta.Content.ReadAsByteArrayAsync();
+        using var contenido = new MemoryStream(bytes);
+        var filas = await new LectorXlsxParticipantes().LeerAsync(contenido, CancellationToken.None);
+        filas.Should().BeEmpty(); // Cabecera valida y sin datos.
+    }
+
     [Fact]
     public async Task Tags_AdminCreaEInactivaTag()
     {
@@ -152,6 +247,7 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
                 services.AddSingleton(repositorio);
                 services.AddSingleton<IServicioSesion, SesionesFake>();
                 services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
+                services.AddSingleton<IGeneradorPlantillaParticipantes, GeneradorPlantillaParticipantesXlsx>();
             });
         });
 
@@ -198,15 +294,29 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
 
     private sealed record UsuarioDto(
         string Id,
+        int CodigoUsuario,
+        string CodigoUsuarioLegible,
         string Nombre,
         string WhatsappNormalizado,
+        string? UsuarioWhatsapp,
         string Rol,
         string Estado,
-        string Area,
-        string Empresa,
+        string? Area,
+        string? Empresa,
+        string? EmpresaId,
+        string? Sede,
+        string? Cargo,
+        string? Email,
+        decimal? AntiguedadAnios,
+        string Idioma,
         IReadOnlyCollection<string> Tags,
         DateTimeOffset CreadoEn,
         DateTimeOffset ActualizadoEn);
+
+    private sealed record ReasignacionDto(
+        UsuarioDto Usuario,
+        string UsuarioIdAnterior,
+        int CodigoUsuarioAnterior);
 
     private sealed record TagDto(
         string Id,

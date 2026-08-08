@@ -41,6 +41,8 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     // que entrega GHT) y el .csv queda como respaldo; el servicio elige por extension.
     builder.Services.AddSingleton<ILectorArchivoParticipantes, LectorXlsxParticipantes>();
     builder.Services.AddSingleton<ILectorArchivoParticipantes, LectorCsvParticipantes>();
+    builder.Services
+        .AddSingleton<IGeneradorPlantillaParticipantes, GeneradorPlantillaParticipantesXlsx>();
     builder.Services.AddScoped<IServicioCargaMasiva, ServicioCargaMasiva>();
 }
 

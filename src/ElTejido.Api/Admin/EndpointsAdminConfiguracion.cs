@@ -28,8 +28,10 @@ internal static class EndpointsAdminConfiguracion
         // se desactiva la antiforgery automatica de forms de minimal API porque el MVP usa el header
         // X-CSRF-Token propio, no el token antiforgery.
         usuarios.MapPost("/carga-masiva", CargaMasivaUsuariosAsync).DisableAntiforgery();
+        usuarios.MapGet("/plantilla-carga", DescargarPlantillaCargaAsync);
         usuarios.MapGet("/{id}", ObtenerUsuarioAsync);
         usuarios.MapPut("/{id}", ActualizarUsuarioAsync);
+        usuarios.MapPost("/{id}/reasignar-numero", ReasignarNumeroUsuarioAsync);
         usuarios.MapPatch("/{id}/estado", CambiarEstadoUsuarioDesdeRequestAsync);
         usuarios.MapDelete("/{id}", InactivarUsuarioAsync);
 
@@ -53,7 +55,10 @@ internal static class EndpointsAdminConfiguracion
             area: query["area"].ToString(),
             empresa: query["empresa"].ToString(),
             tags: ParsearTags(query["tag"], query["tags"]),
-            busqueda: query["q"].ToString());
+            busqueda: query["q"].ToString(),
+            empresaId: query["empresaId"].ToString(),
+            sede: query["sede"].ToString(),
+            idioma: query["idioma"].ToString());
 
         var servicio = ResolverServicio(contexto);
         var usuarios = await servicio.BuscarUsuariosAsync(filtro, cancellationToken);
@@ -77,10 +82,18 @@ internal static class EndpointsAdminConfiguracion
                 RequerirTexto(request.Numero, "numero"),
                 ParsearRolRequerido(request.Rol),
                 ParsearEstadoOpcional(request.Estado, "estado") ?? EstadoRegistro.Activo,
-                RequerirTexto(request.Area, "area"),
-                RequerirTexto(request.Empresa, "empresa"),
+                // area y empresa dejaron de ser obligatorios con la plantilla oficial (I-08 §3.1.h).
+                request.Area,
+                request.Empresa,
                 request.Tags,
-                request.PropiedadesDinamicas),
+                request.PropiedadesDinamicas,
+                request.Email,
+                request.EmpresaId,
+                request.Sede,
+                request.Cargo,
+                request.AntiguedadAnios,
+                request.Idioma,
+                request.UsuarioWhatsapp),
             cancellationToken);
 
         return Results.Created($"/api/admin/usuarios/{usuario.Id}", MapearUsuario(usuario));
@@ -209,10 +222,57 @@ internal static class EndpointsAdminConfiguracion
                 request.Area,
                 request.Empresa,
                 request.Tags,
-                request.PropiedadesDinamicas),
+                request.PropiedadesDinamicas,
+                request.Email,
+                request.EmpresaId,
+                request.Sede,
+                request.Cargo,
+                request.AntiguedadAnios,
+                request.Idioma,
+                request.UsuarioWhatsapp),
             cancellationToken);
 
         return Results.Ok(MapearUsuario(usuario));
+    }
+
+    /// <summary>
+    /// Reasignacion manual del numero (04 §5.1): inactiva al titular y crea uno nuevo con el mismo
+    /// numero. Responde <c>201</c> con el usuario nuevo y la identidad del anterior.
+    /// </summary>
+    private static async Task<IResult> ReasignarNumeroUsuarioAsync(
+        string id,
+        ReasignarNumeroRequest request,
+        HttpContext contexto,
+        CancellationToken cancellationToken)
+    {
+        var resultado = await ResolverServicio(contexto).ReasignarNumeroAsync(
+            id,
+            new SolicitudReasignarNumero(
+                RequerirTexto(request.Nombre, "nombre"),
+                request.Email,
+                request.EmpresaId,
+                request.Sede,
+                request.Cargo,
+                request.AntiguedadAnios,
+                request.Idioma,
+                request.UsuarioWhatsapp),
+            cancellationToken);
+
+        return Results.Created(
+            $"/api/admin/usuarios/{resultado.Nuevo.Id}",
+            new
+            {
+                usuario = MapearUsuario(resultado.Nuevo),
+                usuarioIdAnterior = resultado.UsuarioIdAnterior,
+                codigoUsuarioAnterior = resultado.CodigoUsuarioAnterior,
+            });
+    }
+
+    /// <summary>Descarga la plantilla vacia con la cabecera oficial (04 §5.1, I-08 §4.5).</summary>
+    private static IResult DescargarPlantillaCargaAsync(HttpContext contexto)
+    {
+        var generador = contexto.RequestServices.GetRequiredService<IGeneradorPlantillaParticipantes>();
+        return Results.File(generador.Generar(), generador.TipoContenido, generador.NombreArchivo);
     }
 
     private static Task<IResult> CambiarEstadoUsuarioDesdeRequestAsync(
@@ -506,6 +566,10 @@ internal static class EndpointsAdminConfiguracion
             tag.Estado.ToString().ToLowerInvariant(),
             tag.CreadoEn);
 
+    /// <summary>
+    /// Alta de usuario (04 §5.1). Obligatorios: <c>nombre</c> y <c>numero</c>. <c>codigoUsuario</c> no
+    /// se acepta: es de solo lectura y lo asigna el servidor (03 §3.1.1).
+    /// </summary>
     private sealed record GuardarUsuarioRequest(
         string? Nombre,
         string? Numero,
@@ -514,7 +578,14 @@ internal static class EndpointsAdminConfiguracion
         string? Area,
         string? Empresa,
         IReadOnlyCollection<string>? Tags,
-        IReadOnlyDictionary<string, object?>? PropiedadesDinamicas);
+        IReadOnlyDictionary<string, object?>? PropiedadesDinamicas,
+        string? Email,
+        string? EmpresaId,
+        string? Sede,
+        string? Cargo,
+        decimal? AntiguedadAnios,
+        string? Idioma,
+        string? UsuarioWhatsapp);
 
     private sealed record ActualizarUsuarioRequest(
         string? Nombre,
@@ -524,7 +595,25 @@ internal static class EndpointsAdminConfiguracion
         string? Area,
         string? Empresa,
         IReadOnlyCollection<string>? Tags,
-        IReadOnlyDictionary<string, object?>? PropiedadesDinamicas);
+        IReadOnlyDictionary<string, object?>? PropiedadesDinamicas,
+        string? Email,
+        string? EmpresaId,
+        string? Sede,
+        string? Cargo,
+        decimal? AntiguedadAnios,
+        string? Idioma,
+        string? UsuarioWhatsapp);
+
+    /// <summary>Reasignacion manual del numero a otra persona (04 §5.1, I-08 §4.4).</summary>
+    private sealed record ReasignarNumeroRequest(
+        string? Nombre,
+        string? Email,
+        string? EmpresaId,
+        string? Sede,
+        string? Cargo,
+        decimal? AntiguedadAnios,
+        string? Idioma,
+        string? UsuarioWhatsapp);
 
     private sealed record GuardarTagRequest(
         string? Nombre,

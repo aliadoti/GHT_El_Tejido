@@ -7,4 +7,7 @@ internal sealed record FiltroUsuariosCosmos(
     string? Area,
     string? Empresa,
     IReadOnlyCollection<string> Tags,
-    string? Busqueda);
+    string? Busqueda,
+    string? EmpresaId = null,
+    string? Sede = null,
+    string? Idioma = null);

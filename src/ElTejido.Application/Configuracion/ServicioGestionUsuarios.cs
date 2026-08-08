@@ -48,6 +48,8 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             throw new ErrorConflicto("Ya existe un usuario activo con ese numero de WhatsApp.");
         }
 
+        await AsegurarEmailDisponibleAsync(solicitud.Email, usuarioIdPropio: null, cancellationToken);
+
         var ahora = _tiempo.GetUtcNow();
         // El codigo legible lo entrega la secuencia del maestro, nunca el cliente (03 §3.1.1).
         var codigoUsuario = await _usuarios.ReservarCodigosUsuarioAsync(1, cancellationToken);
@@ -63,7 +65,14 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             solicitud.Tags,
             solicitud.PropiedadesDinamicas,
             ahora,
-            ahora);
+            ahora,
+            solicitud.UsuarioWhatsapp,
+            solicitud.EmpresaId,
+            solicitud.Sede,
+            solicitud.Cargo,
+            solicitud.Email,
+            solicitud.AntiguedadAnios,
+            solicitud.Idioma);
 
         await _usuarios.GuardarUsuarioAsync(usuario, cancellationToken);
         return usuario;
@@ -76,10 +85,10 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
     {
         var existente = await ObtenerUsuarioAsync(id, cancellationToken);
         var numero = await ResolverNumeroAsync(existente, solicitud.Numero, cancellationToken);
+        await AsegurarEmailDisponibleAsync(solicitud.Email, existente.Id, cancellationToken);
         var ahora = _tiempo.GetUtcNow();
 
-        // codigoUsuario y el resto de campos del maestro se conservan: son inmutables o todavia no
-        // editables por esta ruta (I-08 §3.1.b, §4.2).
+        // codigoUsuario no cambia nunca (03 §3.1.1). El resto: null conserva, valor presente manda.
         var actualizado = Usuario.Crear(
             existente.Id,
             existente.CodigoUsuario,
@@ -93,16 +102,125 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             solicitud.PropiedadesDinamicas ?? existente.PropiedadesDinamicas,
             existente.CreadoEn,
             ahora,
-            existente.UsuarioWhatsapp,
-            existente.EmpresaId,
-            existente.Sede,
-            existente.Cargo,
-            existente.Email,
-            existente.AntiguedadAnios,
-            existente.Idioma);
+            ResolverOpcional(solicitud.UsuarioWhatsapp, existente.UsuarioWhatsapp),
+            ResolverOpcional(solicitud.EmpresaId, existente.EmpresaId),
+            ResolverOpcional(solicitud.Sede, existente.Sede),
+            ResolverOpcional(solicitud.Cargo, existente.Cargo),
+            ResolverOpcional(solicitud.Email, existente.Email),
+            solicitud.AntiguedadAnios ?? existente.AntiguedadAnios,
+            ResolverOpcional(solicitud.Idioma, existente.Idioma));
 
         await _usuarios.GuardarUsuarioAsync(actualizado, cancellationToken);
         return actualizado;
+    }
+
+    public async Task<ResultadoReasignacionNumero> ReasignarNumeroAsync(
+        string id,
+        SolicitudReasignarNumero solicitud,
+        CancellationToken cancellationToken)
+    {
+        var anterior = await ObtenerUsuarioAsync(id, cancellationToken);
+        if (anterior.Estado != EstadoRegistro.Activo)
+        {
+            throw new ErrorConflicto("Solo se puede reasignar el numero de un usuario activo.");
+        }
+
+        await AsegurarEmailDisponibleAsync(solicitud.Email, usuarioIdPropio: null, cancellationToken);
+
+        var ahora = _tiempo.GetUtcNow();
+
+        // Orden obligatorio (03 §3.1): primero inactivar —su claveUnicidad pasa de wa|<numero> a
+        // hist|<id>— y solo entonces crear al nuevo. Al reves, la unique key rechaza la operacion.
+        await _usuarios.GuardarUsuarioAsync(Con(anterior, EstadoRegistro.Inactivo, ahora), cancellationToken);
+
+        var codigoUsuario = await _usuarios.ReservarCodigosUsuarioAsync(1, cancellationToken);
+        var nuevo = Usuario.Crear(
+            "u_" + Guid.NewGuid().ToString("N"),
+            codigoUsuario,
+            solicitud.Nombre,
+            anterior.WhatsappNormalizado,
+            RolUsuario.Participante,
+            EstadoRegistro.Activo,
+            area: null,
+            empresa: null,
+            // El nuevo titular no hereda tags, rol ni historial (I-08 §4.4).
+            tags: null,
+            propiedadesDinamicas: null,
+            ahora,
+            ahora,
+            solicitud.UsuarioWhatsapp,
+            solicitud.EmpresaId,
+            solicitud.Sede,
+            solicitud.Cargo,
+            solicitud.Email,
+            solicitud.AntiguedadAnios,
+            solicitud.Idioma);
+
+        try
+        {
+            await _usuarios.GuardarUsuarioAsync(nuevo, cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Compensacion: el numero no puede quedarse sin titular activo por un fallo a medias.
+            await _usuarios.GuardarUsuarioAsync(anterior, cancellationToken);
+            throw;
+        }
+
+        return new ResultadoReasignacionNumero(nuevo, anterior.Id, anterior.CodigoUsuario);
+    }
+
+    private static Usuario Con(Usuario usuario, EstadoRegistro estado, DateTimeOffset ahora)
+        => Usuario.Crear(
+            usuario.Id,
+            usuario.CodigoUsuario,
+            usuario.Nombre,
+            usuario.WhatsappNormalizado,
+            usuario.Rol,
+            estado,
+            usuario.Area,
+            usuario.Empresa,
+            usuario.Tags,
+            usuario.PropiedadesDinamicas,
+            usuario.CreadoEn,
+            ahora,
+            usuario.UsuarioWhatsapp,
+            usuario.EmpresaId,
+            usuario.Sede,
+            usuario.Cargo,
+            usuario.Email,
+            usuario.AntiguedadAnios,
+            usuario.Idioma);
+
+    /// <summary>
+    /// El email, si viene, es unico <b>entre usuarios activos</b> (I-08 §3.1.g). Es nullable, asi que
+    /// no admite unique key en Cosmos: la validacion vive aqui. El maestro es pequeno, de modo que una
+    /// sola consulta de activos basta.
+    /// </summary>
+    private async Task AsegurarEmailDisponibleAsync(
+        string? email,
+        string? usuarioIdPropio,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var normalizado = email.Trim();
+        var activos = await _usuarios.BuscarUsuariosAsync(
+            new FiltroUsuarios(estado: EstadoRegistro.Activo),
+            cancellationToken);
+
+        var enUso = activos.Any(u =>
+            u.Id != usuarioIdPropio
+            && u.Email is not null
+            && string.Equals(u.Email, normalizado, StringComparison.OrdinalIgnoreCase));
+
+        if (enUso)
+        {
+            throw new ErrorConflicto("Ya existe un usuario activo con ese email.");
+        }
     }
 
     public Task<Usuario> CambiarEstadoUsuarioAsync(

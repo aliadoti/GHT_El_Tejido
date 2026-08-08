@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Conversacion;
@@ -92,9 +93,30 @@ internal sealed class RepositorioUsuariosMemoria : IRepositorioUsuarios
             query = query.Where(u => filtro.Tags.All(t => u.Tags.Contains(t, StringComparer.OrdinalIgnoreCase)));
         }
 
+        if (!string.IsNullOrWhiteSpace(filtro.EmpresaId))
+        {
+            query = query.Where(u => string.Equals(u.EmpresaId, filtro.EmpresaId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Sede))
+        {
+            query = query.Where(u => string.Equals(u.Sede, filtro.Sede, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Idioma))
+        {
+            query = query.Where(u => string.Equals(u.Idioma, filtro.Idioma, StringComparison.OrdinalIgnoreCase));
+        }
+
         if (!string.IsNullOrWhiteSpace(filtro.Busqueda))
         {
-            query = query.Where(u => u.Nombre.Contains(filtro.Busqueda, StringComparison.OrdinalIgnoreCase));
+            // Mismo alcance que la consulta Cosmos: nombre, numero, email y codigo legible (04 §5.1).
+            query = query.Where(u =>
+                u.Nombre.Contains(filtro.Busqueda, StringComparison.OrdinalIgnoreCase)
+                || u.WhatsappNormalizado.Valor.Contains(filtro.Busqueda, StringComparison.OrdinalIgnoreCase)
+                || (u.Email?.Contains(filtro.Busqueda, StringComparison.OrdinalIgnoreCase) ?? false)
+                || u.CodigoUsuario.ToString(CultureInfo.InvariantCulture)
+                    .Contains(filtro.Busqueda, StringComparison.OrdinalIgnoreCase));
         }
 
         return Task.FromResult<IReadOnlyCollection<Usuario>>(query.ToArray());
