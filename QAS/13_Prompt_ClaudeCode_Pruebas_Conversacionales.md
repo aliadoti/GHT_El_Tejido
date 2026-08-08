@@ -5,12 +5,32 @@
 > alternativas** funcionan en el entorno desplegado. Detalle completo: `QAS/10 §4` y `§8`.
 
 ## Antes de pegar (lo hace el HUMANO en Azure App Settings)
-- `Simulacion:Habilitada=true` y (para probar sus casos) `Conversacion__DespertarProactivoHabilitado=true`,
+- `Simulacion__Habilitada=true` y (para probar sus casos) `Conversacion__DespertarProactivoHabilitado=true`,
   `Conversacion__RetomarIdeasHabilitado=true`, `Conversacion__CierrePorTiempoHabilitado=true`,
   `Conversacion__ClasificacionIntencionControl=true`, `Conversacion__MinutosInactividadSesion=2`,
   `Conversacion__IntervaloRevisionMinutos=1` (para que E10 cierre en ~1 min; default 15). Verifica que las
   listas `Conversacion__Frases…` estén en claves **indexadas** (`__0`, `__1`, …), no todo el listado en un value.
+- ⚠️ **App Service Linux: usa doble guion bajo `__`, no dos puntos `:`.** Otros documentos de QAS aún
+  escriben `Simulacion:Habilitada`; en Linux esa forma **no** mapea a la configuración anidada y el
+  endpoint responde `404` como si no existiera. Si ya tienes la simulación funcionando, no la toques:
+  reutiliza la notación que te está funcionando.
+- Estos flags están **apagados por defecto a propósito** y encenderlos es una decisión consciente para
+  la ventana de prueba. **Apágalos al terminar** (`07_Runbook_Rollback_Contingencia.md`).
 - DT-QA-01 desplegado (con el fix del log a Cosmos). Verifica el portal en el navegador (debe funcionar).
+
+> **Estado del entorno (2026-08-07).** La base se recreó por `I-08 v2` y se purgaron campañas,
+> conversaciones, respuestas y participantes: el entorno ya está en la **ventana limpia** que este
+> documento pide. `config` (rúbricas, prompts, ConfigLLM) **no** se tocó, así que los artefactos que
+> nombra la preparación siguen existiendo — confírmalo antes de crear la campaña.
+>
+> **Dos cambios de `I-08 v2` que afectan a estas pruebas:**
+> 1. **Un número cuyo único registro está `inactivo` ya NO resuelve participante** y cae en el rechazo
+>    neutral. Es el comportamiento correcto, no un fallo: no lo reportes como defecto.
+> 2. Crear participantes es más simple: solo `nombre` y `numero` son obligatorios (`area` y `empresa`
+>    dejaron de serlo). Cada uno recibe un `codigoUsuario` (`U-000042`) que asigna el servidor.
+>
+> **P-31 no está en el catálogo de abajo** (es posterior a este documento) y sus flags siguen
+> apagados. Su prueba va aparte: `14_P31_Resumen_Consolidacion_Como_Probar.md`.
 
 ## ▼ INICIO DEL PROMPT — copia desde aquí ▼
 
@@ -38,8 +58,11 @@ detente y avísame.
 ### Preparación (una vez; no es prueba puntuada)
 1. Con el diagnóstico crea admin (`/diagnostico/simulacion/admin-inicial`, número `573001119999`), emite
    OTP (`/otp-admin`, `123456`) y entra por `/login` → `/api/auth/me`.
-2. Crea 5 participantes activos: `573001112201`..`573001112205`. (Cuida el UTF-8 de las tildes; con
+2. Crea 5 participantes activos: `573001112301`..`573001112305`. (Cuida el UTF-8 de las tildes; con
    Playwright no debería haber problema.)
+   ⚠️ **No uses el rango `5730011122xx`:** es el de los archivos de carga masiva (`QAS/datos/`). Si esas
+   pruebas ya corrieron, esos números tienen titular y el alta responde `409`. Rangos separados para
+   que el orden de ejecución no importe.
 3. Crea una campaña nueva `CAMP-QA-CONV-<fecha>` **reutilizando** lo existente: rúbrica
    `rúbrica OpenBrain v3.4`, prompt `Evaluación con rubrica OpenBrain Thought-Scoring`, config LLM
    `OpenRouter-Terra`. Preguntas: 1) «¿Cómo aumentarías los ingresos de tu área?» 2) «¿Dónde ves
