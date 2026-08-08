@@ -174,11 +174,11 @@ public sealed class Evaluacion
                 "Una recomendacion de repreguntar exige una repregunta sugerida.");
         }
 
-        if (string.IsNullOrWhiteSpace(ideaId) != string.IsNullOrWhiteSpace(versionIdeaId))
+        if (!string.IsNullOrWhiteSpace(versionIdeaId) && string.IsNullOrWhiteSpace(ideaId))
         {
             throw new DomainValidationException(
                 "TRAZABILIDAD_EVALUACION_IDEA_INCOMPLETA",
-                "ideaId y versionIdeaId deben informarse juntos.");
+                "versionIdeaId exige informar ideaId.");
         }
 
         if (!string.IsNullOrWhiteSpace(origenTextoEvaluado)
@@ -192,7 +192,9 @@ public sealed class Evaluacion
         return new Evaluacion(
             DomainGuards.Required(id, nameof(id)),
             DomainGuards.Required(campaniaId, nameof(campaniaId)),
-            DomainGuards.Required(respuestaId, nameof(respuestaId)),
+            // DT-QA-02: un documento histórico corrupto sin respuestaId debe poder rehidratarse para
+            // que la consulta administrativa lo diagnostique como huérfano, no quedar invisible.
+            string.IsNullOrWhiteSpace(respuestaId) ? string.Empty : respuestaId.Trim(),
             DomainGuards.Required(usuarioId, nameof(usuarioId)),
             DomainGuards.Required(preguntaId, nameof(preguntaId)),
             DomainGuards.Required(rubricaRef, nameof(rubricaRef)),

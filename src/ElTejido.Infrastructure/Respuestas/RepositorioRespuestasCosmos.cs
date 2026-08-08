@@ -142,6 +142,18 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documento?.ToDomain();
     }
 
+    public async Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(
+        string campaniaId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type ORDER BY c.fecha DESC")
+            .WithParameter("@type", EvaluacionCosmosDocument.DocumentType);
+        var documentos = await _container.QueryAsync<EvaluacionCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
     public async Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(
         string campaniaId,
         CancellationToken cancellationToken)

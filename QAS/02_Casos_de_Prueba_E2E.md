@@ -345,6 +345,28 @@
 - **Criterio de aprobación:** conteo `creados = 0`. Determinista.
 - **Ambiente:** sim.
 
+### ADM-09b | Listado de evaluaciones y detección de huérfanas (DT-QA-02)
+- **Prioridad:** CORE · **DT-QA-02** · *habilitador del dry-run*
+- **Precondición:** una campaña con al menos un ciclo completo (respuesta + evaluación).
+- **Pasos:** (1) `GET /api/admin/evaluaciones?campaniaId=X` con sesión admin; (2) repetir con `visor`; (3) sin `campaniaId`; (4) sin sesión; (5) filtrar `enlace=huerfana`.
+- **Resultado esperado:** (1) `200` con las evaluaciones de la campaña en `fecha` DESC, más el bloque `resumen` (`total/enlazadas/huerfanas/superadas/sinVersionIdea`); (2) `200`; (3) `400`; (4) `401`; (5) solo las evaluaciones cuyo `respuestaId` no resuelve a una respuesta existente.
+- **Criterio de aprobación:** el endpoint ya está cubierto localmente; en el despliegue debe responder `200` y el `resumen` debe cuadrar con el listado filtrado sin paginar. Determinista.
+- **Ambiente:** sim.
+
+### ADM-09c | Estados de enlace: huérfana vs. superada vs. sin versión de idea (DT-QA-02)
+- **Prioridad:** CORE · **DT-QA-02**
+- **Precondición:** datos sembrados con los tres casos: una evaluación con `respuestaId` inexistente; **dos** evaluaciones para la misma respuesta; una evaluación con `ideaId` pero sin `versionIdeaId`.
+- **Resultado esperado:** la primera → `huerfana(respuesta_inexistente)`. De las dos de la misma respuesta → la más reciente `enlazada` y la anterior **`superada`**, **ninguna** marcada como huérfana (regresión directa del defecto de I-16; si aparecieran como huérfanas, el dry-run daría falsas alarmas). La tercera → `sin_version_idea`, y se comprueba que esa idea **no** figura como madura (`03 §3.9`).
+- **Criterio de aprobación:** los cuatro estados se distinguen correctamente; el criterio de "vigente" coincide con `ObtenerEvaluacionPorRespuestaAsync`. Determinista.
+- **Ambiente:** sim.
+
+### ADM-09d | El listado de evaluaciones no filtra PII (DT-QA-02)
+- **Prioridad:** CORE · **DT-QA-02**
+- **Pasos:** inspeccionar el cuerpo de `GET /api/admin/evaluaciones`.
+- **Resultado esperado:** **no** aparecen `explicacion`, `retroalimentacionEnviada`, `parafraseoDevuelto`, `repreguntaSugerida`, `calificacionPorCriterio` ni los snapshots. El texto solo se obtiene desde `/evaluaciones/{id}`.
+- **Criterio de aprobación:** la respuesta puede pegarse en un reporte de QA sin edición manual. Determinista.
+- **Ambiente:** sim.
+
 ### ADM-10 | P-03 reinicio por participante → cold-start real
 - **Prioridad:** CORE · **P-03**
 - **Pasos:** tras un ciclo de P1, reiniciar `POST …/participantes/{P1}/reiniciar`; verificar reporte de conteos; enviar nuevo webhook de P1.

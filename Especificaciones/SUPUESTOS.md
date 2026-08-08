@@ -1066,6 +1066,17 @@
   generado y el correlationId; nunca número ni texto. El webhook real continúa devolviendo 401 sin firma.
 - Spec: `Iniciativas/DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md`.
 
+### listado-evaluaciones-huerfanas-dt-qa-02 - Diagnóstico legible de evaluaciones históricas
+- Fecha: 2026-08-08 - Agente/Rol: Arquitecto/Backend/SDET/AppSec - Commit: cierre local de DT-QA-02
+- Decisión: `GET /api/admin/evaluaciones` es una consulta por campaña, solo para `admin`/`visor`, y
+  deriva el estado de enlace sin escribirlo. Una evaluación sin respuesta, con respuesta inexistente,
+  o con `ideaId` sin `versionIdeaId` debe poder rehidratarse para aparecer en el diagnóstico; nunca se
+  repara ni se usa para promover una idea. Cuando hay varias evaluaciones para la misma respuesta, la
+  más reciente por `fecha DESC` es la vigente (I-16) y las anteriores son `superada`, no huérfanas.
+- Seguridad: el DTO de lista excluye todo texto libre y snapshots; para leer contenido se conserva el
+  endpoint de detalle. No hay flags, logs con PII, despliegue ni configuración remota nuevos.
+- Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`.
+
 ### resumen-consolidacion-p31 - Umbral de resumen propio, independiente del umbral de madurez
 - Fecha: 2026-08-06 - Agente/Rol: Arquitecto/Analista - Commit: n/a (solo especificación)
 - Contexto: REQ-052 (GHT, 2026-08-06). El participante no ve el progreso de su idea: I-19 mantiene la versión consolidada canónica pero solo se la muestra al pedir confirmación (§4.1) o al reabrir una idea cerrada (§4.7); en el coaching normal (P-25) recibe retroalimentación y una pregunta de foco, nunca el texto acumulado. Al cruzar el umbral base, la rama `madura` de `OrquestadorConversacion.ConfirmarOCorregirIdeaAsync` cierra la idea y el hilo enviando `retroalimentación + mensajeCierre`, sin mostrar el resultado ni preguntar nada. Spec P-31.

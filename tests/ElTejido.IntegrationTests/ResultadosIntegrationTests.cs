@@ -52,7 +52,7 @@ public sealed class ResultadosIntegrationTests
         detalle.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await detalle.Content.ReadAsStringAsync();
         json.Should().Contain("\"recomendacion\":\"cerrar\"");
-        json.Should().Contain("eval_1");
+        json.Should().Contain("eval_actual");
         json.Should().Contain("\"ideaIndice\":1");
     }
 
@@ -150,6 +150,64 @@ public sealed class ResultadosIntegrationTests
     }
 
     [Fact]
+    public async Task Evaluaciones_ListaDiagnosticaEnlacesSinExponerTextoLibre()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync($"/api/admin/evaluaciones?campaniaId={CampaniaId}");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await respuesta.Content.ReadAsStringAsync();
+        json.Should().Contain("\"total\":5");
+        json.Should().Contain("\"enlazadas\":1");
+        json.Should().Contain("\"huerfanas\":2");
+        json.Should().Contain("\"superadas\":1");
+        json.Should().Contain("\"sinVersionIdea\":1");
+        json.Should().Contain("\"id\":\"eval_actual\"");
+        json.Should().Contain("\"enlace\":\"enlazada\"");
+        json.Should().Contain("\"id\":\"eval_superada\"");
+        json.Should().Contain("\"enlace\":\"superada\"");
+        json.Should().Contain("\"motivoDesenlace\":\"evaluacion_mas_reciente_existe\"");
+        json.Should().Contain("\"id\":\"eval_huerfana\"");
+        json.Should().Contain("\"motivoDesenlace\":\"respuesta_inexistente\"");
+        json.Should().Contain("\"id\":\"eval_sin_respuesta\"");
+        json.Should().Contain("\"motivoDesenlace\":\"respuesta_id_vacio\"");
+        json.Should().Contain("\"id\":\"eval_sin_version\"");
+        json.Should().Contain("\"enlace\":\"sin_version_idea\"");
+        json.Should().NotContain("\"explicacion\"");
+        json.Should().NotContain("\"retroalimentacionEnviada\"");
+        json.Should().NotContain("\"parafraseoDevuelto\"");
+        json.Should().NotContain("\"repreguntaSugerida\"");
+        json.Should().NotContain("\"calificacionPorCriterio\"");
+        json.Should().NotContain("\"configLLMSnapshot\"");
+    }
+
+    [Fact]
+    public async Task Evaluaciones_FiltrosYAutorizacionRespetanElContrato()
+    {
+        using var fabrica = Construir();
+        using var admin = ClienteAdmin(fabrica);
+        using var visor = ClienteVisor(fabrica);
+        using var anonimo = fabrica.CreateClient();
+
+        using var huerfanas = await admin.GetAsync($"/api/admin/evaluaciones?campaniaId={CampaniaId}&enlace=huerfana&pageSize=1");
+        using var visorRespuesta = await visor.GetAsync($"/api/admin/evaluaciones?campaniaId={CampaniaId}");
+        using var sinCampania = await admin.GetAsync("/api/admin/evaluaciones");
+        using var sinSesion = await anonimo.GetAsync($"/api/admin/evaluaciones?campaniaId={CampaniaId}");
+
+        huerfanas.StatusCode.Should().Be(HttpStatusCode.OK);
+        var jsonHuerfanas = await huerfanas.Content.ReadAsStringAsync();
+        jsonHuerfanas.Should().Contain("\"total\":2");
+        jsonHuerfanas.Should().Contain("\"huerfanas\":2");
+        jsonHuerfanas.Should().Contain("\"pageSize\":1");
+        jsonHuerfanas.Should().Contain("\"items\":[{");
+        visorRespuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        sinCampania.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        sinSesion.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task Markdown_RawDevuelveContenido()
     {
         using var fabrica = Construir();
@@ -205,7 +263,20 @@ public sealed class ResultadosIntegrationTests
             EstadoRespuesta.Evaluada, Epoca, null, nivelMadurez: NivelMadurez.Maduro);
         respuestas.ListarRespuestasAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { respuesta, respuestaMadura });
         respuestas.ObtenerRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(respuesta);
-        respuestas.ObtenerEvaluacionPorRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(CrearEvaluacion());
+        var evaluacionActual = CrearEvaluacion("eval_actual", "resp_1", Epoca.AddMinutes(20));
+        var evaluacionSuperada = CrearEvaluacion("eval_superada", "resp_1", Epoca.AddMinutes(10));
+        var evaluacionHuerfana = CrearEvaluacion("eval_huerfana", "resp_inexistente", Epoca.AddMinutes(30));
+        var evaluacionSinRespuesta = CrearEvaluacion("eval_sin_respuesta", string.Empty, Epoca.AddMinutes(40));
+        var evaluacionSinVersion = CrearEvaluacion("eval_sin_version", "resp_2", Epoca.AddMinutes(50), ideaId: "idea_2");
+        respuestas.ListarEvaluacionesAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            evaluacionSuperada,
+            evaluacionHuerfana,
+            evaluacionSinRespuesta,
+            evaluacionActual,
+            evaluacionSinVersion,
+        });
+        respuestas.ObtenerEvaluacionPorRespuestaAsync(CampaniaId, "resp_1", Arg.Any<CancellationToken>()).Returns(evaluacionActual);
         var artefacto = CrearArtefacto(1);
         respuestas.ObtenerArtefactoAsync(CampaniaId, "md_1", Arg.Any<CancellationToken>()).Returns(artefacto);
         respuestas.ListarArtefactosAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[] { artefacto });
@@ -269,14 +340,26 @@ public sealed class ResultadosIntegrationTests
         return client;
     }
 
-    private static DominioEvaluacion CrearEvaluacion()
+    private static HttpClient ClienteVisor(WebApplicationFactory<Program> fabrica)
+    {
+        var client = fabrica.CreateClient();
+        client.DefaultRequestHeaders.Add("Cookie", $"{CookieSesion}=token-visor");
+        return client;
+    }
+
+    private static DominioEvaluacion CrearEvaluacion(
+        string id = "eval_1",
+        string respuestaId = "resp_1",
+        DateTimeOffset? fecha = null,
+        string? ideaId = null,
+        string? versionIdeaId = null)
         => DominioEvaluacion.Crear(
-            "eval_1", CampaniaId, "resp_1", "u_1", "p_1", "rub_1", 1, "pr_eval", 1, "llm_1",
+            id, CampaniaId, respuestaId, "u_1", "p_1", "rub_1", 1, "pr_eval", 1, "llm_1",
             new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
             new Dictionary<string, decimal> { ["claridad"] = 1m },
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
             4m, "explica", "Buena idea", RecomendacionEvaluacion.Cerrar, null,
-            new[] { "tema" }, new[] { "ent" }, false, Epoca);
+            new[] { "tema" }, new[] { "ent" }, false, fecha ?? Epoca, ideaId: ideaId, versionIdeaId: versionIdeaId);
 
     private static ArtefactoMarkdown CrearArtefacto(int version)
         => ArtefactoMarkdown.Crear(
@@ -291,6 +374,8 @@ public sealed class ResultadosIntegrationTests
         public Task<PrincipalSesion?> ValidarAsync(string token, CancellationToken cancellationToken)
             => Task.FromResult<PrincipalSesion?>(token == "token-admin"
                 ? new PrincipalSesion("u_admin", "Admin", RolUsuario.Admin, CsrfAdmin, DateTimeOffset.UtcNow.AddMinutes(30))
+                : token == "token-visor"
+                    ? new PrincipalSesion("u_visor", "Visor", RolUsuario.Visor, CsrfAdmin, DateTimeOffset.UtcNow.AddMinutes(30))
                 : null);
     }
 }

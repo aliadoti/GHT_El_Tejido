@@ -110,6 +110,10 @@ public interface ICompiladorMarkdown
 - ID de evaluación: {{evaluacion.id}}
 ```
 
+> **DT-QA-02:** `GET /api/admin/evaluaciones` usa el mismo criterio de evaluación vigente que este
+> módulo: para un mismo `respuestaId`, la de `fecha` más reciente es la vigente. Las anteriores se
+> diagnostican como `superada`, no como huérfanas; la consulta no modifica el artefacto ni su criterio.
+
 Requisitos del artefacto (`REQ §22.4`): conserva autoría, pregunta y aportes originales, evaluación,
 versiones de rúbrica/prompt; es regenerable; preparado para versionamiento e indexación futuros;
 legible por humanos; sin secretos. Para I-06, cada idea segmentada conserva un artefacto independiente.

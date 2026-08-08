@@ -427,6 +427,7 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 | GET | `/api/admin/ideas/{id}` | **I-19:** idea vigente + evaluación + aportes/versiones auditables. |
 | GET | `/api/admin/respuestas` | Lista/filtra aportes originales (`usuarioId, preguntaId, estado` y, para legacy, `nivelMadurez`). |
 | GET | `/api/admin/respuestas/{id}` | Respuesta + evaluación asociada. |
+| GET | `/api/admin/evaluaciones` | **`DT-QA-02`:** lista/filtra evaluaciones de una campaña con **diagnóstico de enlace** (`enlazada`/`huerfana`/`superada`/`sin_version_idea`). Ver sub-sección. |
 | GET | `/api/admin/evaluaciones/{id}` | Evaluación completa (calificación, explicación, versiones). |
 | GET | `/api/admin/markdown` | Lista artefactos Markdown (`campaniaId, tipoArtefacto, usuarioId, preguntaId`). |
 | GET | `/api/admin/markdown/{id}` | Contenido Markdown + metadatos. |
@@ -436,6 +437,43 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 I-05 añade `parafraseoDevuelto` opcional al detalle de evaluación que devuelven
 `/respuestas/{id}` y `/evaluaciones/{id}`. `null`/ausente significa que la campaña no lo tenía
 activo o que la salida del LLM no produjo un resumen utilizable; conserva compatibilidad de lectura.
+
+#### Listado de evaluaciones — `DT-QA-02`
+> Cambio **aditivo** (una ruta nueva, solo lectura). Cubre el hueco de que `/evaluaciones` devolvía
+> `404`: sin colección, una evaluación persistida **sin quedar enlazada** era invisible desde la API.
+> No modifica `03` ni `/evaluaciones/{id}`. Detalle en
+> `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`.
+
+**Query:** `campaniaId` (**requerido**; ausente → `400`) y, opcionales, `usuarioId`, `preguntaId`,
+`respuestaId`, `ideaId`, `recomendacion=cerrar|repreguntar`, `anomaliaSeguridad=true|false`,
+`enlace=enlazada|huerfana|superada|sin_version_idea`, `desde`/`hasta` (ISO UTC sobre `fecha`), más
+`page`/`pageSize`. Orden: **`fecha` DESC** (mismo criterio de "evaluación vigente" que I-16, `09 §5`).
+
+```json
+{
+  "resumen": { "total": 128, "enlazadas": 124, "huerfanas": 1, "superadas": 2, "sinVersionIdea": 1 },
+  "items": [
+    {
+      "id": "eval_...", "campaniaId": "c_2026conv", "respuestaId": "resp_...",
+      "ideaId": "idea_resp_...", "versionIdeaId": "idea_resp_..._v2",
+      "origenTextoEvaluado": "ideaConsolidada",
+      "usuarioId": "u_8f3c...", "preguntaId": "p_ingresos",
+      "calificacionTotal": 4.1, "recomendacion": "repreguntar", "anomaliaSeguridad": false,
+      "fecha": "2026-06-11T14:05:10Z",
+      "enlace": "enlazada", "motivoDesenlace": null
+    }
+  ],
+  "page": 1, "pageSize": 25, "total": 1
+}
+```
+- `enlace` y `motivoDesenlace` son **derivados en tiempo de consulta**, no campos persistidos:
+  `huerfana` (`respuesta_inexistente` \| `respuesta_id_vacio`), `superada`
+  (`evaluacion_mas_reciente_existe`, situación **normal** contemplada por I-16), `sin_version_idea`
+  (no puede promover una idea a madura, `03 §3.9`).
+- `resumen` se calcula sobre el conjunto filtrado **antes** de paginar.
+- El DTO de lista **no** incluye `explicacion`, `retroalimentacionEnviada`, `parafraseoDevuelto`,
+  `repreguntaSugerida`, `calificacionPorCriterio` ni los snapshots: son texto largo y parte contiene
+  el aporte del participante. Para eso está `/evaluaciones/{id}`.
 
 **I-17 (aditivo):** el DTO de respuesta expone `nivelMadurez` (`maduro`/`incubacion`); ausente en
 documentos históricos se interpreta como `incubacion`. `GET /api/admin/respuestas` acepta el filtro

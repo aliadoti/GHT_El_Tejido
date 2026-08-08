@@ -4,6 +4,48 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-08 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-QA-02` DONE local.**
+  Se implemento `GET /api/admin/evaluaciones` con autorizacion `admin`/`visor`, `campaniaId`
+  obligatorio, filtros, paginacion y resumen previo a paginar. El puerto obligatorio
+  `ListarEvaluacionesAsync` se implemento en Cosmos y memoria con `fecha DESC`; la lista diagnostica
+  `enlazada`, `huerfana`, `superada` y `sin_version_idea` sin persistirlos ni exponer texto libre.
+  Los documentos legacy con `respuestaId` vacio o `ideaId` sin version se rehidratan solo para que el
+  diagnostico los haga visibles; no se reparan ni se promueven ideas. Se conserva el criterio I-16:
+  una evaluacion anterior de la misma respuesta es `superada`, no huerfana. Pruebas de endpoint,
+  autorizacion, PII y ambos adaptadores incluidas; build Release, 814 pruebas no-Calibracion, formato
+  y diff verdes. Sin flags, configuracion remota, despliegue ni push.
+  **Siguiente cambio de codigo:** `DT-P27-01` corte 2, segun su especificacion; antes, releer su
+  alcance y no activar P-27.
+- Registro de preparacion: 2026-08-08 (Claude Opus 5, Arquitecto/PM tecnico): **`DT-QA-02` ESPECIFICADA.
+  SOLO DOCUMENTACION — cero codigo. Es el siguiente cambio de codigo, implementacion inmediata.**
+  Hallazgo en diagnostico E2E: **`GET /api/admin/evaluaciones` devuelve `404`**. Verificado en
+  `EndpointsAdminResultados.cs` — se mapean `/conversaciones`, `/ideas`, `/respuestas`, `/markdown` y
+  **`/evaluaciones/{id}`**, pero **no** la coleccion `/evaluaciones`. Es el unico recurso de `04 §5.8`
+  con detalle y sin listado, asi que **solo se puede leer una evaluacion si ya se conoce su `id`**: si
+  una `Evaluacion` se persistio sin quedar enlazada —o apunta a un `respuestaId` inexistente— es
+  **invisible desde la API** y la unica via es el Data Explorer de Cosmos, que no sirve para una
+  prueba reproducible. Bloquea el diagnostico del dry-run (freeze 11-ago).
+  **El 404 no es un olvido de ruta: falta el metodo en el puerto.** `IRepositorioRespuestas` solo
+  tiene `ObtenerEvaluacionPorIdAsync` / `ObtenerEvaluacionPorRespuestaAsync` (ambos exigen conocer un
+  id) y dos agregados (`ContarEvaluacionesUsuarioAsync`, `SumarTokensCampaniaAsync`); ninguno permite
+  recorrer las evaluaciones de una campania. Se agrega `ListarEvaluacionesAsync` **sin implementacion
+  por defecto**, a diferencia de los metodos I-19/P-26 del puerto: un `=> vacio` haria que un
+  adaptador no implementado reporte "cero huerfanas" en vez de fallar, que es exactamente el silencio
+  contra el que sirve este endpoint.
+  **Cuatro estados de enlace, derivados en consulta y NO persistidos:** `enlazada`, `huerfana`
+  (`respuesta_inexistente` | `respuesta_id_vacio`), `superada` (`evaluacion_mas_reciente_existe`) y
+  `sin_version_idea`. **`superada` no es un error:** I-16 ya contempla varias evaluaciones para el
+  mismo `respuestaId` (campanias reutilizadas o legacy) y marcarlas como huerfanas llenaria el dry-run
+  de falsas alarmas. `sin_version_idea` importa porque, segun `03 §3.9`, una evaluacion sin
+  `versionIdeaId` **no puede promover una idea a madura**.
+  **El DTO de lista no lleva texto libre** (`explicacion`, `retroalimentacionEnviada`,
+  `parafraseoDevuelto`, `repreguntaSugerida`, `calificacionPorCriterio`, snapshots): parte de eso es
+  el aporte del participante y la lista debe poder pegarse en un reporte de QA sin filtrar PII a mano.
+  **Aditivo y de solo lectura:** no toca `03`, ni `/evaluaciones/{id}`, ni el criterio de "evaluacion
+  vigente" de I-16 (lo refleja; hay una prueba cruzada que lo fija). Sin flags ni dependencias nuevas.
+  **Fuera de alcance:** reparar huerfanas (diagnostica, no arregla) y UI de portal.
+  Docs: nueva `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `base/04 §5.8` (fila +
+  sub-seccion); `Iniciativas/TODO.md` (objetivo + fila) e `Iniciativas/00_Indice` (§1.1 + cabecera).
 - Ultima actualizacion: 2026-08-07 (Claude Opus 5, Frontend/SDET): **`I-08 v2` COMPLETA local (7/7
   pasos de `§8`), commit `982c7b7`. Falta solo desplegar.** Portal **43/43** en 7 archivos, build de
   produccion y prettier verdes; backend **808** (725 + 83).

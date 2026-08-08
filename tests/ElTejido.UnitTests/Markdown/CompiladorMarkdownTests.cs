@@ -399,6 +399,12 @@ public sealed class CompiladorMarkdownTests
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
             => Task.FromResult(_evaluaciones.FirstOrDefault(e => e.CampaniaId == campaniaId && e.Id == evaluacionId));
 
+        public Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<DominioEvaluacion>>(_evaluaciones
+                .Where(e => e.CampaniaId == campaniaId)
+                .OrderByDescending(e => e.Fecha)
+                .ToArray());
+
         public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.Where(r => r.CampaniaId == campaniaId).ToArray());
 

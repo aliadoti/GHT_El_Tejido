@@ -29,6 +29,7 @@ internal static class EndpointsAdminResultados
         grupo.MapGet("/ideas/{id}", ObtenerIdeaAsync);
         grupo.MapGet("/respuestas", ListarRespuestasAsync);
         grupo.MapGet("/respuestas/{id}", ObtenerRespuestaAsync);
+        grupo.MapGet("/evaluaciones", ListarEvaluacionesAsync);
         grupo.MapGet("/evaluaciones/{id}", ObtenerEvaluacionAsync);
         grupo.MapGet("/markdown", ListarMarkdownAsync);
         grupo.MapGet("/markdown/{id}", ObtenerMarkdownAsync);
@@ -185,6 +186,43 @@ internal static class EndpointsAdminResultados
         var evaluacion = await Respuestas(contexto).ObtenerEvaluacionPorIdAsync(campaniaId, id, ct)
             ?? throw new ErrorNoEncontrado("La evaluacion no existe.");
         return Results.Ok(MapearEvaluacion(evaluacion));
+    }
+
+    /// <summary>
+    /// DT-QA-02 (04 §5.8): lista de diagnóstico sin texto libre. La vigencia se deriva con el
+    /// mismo orden de I-16 (fecha descendente), sin persistir estados de enlace.
+    /// </summary>
+    private static async Task<IResult> ListarEvaluacionesAsync(HttpContext contexto, CancellationToken ct)
+    {
+        var query = contexto.Request.Query;
+        var campaniaId = RequerirCampania(query);
+        var repo = Respuestas(contexto);
+        var evaluaciones = await repo.ListarEvaluacionesAsync(campaniaId, ct);
+        var respuestasPorId = (await repo.ListarRespuestasAsync(campaniaId, ct))
+            .ToDictionary(respuesta => respuesta.Id, StringComparer.Ordinal);
+        var vigentesPorRespuesta = evaluaciones
+            .Where(evaluacion => !string.IsNullOrWhiteSpace(evaluacion.RespuestaId))
+            .GroupBy(evaluacion => evaluacion.RespuestaId, StringComparer.Ordinal)
+            .ToDictionary(
+                grupo => grupo.Key,
+                grupo => grupo.OrderByDescending(evaluacion => evaluacion.Fecha).First().Id,
+                StringComparer.Ordinal);
+
+        var filtradas = evaluaciones
+            .OrderByDescending(evaluacion => evaluacion.Fecha)
+            .Select(evaluacion => DiagnosticarEnlace(evaluacion, respuestasPorId, vigentesPorRespuesta))
+            .Where(evaluacion => CoincideOpcional(query["usuarioId"], evaluacion.Evaluacion.UsuarioId)
+                && CoincideOpcional(query["preguntaId"], evaluacion.Evaluacion.PreguntaId)
+                && CoincideOpcional(query["respuestaId"], evaluacion.Evaluacion.RespuestaId)
+                && CoincideOpcional(query["ideaId"], evaluacion.Evaluacion.IdeaId ?? string.Empty)
+                && CoincideEnum(query["recomendacion"], evaluacion.Evaluacion.Recomendacion.ToString())
+                && CoincideBooleano(query["anomaliaSeguridad"], evaluacion.Evaluacion.AnomaliaSeguridad)
+                && CoincideEnum(query["enlace"], evaluacion.Enlace)
+                && CoincideFecha(query["desde"], evaluacion.Evaluacion.Fecha, esDesde: true)
+                && CoincideFecha(query["hasta"], evaluacion.Evaluacion.Fecha, esDesde: false))
+            .ToArray();
+
+        return Results.Ok(PaginarEvaluaciones(filtradas, query));
     }
 
     private static async Task<IResult> ListarMarkdownAsync(HttpContext contexto, CancellationToken ct)
@@ -385,6 +423,28 @@ internal static class EndpointsAdminResultados
             e.Fecha,
         };
 
+    private static object MapearEvaluacionResumen(EvaluacionListada evaluacion)
+    {
+        var e = evaluacion.Evaluacion;
+        return new
+        {
+            e.Id,
+            e.CampaniaId,
+            e.RespuestaId,
+            e.IdeaId,
+            e.VersionIdeaId,
+            e.OrigenTextoEvaluado,
+            e.UsuarioId,
+            e.PreguntaId,
+            e.CalificacionTotal,
+            recomendacion = e.Recomendacion.ToString().ToLowerInvariant(),
+            e.AnomaliaSeguridad,
+            e.Fecha,
+            enlace = evaluacion.Enlace,
+            evaluacion.MotivoDesenlace,
+        };
+    }
+
     private static object MapearArtefactoResumen(ArtefactoMarkdown a)
         => new
         {
@@ -466,6 +526,58 @@ internal static class EndpointsAdminResultados
         return string.IsNullOrWhiteSpace(texto) || string.Equals(texto.Trim(), MinusculaInicial(nivel.ToString()), StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool CoincideBooleano(StringValues filtro, bool valor)
+    {
+        var texto = filtro.ToString();
+        return string.IsNullOrWhiteSpace(texto)
+            || (bool.TryParse(texto.Trim(), out var esperado) && esperado == valor);
+    }
+
+    private static bool CoincideFecha(StringValues filtro, DateTimeOffset fecha, bool esDesde)
+    {
+        var texto = filtro.ToString();
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return true;
+        }
+
+        return DateTimeOffset.TryParse(
+                texto.Trim(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var limite)
+            && (esDesde ? fecha >= limite : fecha <= limite);
+    }
+
+    private static EvaluacionListada DiagnosticarEnlace(
+        DominioEvaluacion evaluacion,
+        IReadOnlyDictionary<string, Respuesta> respuestasPorId,
+        IReadOnlyDictionary<string, string> vigentesPorRespuesta)
+    {
+        if (string.IsNullOrWhiteSpace(evaluacion.RespuestaId))
+        {
+            return new EvaluacionListada(evaluacion, "huerfana", "respuesta_id_vacio");
+        }
+
+        if (!respuestasPorId.ContainsKey(evaluacion.RespuestaId))
+        {
+            return new EvaluacionListada(evaluacion, "huerfana", "respuesta_inexistente");
+        }
+
+        if (!string.IsNullOrWhiteSpace(evaluacion.IdeaId) && string.IsNullOrWhiteSpace(evaluacion.VersionIdeaId))
+        {
+            return new EvaluacionListada(evaluacion, "sin_version_idea", "sin_version_idea");
+        }
+
+        if (vigentesPorRespuesta.TryGetValue(evaluacion.RespuestaId, out var evaluacionVigenteId)
+            && !string.Equals(evaluacion.Id, evaluacionVigenteId, StringComparison.Ordinal))
+        {
+            return new EvaluacionListada(evaluacion, "superada", "evaluacion_mas_reciente_existe");
+        }
+
+        return new EvaluacionListada(evaluacion, "enlazada", null);
+    }
+
     private static object Paginar(IReadOnlyCollection<object> items, IQueryCollection query)
     {
         var page = ParsearEntero(query["page"], 1);
@@ -479,6 +591,31 @@ internal static class EndpointsAdminResultados
         };
     }
 
+    private static object PaginarEvaluaciones(IReadOnlyCollection<EvaluacionListada> evaluaciones, IQueryCollection query)
+    {
+        var page = ParsearEntero(query["page"], 1);
+        var pageSize = Math.Min(ParsearEntero(query["pageSize"], 25), 100);
+        return new
+        {
+            resumen = new
+            {
+                total = evaluaciones.Count,
+                enlazadas = evaluaciones.Count(evaluacion => evaluacion.Enlace == "enlazada"),
+                huerfanas = evaluaciones.Count(evaluacion => evaluacion.Enlace == "huerfana"),
+                superadas = evaluaciones.Count(evaluacion => evaluacion.Enlace == "superada"),
+                sinVersionIdea = evaluaciones.Count(evaluacion => evaluacion.Enlace == "sin_version_idea"),
+            },
+            items = evaluaciones
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapearEvaluacionResumen)
+                .ToArray(),
+            page,
+            pageSize,
+            total = evaluaciones.Count,
+        };
+    }
+
     private static int ParsearEntero(StringValues valor, int porDefecto)
     {
         var texto = valor.ToString();
@@ -489,4 +626,9 @@ internal static class EndpointsAdminResultados
 
     private static string MinusculaInicial(string valor)
         => string.IsNullOrEmpty(valor) ? valor : char.ToLowerInvariant(valor[0]) + valor[1..];
+
+    private sealed record EvaluacionListada(
+        DominioEvaluacion Evaluacion,
+        string Enlace,
+        string? MotivoDesenlace);
 }

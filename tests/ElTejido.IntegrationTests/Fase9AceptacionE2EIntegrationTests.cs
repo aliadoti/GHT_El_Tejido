@@ -769,12 +769,23 @@ public sealed class Fase9AceptacionE2EIntegrationTests
 
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorRespuestaAsync(string campaniaId, string respuestaId, CancellationToken cancellationToken)
         {
-            lock (_sync) return Task.FromResult(_evaluaciones.Values.FirstOrDefault(e => e.CampaniaId == campaniaId && e.RespuestaId == respuestaId));
+            lock (_sync) return Task.FromResult(_evaluaciones.Values
+                .Where(e => e.CampaniaId == campaniaId && e.RespuestaId == respuestaId)
+                .OrderByDescending(e => e.Fecha)
+                .FirstOrDefault());
         }
 
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
         {
             lock (_sync) return Task.FromResult(_evaluaciones.Values.FirstOrDefault(e => e.CampaniaId == campaniaId && e.Id == evaluacionId));
+        }
+
+        public Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(string campaniaId, CancellationToken cancellationToken)
+        {
+            lock (_sync) return Task.FromResult<IReadOnlyCollection<DominioEvaluacion>>(_evaluaciones.Values
+                .Where(e => e.CampaniaId == campaniaId)
+                .OrderByDescending(e => e.Fecha)
+                .ToArray());
         }
 
         public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)

@@ -62,6 +62,15 @@ public interface IRepositorioRespuestas
         string evaluacionId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Lista las evaluaciones de una campaña en orden descendente por fecha (04 §5.8). No tiene
+    /// implementación por defecto: un adaptador sin este diagnóstico no puede informar en silencio
+    /// que no existen evaluaciones huérfanas (DT-QA-02).
+    /// </summary>
+    Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(
+        string campaniaId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(
         string campaniaId,
         CancellationToken cancellationToken);

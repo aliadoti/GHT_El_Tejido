@@ -9,8 +9,51 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **▶▶ `I-08 v2` CARGA MASIVA — COMPLETA LOCAL 2026-08-07 (7/7 pasos de `§8`).
-> Commits `63fa3e7`, `d07b9f0`, `e5e4b37`, `982c7b7`. ▶ SIGUIENTE: DESPLEGAR.**
+> **✅ `DT-QA-02` LISTADO DE EVALUACIONES — DONE LOCAL 2026-08-08.**
+> `GET /api/admin/evaluaciones` ya existe para `admin`/`visor`: lista por campaña en `fecha DESC`,
+> diagnostica `enlazada`/`huerfana`/`superada`/`sin_version_idea`, resume antes de paginar y no expone
+> texto libre. `ListarEvaluacionesAsync` no tiene default y ambos adaptadores lo implementan. Las
+> pruebas cubren los cuatro estados, autorización, filtros, PII y orden de Cosmos/memoria. No se
+> reparan documentos, no se cambian flags ni configuración remota. **Siguiente cambio de código:
+> `DT-P27-01` corte 2** (validación, registro e historial/rollback); releer su spec antes de iniciarlo.
+>
+> **Registro de preparación — INICIATIVA OBJETIVO 2026-08-08 — `DT-QA-02` LISTADO DE EVALUACIONES.
+> IMPLEMENTACIÓN INMEDIATA. SPEC Y CONTRATO LISTOS, SIN CÓDIGO AÚN.**
+> `GET /api/admin/evaluaciones` devuelve **404**: la colección no existe (sí existe
+> `/evaluaciones/{id}`, `EndpointsAdminResultados.cs:32`). Es el único recurso de `04 §5.8` con
+> detalle y sin listado, así que **una evaluación persistida sin quedar enlazada es invisible desde la
+> API** — solo se llega a ella si ya se conoce su `id`. Bloquea el diagnóstico del dry-run E2E, y con
+> el freeze el 11-ago es la ventana justa.
+>
+> **El 404 no es un olvido de ruta: falta el método en el puerto.** `IRepositorioRespuestas` solo
+> tiene `ObtenerEvaluacionPorIdAsync` / `ObtenerEvaluacionPorRespuestaAsync` (ambos exigen conocer un
+> id) y dos agregados (`ContarEvaluacionesUsuarioAsync`, `SumarTokensCampaniaAsync`). Hay que agregar
+> `ListarEvaluacionesAsync` **sin implementación por defecto** —a diferencia de los métodos I-19/P-26
+> del puerto— porque un default vacío haría que un adaptador no implementado reporte "cero huérfanas"
+> en vez de fallar, que es justo el silencio contra el que sirve este endpoint.
+>
+> **Cuatro estados de enlace, derivados en consulta (no persistidos):** `enlazada`, `huerfana`
+> (`respuesta_inexistente` | `respuesta_id_vacio`), `superada` (`evaluacion_mas_reciente_existe`) y
+> `sin_version_idea`. ⚠️ **`superada` NO es un error:** I-16 ya contempla varias evaluaciones para el
+> mismo `respuestaId` (campañas reutilizadas o legacy); marcarlas como huérfanas llenaría el dry-run
+> de falsas alarmas. `sin_version_idea` importa porque, según `03 §3.9`, una evaluación sin
+> `versionIdeaId` **no puede promover una idea a madura** — es la causa típica de "no entiendo por qué
+> esta idea no salió madura".
+>
+> **El DTO de lista NO lleva texto libre** (`explicacion`, `retroalimentacionEnviada`,
+> `parafraseoDevuelto`, `repreguntaSugerida`, `calificacionPorCriterio`, snapshots): parte de eso es
+> el aporte del participante y la lista debe poder pegarse en un reporte de QA sin filtrar PII a mano.
+> El contenido sigue en `/evaluaciones/{id}`.
+>
+> **Aditivo y de solo lectura:** no toca `03`, ni `/evaluaciones/{id}`, ni el criterio de "evaluación
+> vigente" de I-16 (lo **refleja**; hay una prueba cruzada que lo fija). Sin flags ni dependencias
+> nuevas. **Fuera de alcance:** reparar huérfanas (esto diagnostica, no arregla) y UI en el portal.
+> Orden en `DT-QA-02 §8`. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`;
+> contrato ya actualizado en `04 §5.8`.
+>
+> **✅ `I-08 v2` CARGA MASIVA — COMPLETA LOCAL 2026-08-07 (7/7 pasos de `§8`) Y DESPLEGADA.
+> Commits `63fa3e7`, `d07b9f0`, `e5e4b37`, `982c7b7`. Desplegada y validada; el siguiente cambio de
+> código es `DT-QA-02` (arriba).**
 > **Corte 4 (paso 7, portal):** paneles standalone al estilo P-16; carga que acepta `.xlsx` y `.csv`
 > con selector de modo, descarga de plantilla y reporte por fila; **resolución de conflictos de
 > titular** (actual vs. propuesto, con `corregir_nombre`/`reasignar`/`omitir` y reenvío del mismo
@@ -286,13 +329,16 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: `I-08 v2` — carga masiva con la plantilla oficial de GHT
-(ítem 22a).** Orden de `I-08 §8`: ~~dominio y `03`~~ ✅ → ~~repositorio (filtro `estado = activo` +
-`claveUnicidad`)~~ ✅ → **▶ recrear la base y sembrar** (paso irreversible; sin él la reasignación no
-puede funcionar contra Azure) → ~~lectores `.xlsx`/`.csv`~~ ✅ → ~~servicio~~ ✅ → endpoint (parcial) →
-portal.
-Tras recrear, repetir la prueba de humo de P-31 (`QAS/14_*`). **No cargar datos reales**: falta que
-GHT entregue el archivo con `Telefono` diligenciado.
+**Iniciativa objetivo vigente: `DT-QA-02` — `GET /api/admin/evaluaciones` (listado + detección de
+huérfanas).** Habilitador de QA para el dry-run; hoy la colección devuelve 404 y no hay forma de
+enumerar evaluaciones desde la API. Orden de `DT-QA-02 §8`: `ListarEvaluacionesAsync` en el puerto
+(**sin default**) + los dos adaptadores → endpoint con filtros y paginación, DTO sin texto libre →
+diagnóstico de enlace + bloque `resumen` → `04 §5.8` y referencia en `09 §5` → caso de QA en `QAS/02`
+y fila en la matriz. Aditivo y de solo lectura: no toca `03` ni el criterio de vigencia de I-16.
+
+`I-08 v2` quedó **completa (7/7) y desplegada** el 2026-08-07, validada contra Azure el 2026-08-08
+(13 casos PASS). **No cargar datos reales**: falta que GHT entregue el archivo con `Telefono`
+diligenciado.
 
 `P-31` quedó **DONE 3/3 y desplegado** el 2026-08-07 (commit `6d02492`); sus flags siguen OFF a la
 espera de D5 real, UAT y acta de flags. `DT-P27-01` corte 2 se retoma después de `I-08 v2`.
@@ -425,6 +471,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea (campos aditivos en `IdeaConsolidada` + Cosmos) y **sin depender de los flags de P-27**. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF + opt-out por campaña. Corte 1 = perilla/política/dominio sin efecto observable; 2 = acto `ResumirAvance` y enganche en `ConfirmarOCorregirIdeaAsync`; 3 = E2E simulada, QAS y cierre. **Decisión abierta:** consulta bajo demanda del consolidado (fuera de alcance hasta decidirla). Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **EN PAUSA — 1/2 DONE local 2026-08-05; cede prioridad a P-31** | Codex | Corte 1: lectura desde config, fallback a los defaults compilados y normalización compartida, backend 730/730. Corte 2 pendiente (retomar tras P-31): validar vacíos/duplicados/límite, descartar con registro seguro e implementar historial/rollback. No permitir edición por campaña, no modificar alias ni activar P-27. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
+| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **Siguiente: DT-P27-01 corte 2.** |
 | DT-P27-02 | **Calibración del clasificador P-27 (cierre sobre la última idea)** | **BACKLOG post-convención** | — | Borde detectado en la E2E conversacional desplegada (E14, 2026-08-06): una variante libre no-alias sobre la **última idea de la cola** (`QUEDAN_UNIDADES_PENDIENTES=no`) se clasifica `aportar` en vez de finalizar. Degrada seguro (no corta la idea) y los alias deterministas sí funcionan → severidad baja, no bloqueante. Ajuste **solo del prompt de sistema** de `ClasificadorIntencionControl`; **no desplegar sin pasar D5** (regresión clave: no aumentar cierres falsos de ideas con contenido). Spec: `Iniciativas/DT-P27-02_Calibracion_Clasificador_Cierre_Ultima_Idea.md`. |
 
 - **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.

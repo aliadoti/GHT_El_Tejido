@@ -71,6 +71,18 @@ public sealed class ReinicioRepositoriosMemoriaTests
     }
 
     [Fact]
+    public async Task Respuestas_ListarEvaluaciones_UsaElMismoOrdenDescendenteQueCosmos()
+    {
+        var repo = new RepositorioRespuestasMemoria();
+        await repo.GuardarEvaluacionAsync(CrearEvaluacion("eval_vieja", Epoca), CancellationToken.None);
+        await repo.GuardarEvaluacionAsync(CrearEvaluacion("eval_nueva", Epoca.AddMinutes(10)), CancellationToken.None);
+
+        var evaluaciones = await repo.ListarEvaluacionesAsync("c_1", CancellationToken.None);
+
+        evaluaciones.Select(evaluacion => evaluacion.Id).Should().ContainInOrder("eval_nueva", "eval_vieja");
+    }
+
+    [Fact]
     public async Task Conversaciones_EliminarPorUsuario_BorraHiloYMensajesDelAlcance()
     {
         var repo = new RepositorioConversacionesMemoria();
@@ -126,6 +138,12 @@ public sealed class ReinicioRepositoriosMemoriaTests
                 "# md", blobPath, EstadoArtefacto.Generado, 1, Epoca, Epoca),
             CancellationToken.None);
     }
+
+    private static DominioEvaluacion CrearEvaluacion(string id, DateTimeOffset fecha)
+        => DominioEvaluacion.Crear(
+            id, "c_1", $"resp_{id}", "u_1", "p_1", "r_general", 1, "pr_eval", 1, "llm_default",
+            new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
+            null, null, 3m, "ok", "Bien", RecomendacionEvaluacion.Cerrar, null, null, null, false, fecha);
 
     private static async Task SembrarConversacionAsync(
         RepositorioConversacionesMemoria repo,

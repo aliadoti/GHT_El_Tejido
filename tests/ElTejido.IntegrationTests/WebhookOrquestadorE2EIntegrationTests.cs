@@ -726,6 +726,12 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
             => Task.FromResult(Evaluaciones.FirstOrDefault(evaluacion => evaluacion.Id == evaluacionId));
 
+        public Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(string campaniaId, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<DominioEvaluacion>>(Evaluaciones
+                .Where(evaluacion => evaluacion.CampaniaId == campaniaId)
+                .OrderByDescending(evaluacion => evaluacion.Fecha)
+                .ToArray());
+
         public Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(string campaniaId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Respuesta>>(_respuestas.Values.ToArray());
 

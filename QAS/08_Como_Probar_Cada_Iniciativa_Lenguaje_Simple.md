@@ -164,6 +164,22 @@ participante no puede volver a empezar.
 3. **Deberías ver:** que la calificación y el texto corresponden a **la última** evaluación, no a un intento anterior.
 **Algo va mal si:** el resumen muestra una nota que ya no corresponde.
 
+### ✅ DT-QA-02 — Revisar evaluaciones que no aparecen en Resultados
+**Qué es:** una consulta para el equipo de pruebas. Permite ver todas las evaluaciones de una campaña,
+incluso una que no quedó conectada a una respuesta. No cambia ningún dato ni muestra el texto de los
+participantes.
+1. Pide al equipo técnico la dirección de pruebas y entra como **administrador** o **visor**.
+2. Abre la dirección `.../api/admin/evaluaciones?campaniaId=ID_DE_LA_CAMPANA`.
+3. **Deberías ver:** una lista ordenada de la más reciente a la más antigua y un resumen con cuántas
+   están enlazadas, huérfanas, superadas o sin versión de idea.
+4. Para revisar solo un problema, añade `&enlace=huerfana` al final de la dirección.
+5. **Deberías ver:** solo las evaluaciones cuyo `respuestaId` está vacío o ya no existe. Una evaluación
+   marcada como **superada** no es un problema: hay una evaluación más reciente para la misma respuesta.
+6. Revisa una fila: no deben aparecer explicaciones, comentarios ni el texto de la persona. Si hace falta
+   leer ese detalle, el equipo técnico debe abrir la evaluación individual.
+**Algo va mal si:** la dirección devuelve 404, se ven comentarios o texto de participantes, una persona
+sin sesión puede abrirla, o una evaluación antigua se reporta como huérfana aunque exista una más reciente.
+
 ### ✅ I-17 — Separar ideas maduras de ideas en incubación
 **Qué es:** cada idea queda identificada como **madura** cuando alcanza el nivel esperado o como
 **incubación** cuando todavía necesita trabajo. No se pierde ninguna idea.

@@ -39,6 +39,27 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
     }
 
     [Fact]
+    public async Task ListarEvaluaciones_DevuelveFechaDescendenteEnLaMismaParticion()
+    {
+        var container = new FakeResponsesCosmosContainer
+        {
+            Evaluaciones =
+            [
+                DocEvaluacion("eval_vieja", "resp_1", "u_1", 2m, Epoca),
+                DocEvaluacion("eval_nueva", "resp_2", "u_1", 5m, Epoca.AddMinutes(10)),
+            ],
+        };
+        var repo = new RepositorioRespuestasCosmos(container);
+
+        var resultado = await repo.ListarEvaluacionesAsync("c_1", CancellationToken.None);
+
+        resultado.Select(evaluacion => evaluacion.Id).Should().ContainInOrder("eval_nueva", "eval_vieja");
+        container.QueryTexts.Should().ContainSingle(query =>
+            query.Contains("c.type = @type", StringComparison.Ordinal)
+            && query.Contains("ORDER BY c.fecha DESC", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task EliminarPorUsuario_BorraPorIdEnLaParticionYReportaRutasBlob()
     {
         var container = new FakeResponsesCosmosContainer
