@@ -9,9 +9,17 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **▶▶ INICIATIVA EN CURSO 2026-08-07 — `I-08 v2` CARGA MASIVA. BACKEND COMPLETO (pasos 1-6,
-> commits `63fa3e7`, `d07b9f0`, `e5e4b37`). BASE YA RECREADA Y SEMBRADA.
-> ▶ SIGUIENTE Y ÚLTIMO: PASO 7 — EL PORTAL.**
+> **▶▶ `I-08 v2` CARGA MASIVA — COMPLETA LOCAL 2026-08-07 (7/7 pasos de `§8`).
+> Commits `63fa3e7`, `d07b9f0`, `e5e4b37`, `982c7b7`. ▶ SIGUIENTE: DESPLEGAR.**
+> **Corte 4 (paso 7, portal):** paneles standalone al estilo P-16; carga que acepta `.xlsx` y `.csv`
+> con selector de modo, descarga de plantilla y reporte por fila; **resolución de conflictos de
+> titular** (actual vs. propuesto, con `corregir_nombre`/`reasignar`/`omitir` y reenvío del mismo
+> archivo); motivos traducidos a lenguaje del administrador; ficha con histórico del número y
+> reasignación manual. Portal **43/43**, build de producción y prettier verdes; backend **808**.
+> 💡 **`ng test`/`ng build` SÍ corren en esta máquina** pese al Node 22.17, con un Node temporal:
+> `npx -y -p node@24.15.0 node ./node_modules/@angular/cli/bin/ng.js test --watch=false`.
+> `tsc` solo **no basta**: pasó limpio mientras el compilador de Angular encontraba tres roturas reales.
+> **Falta únicamente el despliegue** (cortes 2, 3 y 4 sin push; el 1 ya está en producción).
 > **Paso 3 hecho por el usuario (2026-08-07):** `users` recreado con unique key `/claveUnicidad`,
 > admin `U-000001` sembrado, purga de campañas ejecutada desde el portal (5 campañas, 27
 > conversaciones, 81 respuestas, 189 participantes). `security`, `config` y `leases` se conservaron a
@@ -392,7 +400,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 19 | `P-07` consentimiento de datos | ~~Sprint 2~~ | Codex | **⛔ DIFERIDA (reunión 20-jul)** — consentimiento innecesario en herramienta interna (IP de GHT); no implementar para el Hito |
 | 20 | `P-10` costo LLM + rate por número | Sprint 2 | Claude | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
 | 21 | `P-09` monitoreo día-D | Pruebas 4–8 ago | Codex | **Panel DIFERIDO (reunión 20-jul)** — basta health-check; se conservan `/health(/ready)`, logs de entrega, **acta de flags + runbook** (esos sí son entregables del go-live) |
-| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **EN CURSO — antes del freeze** | **Claude** | **BACKEND COMPLETO (pasos 1-6) 2026-08-07 — commits `63fa3e7`, `d07b9f0`, `e5e4b37`; base recreada y sembrada por el usuario. FALTA SOLO EL PORTAL (paso 7)** — pasos 1 y 2 de `§8`: `Usuario` con `codigoUsuario`/`usuarioWhatsapp`/`empresaId`/`sede`/`cargo`/`email`/`antiguedadAnios`/`idioma`, `area`-`empresa` opcionales, `claveUnicidad` derivada solo en el mapeo, filtro `estado = activo` en `ObtenerUsuarioPorNumeroAsync` + `ListarUsuariosPorNumeroAsync`, contador `Secuencia` con ETag y reserva por bloque, DTO `04 §5.1` aditivo. Pasos 4 y 5 (+ endpoint parcial): `PlantillaParticipantes` con las 9 columnas, lectores `.xlsx` (ClosedXML, primario) y `.csv` que producen filas idénticas, y `ServicioCargaMasiva` en dos pasadas con modos, conflicto de titular ≥ 0,85, reasignación con compensación, tag de empresa derivada y auditoría sin PII. Backend **799** (719+80), build/format/diff verdes; corte 1 desplegado, corte 2 sin push. **▶ Siguiente: paso 3 — recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el `409`. Irreversible; sin él la reasignación no funciona contra Azure**; tras recrear, repetir la prueba de humo de P-31. Falta además cerrar el paso 6 (DTOs de alta/edición, `reasignar-numero`, descarga de plantilla) y el paso 7 (portal). |
+| **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **DONE local — falta desplegar** | **Claude** | **COMPLETA local 7/7 el 2026-08-07 — commits `63fa3e7`, `d07b9f0`, `e5e4b37`, `982c7b7`; base recreada y sembrada por el usuario. FALTA SOLO DESPLEGAR** — pasos 1 y 2 de `§8`: `Usuario` con `codigoUsuario`/`usuarioWhatsapp`/`empresaId`/`sede`/`cargo`/`email`/`antiguedadAnios`/`idioma`, `area`-`empresa` opcionales, `claveUnicidad` derivada solo en el mapeo, filtro `estado = activo` en `ObtenerUsuarioPorNumeroAsync` + `ListarUsuariosPorNumeroAsync`, contador `Secuencia` con ETag y reserva por bloque, DTO `04 §5.1` aditivo. Pasos 4 y 5 (+ endpoint parcial): `PlantillaParticipantes` con las 9 columnas, lectores `.xlsx` (ClosedXML, primario) y `.csv` que producen filas idénticas, y `ServicioCargaMasiva` en dos pasadas con modos, conflicto de titular ≥ 0,85, reasignación con compensación, tag de empresa derivada y auditoría sin PII. Backend **799** (719+80), build/format/diff verdes; corte 1 desplegado, corte 2 sin push. **▶ Siguiente: paso 3 — recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el `409`. Irreversible; sin él la reasignación no funciona contra Azure**; tras recrear, repetir la prueba de humo de P-31. Falta además cerrar el paso 6 (DTOs de alta/edición, `reasignar-numero`, descarga de plantilla) y el paso 7 (portal). |
 | 22 | `I-08` carga real de la lista de GHT | Freeze 8–9 ago | Claude | **TODO — BLOCKED por 22a y por GHT.** Las variables demográficas de Munir **ya llegaron**: son las columnas de la plantilla oficial (insumo cerrado). Falta que GHT entregue el archivo con **`Telefono` diligenciado** (en la V1 esa columna viene vacía en las 129 filas, igual que `Empresa` e `Idioma`). **No cargar nada hasta entonces.** |
 | 23 | **cierre por inactividad ~5 min** (granularidad sub-hora) | Sprint 2 | Claude | **DONE local dentro de I-17 (2026-07-22).** Cierre sub-hora, parametrizable por campaña, con interruptor global apagado por defecto; backend verde 420. |
 | 24 | **`P-21` multi-número de WhatsApp** | A coordinar (fuera de ruta crítica) | Codex | **DONE local 2026-07-25.** Misma WABA/App; `metadata.phone_number_id` llega al orquestador y todas las respuestas salen por ese número. `IWhatsAppGateway` acepta emisor opcional; `configConversacional.numeroWhatsAppSaliente` guarda un alias por campaña y el fallback legacy/predeterminado conserva el comportamiento actual. Sin secretos nuevos; backend 473/473 verde. |
@@ -468,24 +476,14 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: `I-08 v2` paso 7 de `§8` — el portal.** Es lo único que falta para cerrar la
-   iniciativa: el backend está completo (pasos 1-6) y la base ya fue recreada y sembrada. Sobre la
-   pantalla de Usuarios que ya existe (`11 §Usuarios/Tags`):
-   1. Subida `.xlsx` **y** `.csv` (hoy el panel solo acepta `.csv`).
-   2. Selector de **modo** (`upsert` / `solo_actualizar`).
-   3. **Resolución de conflictos de titular por fila**: la respuesta trae `nombreActual`,
-      `nombrePropuesto` y el `codigoUsuario` del titular actual; el admin elige `corregir_nombre`,
-      `reasignar` u `omitir`, y se reenvía el **mismo archivo** con `reasignaciones`.
-   4. Botón para **descargar la plantilla vacía**.
-   5. `codigoUsuario` en la tabla y los campos nuevos en el formulario de alta/edición.
-   6. Ficha de usuario con **histórico del número** y **reasignación manual**.
-   **Degradación prevista (`I-08 §10`)** si no alcanza el tiempo: dejar los conflictos como
-   `rechazado` en la UI y hacer la reasignación a mano desde la ficha.
+1. **ARRANCA AQUÍ: desplegar `I-08 v2`.** La iniciativa está **completa local (7/7)**; faltan por
+   subir los cortes 2, 3 y 4 (`d07b9f0`, `e5e4b37`, `982c7b7`). Un push a `main` dispara el CD.
+   Tras desplegar, probar contra Azure: descargar la plantilla desde el portal, diligenciar 2-3 filas
+   de prueba, subirla y verificar el reporte por fila y el código asignado.
 
-2. **Después: desplegar.** Los cortes 2 y 3 están sin push; un solo despliegue al cerrar el portal.
-   Pendiente del usuario, sin bloquear código: verificar el `409` a mano en Data Explorer y rehacer
-   la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta que GHT
-   entregue el archivo con `Telefono` diligenciado (`§9`).
+2. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
+   rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
+   que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
 3. **Deuda técnica en pausa: `DT-P27-01` corte 2 de 2.** Validar cada lista tras normalizar (vacíos,
    duplicados, límite); ante invalidez usar el default y registrar solo el motivo; completar

@@ -4,6 +4,26 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-07 (Claude Opus 5, Frontend/SDET): **`I-08 v2` COMPLETA local (7/7
+  pasos de `§8`), commit `982c7b7`. Falta solo desplegar.** Portal **43/43** en 7 archivos, build de
+  produccion y prettier verdes; backend **808** (725 + 83).
+  Paneles standalone siguiendo P-16: la pagina de Usuarios queda como contenedor y los paneles de
+  carga masiva y ficha de usuario viven aparte. La carga acepta `.xlsx` y `.csv`, tiene selector de
+  modo, descarga de plantilla vacia y reporte por fila con el codigo asignado. La **resolucion de
+  conflictos de titular** muestra quien esta registrado frente a quien trae el archivo; el admin elige
+  `corregir_nombre`/`reasignar`/`omitir` y se reenvia el mismo archivo (solo viajan las decisiones
+  distintas de omitir). Los motivos tipificados se traducen a lenguaje del administrador y uno
+  desconocido se muestra tal cual en vez de perderse. La ficha trae historico del numero y
+  reasignacion manual, solo admin y solo sobre un usuario activo.
+  **`ng test`/`ng build` SI se pueden correr en esta maquina** pese al Node 22.17, usando un Node
+  temporal: `npx -y -p node@24.15.0 node ./node_modules/@angular/cli/bin/ng.js test --watch=false`
+  (sin `--browsers`, el runner es vitest). Importa: `tsc --noEmit` paso limpio mientras el compilador
+  de Angular encontraba **tres roturas reales** (fixtures de `UsuarioAdmin` sin los campos nuevos y
+  `usuario.area` ya nullable en `campanias.page`). Verificar solo con `tsc` no basta.
+  Se actualizaron **dos expectativas** que afirmaban el comportamiento anterior, ambas a proposito:
+  la etiqueta del input de archivo (ahora `.xlsx` o `.csv`) y el motivo mostrado en el reporte (ahora
+  traducido en vez del codigo crudo).
+  **Pendiente: un unico despliegue** con los cortes 2, 3 y 4 (el 1 ya esta en produccion).
 - Ultima actualizacion: 2026-08-07 (Claude Opus 5, Backend/SDET): **`I-08 v2` corte 3 — contrato de
   API del maestro (`§8` paso 6 COMPLETO). DONE local, commit `e5e4b37`.** Backend verde **808**
   (725 unitarias + 83 de integracion), build Release `-warnaserror`, `dotnet format` y
@@ -820,21 +840,16 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`I-08 v2` paso 7 de `§8` — portal.** Es lo unico que falta para cerrar la iniciativa; el
-  backend esta completo (pasos 1-6, commits `63fa3e7`, `d07b9f0`, `e5e4b37`) y la base ya fue
-  recreada y sembrada. Entrega, sobre la pantalla de Usuarios que ya existe (`11 §Usuarios/Tags`):
-  1. Subida `.xlsx` **y** `.csv` (hoy el panel solo acepta `.csv`).
-  2. Selector de **modo** (`upsert` / `solo_actualizar`).
-  3. **Resolucion de conflictos de titular por fila**: la respuesta trae `nombreActual` y
-     `nombrePropuesto` mas el `codigoUsuario` del titular actual; el admin elige `corregir_nombre`,
-     `reasignar` u `omitir` y se reenvia el **mismo archivo** con `reasignaciones`.
-  4. Boton para **descargar la plantilla vacia** (`GET /usuarios/plantilla-carga`).
-  5. `codigoUsuario` en la tabla de usuarios y los campos nuevos en el formulario de alta/edicion.
-  6. Ficha de usuario con el **historico del numero** y la **reasignacion manual**
-     (`POST /usuarios/{id}/reasignar-numero`).
-  **Degradacion prevista (`I-08 §10`)** si no alcanza el tiempo: dejar los conflictos como
-  `rechazado` en la UI y hacer la reasignacion a mano desde la ficha.
-- [ ] **Despues: desplegar.** Los cortes 2 y 3 estan sin push. Un solo despliegue al cerrar el portal.
+- [ ] **Desplegar `I-08 v2`.** La iniciativa esta COMPLETA local (7/7 pasos); faltan por subir los
+  cortes 2, 3 y 4 (commits `d07b9f0`, `e5e4b37`, `982c7b7`). Un push a `main` dispara el CD.
+  Despues del despliegue, probar contra Azure: descargar la plantilla desde el portal, diligenciar
+  2-3 filas de prueba, subirla, y verificar el reporte por fila y el codigo asignado.
+- [ ] **Pendiente del usuario, sin bloquear codigo:** verificar el guardarrail del `409` insertando a
+  mano un segundo usuario activo con el numero del admin en Data Explorer, y rehacer la prueba de
+  humo de P-31 (`QAS/14`) antes de encender sus flags.
+- [ ] **Bloqueado por GHT:** la carga real (`TODO` item 22) espera el archivo con la columna
+  `Telefono` diligenciada (`I-08 §9`). **No cargar datos reales hasta entonces.**
+- [ ] **Despues de I-08 v2: `DT-P27-01` corte 2 de 2**, que cedio prioridad.
 - [ ] **Pendiente del usuario (no bloquea el codigo):** verificar el guardarrail del `409` insertando
   a mano un segundo usuario activo con el numero del admin en Data Explorer, y rehacer la prueba de
   humo de P-31 (`QAS/14`) antes de encender sus flags.
