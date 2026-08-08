@@ -42,7 +42,7 @@ listas `Conversacion__Frases…` en claves indexadas ✅.
 | **E11** | Participación continua | **PASS** | P7 quedó con 2 conversaciones: la original `cerrada` y un **ciclo nuevo** (`…_c0e0d1430fbb9`) al aportar de nuevo | Ciclo independiente con id propio |
 | **E12** | Despertar proactivo | **PASS** | `LogSeguridad` en Cosmos `security`: `tipoEvento=despertarProactivo`, `usuarioId=u_7bf84b21…` (P7), `numero=573001112307`, `resultado=reactivacion`, `2026-08-08T03:17:08`, `esLlamadaLlm=false` | Disparó bien. **No era observable desde la API de admin** (ver O-7): hubo que leer Cosmos directamente |
 | **E13** | Retomar idea previa | **PASS** | Campaña B, P2: hilo de 3 ideas → cerró la #1 («así está bien») dejando la #2 activa → alias «quiero volver a la anterior» → la #1 pasó de `cerrada` a **`enRevision`** con el **mismo `ideaId`**; `ideas` no subió (5 → 5) | Reabre en vez de crear. Las ideas #2 y #3 no se alteraron. Ver O-9 sobre el alias |
-| **E19** | Frases de finalización desde config | **BLOQUEADO** | — | Requiere agregar `Conversacion__FrasesFinalizarIdea__0` con una frase nueva en App Settings. Es un cambio de configuración, no de código |
+| **E19** | Frases de finalización desde config | **PASS** | Campaña B, P3 con idea `enMejora`: «cerremos esta idea» —frase que existe **solo en App Settings**, no entre los defaults compilados— la pasó a `cerrada` sin almacenarla como aporte (total 6 → 6) | **DT-P27-01 corte 1 confirmado en producción**: la lista configurada reemplaza a los defaults. Ver O-10 |
 
 ---
 
@@ -85,6 +85,16 @@ delta que mirar; (b) **no existe endpoint admin para el log de seguridad** —`/
 Explorer** (query sobre `security` por `tipoEvento="despertarProactivo"`), y valorar exponer una consulta
 de log de seguridad al admin. Sin eso, cualquier corrida automatizada dejará E12 como no concluyente.
 
+**O-10 · Las dos listas de frases de finalización YA están configuradas en App Settings, y son mucho más
+amplias que los defaults.** `Conversacion__FrasesFinalizarIdea` tiene **23** entradas y
+`…FrasesFinalizarParticipacion` **21**, mientras el código compila solo 6 y 6. Consecuencias:
+- **E19 se puede probar sin tocar configuración**, usando una frase que exista solo en App Settings
+  (p. ej. «cerremos esta idea», «paremos aqui», «terminemos esta idea»). Si se prueba con una frase que
+  también es default (como «quiero pasar a otra idea», que fue la de E14), el caso **no distingue** si
+  la lista vino de config o del código, y no prueba nada.
+- **`QAS/13` marca E19 como «opcional; requiere el flag/config»**, lo que sugiere que hay que añadir
+  configuración. No hay que añadir nada: ya está puesta desde el 2026-08-05.
+
 **O-9 · Los documentos 10 y 13 dan alias distintos para E13, y el caso depende de coincidencia exacta.**
 `QAS/10 §2.1` dice «quiero volver a mi idea anterior»; `QAS/13` dice «quiero volver a la anterior». La
 segunda es la correcta: los alias compilados en `DetectorIntencionContinuar` incluyen «quiero volver a la
@@ -107,7 +117,7 @@ coach quedó limpia.
 
 ## Resumen
 
-**12 casos PASS, 1 bloqueado por configuración (E19), 0 fallos.** El flujo conversacional funciona en el
+**13 casos PASS, 0 fallos, 0 pendientes.** El flujo conversacional funciona en el
 entorno desplegado de punta a punta: cold-start, consolidación, evaluación con rúbrica, clasificación de
 madurez por umbral, segmentación multi-idea, coaching secuencial que avanza la cola, cierre por
 inactividad con mensaje humano de pausa, participación continua con ciclo nuevo, intención de control
@@ -117,12 +127,12 @@ rechazo neutral al no matriculado y resistencia a prompt injection.
 `I-08 v2` quedó validado de paso en producción: altas con los campos nuevos y códigos de usuario
 consecutivos `U-000002`..`U-000010`, sin saltos.
 
-**Pendiente:** solo **E19**, que necesita agregar `Conversacion__FrasesFinalizarIdea__0` con una frase
-nueva en App Settings. Es un cambio de configuración del entorno, no de código.
+Se confirmó además, de paso, que **`DT-P27-01` corte 1 opera en producción** (E19) y que **`I-08 v2`**
+asigna códigos consecutivos sin saltos.
 
-**Cuatro correcciones que hay que llevar a los documentos de QAS** para que la próxima corrida no
-tropiece con lo mismo: O-1 (dedupe), O-3 (dos campañas), O-7 (E12 solo se verifica en Data Explorer) y
-O-9 (el alias de E13 en `QAS/10 §2.1` está equivocado).
+**Cinco correcciones llevadas a los documentos de QAS** para que la próxima corrida no tropiece con lo
+mismo: O-1 (dedupe), O-3 (dos campañas), O-7 (E12 solo se verifica en Data Explorer), O-9 (el alias de
+E13 en `QAS/10 §2.1` estaba equivocado) y O-10 (E19 no requiere tocar configuración).
 
 **No se borraron datos:** las dos campañas y los 8 participantes siguen disponibles para continuar.
 

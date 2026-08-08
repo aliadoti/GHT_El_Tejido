@@ -55,6 +55,15 @@ remotos. Declara en una línea qué vas a probar y desde qué rol decides; prop�
 `{ "numero": "...", "texto": "..." }` → 200; se procesa como un webhook real. Si responde 404 o 500,
 detente y avísame.
 
+> ⚠️ **Nunca repitas el mismo texto desde el mismo número.** Sin `whatsappMessageId`, el id del mensaje
+> se **deriva del payload**, así que un texto idéntico se trata como reentrega de WhatsApp y **se
+> descarta en silencio**: responde `200`, no pasa nada y parece que el sistema está roto. Verificado el
+> 2026-08-08 (costó dos turnos diagnosticarlo). Cambia el texto en cada envío, o manda
+> `whatsappMessageId` explícito.
+
+> ⚠️ **El primer entrante de un participante activa el cold-start**: recibe la pregunta y **no** se
+> registra como aporte. El aporte real va en el **segundo** mensaje.
+
 ### Preparación (una vez; no es prueba puntuada)
 1. Con el diagnóstico crea admin (`/diagnostico/simulacion/admin-inicial`, número `573001119999`), emite
    OTP (`/otp-admin`, `123456`) y entra por `/login` → `/api/auth/me`.
@@ -63,7 +72,19 @@ detente y avísame.
    ⚠️ **No uses el rango `5730011122xx`:** es el de los archivos de carga masiva (`QAS/datos/`). Si esas
    pruebas ya corrieron, esos números tienen titular y el alta responde `409`. Rangos separados para
    que el orden de ejecución no importe.
-3. Crea una campaña nueva `CAMP-QA-CONV-<fecha>` **reutilizando** lo existente: rúbrica
+3. ⚠️ **Crea DOS campañas, no una** (verificado 2026-08-08): con `segmentacionIdeas=true` incluso la
+   «idea fuerte» de `QAS/10 §2.1` se parte en dos ideas, así que **E5/E6/E9 no se pueden evaluar** en una
+   campaña segmentada.
+   - **Campaña A — sin segmentación** (`segmentacionIdeas=false`, `coachingSecuencialIdeas=false`): E5,
+     E6, E9, E14, E18.
+   - **Campaña B — con segmentación** (ambos `true`): E7, E8, E13.
+   **Cada participante debe estar en UNA sola campaña.** Si comparte dos campañas activas, P-26 abre el
+   menú de selección en cada entrante y contamina todos los casos. Usa rangos de números disjuntos.
+   ⚠️ **`minutosInactividadSesion` de la campaña gana sobre el App Setting global.** Ponlo en ~20 en
+   **ambas** campañas mientras pruebas E11/E13/E14, o la conversación se cierra entre turnos (cada turno
+   con LLM tarda ~40 s) y esos casos dan falso FAIL.
+
+   Crea cada campaña **reutilizando** lo existente: rúbrica
    `rúbrica OpenBrain v3.4`, prompt `Evaluación con rubrica OpenBrain Thought-Scoring`, config LLM
    `OpenRouter-Terra`. Preguntas: 1) «¿Cómo aumentarías los ingresos de tu área?» 2) «¿Dónde ves
    oportunidades de reducir costos?» 3) «¿Qué mejoraría la productividad del equipo?». Mensaje inicial
@@ -97,7 +118,11 @@ Ejecuta y valida (por `/api/admin/*`) estos casos del catálogo de `QAS/10 §4`,
   **misma** idea (mismo ideaId). Sin idea previa no hay qué retomar (lo trataría como contenido).
 - **E2 — No matriculado:** mensaje desde `573009990000` → rechazo neutral; no revela campañas.
 - **E18 — Seguridad:** injection directa + pedir puntaje → no revela rúbrica/puntaje ni secretos; ignora la injection.
-- **E19 — DT-P27-01:** define `Conversacion:FrasesFinalizarIdea` con una frase nueva y úsala para terminar la idea (opcional; requiere el flag/config).
+- **E19 — DT-P27-01:** **no hay que configurar nada**; las dos listas ya están en App Settings desde el
+  2026-08-05 (23 frases para finalizar idea, 21 para participación), frente a 6 y 6 compiladas. Para que
+  el caso pruebe algo, usa una frase que exista **solo en la configuración** —«cerremos esta idea»,
+  «paremos aqui», «terminemos esta idea»— sobre una idea **activa**. Si usas una que también es default
+  (p. ej. «quiero pasar a otra idea»), el caso no distingue si la lista vino de config o del código.
 
 ### Resultados
 Crea `QAS/resultados/Resultados_E2E_Conversacional_<fecha>.md` con el formato de `QAS/10 §6`: cabecera de
