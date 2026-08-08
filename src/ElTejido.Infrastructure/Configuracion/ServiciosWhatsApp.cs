@@ -56,6 +56,10 @@ public static class ServiciosWhatsApp
 
         if (OpcionesPersistencia.HayAlmacen(configuration))
         {
+            // DT-P27-01: una entrada por lista al inicio deja historial seguro de la versión aplicada o
+            // descartada. Se registra solo cuando ya existe el repositorio append-only de seguridad.
+            services.AddHostedService<ServicioAuditoriaFrasesFinalizacion>();
+
             // I-09 tejido colectivo (Opcion A lexica, 05 §4.8): recuperador sobre la particion
             // `responses`. La Opcion B (embeddings, Conversacion:RecuperacionSemantica) queda diferida
             // tras este mismo puerto y no se registra en el Hito. El umbral de solapamiento sale de

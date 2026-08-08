@@ -23,17 +23,12 @@ public sealed class PoliticaIntencionControl
     {
         ArgumentNullException.ThrowIfNull(opciones);
 
-        IEnumerable<string> frasesFinalizarIdea = opciones.FrasesFinalizarIdea is { Count: > 0 }
-            ? opciones.FrasesFinalizarIdea
-            : DetectorIntencionContinuar.FrasesFinalizarIdeaPorDefecto;
-        IEnumerable<string> frasesFinalizarParticipacion = opciones.FrasesFinalizarParticipacion is { Count: > 0 }
-            ? opciones.FrasesFinalizarParticipacion
-            : DetectorIntencionContinuar.FrasesFinalizarParticipacionPorDefecto;
+        var resolucion = ResolutorFrasesFinalizacion.Resolver(opciones);
 
         _finalizarIdea = new DetectorIntencionContinuar(
-            frasesFinalizarIdea, opciones.MaxCaracteresClasificacionIntencionControl);
+            resolucion.FinalizarIdea.Frases, opciones.MaxCaracteresClasificacionIntencionControl);
         _finalizarParticipacion = new DetectorIntencionContinuar(
-            frasesFinalizarParticipacion, opciones.MaxCaracteresClasificacionIntencionControl);
+            resolucion.FinalizarParticipacion.Frases, opciones.MaxCaracteresClasificacionIntencionControl);
     }
 
     private PoliticaIntencionControl(

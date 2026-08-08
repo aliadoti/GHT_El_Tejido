@@ -9,13 +9,12 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **✅ `DT-QA-02` LISTADO DE EVALUACIONES — DONE LOCAL 2026-08-08.**
-> `GET /api/admin/evaluaciones` ya existe para `admin`/`visor`: lista por campaña en `fecha DESC`,
-> diagnostica `enlazada`/`huerfana`/`superada`/`sin_version_idea`, resume antes de paginar y no expone
-> texto libre. `ListarEvaluacionesAsync` no tiene default y ambos adaptadores lo implementan. Las
-> pruebas cubren los cuatro estados, autorización, filtros, PII y orden de Cosmos/memoria. No se
-> reparan documentos, no se cambian flags ni configuración remota. **Siguiente cambio de código:
-> `DT-P27-01` corte 2** (validación, registro e historial/rollback); releer su spec antes de iniciarlo.
+> **✅ `DT-P27-01` CONFIGURACIÓN VERSIONADA DE FRASES DE FINALIZACIÓN — DONE LOCAL 2026-08-08 (2/2).**
+> Cada lista se valida después de normalizar: vacío, duplicado o límite descarta la lista completa y
+> conserva el default compilado. El inicio registra en una bitácora append-only la versión aplicada,
+> default o descartada sin exponer aliases; la reversión restaura una revisión del origen de
+> configuración o vacía ambas listas. No cambió P-27, sus alias, flags, endpoint, portal ni
+> configuración remota. **Siguiente cambio de código: pendiente de priorización expresa.**
 >
 > **Registro de preparación — INICIATIVA OBJETIVO 2026-08-08 — `DT-QA-02` LISTADO DE EVALUACIONES.
 > IMPLEMENTACIÓN INMEDIATA. SPEC Y CONTRATO LISTOS, SIN CÓDIGO AÚN.**
@@ -469,9 +468,9 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 36 | **`P-30` retomar ideas del pasado** | **DONE local 2026-08-04 (3/3)** | **Codex** | Selector histórico determinista por participante, campaña y pregunta, sin filtro por estado/ciclo; selección por número o título/resumen exacto, misma idea y conversación reabiertas, curaduría suspendida, kill-switch OFF, Cosmos, telemetría sin texto, E2E y QAS. Backend 729/729, build/format/diff verdes. |
 | **37** | **`P-31` resumen de la consolidación al alcanzar un umbral propio** | 2026-08-06/07 | Codex/Claude | **DONE 3/3 y DESPLEGADO (2026-08-07).** Commits `6ba6ce0` · `32794fb` · `6d02492`. Build Release, **664 unitarias + 77 integración**, formato y `git diff --check` verdes. E2E simulada: inicio → aporte sobre umbral → resumen → mejora sin repetirlo. Guía: `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. **Flags OFF**; encenderlos exige D5 real + UAT + acta de flags, y elegir el umbral (rango útil 0.40–0.55 con base 0.6). Consulta bajo demanda del consolidado sigue **fuera de alcance**. Detalle original ↓ |
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea (campos aditivos en `IdeaConsolidada` + Cosmos) y **sin depender de los flags de P-27**. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF + opt-out por campaña. Corte 1 = perilla/política/dominio sin efecto observable; 2 = acto `ResumirAvance` y enganche en `ConfirmarOCorregirIdeaAsync`; 3 = E2E simulada, QAS y cierre. **Decisión abierta:** consulta bajo demanda del consolidado (fuera de alcance hasta decidirla). Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`. |
-| DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **EN PAUSA — 1/2 DONE local 2026-08-05; cede prioridad a P-31** | Codex | Corte 1: lectura desde config, fallback a los defaults compilados y normalización compartida, backend 730/730. Corte 2 pendiente (retomar tras P-31): validar vacíos/duplicados/límite, descartar con registro seguro e implementar historial/rollback. No permitir edición por campaña, no modificar alias ni activar P-27. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
+| DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
-| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **Siguiente: DT-P27-01 corte 2.** |
+| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **DT-P27-01 ya cerró 2/2; siguiente prioridad pendiente de decisión.** |
 | DT-P27-02 | **Calibración del clasificador P-27 (cierre sobre la última idea)** | **BACKLOG post-convención** | — | Borde detectado en la E2E conversacional desplegada (E14, 2026-08-06): una variante libre no-alias sobre la **última idea de la cola** (`QUEDAN_UNIDADES_PENDIENTES=no`) se clasifica `aportar` en vez de finalizar. Degrada seguro (no corta la idea) y los alias deterministas sí funcionan → severidad baja, no bloqueante. Ajuste **solo del prompt de sistema** de `ClasificadorIntencionControl`; **no desplegar sin pasar D5** (regresión clave: no aumentar cierres falsos de ideas con contenido). Spec: `Iniciativas/DT-P27-02_Calibracion_Clasificador_Cierre_Ultima_Idea.md`. |
 
 - **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
@@ -537,10 +536,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-3. **Deuda técnica en pausa: `DT-P27-01` corte 2 de 2.** Validar cada lista tras normalizar (vacíos,
-   duplicados, límite); ante invalidez usar el default y registrar solo el motivo; completar
-   historial/rollback y cerrar `Reglas`, QAS, `TODO.md` y `AVANCES.md`. No tocar alias vigentes ni
-   activar P-27. **Cede prioridad a `I-08 v2`**; retomar al cerrarla.
+3. **No hay cambio de código seleccionado.** `DT-P27-01` ya quedó DONE local 2/2; no activar P-27 ni
+   cambiar configuración remota como continuación automática. La próxima iniciativa requiere
+   priorización expresa del usuario.
 
 4. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por

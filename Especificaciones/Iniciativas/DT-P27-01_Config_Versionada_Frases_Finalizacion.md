@@ -1,7 +1,8 @@
 # DT-P27-01 — Configuración versionada de las expresiones determinísticas de P-27
 
 **Tipo:** Deuda técnica (refactor de configuración). Derivada de P-27.
-**Estado:** EN CURSO — corte 1 de 2 completo localmente el 2026-08-05; corte 2 pendiente.
+**Estado:** DONE local — cortes 1 y 2 completos el 2026-08-08; pendiente solo validación operativa de
+una futura calibración, sin activar P-27.
 **Fecha de decisión:** 2026-08-04.
 **Áreas afectadas:** detector de intención de control (`DetectorIntencionContinuar`), configuración de
 la aplicación, orquestador conversacional (solo lectura de config), observabilidad y pruebas de
@@ -40,8 +41,8 @@ configuración ausente, el sistema se comporta exactamente igual que hoy.
 | Default | Las listas compiladas actuales (`FrasesFinalizarIdeaPorDefecto` / `FrasesFinalizarParticipacionPorDefecto`) siguen siendo el **fallback seguro**. Config ausente o vacía = comportamiento actual idéntico. |
 | Alcance de edición | **Global**, no por campaña. No hay override por campaña ni edición libre desde el portal. |
 | Normalización | Se aplica la **misma** normalización/guarda de longitud de `DetectorIntencionContinuar` antes de comparar (coherente con las otras listas `Frases*`). |
-| Validación | Tras normalizar: sin entradas vacías, sin duplicados y sin exceder el límite de tamaño de lista; una config inválida cae al default seguro y se registra. |
-| Historial / rollback | Cambios versionados con historial y capacidad de volver a la versión anterior o al default. |
+| Validación | Tras normalizar: sin entradas vacías, sin duplicados y sin exceder `MaxFrasesFinalizacion` (20 por defecto); una config inválida cae al default seguro y se registra. |
+| Historial / rollback | Cada inicio registra la versión efectiva o el descarte en la bitácora append-only; el origen de configuración conserva las revisiones y permite volver a la anterior o al default. |
 | No incluido | No se tocan los alias vigentes, no se modifica la lógica de P-27, ni se activa P-27 como parte de esta deuda. |
 
 ---
@@ -74,6 +75,8 @@ Claves **aditivas** de aplicación (mismo estilo que `Conversacion:FrasesContinu
 |---|---|---|---|
 | `Conversacion:FrasesFinalizarIdea` | App config / env `Conversacion__FrasesFinalizarIdea__0`, `...__1` | (lista compilada `FrasesFinalizarIdeaPorDefecto`) | Alias con los que el participante pide **terminar la idea actual** (P-27). Vacío = usa la lista por defecto. |
 | `Conversacion:FrasesFinalizarParticipacion` | App config / env `Conversacion__FrasesFinalizarParticipacion__0`, `...__1` | (lista compilada `FrasesFinalizarParticipacionPorDefecto`) | Alias con los que el participante pide **terminar su participación** (P-27). Vacío = usa la lista por defecto. |
+| `Conversacion:MaxFrasesFinalizacion` | App config / env `Conversacion__MaxFrasesFinalizacion` | `20` | Máximo de entradas por cada una de las dos listas; `<=0` conserva 20. |
+| `Conversacion:VersionFrasesFinalizacion` | App config / env `Conversacion__VersionFrasesFinalizacion` | huella no reversible | Etiqueta opcional de la versión conjunta. Si falta, se genera una huella segura para poder identificarla en la bitácora. |
 
 - Tipo: lista de cadenas.
 - Precedencia: si la clave trae elementos válidos, reemplaza el default; si está ausente/vacía/ inválida,
@@ -84,8 +87,8 @@ Claves **aditivas** de aplicación (mismo estilo que `Conversacion:FrasesContinu
 
 ## 5. Validación y normalización
 
-1. Cada entrada pasa por la **misma normalización** de `DetectorIntencionContinuar` (p. ej. minúsculas,
-   recorte de espacios y la guarda de longitud vigente) antes de compararse y antes de validarse.
+1. Cada entrada pasa por la **misma normalización** de `DetectorIntencionContinuar` (minúsculas,
+   recorte de espacios, tildes y puntuación) antes de compararse y antes de validarse.
 2. Reglas de validación (tras normalizar):
    - no se admiten entradas **vacías** ni solo-espacios;
    - no se admiten **duplicados** dentro de la misma lista;
@@ -97,17 +100,23 @@ Claves **aditivas** de aplicación (mismo estilo que `Conversacion:FrasesContinu
 
 ## 6. Historial y rollback
 
-- Los cambios de estas listas se **versionan** con historial, de forma coherente con el resto de la
-  configuración conversacional, para poder auditar quién/qué cambió y **revertir** a la versión previa.
-- El **rollback** siempre tiene un destino seguro: la versión anterior válida o, en última instancia,
-  el default compilado.
+- Al iniciar con almacenamiento configurado, el sistema deja una entrada append-only por lista en
+  `LogSeguridad(configuracionFrasesFinalizacion)`: aplicada, default o descartada. Para una inválida
+  conserva únicamente `lista` y `motivo`; nunca las frases.
+- La versión es `Conversacion:VersionFrasesFinalizacion` cuando el operador la declara; si no, se usa
+  una huella no reversible. La bitácora identifica qué versión estuvo vigente y el origen de
+  configuración (App Settings/revisión del archivo) conserva sus valores y revisiones.
+- Para volver a una versión previa, restaurar allí la pareja de listas y su etiqueta, reiniciar y
+  comprobar `/health`; para volver al comportamiento base, quitar o vaciar ambas listas. El último
+  destino siempre es el default compilado.
 
 ---
 
 ## 7. Seguridad y observabilidad
 - La configuración no contiene datos de participante ni secretos; son frases de control.
-- Al descartar una config inválida se registra un evento de seguridad/observabilidad con el **motivo**
-  (vacío / duplicado / fuera de límite) y sin volcar la lista completa a logs técnicos (`10 §6`).
+- Al descartar una config inválida se registra `configuracionFrasesFinalizacion` con el **motivo**
+  (vacío / duplicado / límite) y sin volcar la lista completa a logs técnicos (`10 §6`). La falla de
+  esa auditoría nunca impide arrancar con el fallback seguro.
 - No cambia la telemetría de P-27 (`clasificacionIntencionControl`): DT-P27-01 solo altera de dónde se
   leen los alias deterministas, no cómo se ejecutan.
 
@@ -132,7 +141,7 @@ Claves **aditivas** de aplicación (mismo estilo que `Conversacion:FrasesContinu
 | Corte | Entrega verificable | Pruebas mínimas |
 |---|---|---|
 | 1 | **DONE local 2026-08-05.** Lectura de las dos claves con fallback al default compilado; normalización compartida. | Config ausente = comportamiento actual; config válida reconoce y reemplaza las frases; 29 pruebas focalizadas, 730 backend, build y formato verdes. |
-| 2 | **PENDIENTE.** Validación (vacíos/duplicados/límite) con descarte + registro del motivo; historial/rollback. | Config inválida cae al default y registra; rollback a versión previa/default; documentación final en `Reglas`. |
+| 2 | **DONE local 2026-08-08.** Resolutor común valida vacíos/duplicados/límite, descarta completo y aplica fallback; auditoría append-only segura e historial/rollback operativo por el origen de configuración. | Regresiones de vacío, duplicado normalizado, límite, versión, auditoría sin frases y mapeo Cosmos. |
 
 Cada corte deja `TODO.md` y `AVANCES.md` actualizados. Cambio **aditivo**; no desplegar ni tocar
 configuración remota sin instrucción posterior del usuario.
@@ -150,6 +159,11 @@ configuración remota sin instrucción posterior del usuario.
 ---
 
 ## 10. Rollback
-1. Vaciar o quitar `Conversacion:FrasesFinalizarIdea` y `Conversacion:FrasesFinalizarParticipacion`.
-2. El sistema vuelve a usar las listas compiladas por defecto: comportamiento idéntico al de hoy.
-3. Nada persistido cambia; la deuda es exclusivamente de configuración de aplicación.
+1. Para recuperar una calibración anterior, restaura en el origen de configuración la pareja de listas
+   y la etiqueta `Conversacion:VersionFrasesFinalizacion` de la versión que figure como `aplicada` en
+   la bitácora; luego confirma que `/health` responde correctamente.
+2. Para volver a la línea base, vacía o quita ambas listas. El sistema usa los aliases compilados.
+3. Si una lista nueva es inválida, no hay que intervenir para contenerla: se descarta completa y usa el
+   default. Corrige la versión en el origen y reinicia cuando corresponda.
+4. Nada persistido de conversaciones cambia; no hay endpoint, edición por campaña ni modificación del
+   modelo Cosmos para esta deuda.

@@ -15,11 +15,11 @@
 > `POST /diagnostico/simulacion/webhook-entrante` (gating `X-Diag-Key` + Development/`Simulacion:Habilitada`)
 > construye el `WhatsAppWebhookPayload` y encola por `IColaWebhook` sin exigir firma, de modo que las
 > pruebas E2E desplegadas no exponen el App Secret de Meta. Auditoría sin PII, id estable para el dedupe
-> y firma real intacta; falta solo desplegarlo controladamente. **El siguiente cambio de código es
-> `DT-P27-01` corte 2** (validación, historial/rollback), spec
-> `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md` /
-> `SUPUESTOS.md#config-frases-finalizacion-dt-p27-01`. En paralelo sigue lo operativo (D5/UAT/costo y
-> acta de flags). No desplegar, hacer push ni cambiar configuración remota sin autorización.
+> y firma real intacta; falta solo desplegarlo controladamente. **`DT-P27-01` ya está DONE local 2/2**:
+> valida las listas de finalización, cae seguro al default y conserva historial append-only sin aliases;
+> el rollback se hace desde el origen de configuración. La próxima prioridad de código requiere decisión
+> expresa. En paralelo sigue lo operativo (D5/UAT/costo y acta de flags). No desplegar, hacer push ni
+> cambiar configuración remota sin autorización.
 
 Eres un **equipo de ingeniería senior con más de 25 años de experiencia** construyendo software de producción. Actúas simultáneamente con la mentalidad y el rigor de estos roles, y declaras explícitamente desde qué rol decides en cada momento:
 

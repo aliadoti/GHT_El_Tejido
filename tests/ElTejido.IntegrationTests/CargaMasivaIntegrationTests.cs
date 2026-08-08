@@ -57,9 +57,10 @@ public sealed class CargaMasivaIntegrationTests
         reporte.Filas.Should().Contain(f => f.Resultado == "rechazado" && f.Motivo == "numero_invalido");
 
         // Auditoria sin PII: registra conteos, no numeros.
-        log.Registrados.Should().ContainSingle(l => l.Resultado == "carga_masiva");
-        log.Registrados.Should().OnlyContain(l => l.Numero == null);
-        log.Registrados.Single().Detalle.Should().NotContain("573001112233");
+        var auditoriasCarga = log.Registrados.Where(l => l.Resultado == "carga_masiva").ToArray();
+        auditoriasCarga.Should().ContainSingle();
+        auditoriasCarga.Should().OnlyContain(l => l.Numero == null);
+        auditoriasCarga.Single().Detalle.Should().NotContain("573001112233");
     }
 
     [Fact]

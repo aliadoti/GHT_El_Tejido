@@ -1044,10 +1044,13 @@
   - No modificar los alias vigentes de P-27, su lógica ni su activación; DT-P27-01 solo cambia de dónde se leen.
 - Alternativa(s) descartada(s): dejar las listas compiladas (obliga a recompilar/desplegar para calibrar); permitir edición por campaña (rompe la operación como capacidad global); activar P-27 dentro de esta deuda.
 - Impacto / reversibilidad: aditivo y solo de configuración de aplicación (sin cambios de Cosmos). Vaciar las claves restaura el comportamiento actual. Plan en 2 cortes.
-- Estado de implementación 2026-08-05: corte 1 DONE local. Ambas claves se enlazan a
-  `OpcionesConversacion`; lista ausente/vacía usa el default compilado y lista con elementos lo
-  reemplaza usando el mismo detector/normalización. Corte 2 conserva pendiente la validación con
-  registro seguro y el historial/rollback. Sin cambio remoto ni activación de P-27.
+- Estado de implementación 2026-08-08: **DONE local 2/2.** `ResolutorFrasesFinalizacion` valida cada
+  lista después de la normalización vigente: vacío, duplicado o exceso de
+  `MaxFrasesFinalizacion` descarta la lista completa y usa el default. Un servicio de inicio registra
+  de forma append-only la versión efectiva/default/descarte en `LogSeguridad`, sin aliases; una
+  etiqueta opcional identifica la revisión y, si no existe, se genera una huella no reversible. El
+  rollback restaura esa revisión desde el origen de configuración o vacía ambas listas para el default.
+  Sin cambio remoto, activación de P-27, endpoint, edición por campaña ni modelo Cosmos.
 - Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`.
 
 ### inyeccion-webhook-diagnostico-dt-qa-01 - Endpoint de diagnóstico para inyectar mensaje entrante sin firma

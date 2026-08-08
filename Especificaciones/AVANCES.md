@@ -4,18 +4,16 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-08 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-QA-02` DONE local.**
-  Se implemento `GET /api/admin/evaluaciones` con autorizacion `admin`/`visor`, `campaniaId`
-  obligatorio, filtros, paginacion y resumen previo a paginar. El puerto obligatorio
-  `ListarEvaluacionesAsync` se implemento en Cosmos y memoria con `fecha DESC`; la lista diagnostica
-  `enlazada`, `huerfana`, `superada` y `sin_version_idea` sin persistirlos ni exponer texto libre.
-  Los documentos legacy con `respuestaId` vacio o `ideaId` sin version se rehidratan solo para que el
-  diagnostico los haga visibles; no se reparan ni se promueven ideas. Se conserva el criterio I-16:
-  una evaluacion anterior de la misma respuesta es `superada`, no huerfana. Pruebas de endpoint,
-  autorizacion, PII y ambos adaptadores incluidas; build Release, 814 pruebas no-Calibracion, formato
-  y diff verdes. Sin flags, configuracion remota, despliegue ni push.
-  **Siguiente cambio de codigo:** `DT-P27-01` corte 2, segun su especificacion; antes, releer su
-  alcance y no activar P-27.
+- Ultima actualizacion: 2026-08-08 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-P27-01` DONE local
+  2/2.** `ResolutorFrasesFinalizacion` valida las listas globales tras la misma normalizacion del
+  detector: vacío, duplicado o exceso de `MaxFrasesFinalizacion` descarta por completo la lista y usa
+  el default compilado. El servicio de inicio registra en `LogSeguridad(configuracionFrasesFinalizacion)`
+  aplicada/default/descartada, con versión o huella y, en el descarte, solo lista+motivo; nunca aliases.
+  La auditoría no bloquea el arranque. El historial es append-only y el rollback restaura la revisión
+  anterior del origen de configuración o vacía ambas listas para el default. Pruebas focalizadas de
+  normalización, límite, auditoría y mapeo Cosmos; build Release y **821 pruebas no-Calibracion**
+  (736 unitarias + 85 de integración) verdes. Sin cambio de aliases, flags, activación P-27, endpoint/portal, configuración remota,
+  despliegue ni push. **Siguiente cambio de código: requiere priorización expresa.**
 - Registro de preparacion: 2026-08-08 (Claude Opus 5, Arquitecto/PM tecnico): **`DT-QA-02` ESPECIFICADA.
   SOLO DOCUMENTACION — cero codigo. Es el siguiente cambio de codigo, implementacion inmediata.**
   Hallazgo en diagnostico E2E: **`GET /api/admin/evaluaciones` devuelve `404`**. Verificado en
@@ -891,16 +889,15 @@
   humo de P-31 (`QAS/14`) antes de encender sus flags.
 - [ ] **Bloqueado por GHT:** la carga real (`TODO` item 22) espera el archivo con la columna
   `Telefono` diligenciada (`I-08 §9`). **No cargar datos reales hasta entonces.**
-- [ ] **Despues de I-08 v2: `DT-P27-01` corte 2 de 2**, que cedio prioridad.
 - [ ] **Pendiente del usuario (no bloquea el codigo):** verificar el guardarrail del `409` insertando
   a mano un segundo usuario activo con el numero del admin en Data Explorer, y rehacer la prueba de
   humo de P-31 (`QAS/14`) antes de encender sus flags.
   **No cargar datos reales:** falta que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
-- [ ] **EN PAUSA (retomar tras P-31): DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
-  duplicados y límite); una lista inválida se descarta completa, usa el default compilado y registra
-  únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a
-  `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. No cambiar alias, agregar edición
-  por campaña, activar P-27, desplegar ni modificar configuración remota.
+- [x] **(HECHO 2026-08-08, Codex — backend 821: 736 unitarias + 85 integración; build y focalizadas
+  verdes) DT-P27-01 corte 2 de 2.**
+  Validación normalizada de vacío/duplicado/límite, descarte completo con default, auditoría segura
+  append-only e historial/rollback desde el origen de configuración. No cambió alias, edición por
+  campaña, activación P-27, despliegue ni configuración remota.
 - [x] **(HECHO 2026-08-05, Codex — 7 integraciones focalizadas verdes) DT-QA-01.** El endpoint
   diagnosticado recibe una entrada de prueba con `X-Diag-Key`, la encola sin exponer el App Secret y
   conserva firma real, dedupe y auditoría sin PII. Pendiente solo despliegue controlado para usarlo en Azure.
@@ -1165,7 +1162,7 @@
 | P-28 | Despertar proactivo del coach | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 706/706, build/format/diff verdes | Saludo/inicio con flag global OFF, selección P-26 sin convertirlo en aporte, redacción/fallback, telemetría sin texto, Cosmos, E2E y QAS. Siguiente: P-29 corte 1. |
 | P-29 | Cierre conversacional por tiempo | DONE local 2/2; D5/UAT/costo pendiente | `09d4d84` + cambios locales corte 2 | backend 723/723 (651+72), build/format/diff verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 sin temporizador, umbral, estado ni motivo nuevos. |
 | P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
-| DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | EN CURSO 1/2 | pendiente | backend 730/730 (658+72), build/focalizadas/formato verdes | Corte 1: lectura global, fallback a defaults y normalización compartida. Corte 2: validación/registro e historial/rollback. Sin cambio de alias, flags ni configuración remota. |
+| DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -1561,6 +1558,17 @@
   sin reenviar. Se actualizó la especificación P-03 y las guías QAS. Verificado: build de producción
   Angular, E2E focalizada del portal 10/10 e integración P-03 3/3; `git diff --check` limpio. Sin
   push, despliegue ni configuración remota.
+- 2026-08-08 - Codex - **DT-P27-01 corte 2/2 DONE local: validación, historial y rollback seguro de
+  listas de finalización.** Rol: Arquitecto/Backend/SDET/AppSec; cubre DT-P27-01 §§4-10, `05 §4.4` y
+  `10 §6`. El resolutor comparte la normalización del detector y descarta completa cada lista con
+  vacío, duplicado o exceso de límite; el fallback conserva los aliases compilados. Un servicio de
+  inicio agrega `LogSeguridad(configuracionFrasesFinalizacion)` por lista aplicada/default/descartada,
+  sin frases; el motivo de descarte es lo único registrado en ese caso y el fallo de auditoría no
+  impide arrancar. `VersionFrasesFinalizacion` es opcional (huella segura si falta); rollback restaura
+  la revisión previa del origen de configuración o vacía ambas listas. Build Release y backend 821
+  (736 unitarias + 85 integración) verdes.
+  Sin cambio de alias, flags, P-27, endpoint, portal, configuración remota, despliegue ni push.
+  Handoff: próxima prioridad requiere decisión expresa.
 - 2026-08-05 - Codex - **DT-QA-01 DONE local: inyección de webhook de diagnóstico segura.** Rol:
   Arquitecto/Backend/AppSec/SDET; cubre DT-QA-01 §§2–7, `04 §6.2`, `10 §3/§6` y el supuesto
   `#inyeccion-webhook-diagnostico-dt-qa-01`. Se agregó el endpoint protegido que normaliza y encola el

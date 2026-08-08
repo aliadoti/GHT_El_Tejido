@@ -442,7 +442,7 @@ una idea. El modelo propone una etiqueta; el sistema decide siempre qué cerrar.
 **Algo va mal si:** una frase de contenido cierra algo, la orden se evalúa como idea, aparece un
 puntaje/rúbrica en la respuesta, se registra el texto libre en telemetría o el modelo cierra una campaña.
 
-### ✅/🔧 DT-P27-01 — Cambiar las frases de salida sin cambiar el programa (corte 1)
+### ✅/🔧 DT-P27-01 — Cambiar las frases de salida sin cambiar el programa
 
 **Qué es:** el equipo técnico ya puede preparar una lista global de frases para terminar una idea y
 otra para terminar la participación. Si no prepara ninguna, siguen funcionando exactamente las frases
@@ -460,11 +460,19 @@ apagada, para comprobar solo las listas.
 5. Mientras están las listas temporales, **“quiero parar aquí”** ya no debe actuar como alias fijo:
    la lista nueva reemplaza la anterior. Después pide retirar las listas temporales y comprueba que
    **“quiero parar aquí”** vuelve a funcionar.
+6. Pide al equipo técnico preparar una lista de prueba con la misma frase dos veces, aunque cambie una
+   tilde o un signo. **Deberías ver:** la aplicación sigue disponible y se usan las frases conocidas,
+   no la lista defectuosa.
+7. Pide revisar el registro técnico de inicio. **Deberías ver:** que indica cuál de las dos listas se
+   aplicó, quedó en la línea base o fue descartada y por qué, pero nunca muestra las frases completas.
+8. Para volver a una prueba anterior, pide restaurar la versión anterior de ambas listas y reiniciar la
+   aplicación; para volver a lo original, pide retirar ambas listas. **Deberías ver:** que las frases
+   de esa versión, o las originales, vuelven a responder igual que antes.
 
 **Algo va mal si:** dejar las listas vacías rompe las frases actuales, la frase personalizada se guarda
-como parte de la idea, mayúsculas o tildes cambian el resultado, se activa la interpretación libre sin
-pedirlo, o la aplicación deja de iniciar. La revisión automática de listas erróneas y su historial se
-completan en el corte 2; todavía no deben darse por probados.
+como parte de la idea, mayúsculas o tildes cambian el resultado, una lista con error queda activa, el
+registro muestra las frases completas, se activa la interpretación libre sin pedirlo, o la aplicación
+deja de iniciar.
 
 ### ✅ Salud del sistema (lo que quedó de P-09)
 **Qué es:** una comprobación simple de que el sistema está "vivo".

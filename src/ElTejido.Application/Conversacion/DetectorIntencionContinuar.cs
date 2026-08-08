@@ -205,10 +205,14 @@ public sealed class DetectorIntencionContinuar
         // Limites de palabra con espacios centinela: " asi esta bien " dentro de " ... ".
         => (" " + texto + " ").Contains(" " + frase + " ", StringComparison.Ordinal);
 
-    private static string Normalizar(string texto)
+    /// <summary>
+    /// Normalización única compartida por el detector y la validación de configuración. No cambia los
+    /// aliases: solo elimina diferencias de mayúsculas, acentos, puntuación y espacios repetidos.
+    /// </summary>
+    public static string Normalizar(string? texto)
     {
-        var sinAcentos = new StringBuilder(texto.Length);
-        foreach (var caracter in texto.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD))
+        var sinAcentos = new StringBuilder(texto?.Length ?? 0);
+        foreach (var caracter in (texto ?? string.Empty).Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD))
         {
             var categoria = CharUnicodeInfo.GetUnicodeCategory(caracter);
             if (categoria == UnicodeCategory.NonSpacingMark)

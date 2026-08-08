@@ -99,6 +99,20 @@ public sealed class OpcionesConversacion
     public int MaxCaracteresClasificacionIntencionControl { get; set; } = 160;
 
     /// <summary>
+    /// DT-P27-01 — máximo de alias permitidos en cada lista de finalización. Un valor menor o igual
+    /// a cero conserva el límite seguro compilado de
+    /// <see cref="ResolutorFrasesFinalizacion.MaxFrasesPorListaPorDefecto"/>.
+    /// </summary>
+    public int MaxFrasesFinalizacion { get; set; } = ResolutorFrasesFinalizacion.MaxFrasesPorListaPorDefecto;
+
+    /// <summary>
+    /// DT-P27-01 — identificador operativo de la versión conjunta de las listas de finalización.
+    /// Es solo trazabilidad: si se omite, se genera una huella no reversible de la configuración
+    /// efectiva y el rollback sigue siendo restaurar la versión previa desde el origen de configuración.
+    /// </summary>
+    public string? VersionFrasesFinalizacion { get; set; }
+
+    /// <summary>
     /// Frases con las que el participante expresa que ya esta conforme y quiere continuar a la siguiente
     /// pregunta (05 §4.4). Si se deja vacio, el orquestador usa <see cref="DetectorIntencionContinuar.FrasesPorDefecto"/>.
     /// </summary>

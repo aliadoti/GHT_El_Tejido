@@ -67,6 +67,13 @@ public sealed class RepositoriosSeguridadCosmosTests
     }
 
     [Fact]
+    public void MapTipoEvento_ConfiguracionFrasesFinalizacion_ConservaElEventoAditivo()
+    {
+        LogSeguridadCosmosDocument.MapTipoEvento(TipoEventoSeguridad.ConfiguracionFrasesFinalizacion)
+            .Should().Be("configuracionFrasesFinalizacion");
+    }
+
+    [Fact]
     public async Task ClasificacionesIntencionControl_CuentanLlamadasYTokensPorCampania()
     {
         var container = new FakeSecurityCosmosContainer();

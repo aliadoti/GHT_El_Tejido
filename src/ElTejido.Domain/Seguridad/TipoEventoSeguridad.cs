@@ -81,4 +81,8 @@ public enum TipoEventoSeguridad
 
     // P-31: disparo u omision del resumen de consolidacion, sin texto ni PII.
     ResumenConsolidacion,
+
+    // DT-P27-01: versión efectiva o descarte seguro de las listas globales de finalización. Nunca
+    // contiene aliases; solo lista, resultado, versión/huella y motivo técnico al descartar.
+    ConfiguracionFrasesFinalizacion,
 }

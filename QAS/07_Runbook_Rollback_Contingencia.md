@@ -23,6 +23,7 @@
 | `Conversacion:MinutosInactividadSesion=0` | App Setting | Apaga el cierre por inactividad global; los overrides por campaña deben quedar en `0`/vacíos si se requiere apagarlo para todas. |
 | `Conversacion:CuposHabilitados` | App Setting | ON aplica cupos de campaña; OFF los desactiva (ver regla D2). |
 | `Conversacion:MaxTurnosPorHilo` | App Setting | Techo duro de turnos; subir para aflojar, bajar para blindar. |
+| Restaurar/vaciar `Conversacion:FrasesFinalizarIdea` y `:FrasesFinalizarParticipacion` | App Setting | DT-P27-01: restaura una versión anterior identificada en la bitácora o vuelve a los aliases compilados. La lista inválida ya cae al default sin detener la app. |
 | `Seguridad:RateNumeroWhatsAppPorMinuto` | App Setting | Rate por número; subir/bajar la ventana. |
 | `Seguridad:PermitirReinicioDatos=false` | App Setting | Bloquea reinicio masivo (P-03) → 409. |
 | `Simulacion:Habilitada=false` | App Setting | Cierra la superficie de simulación en producción. |
