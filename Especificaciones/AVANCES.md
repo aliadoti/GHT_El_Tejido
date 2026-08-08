@@ -4,6 +4,24 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-07 (Claude Opus 5, Backend/SDET): **`I-08 v2` corte 3 — contrato de
+  API del maestro (`§8` paso 6 COMPLETO). DONE local, commit `e5e4b37`.** Backend verde **808**
+  (725 unitarias + 83 de integracion), build Release `-warnaserror`, `dotnet format` y
+  `git diff --check` limpios.
+  Alta y edicion aceptan `email`, `empresaId`, `sede`, `cargo`, `antiguedadAnios`, `idioma` y
+  `usuarioWhatsapp`; `area`/`empresa` dejan de exigirse; `codigoUsuario` no se acepta como entrada.
+  Email unico entre activos validado en aplicacion (`409`), porque al ser nullable no admite unique
+  key. `POST /usuarios/{id}/reasignar-numero` inactiva y crea en ese orden, con compensacion.
+  `GET /usuarios/plantilla-carga` genera el `.xlsx` vacio **desde la misma definicion de columnas que
+  usa el lector** —hay una prueba que lo descarga y lo vuelve a leer—, asi no pueden desincronizarse.
+  Listado con filtros `empresaId`/`sede`/`idioma` y busqueda libre que cubre email y `codigoUsuario`,
+  con el mismo alcance en Cosmos y en memoria.
+  **La base ya fue recreada y sembrada por el usuario (paso 3 hecho, 2026-08-07):** `users` con unique
+  key `/claveUnicidad`, admin `U-000001`, purga de campanias ejecutada desde el portal (5 campanias,
+  27 conversaciones, 81 respuestas, 189 participantes). `security`, `config` y `leases` se conservaron
+  a proposito. **Decision del usuario: el campo se queda como `claveUnicidad`**, no se renombra a
+  ingles.
+  **Falta solo el paso 7 (portal)** y luego desplegar. Los cortes 2 y 3 siguen **sin push**.
 - Ultima actualizacion: 2026-08-07 (Claude Opus 5, Backend/SDET): **`I-08 v2` corte 2 — lectores y
   servicio de carga (`§8` pasos 4 y 5, mas el endpoint del paso 6). DONE local, commit `d07b9f0`.**
   Backend verde **799** (719 unitarias + 80 de integracion, +37), build Release `-warnaserror`,
@@ -802,29 +820,25 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`I-08 v2` paso 3 de `§8` — recrear el contenedor `users` y sembrar. BLOQUEA los pasos 4-7 y es
-  IRREVERSIBLE.** El esquema ya esta cerrado en codigo (corte 1 DONE, ver "Estado global"), asi que
-  este es el momento. Procedimiento en `Iniciativas/I-08_Carga_Masiva_Participantes.md §3.2` y
-  `Guias_Implementacion/Guia_Azure_Portal_Paso_a_Paso.md §2.1`:
-  1. Borrar y recrear `users` con `pk = /pk` y **unique key `/claveUnicidad`** (ya **no**
-     `/whatsappNormalizado`); verificar que no quedo `/pk` como unique key.
-  2. Recrear los contenedores que referencian `usuarioId` (`campaigns`, `conversations`, `security`, …)
-     para no dejar huerfanos.
-  3. Sembrar **solo el admin** (`POST /diagnostico/simulacion/admin-inicial` ya reserva el codigo y
-     devuelve `U-000001`), lo que crea de paso el documento `Secuencia`.
-  4. Verificar el guardarrail: un segundo usuario **activo** con el numero del admin debe dar **`409`**.
-  5. **Repetir la prueba de humo de P-31** (`QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`): la
-     recreacion borra el estado del entorno donde se valido.
+- [ ] **`I-08 v2` paso 7 de `§8` — portal.** Es lo unico que falta para cerrar la iniciativa; el
+  backend esta completo (pasos 1-6, commits `63fa3e7`, `d07b9f0`, `e5e4b37`) y la base ya fue
+  recreada y sembrada. Entrega, sobre la pantalla de Usuarios que ya existe (`11 §Usuarios/Tags`):
+  1. Subida `.xlsx` **y** `.csv` (hoy el panel solo acepta `.csv`).
+  2. Selector de **modo** (`upsert` / `solo_actualizar`).
+  3. **Resolucion de conflictos de titular por fila**: la respuesta trae `nombreActual` y
+     `nombrePropuesto` mas el `codigoUsuario` del titular actual; el admin elige `corregir_nombre`,
+     `reasignar` u `omitir` y se reenvia el **mismo archivo** con `reasignaciones`.
+  4. Boton para **descargar la plantilla vacia** (`GET /usuarios/plantilla-carga`).
+  5. `codigoUsuario` en la tabla de usuarios y los campos nuevos en el formulario de alta/edicion.
+  6. Ficha de usuario con el **historico del numero** y la **reasignacion manual**
+     (`POST /usuarios/{id}/reasignar-numero`).
+  **Degradacion prevista (`I-08 §10`)** si no alcanza el tiempo: dejar los conflictos como
+  `rechazado` en la UI y hacer la reasignacion a mano desde la ficha.
+- [ ] **Despues: desplegar.** Los cortes 2 y 3 estan sin push. Un solo despliegue al cerrar el portal.
+- [ ] **Pendiente del usuario (no bloquea el codigo):** verificar el guardarrail del `409` insertando
+  a mano un segundo usuario activo con el numero del admin en Data Explorer, y rehacer la prueba de
+  humo de P-31 (`QAS/14`) antes de encender sus flags.
   **No cargar datos reales:** falta que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
-- [ ] **Despues: completar el paso 6 y hacer el 7.** Del **paso 6** falta: request DTOs de
-  `POST/PUT /api/admin/usuarios` con `email`, `empresaId`, `sede`, `cargo`, `antiguedadAnios`,
-  `idioma` y `usuarioWhatsapp` (04 §5.1); `POST /api/admin/usuarios/{id}/reasignar-numero`
-  (reasignacion manual desde la ficha); y `GET /api/admin/usuarios/plantilla-carga` para descargar la
-  plantilla vacia. El **paso 7** es el portal: subida `.xlsx`/`.csv`, selector de modo, resolucion de
-  conflictos de titular por fila, descarga de plantilla, `codigoUsuario` en la tabla e historico del
-  numero en la ficha de usuario.
-  Ya estan hechos los pasos 4 y 5 y la parte del endpoint que recibe archivo, `modo` y
-  `reasignaciones` (commit `d07b9f0`).
 - [ ] **EN PAUSA (retomar tras P-31): DT-P27-01 corte 2 de 2.** Validar ambas listas después de normalizar (vacíos,
   duplicados y límite); una lista inválida se descarta completa, usa el default compilado y registra
   únicamente el motivo. Completar historial/rollback, regresiones y cierre documental conforme a
