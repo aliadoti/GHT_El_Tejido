@@ -19,7 +19,7 @@
 > mi idea") — hoy no existe esa ruta y la petición se consolidaría como aporte.
 >
 > **▶ Siguiente: `I-08 v2`** (§1.1, TODO 22a) — carga masiva con la plantilla oficial de GHT. Spec y
-> contratos listos, 0 código. Es lo único que bloquea el freeze (8–9 ago) e incluye **recrear el
+> contratos listos, 0 código. Es lo único que bloquea el freeze (11 ago) e incluye **recrear el
 > contenedor `users`** con unique key `/claveUnicidad`, paso **irreversible** que bloquea el resto;
 > tras recrear, repetir la prueba de humo de P-31. **`DT-P27-01` corte 2** se retoma después.
 > *Pendiente de especificar:* soporte de **inglés** en el chatbot (segunda solicitud del 2026-08-06),
@@ -231,7 +231,7 @@ acta de flags + runbook** (lo que se conserva de P-09).
   `LogSeguridad(CierreUmbralAnticipado)` en App Insights, y llevar la decisión on/off al **acta de
   flags del día-D (6-ago)**. Responsable: humano/ops.
   Ver `Especificaciones/planes/Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
-- **Freeze (8–9 ago):** code freeze; carga real (I-08); dry-run E2E; congelar rúbrica/prompts/seeds.
+- **Freeze (11 ago):** code freeze; carga real (I-08); dry-run E2E; congelar rúbrica/prompts/seeds.
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según
   runbook, nunca hotfix en caliente.
 - **Post (rama de deseables / Capa 3):** P-04, P-11, P-08, P-06, P-05, I-15, P-12 y — **movidas aquí

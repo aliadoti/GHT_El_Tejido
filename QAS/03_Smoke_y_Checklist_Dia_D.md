@@ -83,7 +83,12 @@ Registrar la decisión y quién la firma. **Un flag solo va ON si pasó carga + 
 
 > **Regla de dependencia (D2):** no retirar/aflojar el tope determinístico de revisiones (I-01 vía umbral) **hasta** que los cupos P-10 estén activos en producción. Si I-01 va ON, `CuposHabilitados` debe ir ON.
 
-### 2.6 Freeze (8–9 ago)
+### 2.6 Freeze (11 ago)
+
+> ⚠️ **Fecha por reconciliar (2026-08-07).** El freeze se movió al **11-ago**, pero el hito de envío
+> del mensaje de inicio sigue documentado como **10-ago**, es decir *antes* del freeze. Confirmar cuál
+> de las dos fechas se mueve antes de ejecutar este bloque.
+
 - [ ] Code freeze aplicado.
 - [ ] Contenedor `users` recreado con unique key **`/claveUnicidad`** y semilla del admin (`codigoUsuario = 1` + documento `seq_usuario`); verificado que un segundo activo con el mismo teléfono devuelve **`409`** (`I-08 §3.2`, `Guia_Azure_Portal §2.1` paso 6).
 - [ ] Archivo de GHT recibido **con `Telefono` diligenciado** (la V1 lo trae vacío en las 129 filas; sin teléfono ninguna fila entra).

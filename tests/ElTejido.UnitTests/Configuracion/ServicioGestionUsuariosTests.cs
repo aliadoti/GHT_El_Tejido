@@ -221,6 +221,43 @@ public sealed class ServicioGestionUsuariosTests
     }
 
     [Fact]
+    public async Task ActualizarUsuario_ReactivarConTitularActivoEnEseNumero_LanzaConflicto()
+    {
+        // ADM-08c: reactivar a un inactivo cuyo numero ya tiene titular activo dejaria dos activos.
+        var inactivo = CrearUsuario("u_viejo", "573001112233", EstadoRegistro.Inactivo);
+        var repositorio = Substitute.For<IRepositorioUsuarios>();
+        repositorio.ObtenerUsuarioPorIdAsync("u_viejo", Arg.Any<CancellationToken>()).Returns(inactivo);
+        repositorio
+            .ObtenerUsuarioPorNumeroAsync(Arg.Any<NumeroWhatsApp>(), Arg.Any<CancellationToken>())
+            .Returns(CrearUsuario("u_nuevo", "573001112233"));
+        var servicio = CrearServicio(repositorio);
+
+        var act = () => servicio.CambiarEstadoUsuarioAsync(
+            "u_viejo",
+            EstadoRegistro.Activo,
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ErrorConflicto>();
+        await repositorio.DidNotReceive().GuardarUsuarioAsync(Arg.Any<Usuario>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ActualizarUsuario_ReactivarSinOtroTitular_Funciona()
+    {
+        var inactivo = CrearUsuario("u_viejo", "573001112233", EstadoRegistro.Inactivo);
+        var repositorio = Substitute.For<IRepositorioUsuarios>();
+        repositorio.ObtenerUsuarioPorIdAsync("u_viejo", Arg.Any<CancellationToken>()).Returns(inactivo);
+        var servicio = CrearServicio(repositorio);
+
+        var actualizado = await servicio.CambiarEstadoUsuarioAsync(
+            "u_viejo",
+            EstadoRegistro.Activo,
+            CancellationToken.None);
+
+        actualizado.Estado.Should().Be(EstadoRegistro.Activo);
+    }
+
+    [Fact]
     public async Task ReasignarNumero_InactivaAlTitularYCreaAlNuevoConservandoElNumero()
     {
         var anterior = CrearUsuario("u_1", "573001112233");

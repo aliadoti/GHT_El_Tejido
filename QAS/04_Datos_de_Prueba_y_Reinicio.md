@@ -80,8 +80,14 @@ La idea es realizable con recursos razonables. 0 = irrealizable; 5 = claramente 
 > `Especificaciones/Iniciativas/plantillas/plantilla_participantes_v1.{xlsx,csv}` o vía
 > `GET /api/admin/usuarios/plantilla-carga`.
 
+> **▶ Los archivos ya están en el repo: `QAS/datos/`.** No hay que transcribirlos. Ver
+> `QAS/datos/README.md`, que además explica cómo obtener la versión `.xlsx` en un minuto y por qué el
+> `.csv` ejercita la misma lógica (los dos lectores comparten definición de columnas y hay una prueba
+> que exige que produzcan filas idénticas).
+
 Columnas: `Empresa | ID Empresa | Sede | Nombre | Cargo | Email | Antigüedad en la empresa en años | Idioma | Telefono`.
-Obligatorios: **`Nombre`** y **`Telefono`**. Incluye casos sucios a propósito:
+Obligatorios: **`Nombre`** y **`Telefono`**. Incluye casos sucios a propósito
+(`QAS/datos/participantes_QA.csv`):
 
 ```csv
 Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono
@@ -112,7 +118,7 @@ Además: `Antigüedad` se guarda **decimal sin redondear** (`16.391666`); se cre
 `t_emp_ac`; cada creado recibe un `codigoUsuario` consecutivo. Re-subir (ADM-09) → los válidos pasan a
 `actualizado`, sin duplicar y **sin cambiar `codigoUsuario`**.
 
-### 5.1 Archivo de conflicto de titular — `participantes_QA_conflicto.xlsx`
+### 5.1 Archivo de conflicto de titular — `QAS/datos/participantes_QA_conflicto.csv`
 Mismo teléfono de Ana (`573001112201`) con otro nombre, para ADM-08b:
 ```csv
 Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono
@@ -125,9 +131,11 @@ ACME,AC,AC,RODRIGO NUEVO,Gerente,rodrigo.nuevo@acme.com,0.5,es,573001112202
   Reenviar con `reasignaciones=[{fila:3,accion:"reasignar"}]` → Beto queda `inactivo`, Rodrigo
   `creado` con nuevo `id` y nuevo `codigoUsuario`, resultado `reasignado`.
 
-### 5.2 Archivo para `modo=solo_actualizar`
-El mismo `participantes_QA.xlsx` con un teléfono que no existe (`573009999999`) → `no_encontrado`,
-sin alta. Sirve para verificar que el modo **nunca** crea registros.
+### 5.2 Archivo para `modo=solo_actualizar` — `QAS/datos/participantes_QA_solo_actualizar.csv`
+Un teléfono que ya existe (Ana, `573001112201`, con datos cambiados) y uno que no existe
+(`573009999999`). Esperado: Ana → `actualizado` (queda `idioma = en` y cargo `Directora`); el
+inexistente → `rechazado(no_encontrado)`, **sin crear nada** — tampoco si hubiera un inactivo con ese
+número. Verifica que el modo **nunca** crea registros: `creados = 0`.
 
 ---
 

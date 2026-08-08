@@ -91,6 +91,21 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
         var existente = await ObtenerUsuarioAsync(id, cancellationToken);
         var numero = await ResolverNumeroAsync(existente, solicitud.Numero, cancellationToken);
         await AsegurarEmailDisponibleAsync(solicitud.Email, existente.Id, cancellationToken);
+
+        // Reactivar a un inactivo cuyo numero ya tiene titular activo dejaria dos activos con el
+        // mismo telefono (I-08 §3.1.d). La unique key lo rechazaria igual, pero validar aqui da un
+        // motivo entendible en vez de un 409 crudo y hace que memoria y Cosmos se comporten igual.
+        var estadoResultante = solicitud.Estado ?? existente.Estado;
+        if (estadoResultante == EstadoRegistro.Activo && existente.Estado != EstadoRegistro.Activo)
+        {
+            var titularActivo = await _usuarios.ObtenerUsuarioPorNumeroAsync(numero, cancellationToken);
+            if (titularActivo is not null && titularActivo.Id != existente.Id)
+            {
+                throw new ErrorConflicto(
+                    "Ese numero ya tiene un titular activo; reasignalo en vez de reactivar este usuario.");
+            }
+        }
+
         var ahora = _tiempo.GetUtcNow();
 
         // codigoUsuario no cambia nunca (03 §3.1.1). El resto: null conserva, valor presente manda.

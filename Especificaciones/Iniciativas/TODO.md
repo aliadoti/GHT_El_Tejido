@@ -20,6 +20,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > `npx -y -p node@24.15.0 node ./node_modules/@angular/cli/bin/ng.js test --watch=false`.
 > `tsc` solo **no basta**: pasó limpio mientras el compilador de Angular encontraba tres roturas reales.
 > **Falta únicamente el despliegue** (cortes 2, 3 y 4 sin push; el 1 ya está en producción).
+>
+> ⚠️ **Fechas por reconciliar (2026-08-07):** el freeze se movió al **11-ago**, pero el hito de envío
+> del mensaje de inicio sigue en **10-ago**, o sea *antes* del freeze. Los documentos ya dicen 11-ago
+> para el freeze; falta confirmar si el hito también se corre.
 > **Paso 3 hecho por el usuario (2026-08-07):** `users` recreado con unique key `/claveUnicidad`,
 > admin `U-000001` sembrado, purga de campañas ejecutada desde el portal (5 campañas, 27
 > conversaciones, 81 respuestas, 189 participantes). `security`, `config` y `leases` se conservaron a
@@ -52,7 +56,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > esquema ya está cerrado en código, así que es el momento de hacerlo. Detalle en `AVANCES.md`
 > ("Próximo paso") y en `I-08 §3.2`.
 > `P-31` quedó **DONE 3/3 y desplegado** (commit `6d02492`), así que liberó la ruta. `I-08 v2` es lo
-> único que bloquea el freeze (8–9 ago).
+> único que bloquea el freeze (11 ago).
 > ⚠️ **P-31 ya está desplegado:** la recreación de la base borrará el estado del entorno donde se
 > validó. No se pierde código ni configuración, pero conviene **repetir la prueba de humo de P-31**
 > (`QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`) después de recrear y sembrar.
@@ -401,7 +405,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 20 | `P-10` costo LLM + rate por número | Sprint 2 | Claude | **YA HECHO** en el ítem 2 (2026-07-14); al llegar aquí, **verificar y saltar** |
 | 21 | `P-09` monitoreo día-D | Pruebas 4–8 ago | Codex | **Panel DIFERIDO (reunión 20-jul)** — basta health-check; se conservan `/health(/ready)`, logs de entrega, **acta de flags + runbook** (esos sí son entregables del go-live) |
 | **22a** | **`I-08 v2` plantilla oficial + maestro de usuarios** | **DONE local — falta desplegar** | **Claude** | **COMPLETA local 7/7 el 2026-08-07 — commits `63fa3e7`, `d07b9f0`, `e5e4b37`, `982c7b7`; base recreada y sembrada por el usuario. FALTA SOLO DESPLEGAR** — pasos 1 y 2 de `§8`: `Usuario` con `codigoUsuario`/`usuarioWhatsapp`/`empresaId`/`sede`/`cargo`/`email`/`antiguedadAnios`/`idioma`, `area`-`empresa` opcionales, `claveUnicidad` derivada solo en el mapeo, filtro `estado = activo` en `ObtenerUsuarioPorNumeroAsync` + `ListarUsuariosPorNumeroAsync`, contador `Secuencia` con ETag y reserva por bloque, DTO `04 §5.1` aditivo. Pasos 4 y 5 (+ endpoint parcial): `PlantillaParticipantes` con las 9 columnas, lectores `.xlsx` (ClosedXML, primario) y `.csv` que producen filas idénticas, y `ServicioCargaMasiva` en dos pasadas con modos, conflicto de titular ≥ 0,85, reasignación con compensación, tag de empresa derivada y auditoría sin PII. Backend **799** (719+80), build/format/diff verdes; corte 1 desplegado, corte 2 sin push. **▶ Siguiente: paso 3 — recrear `users` con unique key `/claveUnicidad`, sembrar el admin y verificar el `409`. Irreversible; sin él la reasignación no funciona contra Azure**; tras recrear, repetir la prueba de humo de P-31. Falta además cerrar el paso 6 (DTOs de alta/edición, `reasignar-numero`, descarga de plantilla) y el paso 7 (portal). |
-| 22 | `I-08` carga real de la lista de GHT | Freeze 8–9 ago | Claude | **TODO — BLOCKED por 22a y por GHT.** Las variables demográficas de Munir **ya llegaron**: son las columnas de la plantilla oficial (insumo cerrado). Falta que GHT entregue el archivo con **`Telefono` diligenciado** (en la V1 esa columna viene vacía en las 129 filas, igual que `Empresa` e `Idioma`). **No cargar nada hasta entonces.** |
+| 22 | `I-08` carga real de la lista de GHT | Freeze 11 ago | Claude | **TODO — BLOCKED por 22a y por GHT.** Las variables demográficas de Munir **ya llegaron**: son las columnas de la plantilla oficial (insumo cerrado). Falta que GHT entregue el archivo con **`Telefono` diligenciado** (en la V1 esa columna viene vacía en las 129 filas, igual que `Empresa` e `Idioma`). **No cargar nada hasta entonces.** |
 | 23 | **cierre por inactividad ~5 min** (granularidad sub-hora) | Sprint 2 | Claude | **DONE local dentro de I-17 (2026-07-22).** Cierre sub-hora, parametrizable por campaña, con interruptor global apagado por defecto; backend verde 420. |
 | 24 | **`P-21` multi-número de WhatsApp** | A coordinar (fuera de ruta crítica) | Codex | **DONE local 2026-07-25.** Misma WABA/App; `metadata.phone_number_id` llega al orquestador y todas las respuestas salen por ese número. `IWhatsAppGateway` acepta emisor opcional; `configConversacional.numeroWhatsAppSaliente` guarda un alias por campaña y el fallback legacy/predeterminado conserva el comportamiento actual. Sin secretos nuevos; backend 473/473 verde. |
 | 25 | **`P-22` UX de Campañas** | A coordinar (mejoras de portal) | Codex | **DONE local 2026-07-25.** Creación bajo demanda, pasos numerados con completitud y nombre accesible, enlace contextual a Envíos con id real, fieldsets con ayuda y estados vacíos. Preserva P-16/P-18/P-19/P-20 y no cambia contratos. Prettier, 21/21 pruebas Angular y build de producción verdes con Node 24.15.0. |

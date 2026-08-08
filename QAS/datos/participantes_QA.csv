@@ -1,0 +1,9 @@
+Empresa,ID Empresa,Sede,Nombre,Cargo,Email,Antigüedad en la empresa en años,Idioma,Telefono
+ACME,AC,AC,Ana Pérez,Gerente,ana.perez@acme.com,16.391666,es,573001112201
+ACME,AC,AC,Beto Ríos,Gerente 2,beto.rios@acme.com ,3.96,,573001112202
+ACME,AC,AC,Carla Díaz,,,,,3001112203
+ACME,AC,AC,Diego Luna,Gerente,diego.luna@acme.com,1.5,en,ABC123
+,,,Elsa Mora,,elsa.mora@acme.com,,es,573001112205
+ACME,AC,AC,Ana Pérez,Gerente,otra.ana@acme.com,16.39,es,573001112201
+ACME,AC,AC,Fabio Sanz,Gerente,ana.perez@acme.com,2.0,es,573001112206
+ACME,AC,AC,Gina Ruiz,Gerente,gina.ruiz@acme.com,4.0,pt,573001112207

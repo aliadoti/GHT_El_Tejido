@@ -105,7 +105,7 @@ Sprint 1a (14–18 jul) · I-01, I-05, I-06(inicio), P-03 · Fix I-16 · esquele
 Sprint 1b (21–25 jul) · I-03, I-04, I-08, I-06(cierre), I-09(core)
 Sprint 2  (28 jul–1 ago) · I-10, I-12(embed), I-13(decisión), I-14, P-07, P-10
 Pruebas   (4–8 ago)  · Pruebas robustas conjuntas · P-09 monitoreo · endurecimiento
-Freeze    (8–9 ago)  · Congelación de alcance + carga real + dry-run E2E
+Freeze    (11 ago)  · Congelación de alcance + carga real + dry-run E2E
 HITO      (10 ago)   · Envío en vivo
 ```
 
@@ -562,7 +562,7 @@ Alineado con `13_Plan_de_Pruebas_y_Aceptacion.md`. Tres niveles:
 - **Pruebas robustas conjuntas (Felipe/Munir/Jason):** validación humana de tono, relevancia de seed
   thoughts, calidad de la segmentación (sobre/sub-fragmentación) y del tejido. Aquí se calibran umbral,
   top-K y `MaxIdeasPorMensaje`.
-- **Dry-run E2E real (8–9 ago):** con billing Meta resuelto y plantilla aprobada; envío a un grupo reducido;
+- **Dry-run E2E real (11 ago):** con billing Meta resuelto y plantilla aprobada; envío a un grupo reducido;
   limpieza de transacciones de prueba en BD; revisión de infraestructura; `/health/ready = ok`.
 
 **Definition of Done del Hito:** todos los ítems de la ruta crítica en verde (o degradados por flag con
@@ -575,7 +575,7 @@ decisión registrada), P-01/P-02 resueltos, dry-run exitoso, alcance congelado y
 1. **Freeze (8 ago):** se cierra el set de flags de producción (`SegmentacionIdeas`, `TejidoColectivo`,
    `UmbralCierreAnticipado`, cupos P-10), se congela la versión de rúbrica y de prompts, se cargan los
    seed thoughts finales.
-2. **Carga real + dry-run (8–9 ago):** carga masiva de la lista final (I-08), reinicio de datos de prueba
+2. **Carga real + dry-run (11 ago):** carga masiva de la lista final (I-08), reinicio de datos de prueba
    (P-03), ensayo end-to-end, revisión de infraestructura.
 3. **Hito (10 ago):** envío del mensaje de inicio desde el portal; monitoreo en vivo (P-09); runbook de
    incidentes (si 131042 reaparece, si sube el fallback LLM, si el costo se dispara → apagar tejido/seg.).

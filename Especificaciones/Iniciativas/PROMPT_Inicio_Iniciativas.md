@@ -93,7 +93,7 @@ El orden y las ventanas salen de `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md �
 - **Sprint 1b (21–25 jul) — desarrollo mayor tras flags:** `I-06` (multi-idea) implementación + pruebas de no determinismo; `I-09` (tejido colectivo) recuperación top-k + inyección delimitada; `I-05` parafraseo; `I-08` UI; **`I-03`** prompts sobre rúbrica congelada (`I-11`). Criterio de salida: `I-06`/`I-09` funcionales en staging bajo flag, costo por conversación medido.
 - **Sprint 2 (28 jul–1 ago) — parametrización + robustez:** prueba de carga el 28 (D7); `I-10` flag por campaña; `I-12` seed thoughts; `I-13` decisión agnóstica-vs-tailored; `I-14` tags; `P-07` consentimiento; `P-10` restante (costo LLM + rate por número); resiliencia LLM (D6).
 - **Pruebas (4–8 ago):** UAT conjunta; calibración con el banco como árbitro; `P-09` workbook + runbook; acta de flags del día-D (6-ago).
-- **Freeze (8–9 ago):** code freeze; carga real (`I-08`); dry-run E2E; congelar rúbrica/prompts/seeds.
+- **Freeze (11 ago):** code freeze; carga real (`I-08`); dry-run E2E; congelar rúbrica/prompts/seeds.
 - **HITO (10-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
 - **Post (rama de deseables):** `P-04`, `P-11`, `P-08`, `P-06`, `P-05`, `I-15`, `P-12`.
 
