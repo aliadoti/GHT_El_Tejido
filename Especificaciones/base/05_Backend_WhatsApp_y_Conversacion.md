@@ -37,7 +37,10 @@ public interface IWhatsAppGateway
 `ARQ §4.1`: WhatsApp exige **plantillas HSM aprobadas** para iniciar conversación o enviar fuera de la ventana de servicio de 24h; dentro de la ventana se permite **texto libre**.
 
 El Gateway decide así:
-- **Mensaje inicial de campaña** y reenvíos/reintentos proactivos → `EnviarPlantillaAsync` usando la plantilla aprobada configurada en App Settings (`WhatsApp:PlantillaEnvioInicial`). Si falta `Nombre`, el backend rechaza el envío en vez de caer a texto libre.
+- **Mensaje inicial de campaña** y reenvíos/reintentos proactivos → `EnviarPlantillaAsync`. En el
+  camino legacy usa `WhatsApp:PlantillaEnvioInicial`. Con P-32 efectivo resuelve por participante
+  `Usuario.Idioma → MensajeInicial.localizaciones → plantillaRef → mapeo Meta del ambiente`; si falta
+  el mapeo, falla solo ese envío y nunca cae a una plantilla de otro idioma ni a texto libre.
 - **Cualquier otro envío cuando no hay ventana abierta** → `EnviarPlantillaAsync` (plantilla aprobada + variables).
 - **Retroalimentación y repregunta dentro de la ventana** (`now < conversacion.ventanaServicioVenceEn`) → `EnviarTextoAsync`.
 - **Repregunta fuera de ventana** → plantilla de repregunta aprobada (`ARQ §16`).
@@ -71,6 +74,11 @@ Invocado desde el endpoint `POST /webhook/whatsapp` (`04 §6.2`). Flujo (`ARQ §
 
 ### 2.5 Envío masivo de mensajes iniciales
 Disparado por `POST /api/admin/.../envios` (`04 §5.4`). El backend encola un job por participante; el worker los procesa con throttling y registra estado individual (`EnvioMensaje`). El reenvío reusa el mecanismo filtrando por `estadoRespuesta = sinRespuesta` (`ARQ §4.4`). El estado por participante alimenta `GET .../envios`.
+
+**P-32:** la localización y la plantilla se resuelven **dentro** del recorrido de participantes, no
+una vez por job. Un lote mixto puede encolar `es` y `en`; cada `EnvioMensaje` fija idioma,
+`plantillaRef` y código Meta. Un idioma no habilitado o plantilla faltante produce error tipificado
+por participante y no detiene el resto del lote.
 
 ### 2.6 Configuración consumida (sección `WhatsApp` de `02 §6`)
 `GraphApiBaseUrl`, `PhoneNumberId` legacy, `Numeros[]` (`Alias`, `PhoneNumberId`), `AliasPredeterminado`, `VerifyTokenSecretName`, `AppSecretSecretName`, `AccessTokenSecretName`, y el catálogo de plantillas aprobadas (nombre, idioma, mapeo de variables). Los nombres de secretos coinciden con la guía de Azure; no se agregan secretos para el segundo número.
@@ -357,11 +365,34 @@ confirmación de otra versión o idea.
 
 
 #### Textos operativos configurables
-Los textos no generados por el LLM se leen de la seccion `Conversacion:Mensajes` y pueden cambiarse por variables de entorno: `Conversacion__Mensajes__SaludoPrimerContacto`, `Conversacion__Mensajes__SaludoSiguientePregunta`, `Conversacion__Mensajes__InvitacionMejora` y `Conversacion__Mensajes__MensajeConfiguracionNoDisponible`. Si el valor falta o esta vacio, se usa el default compilado. `ConfigConversacional.MensajeCierre` sigue viniendo de la campania/portal.
+**Estado legacy:** los textos no generados por el LLM se leen de `Conversacion:Mensajes` y pueden
+cambiarse por variables de entorno; vacío usa el default compilado. `ConfigConversacional.MensajeCierre`
+sale de la campaña.
+
+**Destino P-32:** con `Conversacion:CatalogoTextosHabilitado=true`, mensajes, variantes y frases se
+resuelven por `Conversacion.idioma` desde la versión activa de `CatalogoTextosConversacion`. El
+contenido de campaña se resuelve desde `localizaciones[idioma]`. App Settings conserva flags,
+límites, duración de caché y mapeos de plantillas Meta; `Conversacion:Mensajes:*` y
+`Conversacion:Frases*` quedan deprecadas tras la migración. Un JSON del repositorio no es fuente de
+runtime; importar/exportar JSON solo transporta borradores del catálogo Cosmos.
+
+Precedencia con el gate activo: catálogo activo válido → última versión válida en caché → respaldo
+mínimo compilado del mismo idioma. Nunca se cae de inglés a español. La falta de contenido propio de
+campaña detiene la transición sin inventar una pregunta ni cambiar estado.
 
 **Saludo del primer entrante (BD):** el saludo combinado con la pregunta inicial **no** sale de `SaludoPrimerContacto` cuando la campania tiene un `MensajeInicial` activo; en ese caso se usa ese mensaje inicial (BD, variables resueltas por `RenderizadorMensaje`). `Conversacion__Mensajes__SaludoPrimerContacto` queda como **respaldo** para campanias sin mensaje inicial activo (ver `Reglas_Conversacion_y_Participacion.md §2.1`).
 
 **Invitacion a mejorar natural y variada (Opcion B):** ademas de `InvitacionMejora`, hay variantes rotadas `Conversacion__Mensajes__InvitacionMejoraVariantes__N` (respaldo del nucleo si el LLM no devuelve `repregunta_sugerida`), `Conversacion__Mensajes__InvitacionContinuarVariantes__N` (coletilla que ensena la salida del "no quiero seguir") y `Conversacion__Mensajes__AcuseContinuarVariantes__N`. La rotacion es determinista por hilo+turno. El orquestador ademas pasa el **historial reciente** del hilo al LLM (`08`) para que no repita ni loopee (ver `Reglas_Conversacion_y_Participacion.md §2.2/§2.3`).
+
+### 4.5.1 Idioma efectivo del hilo (P-32)
+
+- `Usuario.Idioma` se copia a `Conversacion.idioma` al crear el hilo/ciclo; ausencia histórica = `es`.
+- Menús previos al hilo lo copian a `EnrutamientoAporte.idioma`.
+- Un cambio del maestro aplica al siguiente hilo/ciclo; nunca mezcla una selección o coaching abierto.
+- Detectores deterministas leen las frases del idioma efectivo. Los comandos críticos de salida
+  mantienen respaldo bilingüe; la respuesta visible sigue en un único idioma.
+- Todos los llamados LLM reciben el idioma, pero el servidor conserva las decisiones y los contratos
+  internos no se traducen.
 ### 4.6 Manejo de errores
 - Si la evaluación cae en **fallback** (`08 §6`): el orquestador envía una retroalimentación neutra ("Gracias, registramos tu aporte") y cierra sin romper el hilo; la `Respuesta` queda `evaluacionPendiente` (`REQ §20.3.10`).
 - Con I-18 efectivo, el fallback se acota a la idea activa: queda trazable en incubación, se finaliza

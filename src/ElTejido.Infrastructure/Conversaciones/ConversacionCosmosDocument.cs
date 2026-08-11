@@ -22,6 +22,9 @@ internal sealed class ConversacionCosmosDocument
     [JsonProperty("preguntaId")]
     public string PreguntaId { get; init; } = string.Empty;
 
+    [JsonProperty("idioma", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Idioma { get; init; }
+
     [JsonProperty("canal")]
     public string Canal { get; init; } = "whatsapp";
 
@@ -70,6 +73,7 @@ internal sealed class ConversacionCosmosDocument
             CampaniaId = conversacion.CampaniaId,
             UsuarioId = conversacion.UsuarioId,
             PreguntaId = conversacion.PreguntaId,
+            Idioma = conversacion.Idioma,
             Canal = conversacion.Canal,
             Estado = conversacion.Estado == EstadoConversacion.Cerrada ? "cerrada" : "abierta",
             EstadoMaquina = MapearMaquina(conversacion.EstadoMaquina),
@@ -107,7 +111,8 @@ internal sealed class ConversacionCosmosDocument
             CicloParticipacion ?? 1,
             OrigenAporteMessageId,
             EnrutamientoAporteId,
-            IntencionControlPendiente?.ToDomain());
+            IntencionControlPendiente?.ToDomain(),
+            Idioma ?? "es");
 
     private static string MapearMaquina(EstadoMaquinaConversacion estado)
         => estado switch

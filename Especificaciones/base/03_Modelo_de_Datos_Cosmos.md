@@ -76,6 +76,9 @@ Notas (`ARQ §9`):
 - **Campos obligatorios del maestro:** `nombre` y `whatsappNormalizado`. `area`, `empresa`,
   `empresaId`, `sede`, `cargo`, `email` y `antiguedadAnios` son **opcionales** (`I-08 §3`); un
   documento sin ellos es válido.
+- `idioma` **ya existe** como campo de primer nivel (`I-08 v2`), admite `es|en` y usa `es` cuando el
+  origen viene vacío o el documento histórico no lo contiene. P-32 lo consume como fuente de verdad;
+  no agrega otro campo ni autodetección.
 
 **Identificadores (`I-08 §3.1`)**
 - `id` (`u_<guid>`) es el identificador **técnico** y el que referencian `ParticipanteCampania`,
@@ -183,6 +186,11 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "nombre": "Convención 2026 - Ideas",
   "descripcion": "Captura de ideas para ingresos, costos y productividad",
   "objetivo": "Recolectar y evaluar ideas",
+  "idiomasHabilitados": ["es", "en"],
+  "localizaciones": {
+    "es": { "nombre": "Convención 2026 - Ideas", "descripcion": "Captura de ideas", "objetivo": "Recolectar y evaluar ideas" },
+    "en": { "nombre": "2026 Convention - Ideas", "descripcion": "Idea collection", "objetivo": "Collect and evaluate ideas" }
+  },
   "seedThoughts": [],
   "estado": "borrador",
   "mensajesIniciales": [
@@ -190,6 +198,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
       "id": "mi_1",
       "nombreInterno": "saludo",
       "texto": "Hola {{nombre}}, ayúdanos a contestar las siguientes preguntas para {{campaña}}.",
+      "localizaciones": {
+        "es": { "texto": "Hola {{nombre}}, ayúdanos a contestar las siguientes preguntas para {{campaña}}.", "plantillaRef": "inicio_campania" },
+        "en": { "texto": "Hello {{nombre}}, please answer the following questions for {{campaña}}.", "plantillaRef": "campaign_start" }
+      },
       "orden": 1,
       "variablesDinamicas": ["nombre", "campaña", "empresa", "area"],
       "estado": "activo",
@@ -201,6 +213,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
       "id": "p_ingresos",
       "texto": "Escribe una idea para mejorar los ingresos.",
       "instruccion": "Sé concreto: qué harías y por qué ayudaría.",
+      "localizaciones": {
+        "es": { "texto": "Escribe una idea para mejorar los ingresos.", "instruccion": "Sé concreto: qué harías y por qué ayudaría." },
+        "en": { "texto": "Share an idea to improve revenue.", "instruccion": "Be specific about what you would do and why it would help." }
+      },
       "categoria": "ingresos",
       "orden": 1,
       "estado": "activo",
@@ -216,7 +232,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "conversacion": "pr_conversar", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "clasificacionIntencionControl": false, "numeroWhatsAppSaliente": null },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "mensajesCierrePorIdioma": { "es": "Gracias. Tu aporte quedó registrado correctamente.", "en": "Thank you. Your contribution has been recorded." }, "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "clasificacionIntencionControl": false, "numeroWhatsAppSaliente": null },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -261,6 +277,10 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - `configConversacional.minutosInactividadSesion` (**I-17 §7**, **aditivo**, default **ausente/null**): **override por campaña** de la ventana de **cierre por inactividad de sesión** en minutos (granularidad sub-hora que el flujo del 20-jul pide; hoy la expiración es por horas). Ausente/null = hereda el default global `Conversacion:MinutosInactividadSesion`; `<= 0` desactiva el cierre por inactividad para esa campaña. No se parametriza por pregunta. Documento viejo sin el campo = usa el global.
 - `configConversacional.numeroWhatsAppSaliente` (**P-21**, **aditivo**, default **ausente/null**): alias lógico del número que inicia los envíos de la campaña. Ausente/null usa el número predeterminado de `WhatsApp:Numeros`; nunca almacena un id de Meta. Documento viejo sin el campo conserva el envío por el número único/predeterminado.
 - `pregunta.umbralCierreAnticipado` (**I-17**, **aditivo**, default **ausente/null**): override del umbral compartido **a nivel de pregunta**. Ausente/null = la pregunta hereda el umbral de la campaña (y este, el global). Precedencia total: pregunta → campaña → global. Fracción `[0,1]`.
+- `idiomasHabilitados`, `localizaciones`, las localizaciones de mensajes/preguntas y
+  `mensajesCierrePorIdioma` (**P-32**, aditivos): documento histórico equivale a español. Para `es`,
+  los escalares actuales son fallback de compatibilidad; para otro idioma no existe fallback cruzado.
+  Todos los ids de campaña, mensaje y pregunta siguen siendo únicos e invariantes entre idiomas.
 
 ### 3.4 `ParticipanteCampania` (contenedor `participants`) — `REQ §29.4`
 
@@ -292,6 +312,9 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "campaniaId": "c_2026conv",
   "usuarioId": "u_8f3c...",
   "mensajeInicialId": "mi_1",
+  "idioma": "en",
+  "plantillaRef": "campaign_start",
+  "plantillaMetaIdioma": "en_US",
   "numero": "573001112233",
   "estadoEnvio": "enviado",
   "tipo": "Inicial",
@@ -303,6 +326,8 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 - `tipo` ∈ `Inicial` | `Reenvio` | `Repregunta` | `Cierre` | `Autenticacion` (`REQ §29.6`).
 - `estadoEnvio` ∈ `pendiente` | `enviado` | `error`. `error` lleva código/mensaje cuando aplique.
 - Append-only (`ARQ §13`).
+- `idioma`, `plantillaRef` y `plantillaMetaIdioma` (P-32, aditivos) fijan qué localización y plantilla
+  se usaron. Documento histórico sin `idioma` equivale a `es`.
 
 ### 3.6 `Conversacion` (contenedor `conversations`) — `REQ §29.11`
 
@@ -313,6 +338,8 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "campaniaId": "c_2026conv",
   "usuarioId": "u_8f3c...",
   "preguntaId": "p_ingresos",
+  "idioma": "en",
+  "catalogoTextosVersion": 3,
   "cicloParticipacion": 1,
   "origenAporteMessageId": "wamid.entrada-inicial",
   "enrutamientoAporteId": null,
@@ -346,6 +373,9 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
 }
 ```
 - `estado` ∈ `abierta` | `cerrada`.
+- `idioma` (**P-32 corte 2a, aditivo**) es el snapshot ya persistido del hilo; ausente equivale a
+  `es`. `catalogoTextosVersion` queda reservado para el siguiente enganche visible del corte 2 y,
+  mientras esté ausente, equivale al catálogo legacy. Cambiar `Usuario.Idioma` no muta un hilo abierto.
 - `estadoMaquina` (control de repregunta): ver máquina de estados en `05 §4`. Valores:
   `esperandoRespuestaInicial` | `evaluando` | `esperandoRepregunta` |
   `esperandoConfirmacionSalida` | `esperandoSeleccionIdea` | `cerrada`.
@@ -393,6 +423,8 @@ aporte a una campaña real.
   "type": "EnrutamientoAporte",
   "campaniaId": "routing:u_8f3c...",
   "usuarioId": "u_8f3c...",
+  "idioma": "en",
+  "catalogoTextosVersion": 3,
   "whatsappMessageId": "wamid.abc",
   "phoneNumberIdDestino": "123456789",
   "textoOriginal": "Se me ocurrió crear...",
@@ -426,6 +458,8 @@ aporte a una campaña real.
 - `estado` ∈
   `seleccionCampania|seleccionPregunta|seleccionIdea|listo|enIdea|completado|expirado|cancelado`.
 - `modo` (**P-30**, aditivo; ausente = `aporte`) ∈ `aporte|entradaProactiva|retomarIdea`.
+- `idioma` y `catalogoTextosVersion` (**P-32**, aditivos; ausentes = `es`/legacy) fijan los menús y
+  ayudas previos a crear la conversación; no cambian durante una selección pendiente.
 - `id` es determinístico por usuario + `whatsappMessageId`; un reintento no crea otro enrutamiento.
 - La partición reservada `routing:<usuarioId>` permite leer por usuario sin consulta cross-partition.
   No se expone como campaña y los repositorios normales filtran `type=Conversacion|Mensaje`.
@@ -471,6 +505,8 @@ aporte a una campaña real.
   "campaniaId": "c_2026conv",
   "usuarioId": "u_8f3c...",
   "preguntaId": "p_ingresos",
+  "idioma": "en",
+  "catalogoTextosVersion": 3,
   "conversacionId": "conv_...",
   "texto": "Mi idea es ...",
   "canal": "whatsapp",
@@ -490,6 +526,9 @@ aporte a una campaña real.
 ```
 - `estado` ∈ `recibida` | `evaluada` | `evaluacionPendiente`.
 - `tagsSnapshot`: tags vigentes del usuario al momento de responder (`REQ §30.1`).
+- `idioma` y `catalogoTextosVersion` (**P-32**, aditivos; ausentes = `es`/legacy) enlazan el aporte
+  con el idioma del hilo y el catálogo visible; `texto` permanece exactamente como lo escribió el
+  participante y nunca se traduce.
 - `ideaIndice` (I-06, **aditivo**, opcional): índice 1-based de la idea dentro del mensaje original. Ausente/null = respuesta histórica de una sola idea.
 - `respuestaPadreId` (I-06, **aditivo**, opcional): id lógico del mensaje que originó las N ideas; preferir `whatsappMessageId` y, si no existe, el `Mensaje.id`. Ausente/null = respuesta histórica de una sola idea.
 - `ideaRaizId`, `respuestaAnteriorId` y `revisionIndice` (**I-18**, **aditivos**, opcionales): linaje
@@ -592,6 +631,8 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "usuarioId": "u_8f3c...",
   "preguntaId": "p_ingresos",
   "rubricaRef": "r_general",
+  "idioma": "en",
+  "catalogoTextosVersion": 3,
   "versionRubrica": 3,
   "promptRef": "pr_eval",
   "versionPrompt": 5,
@@ -616,6 +657,8 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 }
 ```
 - `recomendacion` ∈ `cerrar` | `repreguntar`.
+- `idioma` y `catalogoTextosVersion` (**P-32**, aditivos) reproducen la instrucción lingüística y el
+  catálogo efectivos; documento histórico equivale a `es`/legacy.
 - `usoTokens` (P-10, **aditivo**, ausente = uso desconocido → suma 0): tokens reportados por el proveedor en la llamada; el costo acumulado de la campaña se deriva sumando este campo sobre las evaluaciones (sin documentos contadores). Ver `Campania.configSeguridad.presupuestoTokensCampania` y `10 §2`.
 - `parafraseoDevuelto` (I-05, **aditivo**, opcional): resumen fiel del aporte mostrado antes de la retroalimentación. Ausente/null (documento previo, flag apagado o salida LLM sin el campo) conserva la retro clásica; si supera `Conversacion:MaxCaracteresParafraseo`, se guarda solo hasta la última frase completa dentro del límite.
 - `ideaId`, `versionIdeaId` y `origenTextoEvaluado` (**I-19**, aditivos, opcionales): demuestran qué
@@ -730,6 +773,36 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 - `apiKeyRef` es **el nombre del secreto en Key Vault, nunca la clave** (`REQ §19.2.7`, `ARQ §10`).
 - `proveedor` ∈ `AzureOpenAI` | `OpenAI` | `OpenRouter` | `Anthropic-via-OpenRouter` | `Anthropic` | `Otro`. `Anthropic` usa el adaptador nativo `/v1/messages`; los demas no-Azure se tratan como compatibles con `/chat/completions`.
 
+### 3.13.1 `CatalogoTextosConversacion` (contenedor `config`) — P-32
+
+```json
+{
+  "id": "catalogo_conversacion_en_v3",
+  "type": "CatalogoTextosConversacion",
+  "pk": "CatalogoTextosConversacion",
+  "familiaId": "catalogo_conversacion",
+  "idioma": "en",
+  "version": 3,
+  "estado": "activo",
+  "mensajes": { "saludoPrimerContacto": "Hello! Thanks for reaching out." },
+  "frases": { "continuar": ["that is fine", "next question"] },
+  "creadoPor": "u_admin",
+  "aprobadoPor": "u_admin_2",
+  "creadoEn": "2026-08-10T15:00:00Z",
+  "activadoEn": "2026-08-10T16:00:00Z",
+  "huella": "sha256:..."
+}
+```
+
+- `idioma` ∈ `es|en` en P-32; no se activa un código que `Usuario` no admita.
+- `estado` ∈ `borrador|activo|inactivo`. Solo el borrador se edita en sitio; una versión comprometida
+  es inmutable y toda edición crea una versión nueva.
+- Exactamente una versión activa por `(familiaId, idioma)`. Todas comparten la misma partición para
+  activar/inactivar mediante lote transaccional y ETag.
+- Las claves permitidas/obligatorias son contrato del servidor; valores y listas son contenido
+  administrable. Una versión inválida nunca reemplaza parcialmente la activa.
+- `huella` identifica el contenido efectivo sin copiar mensajes/frases a logs. Ver P-32 §4 y §9.
+
 ### 3.14 `CodigoAuthAdmin` (contenedor `security`) — `REQ §10.3`, `§28.3`
 
 ```json
@@ -843,6 +916,7 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 | Conversacion, Mensaje, EnrutamientoAporte | `conversations` | 05, 06, P-26 |
 | Respuesta, IdeaConsolidada, VersionIdeaConsolidada, Evaluacion, ArtefactoMarkdown | `responses` | 05, 08, 09, I-19 |
 | Rubrica, Prompt, ConfigLLM | `config` | 07, 08 |
+| CatalogoTextosConversacion | `config` | 05, 07, P-32 |
 | CodigoAuthAdmin, LogSeguridad | `security` | 06, 10 |
 | WebhookDedupe | `leases` | 05 |
 

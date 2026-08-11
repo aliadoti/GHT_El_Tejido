@@ -44,6 +44,8 @@ cambios son aditivos y en commit aparte.
 - `Runbook_I-01_Umbral_Cierre_Anticipado.md` — runbook de activación/rollback del umbral de cierre.
 - `PROMPT_Inicio_Desarrollo_Codex.md` — prompt de arranque para retomar el desarrollo.
 - `PROMPT_Reorganizar_Documentacion.md` — prompt meta (esta reorganización).
+- `P-32_Inventario_y_Migracion_Textos.md` — inventario de textos visibles y transición desde
+  App Settings/hardcodes al catálogo multidioma.
 
 ### `Iniciativas/` — backlog del Hito y forma de trabajar
 - `00_Indice_y_Plan_de_Ejecucion.md` — **clasificación de iniciativas** (con código vs. omitidas vs.
@@ -51,7 +53,7 @@ cambios son aditivos y en commit aparte.
 - `TODO.md` — handoff vivo: objetivo actual, tabla de estado por iniciativa y primer paso ejecutable.
 - `PROMPT_Inicio_Iniciativas.md` — prompt estándar para implementar una iniciativa.
 - `D5_Banco_Calibracion.md` y una spec por iniciativa (`I-03, I-05, I-06, I-08, I-09, I-10, I-12,
-  I-16, I-17, P-03…P-13`): qué pide GHT, estado del build, diseño, contratos, riesgos, aceptación.
+  I-16, I-17, P-03…P-32`): qué pide GHT, estado del build, diseño, contratos, riesgos, aceptación.
 
 ## Orden de lectura para un agente que retoma
 1. `AVANCES.md` (Próximo paso + Tablero) → 2. `Iniciativas/00_Indice…` y `Iniciativas/TODO.md`

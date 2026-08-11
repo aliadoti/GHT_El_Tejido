@@ -12,6 +12,7 @@ namespace ElTejido.Api.Admin;
 internal sealed class AutorizacionAdminEndpointFilter : IEndpointFilter
 {
     private const string HeaderCsrf = "X-CSRF-Token";
+    internal const string PrincipalItemKey = "ElTejido.Admin.Principal";
 
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
@@ -29,6 +30,8 @@ internal sealed class AutorizacionAdminEndpointFilter : IEndpointFilter
             throw new ErrorNoAutenticado("La sesion no es valida o ha expirado.");
         }
 
+        httpContext.Items[PrincipalItemKey] = principal;
+
         var esLectura = HttpMethods.IsGet(httpContext.Request.Method);
         if (esLectura)
         {
@@ -41,6 +44,11 @@ internal sealed class AutorizacionAdminEndpointFilter : IEndpointFilter
 
         return await next(context);
     }
+
+    internal static PrincipalSesion ObtenerPrincipal(HttpContext context)
+        => context.Items.TryGetValue(PrincipalItemKey, out var value) && value is PrincipalSesion principal
+            ? principal
+            : throw new ErrorNoAutenticado("No hay una sesion administrativa validada.");
 
     private static void ValidarRolLectura(PrincipalSesion principal)
     {

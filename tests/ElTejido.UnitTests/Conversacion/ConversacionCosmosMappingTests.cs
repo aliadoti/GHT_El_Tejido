@@ -22,7 +22,7 @@ public sealed class ConversacionCosmosMappingTests
             ahora);
         cola = new PoliticaColaCoachingIdeas().RegistrarRepregunta(cola);
         var conversacion = DominioConversacion
-            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora)
+            .Iniciar("conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora, idioma: "en")
             .ConCoachingIdeas(cola);
 
         var resultado = ConversacionCosmosDocument.FromDomain(conversacion).ToDomain();
@@ -41,7 +41,9 @@ public sealed class ConversacionCosmosMappingTests
         resultado.CoachingIdeas.IdeaActiva!.RepreguntasUsadas.Should().Be(1);
         resultado.CoachingIdeas.IdeaActiva.IdeaId.Should().Be("idea_1");
         resultado.CoachingIdeas.IdeaActiva.VersionIdeaVigenteId.Should().Be("idea_1_v1");
+        resultado.Idioma.Should().Be("en");
         legacy.CoachingIdeas.Should().BeNull();
+        legacy.Idioma.Should().Be("es");
     }
 
     [Fact]
@@ -88,6 +90,21 @@ public sealed class ConversacionCosmosMappingTests
             "conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora, cicloParticipacion: 0);
 
         acto.Should().Throw<ElTejido.Domain.Common.DomainValidationException>();
+    }
+
+    [Fact]
+    public void Conversacion_IdiomaNoSoportado_LanzaYLasTransicionesConservanElSnapshot()
+    {
+        var ahora = DateTimeOffset.UnixEpoch.AddHours(1);
+        var conversacion = DominioConversacion.Iniciar(
+            "conv_1", "c_1", "u_1", "p_1", "whatsapp", null, ahora, idioma: "EN");
+
+        conversacion.RegistrarEntrante(ahora).Idioma.Should().Be("en");
+        var acto = () => DominioConversacion.Iniciar(
+            "conv_2", "c_1", "u_1", "p_1", "whatsapp", null, ahora, idioma: "pt");
+
+        acto.Should().Throw<ElTejido.Domain.Common.DomainValidationException>()
+            .Which.Code.Should().Be("IDIOMA_CONVERSACION_INVALIDO");
     }
 
     [Fact]

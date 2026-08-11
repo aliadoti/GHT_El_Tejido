@@ -85,4 +85,7 @@ public enum TipoEventoSeguridad
     // DT-P27-01: versión efectiva o descarte seguro de las listas globales de finalización. Nunca
     // contiene aliases; solo lista, resultado, versión/huella y motivo técnico al descartar.
     ConfiguracionFrasesFinalizacion,
+
+    // P-32: ciclo editorial del catalogo multidioma. Solo ids, idioma, version y huella; nunca copia.
+    CatalogoTextosConversacion,
 }

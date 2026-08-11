@@ -1095,3 +1095,41 @@
 - Impacto / reversibilidad: aditivo en configuración, dominio y persistencia, con default que preserva el comportamiento actual. Rollback = apagar el kill-switch; los campos de idempotencia quedan como dato histórico inerte y las ideas ya resumidas no repiten el envío. Plan en 3 cortes.
 - **Decisión abierta (no incluida en P-31):** consulta **bajo demanda** del consolidado ("¿cómo va mi idea?", "muéstrame mi idea"). Hoy no existe esa ruta: `CandidatasReaperturaAsync` filtra `EstadoFlujo == Cerrada`, así que el vocabulario `FrasesRevisitarIdea` solo alcanza ideas cerradas y, sin candidatas, la petición cae al flujo normal y **se consolida como aporte dentro de la propia idea**. Pendiente de decidir con el usuario si se resuelve dentro de P-31 con su propio interruptor o como iniciativa aparte.
 - Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`; requerimiento: `Client_partner/.../Nuevas iniciativas/REQ-052_Visibilidad_progreso_de_la_idea.md`.
+
+### conversacion-multidioma-catalogo-p32 - Idioma del maestro y catálogo versionado de textos
+- Fecha: 2026-08-10 - Agente/Rol: Arquitecto/Analista/AppSec - Commit: n/a (solo especificación)
+- Contexto: el usuario pidió especificar conversación español/inglés y que los textos de cualquier
+  idioma puedan modificarse sin compilar. Se verificó que `Usuario.Idioma` ya existe como campo de
+  primer nivel, admite `es|en`, usa `es` por defecto y está propagado a Cosmos/API/carga/portal. La
+  brecha está en las salidas: mensajes/frases españoles en código/App Settings, contenido de campaña
+  escalar y plantilla inicial global resuelta antes de recorrer un lote mixto.
+- Decisión:
+  - `Usuario.Idioma` es la única fuente de verdad; se fija como snapshot al crear hilo/ciclo. No hay
+    autodetección ni traducción automática. Un cambio del maestro aplica al siguiente hilo/ciclo.
+  - Los textos/frases globales viven por idioma en `CatalogoTextosConversacion`, dentro del contenedor
+    Cosmos `config` existente. Borrador editable; activo/inactivo inmutable; exactamente una versión
+    activa por idioma; activación transaccional con ETag y rollback reactivando una versión previa.
+  - Campañas mantienen los mismos ids y agregan `localizaciones`; documento histórico equivale a
+    español. Inglés nunca cae silenciosamente a español y una campaña incompleta no se activa.
+  - JSON es formato de importación/exportación y siempre entra como borrador. No es fuente primaria:
+    un JSON en el repo seguiría exigiendo despliegue y un Blob externo duplicaría versionado,
+    auditoría, permisos y caché ya disponibles en Cosmos.
+  - App Settings/env se conserva para configuración operativa por ambiente (secret refs, endpoints,
+    aliases Meta, flags, límites, timeouts, cuotas y cache TTL). Mensajes/variantes/frases editoriales
+    no son buen uso de variables de entorno y se migran; las claves legacy quedan temporalmente como
+    compatibilidad detrás de un gate OFF.
+  - Runtime: catálogo activo → última versión válida en caché → respaldo mínimo compilado del mismo
+    idioma. La falta de contenido propio de campaña detiene la transición; no inventa pregunta ni
+    cambia de idioma.
+  - El LLM recibe el idioma, pero ids, JSON, estados, límites y transiciones siguen deterministas:
+    el modelo propone, el servidor dispone.
+- Alternativas descartadas: duplicar campañas por idioma (fragmenta resultados/historial); guardar
+  todo en App Settings (sin edición/aprobación/preview/rollback adecuados y listas frágiles); usar JSON
+  versionado en el repo (requiere despliegue); introducir Blob solo para textos (infraestructura y
+  consistencia adicionales sin ventaja sobre `config`); fallback inglés→español (mezcla visible y
+  oculta una configuración incompleta).
+- Impacto / reversibilidad: contratos aditivos y gate
+  `Conversacion:CatalogoTextosHabilitado=false`. Rollback temporal al camino legacy o editorial al
+  reactivar una versión anterior; no borrar snapshots ni versiones.
+- Specs: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`,
+  `planes/P-32_Inventario_y_Migracion_Textos.md`, `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`.

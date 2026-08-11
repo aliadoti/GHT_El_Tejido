@@ -18,6 +18,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Limites de seguridad configurables (10 §2, §3; seccion "Seguridad" de 02 §6).
 var opcionesSeguridad = new OpcionesSeguridad();
 builder.Configuration.GetSection(OpcionesSeguridad.Seccion).Bind(opcionesSeguridad);
+var opcionesCatalogoTextos = new OpcionesCatalogoTextos
+{
+    // P-32: nace apagado. El preview administrativo no depende de este gate.
+    Habilitado = builder.Configuration.GetValue<bool>("Conversacion:CatalogoTextosHabilitado"),
+    CacheSegundos = builder.Configuration.GetValue<int?>("Conversacion:CatalogoTextos:CacheSegundos") ?? 60,
+};
+builder.Services.AddSingleton(opcionesCatalogoTextos);
 
 // Composition root: secretos (10 §4), persistencia Cosmos guardada (02 §6), autenticacion
 // admin/identidad (06) y rate limiter.
@@ -32,9 +39,16 @@ builder.Services.AgregarMarkdown(builder.Configuration);
 builder.Services.AgregarDiagnostico(builder.Configuration);
 if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
 {
+    builder.Services.AddSingleton<ProveedorTextosConversacion>();
+    builder.Services.AddSingleton<IProveedorTextosConversacion>(sp =>
+        sp.GetRequiredService<ProveedorTextosConversacion>());
+    builder.Services.AddSingleton<IInvalidacionCacheCatalogosTextos>(sp =>
+        sp.GetRequiredService<ProveedorTextosConversacion>());
+    builder.Services.AddSingleton<IResolutorTextosConversacion, ResolutorTextosConversacion>();
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
+    builder.Services.AddScoped<IServicioGestionCatalogosTextos, ServicioGestionCatalogosTextos>();
     builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
     builder.Services.AddScoped<IServicioPurgaCampanias, ServicioPurgaCampanias>();
     // I-08 v2: carga masiva con la plantilla oficial de GHT. El .xlsx es el formato primario (es el
@@ -80,6 +94,7 @@ app.MapearEndpointsPreparacion();
 // Identidad y autenticacion admin (04 §4, 06).
 app.MapearEndpointsAuth();
 app.MapearEndpointsAdminConfiguracion();
+app.MapearEndpointsAdminCatalogosTextos();
 app.MapearEndpointsAdminFase4();
 app.MapearEndpointsAdminMantenimiento();
 

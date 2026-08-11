@@ -436,10 +436,32 @@ Ante un mensaje sin flujo activo, la precedencia final será: petición explíci
 aporte sustantivo nuevo elegible → P-26; saludo/petición de entrada → P-28; sin elegibles → rechazo
 neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de esas transiciones aplicar.
 
+### 2.12 Idioma del participante y textos editables (P-32, especificada)
+
+1. El idioma sale de `Usuario.Idioma` (`es|en`, default `es`); no se autodetecta ni lo decide el LLM.
+2. Al crear un hilo/ciclo se guarda un snapshot. Editar el maestro no cambia una conversación abierta;
+   el siguiente hilo/ciclo usa el nuevo valor.
+3. Todo texto visible se resuelve en ese idioma: campaña/pregunta/cierre desde sus localizaciones;
+   saludos, ayudas, menús, errores y frases desde el catálogo global activo.
+4. Para `en` no existe fallback silencioso a `es`. Una campaña incompleta se bloquea antes de activar
+   o enviar; en runtime no se inventa contenido ni se avanza estado.
+5. Los aportes e historial se guardan en su idioma original. No hay traducción automática.
+6. Evaluación, consolidación, segmentación, intención y redacción reciben el idioma, pero estados,
+   límites, ids, JSON y decisiones siguen siendo invariantes y server-side.
+7. El contenido global se versiona en Cosmos `config` y puede activarse/revertirse sin build. JSON es
+   formato de importación/exportación de borradores; no es la fuente primaria del repositorio.
+8. Variables de entorno conservan flags, límites, timeouts, caché y mapeos Meta. Los textos/frases
+   editoriales se migran al catálogo y sus claves legacy quedan deprecadas.
+
 ## 3. Parámetros configurables
 
 | Parámetro | Dónde se configura | Default | Efecto |
 |---|---|---|---|
+| `Usuario.idioma` | Portal/carga masiva/API | `es` | **P-32:** fuente de verdad `es|en`; se copia al hilo/ciclo y al envío. |
+| Catálogo global `CatalogoTextosConversacion` | Portal/API, Cosmos `config` | respaldo compilado `es/en` | **P-32:** mensajes y frases versionados por idioma; una versión activa por idioma, rollback sin build. |
+| `Campania.idiomasHabilitados` + `localizaciones` | Portal admin (campaña/mensajes/preguntas) | `["es"]` / campos legacy españoles | **P-32:** contenido propio por idioma bajo los mismos ids; inglés incompleto no se activa. |
+| `Conversacion:CatalogoTextosHabilitado` | App config / env | `false` | **P-32:** gate de migración. OFF conserva exacto el camino actual; ON usa catálogo/caché/respaldo del mismo idioma. |
+| `Conversacion:CatalogoTextos:CacheSegundos` | App config / env | `60` recomendado | **P-32:** expiración de caché; valor operativo, no contenido editorial. |
 | `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Techo técnico de preguntas socráticas por idea (0 = ninguna). Puede configurarse alto para acompañar hasta madurez; no es la salida normal de una idea. |
 | `Conversacion:UmbralCierreAnticipado` | App config / env `Conversacion__UmbralCierreAnticipado` | 0 (**desactivado**) | Default numérico heredable para campañas sin override; fracción de la escala `[0,1]`. |
 | `configConversacional.umbralCierreAnticipado` | Portal admin (campaña) | `null` (**hereda global**) | Override opcional por campaña; `<= 0` apaga solo esa campaña. |
@@ -509,8 +531,10 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 | `Conversacion:IntervaloRevisionMinutos` | App config / env `Conversacion__IntervaloRevisionMinutos` | 15 | Cada cuánto corre el barrido de expiración (mín. 1). |
 | Rúbrica / Prompt / ConfigLLM | Portal admin | — | Deben estar activos (y el prompt aprobado) para evaluar; si no, fallback. |
 
-> Si un texto de `Conversacion:Mensajes:*` se deja vacio o con espacios, el orquestador usa el default
-> compilado para evitar mensajes salientes vacios.
+> **Legacy hasta P-32:** si un texto de `Conversacion:Mensajes:*` queda vacío, el orquestador usa el
+> default compilado. Con el catálogo activo se valida la versión completa y se usa catálogo → última
+> versión válida → respaldo del **mismo idioma**. `Conversacion:Mensajes:*` y `Conversacion:Frases*`
+> dejan de ser la vía editorial después de la migración.
 
 > Para **activar la expiración** en Azure: agregar el App Setting
 > `Conversacion__HorasExpiracionSinRespuesta` con el número de horas deseado (p. ej. `72`). Con `0` o sin
@@ -536,6 +560,8 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 - **Aclaración P-27 (opcional):** `esperandoRepregunta → esperandoConfirmacionSalida →
   esperandoRepregunta|cerrada`; las opciones 1/2/3 son deterministas y no consumen una repregunta.
 - **Respuesta:** `evaluada` (evaluación válida) o `evaluacionPendiente` (fallback / sin evaluación).
+- **Idioma P-32:** `Usuario.Idioma` se fija al crear `Conversacion`/`EnrutamientoAporte`; ninguna
+  transición de la máquina cambia ese snapshot.
 
 ## 5. Referencias
 - `05_Backend_WhatsApp_y_Conversacion.md` §2 (ventana, envío), §4 (orquestador, tope de repregunta).
@@ -543,3 +569,5 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 - `09_*` (compilación Markdown).
 - `SUPUESTOS.md#primer-contacto-pregunta`, `#orquestador-conversacional`.
 - `AVANCES.md` (tablero por fases, estado real).
+- `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md` y
+  `planes/P-32_Inventario_y_Migracion_Textos.md`.

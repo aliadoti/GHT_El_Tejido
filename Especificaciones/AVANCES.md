@@ -4,6 +4,20 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-10 (Codex, Arquitecto/Backend/SDET/AppSec): **`P-32` CORTE 1/4
+  DONE local.** Se implementó la base vertical del catálogo: entidad inmutable `es|en`, estados
+  borrador/activo/inactivo, registro cerrado de 21 mensajes y 12 listas, validación de límites,
+  placeholders y duplicados normalizados, huella SHA-256, versionado y ETag. Hay repositorios en
+  memoria y Cosmos `config`; la activación transaccional deja un solo activo por idioma. La API admin
+  permite listar, crear, clonar, editar borradores, activar, consultar el activo e importar/exportar
+  JSON, reutiliza permisos admin/visor + CSRF y audita actor/idioma/versión/huella sin copiar textos.
+  El proveedor respeta `CatalogoTextosHabilitado=false`, usa caché TTL, valida huella al refrescar,
+  conserva la última versión válida y cae solo a emergencia del mismo idioma; la activación invalida
+  la caché. `POST .../semillas/{idioma}` fotografía las opciones efectivas `es` o usa el borrador `en`
+  curado, sin activarlo. Build Release verde y **837 pruebas no-Calibracion** verdes (750 unitarias +
+  87 integración); formato y diff-check verdes. **Todavía no cambia la
+  conversación:** el proveedor no está conectado al orquestador; faltan snapshot/adaptador del corte
+  2, campañas, envío mixto y portal. Sin Azure, flags, despliegue ni push.
 - Ultima actualizacion: 2026-08-08 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-P27-01` DONE local
   2/2.** `ResolutorFrasesFinalizacion` valida las listas globales tras la misma normalizacion del
   detector: vacío, duplicado o exceso de `MaxFrasesFinalizacion` descarta por completo la lista y usa
@@ -880,6 +894,10 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **Iniciar P-32 corte 2.** Agregar snapshot de idioma al hilo/ciclo y un adaptador que proyecte
+  catálogo a los mensajes/frases globales. Mantener el gate OFF y probar regresión legacy antes de
+  migrar detectores o textos visibles. Para activar se requieren traducciones inglesas y plantillas
+  HSM aprobadas.
 - [ ] **Desplegar `I-08 v2`.** La iniciativa esta COMPLETA local (7/7 pasos); faltan por subir los
   cortes 2, 3 y 4 (commits `d07b9f0`, `e5e4b37`, `982c7b7`). Un push a `main` dispara el CD.
   Despues del despliegue, probar contra Azure: descargar la plantilla desde el portal, diligenciar
@@ -1583,3 +1601,27 @@
   de app config y reemplazo de aliases; backend 730/730, build Release sin warnings y formato verde. Sin cambio de
   alias, flags, Cosmos/API, despliegue o config remota. Handoff: corte 2, validación/registro e
   historial/rollback.
+- 2026-08-10 - Codex - **P-32 corte 1/4 DONE local — catálogo seguro y proveedor desconectado.** Rol:
+  Arquitecto/Backend/SDET/AppSec. Se agregaron `CatalogoTextosConversacion`, validador con registro
+  cerrado de claves/placeholder/límites/huella, servicio versionado, ETag y activación única; repos de
+  memoria y Cosmos con batch transaccional; endpoints admin con permisos, CSRF, import/export y
+  auditoría sin contenido. Se completó proveedor con gate OFF, caché TTL, validación de huella,
+  LKG, emergencia `es/en`, invalidación al activar y semillas administrativas que nunca autoactivan.
+  Validación: build Release sin warnings, 837 pruebas no-Calibracion, formato y diff-check verdes.
+  No se conectó el catálogo al orquestador y no se cambió Azure. Handoff: corte 2, primero snapshot de
+  idioma + adaptador global con regresión legacy antes de sustituir hardcodes/detectores.
+- 2026-08-10 - Codex - **P-32 corte 2a/4 DONE local — snapshot de idioma y adaptador preparado.**
+  `Conversacion` fija `Idioma` (`es|en`) al crear un hilo/ciclo desde `Usuario.Idioma`, lo conserva
+  en sus transiciones y en Cosmos; documentos históricos sin campo equivalen a `es`. Resultados lo
+  devuelve de forma aditiva. `ResolutorTextosConversacion` consulta el proveedor por ese snapshot y,
+  con el gate OFF, proyecta exactamente el legado español; aún no se conecta al orquestador ni cambia
+  textos, detectores, Azure o configuración remota. Pruebas de snapshot, round-trip y regresión
+  legacy añadidas. Handoff: corte 2b, migrar salidas/detectores globales de forma incremental y seguir
+  con gate OFF.
+- 2026-08-10 - Codex - **P-32 conversación multidioma y catálogo versionado — ESPECIFICADA.** Rol:
+  Arquitecto/Analista/AppSec; se confirmó `Usuario.Idioma` (`es|en`, default `es`) en dominio,
+  persistencia y contratos. Se diseñaron catálogo Cosmos editable/versionado, localizaciones de
+  campaña, resolución de plantilla por participante, snapshots, caché/fallback, API/portal,
+  seguridad, migración en 4 cortes y QAS. Variables de entorno quedan para operación; los textos y
+  frases editoriales migran al catálogo. Solo documentación; sin código, configuración remota,
+  despliegue ni push. Handoff: implementación solo tras priorización expresa.

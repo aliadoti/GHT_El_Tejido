@@ -22,6 +22,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 13 | [Prompt para Claude Code — pruebas conversacionales](13_Prompt_ClaudeCode_Pruebas_Conversacionales.md) | Variante centrada en el flujo del coach por WhatsApp simulado. |
 | 14 | [P-31 · Resumen de la consolidación](14_P31_Resumen_Consolidacion_Como_Probar.md) | Cómo comprobar que el participante ve su idea acumulada antes de terminarla. |
 | 15 | [I-08 v2 · Carga masiva](15_I08v2_Carga_Masiva_Como_Probar.md) | Guía ejecutable de la carga por Excel/CSV: datos sucios, idempotencia, modos, **conflicto de titular y reasignación**, y el guardarraíl de un solo activo por teléfono. |
+| 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | Corte 1/4 DONE local: catálogo/API/caché/semillas. La aceptación conversacional completa sigue pendiente de los cortes 2–4. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)
@@ -43,6 +44,10 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 El **no determinismo del LLM** se gestiona en todo el paquete con **criterios cualitativos tolerantes**; lo determinista (cupos, dedupe, firma, umbral, estados) se valida al pie de la letra. Regla: *"el LLM propone, el sistema dispone"*.
 
 ## Nota de estado (2026-08-07)
+
+**Actualización 2026-08-10:** P-32 tiene el corte 1/4 DONE local. La guía **16** define la aceptación
+completa; no debe reportarse como PASS conversacional ni activarse todavía porque el runtime,
+campañas, envío mixto y portal siguen pendientes.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

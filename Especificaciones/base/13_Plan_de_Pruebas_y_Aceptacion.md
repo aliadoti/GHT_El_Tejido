@@ -50,6 +50,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 13. Durante una mejora puede pedir con palabras naturales dejar la idea o terminar por ahora; el
     sistema no evalúa esa orden como parte de su idea y aclara con opciones cuando el alcance no es
     seguro.
+14. **P-32:** el idioma del maestro (`es|en`) gobierna saludo, pregunta, menús, coaching, cierres,
+    errores y reingreso. Un hilo abierto no cambia de idioma; el siguiente ciclo sí usa una
+    modificación del maestro. No hay traducción automática ni fallback silencioso entre idiomas.
 
 ## 4. Criterios de aceptación — Sistema y Seguridad (`REQ §33.3`, `§36.6`)
 1. Guarda historial, mensajes iniciales enviados, estado de envío, aportes, ideas consolidadas,
@@ -67,6 +70,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
     auditoría y aplica cupos móviles de 24 h sin reiniciar el presupuesto de campaña.
 11. P-27 trata la clasificación LLM como candidato no confiable: solo el servidor valida y ejecuta la
     transición; fallos, cupo agotado o salida inválida no cierran ideas ni conversaciones.
+12. P-32 mantiene catálogo válido/versionado por idioma; importación solo a borrador, activación
+    atómica y rollback sin build; ETag evita pérdida concurrente. Falla de Cosmos usa última versión
+    válida/respaldo del mismo idioma y la auditoría no contiene textos ni frases.
 
 ---
 
@@ -105,6 +111,8 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 22. Con P-30 encendida, sembrar ideas maduras, pendientes y rechazadas en ciclos distintos; pedir
     retomar, elegir por número y por resumen exacto, aportar una mejora y comprobar que se re-evalúa el
     mismo `ideaId`. Repetir con el flag apagado y confirmar que solo queda la reapertura reciente.
+23. **P-32 (cuando se implemente):** repetir el recorrido con participantes `es` y `en`, enviar un
+    lote mixto, activar/revertir un texto y comprobar el rechazo de una campaña inglesa incompleta.
 
 ---
 
@@ -133,6 +141,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |
 | §32 Marca GHT | 11 §5 | Revisión visual |
 | §31.8 Mantenibilidad/separación | 01 §2, 02 §3 | Revisión de arquitectura + §4.9 |
+| Conversación multidioma y textos editables P-32 | P-32, 03 §3.13.1, 04 §5.7.1, 05 §4.5.1 | Unit/integration + E2E bilingüe §5.23 + `QAS/16` |
 
 ---
 

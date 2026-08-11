@@ -449,7 +449,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora,
                 cicloParticipacion: reciente.CicloParticipacion + 1,
                 origenAporteMessageId: mensaje.WhatsappMessageId,
-                enrutamientoAporteId: contexto.EnrutamientoAporteId);
+                enrutamientoAporteId: contexto.EnrutamientoAporteId,
+                idioma: usuario.Idioma);
             if (existente is null)
             {
                 await _conversaciones.GuardarConversacionAsync(conversacionCiclo, cancellationToken);
@@ -606,7 +607,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        conversacion ??= DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora);
+        conversacion ??= DominioConversacion.Iniciar(
+            conversacionId,
+            campania.Id,
+            usuario.Id,
+            pregunta.Id,
+            Canal,
+            null,
+            ahora,
+            idioma: usuario.Idioma);
         var pendienteControl = conversacion.IntencionControlPendiente;
         if (conversacion.CoachingIdeas is { Estado: EstadoCoachingIdeas.Activo })
         {
@@ -3895,7 +3904,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     {
         // Crea el hilo y lo deja en esperandoRespuestaInicial (no avanza a Evaluando) renovando la ventana.
         var conversacion = DominioConversacion
-            .Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora)
+            .Iniciar(conversacionId, campania.Id, usuario.Id, pregunta.Id, Canal, null, ahora, idioma: usuario.Idioma)
             .RegistrarEntrante(mensaje.Timestamp);
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
@@ -3943,7 +3952,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var conversacionId = CrearConversacionId(campania.Id, usuario.Id, siguiente.Id);
-        var conversacion = DominioConversacion.Iniciar(conversacionId, campania.Id, usuario.Id, siguiente.Id, Canal, null, ahora);
+        var conversacion = DominioConversacion.Iniciar(
+            conversacionId,
+            campania.Id,
+            usuario.Id,
+            siguiente.Id,
+            Canal,
+            null,
+            ahora,
+            idioma: usuario.Idioma);
         var texto = Combinar(TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault), siguiente.Texto);
 
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, emisor, ahora, cancellationToken);

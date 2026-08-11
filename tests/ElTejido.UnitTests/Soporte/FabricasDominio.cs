@@ -19,7 +19,8 @@ internal static class FabricasDominio
         RolUsuario rol = RolUsuario.Admin,
         EstadoRegistro estado = EstadoRegistro.Activo,
         string nombre = "Admin",
-        int codigoUsuario = 1)
+        int codigoUsuario = 1,
+        string idioma = "es")
         => Usuario.Crear(
             id,
             codigoUsuario,
@@ -32,7 +33,8 @@ internal static class FabricasDominio
             tags: null,
             propiedadesDinamicas: null,
             Epoca,
-            Epoca);
+            Epoca,
+            idioma: idioma);
 
     public static Pregunta CrearPregunta(string id, int orden, EstadoRegistro estado = EstadoRegistro.Activo)
         => Pregunta.Crear(

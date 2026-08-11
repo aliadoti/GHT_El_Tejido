@@ -105,6 +105,12 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 
 **Resultados** (`REQ §33.1.17–21`, `§27.3`): la campaña recordada en la sesión (o la primera disponible) se carga sin exigir una consulta manual. Con I-19, el patrón maestro-detalle presenta **una fila por idea consolidada**, no por aporte: participante, `Madura|Pendiente|Rechazada`, estado del flujo/curaduría y extracto de la versión vigente. Al elegirla se ven calificación, explicación, Markdown canónico y un historial expandible de aportes, versiones, confirmaciones y evaluaciones; descarga `.md` y regeneración siguen solo para admin. Los resultados legacy sin `ideaId` permanecen visibles como históricos. Incluye resumen, leyenda visible de estados y actividad de conversaciones como acceso secundario. Los filtros adicionales requieren soporte de contrato; no se inventan desde esta vista.
 
+**Textos de conversación** (**P-32**): selector de idioma/versión/estado; edición agrupada de mensajes
+y frases; placeholders y límites visibles; preview efectivo; crear versión, activar, rollback e
+importar/exportar JSON. `visor` solo lee; `admin` muta. Campañas añade pestañas Español/English para
+campaña, mensajes, preguntas y cierre, con indicador de completitud antes de activar. El portal
+administrativo como tal permanece en español.
+
 ---
 
 ## 7. Accesibilidad y UX
@@ -133,5 +139,8 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
   por API y su ayuda no confunde continuidad con estado `activa`.
 - Un admin puede crear/editar `clasificacionIntencionControl`; el visor solo la lee, el valor hace
   round-trip y la ayuda explica costo adicional, dependencia de ConfigLLM y decisión server-side.
+- P-32: un borrador no afecta runtime; activar cambia el texto efectivo sin build/deploy y rollback
+  reactiva una versión anterior. El portal no activa localizaciones incompletas ni renderiza HTML
+  administrado sin escape.
 
 *Fin del documento.*

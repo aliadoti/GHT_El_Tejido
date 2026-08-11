@@ -150,6 +150,19 @@ public sealed class OrquestadorCiclosP26Tests
     }
 
     [Fact]
+    public async Task AporteEnrutado_SinConversacionPrevia_FijaElIdiomaDelParticipanteEnElHilo()
+    {
+        await Construir().ProcesarAporteEnrutadoAsync(
+            Participante(idioma: "en"),
+            Mensaje("Hello", "wamid.english"),
+            new ContextoAporteEnrutado("p_1", null),
+            CancellationToken.None);
+
+        _conversaciones.Conversaciones.Should().ContainSingle()
+            .Which.Idioma.Should().Be("en");
+    }
+
+    [Fact]
     public async Task AporteEnrutado_PreguntaYaNoActiva_DegradaAlFlujoNormal()
     {
         await _conversaciones.GuardarConversacionAsync(
@@ -366,7 +379,8 @@ public sealed class OrquestadorCiclosP26Tests
 
     private static ParticipanteResuelto Participante(
         bool participacionContinua = true,
-        int maxMensajesPorUsuario = 10)
+        int maxMensajesPorUsuario = 10,
+        string idioma = "es")
     {
         var pregunta = CrearPregunta("p_1", 1);
         var campania = Campania.Crear(
@@ -382,7 +396,7 @@ public sealed class OrquestadorCiclosP26Tests
             usuariosHabilitados: null,
             Epoca,
             Epoca);
-        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: idioma);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }

@@ -46,6 +46,8 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - P-27 agrega `configConversacional.clasificacionIntencionControl` (aditivo, default `false`) al
   crear, consultar, editar y duplicar. Solo habilita la clasificación flexible; el kill-switch global
   y la política server-side no son editables desde el CRUD de campaña.
+- P-32 agrega `idiomasHabilitados` y `localizaciones` en campaña/mensajes/preguntas. Documento
+  histórico equivale a español; duplicar copia todas las localizaciones y activar valida completitud.
 
 ### 2.2 Reglas de negocio (`REQ §11.3`)
 - Solo `activa` permite envío de mensajes iniciales y recepción de respuestas (`§11.3.1–2`).
@@ -61,12 +63,17 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Soportan variables dinámicas `{{nombre}}`, `{{campaña}}`, `{{empresa}}`, `{{area}}` (`REQ §15.3`); el renderizado de variables ocurre en el Gateway al enviar (`05 §2`).
 - Si la API de WhatsApp exige plantilla aprobada para iniciar, el mensaje inicial mapea a una **plantilla HSM** (campo `plantillaWhatsApp`) (`REQ §15.4.10`, `ARQ §4.1`). El texto editable sirve para la variante de plantilla y para trazabilidad.
 - Varios mensajes iniciales se envían en el `orden` configurado (`§15.4.3`).
+- **P-32:** el mismo mensaje tiene `localizaciones[es|en]` con `texto` y `plantillaRef`. El alias
+  lógico se mapea a la plantilla Meta del ambiente; no se persiste el id físico del proveedor como
+  contenido editable. Para `es`, el escalar `texto` es fallback temporal; `en` nunca hereda español.
 
 ### 2.4 Preguntas (`REQ §16`)
 - Sub-recurso de campaña. Campos en `03 §3.3`.
 - Cada pregunta puede asociar su propia `rubricaRef`(+versión) y `promptRefs`, sobreescribiendo los de la campaña.
 - `maxRepreguntas` (MVP=1), `limitesSeguridad`, `configMarkdown` por pregunta.
 - Las preguntas MVP iniciales: mejorar ingresos, reducir costos, mejorar productividad (`REQ §16.1`) — se **cargan como datos**, no se hardcodean.
+- **P-32:** `localizaciones[idioma].texto/instruccion` comparte el mismo `Pregunta.id`, rúbrica,
+  límites y estados. Una campaña bilingüe no se activa si una pregunta activa está incompleta.
 
 ### 2.5 Selección de participantes (`REQ §14`)
 - Asociar por ids o por filtro (área/empresa/tags/búsqueda/número) vía `/api/admin/campanias/{id}/participantes` (`04 §5.3`).
@@ -117,6 +124,20 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 ### 5.2 Acceso en runtime
 - El módulo de Evaluación (`08`) lee `ConfigLLM` activa y resuelve la API key por `apiKeyRef` desde Key Vault vía Managed Identity, con **caché en memoria de expiración corta** (no persiste el secreto en disco) (`ARQ §10.8`).
 
+### 5.3 Catálogo de textos conversacionales (P-32)
+
+- Se persiste en el contenedor existente `config` (`03 §3.13.1`) y se administra por `04 §5.7.1`.
+- Versionado híbrido: borrador editable en sitio; activo/inactivo inmutable; una edición posterior
+  crea nueva versión. Exactamente una versión activa por idioma.
+- Activar valida el catálogo completo y cambia versiones en un lote transaccional de la misma
+  partición con ETag. No existe activación parcial ni importación que publique automáticamente.
+- El proveedor runtime expone lecturas por clave e idioma, caché corta y última versión válida. Un
+  fallo de Cosmos no reemplaza una versión válida por contenido incompleto.
+- El registro de claves, tipos, placeholders y límites es contrato del servidor. El portal modifica
+  valores/listas, no inventa claves.
+- App Settings conserva solo configuración operacional (gate, cache TTL, flags/límites y mapeos Meta).
+  Los textos y frases editoriales legacy se migran y después quedan deprecados.
+
 ---
 
 ## 6. Validaciones transversales
@@ -131,6 +152,8 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Configura el proveedor/modelo LLM y guarda la API key de forma segura (solo `apiKeyRef` en BD; key en Key Vault; enmascarada en UI).
 - Solo campañas activas permiten envío/recepción.
 - Duplicar una campaña produce una plantilla reutilizable.
+- P-32: un admin puede editar/versionar textos `es/en` y revertirlos sin build; una campaña bilingüe
+  incompleta no se activa y una campaña legacy española sigue funcionando.
 - Crear/editar/duplicar preserva `participacionContinua`; un documento histórico ausente se devuelve
   como `false`.
 - Crear/editar/duplicar preserva `clasificacionIntencionControl`; ausente se devuelve como `false` y

@@ -277,10 +277,19 @@ archivo **no coincide**. La carga **no decide sola** si es un typo o un cambio d
 Campos de configuración conversacional (aditivos; documento viejo/campo ausente conserva comportamiento actual):
 ```json
 {
+  "idiomasHabilitados": ["es", "en"],
+  "localizaciones": {
+    "es": { "nombre": "Convención 2026", "descripcion": "...", "objetivo": "..." },
+    "en": { "nombre": "2026 Convention", "descripcion": "...", "objetivo": "..." }
+  },
   "seedThoughts": [],
   "configConversacional": {
     "maxRepreguntas": 1,
     "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.",
+    "mensajesCierrePorIdioma": {
+      "es": "Gracias. Tu aporte quedó registrado correctamente.",
+      "en": "Thank you. Your contribution has been recorded."
+    },
     "segmentacionIdeas": false,
     "coachingSecuencialIdeas": false,
     "minutosCoachingPorIdea": null,
@@ -292,6 +301,10 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
   }
 }
 ```
+- `idiomasHabilitados`/`localizaciones` (**P-32**, aditivos): ausentes equivalen a campaña española.
+  Para `es`, los campos escalares existentes son fallback de compatibilidad. Para `en` no se cae al
+  español; activar una campaña bilingüe exige localización completa de campaña, mensajes, preguntas y
+  cierre, además de las plantillas Meta del ambiente.
 - `seedThoughts` (`I-12/I-19`, default `[]`): lista opcional de contexto orientador. Vacía/ausente no
   cambia el flujo; la API nunca inventa valores. Se usa al evaluar la versión consolidada confirmada,
   acotada por `Conversacion:MaxTokensSeedThoughts`, sin agregar criterios fuera de la rúbrica.
@@ -332,6 +345,10 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
 | PUT/DELETE | `/api/admin/campanias/{id}/mensajes-iniciales/{miId}` | Edita/elimina. |
 | GET/POST | `/api/admin/campanias/{id}/preguntas` | Lista/crea pregunta (`REQ §16`). |
 | PUT/DELETE | `/api/admin/campanias/{id}/preguntas/{pId}` | Edita/elimina. |
+
+P-32 agrega a cada mensaje `localizaciones.{idioma}.{texto,plantillaRef}` y a cada pregunta
+`localizaciones.{idioma}.{texto,instruccion}`. Los ids del recurso no cambian entre idiomas. Crear,
+editar y duplicar preservan todas las localizaciones; una clave de idioma no soportada devuelve `422`.
 
 #### Participantes de campaña — `REQ §14`
 | Método | Ruta | Descripción |
@@ -383,6 +400,11 @@ Response `202`:
 { "jobId": "job_...", "encolados": 5, "estado": "enProceso" }
 ```
 
+**P-32:** el request no recibe un idioma global. El servicio lee `Usuario.Idioma` y resuelve
+localización/plantilla dentro del lote; `GET .../envios` agrega de forma aditiva `idioma`,
+`plantillaRef` y `plantillaMetaIdioma` por participante. Falta de localización/plantilla produce error
+individual tipificado; no detiene otros idiomas ni cae a español.
+
 ### 5.5 Rúbricas — `REQ §17`
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -417,6 +439,26 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 { "nombre": "LLM", "proveedor": "openrouter.ai", "modelo": "deepseek/deepseek-chat", "endpoint": "https://openrouter.ai/api/v1", "apiKeyRef": "llm-key", "parametros": { "temperature": 0.2 }, "timeoutSegundos": 30, "maxReintentos": 2 }
 ```
 > **Cambio de contrato (2026-06-15, modelo de mínimo privilegio):** se eliminó el campo `apiKey` del request. El backend **no escribe** secretos: valida que `apiKeyRef` exista y sea legible (si no, responde `400 VALIDATION_ERROR` con detalle `apiKeyRef`), y persiste solo `apiKeyRef`. La API key real la carga un humano/operación en Key Vault. La identidad del App Service solo necesita **Key Vault Secrets User** (lectura). La respuesta nunca incluye la key (`REQ §19.2.2`). Ver `AVANCES.md` → Contratos y `SUPUESTOS.md#configllm-apikeyref-solo-lectura`.
+
+### 5.7.1 Catálogo de textos conversacionales — P-32
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/admin/catalogos-textos` | Lista por `idioma` y `estado`; no devuelve una mezcla de versiones como catálogo efectivo. |
+| POST | `/api/admin/catalogos-textos` | Crea la familia/v1 en `borrador`. |
+| GET | `/api/admin/catalogos-textos/{familiaId}/{idioma}/versiones` | Historial por idioma, versión descendente. |
+| PUT | `/api/admin/catalogos-textos/{familiaId}/{idioma}/versiones/{version}` | Edita en sitio solo `borrador`; exige ETag. |
+| POST | `/api/admin/catalogos-textos/{familiaId}/{idioma}/versiones` | Clona una versión a nuevo borrador. |
+| POST | `/api/admin/catalogos-textos/{familiaId}/{idioma}/versiones/{version}/activar` | Valida y activa de forma atómica; inactiva la anterior del mismo idioma. |
+| GET | `/api/admin/catalogos-textos/efectivo` | Preview por `idioma`; devuelve `version`, `huella`, `origen` y contenido efectivo. |
+| GET | `/api/admin/catalogos-textos/{familiaId}/{idioma}/versiones/{version}/exportar` | Descarga JSON UTF-8 sin datos de auditoría sensibles. |
+| POST | `/api/admin/catalogos-textos/importar` | Valida JSON e importa **siempre como borrador**; nunca activa. |
+| POST | `/api/admin/catalogos-textos/semillas/{idioma}` | Crea un borrador `es` con valores efectivos del ambiente o `en` con la base curada; nunca activa. |
+
+GET exige `admin|visor`; mutaciones exigen `admin` + CSRF. Estado/idioma/clave/placeholder/límite
+inválido ⇒ `400 VALIDATION_ERROR`; versión comprometida o ETag/activación concurrente ⇒ `409
+CONFLICT`. El cuerpo sigue `03 §3.13.1`; los valores completos se devuelven porque son contenido de
+negocio administrado, no secretos. `LogSeguridad` no los duplica.
 
 ### 5.8 Consultas de resultados — `REQ §27.3`
 | Método | Ruta | Descripción |
@@ -518,8 +560,10 @@ Campos aditivos de respuesta para I-06/I-18:
 - `ideaId`/`tipoAporte` (I-19) enlazan el aporte con la idea lógica. `/respuestas` se conserva para
   auditoría/compatibilidad y deja de alimentar una fila independiente de Resultados cuando existe
   `ideaId`.
-- `GET /api/admin/conversaciones/{id}` expone opcionalmente `coachingIdeas` (`03 §3.6`) con la idea
-  activa, estados, contadores y referencias vigentes; no incluye nuevos textos ni secretos.
+- Las listas y el detalle de `GET /api/admin/conversaciones` exponen `idioma` (P-32, aditivo): es el
+  snapshot `es|en` del hilo; un documento histórico se devuelve como `es`. El detalle mantiene
+  opcionalmente `coachingIdeas` (`03 §3.6`) con la idea activa, estados, contadores y referencias
+  vigentes; no incluye nuevos textos ni secretos.
 - Los endpoints de Markdown conservan sus rutas. Para I-19, una idea produce un artefacto canónico
   `tipoArtefacto=idea`, con `ideaRef`/`versionIdeaRef`; los artefactos históricos
   `tipoArtefacto=respuesta` no se eliminan.

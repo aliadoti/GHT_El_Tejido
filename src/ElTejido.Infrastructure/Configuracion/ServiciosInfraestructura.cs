@@ -53,6 +53,7 @@ public static class ServiciosInfraestructura
         services.AddSingleton<IRepositorioCampanias, RepositorioCampaniasMemoria>();
         services.AddSingleton<IRepositorioParticipantes, RepositorioParticipantesMemoria>();
         services.AddSingleton<IRepositorioConfiguracion, RepositorioConfiguracionMemoria>();
+        services.AddSingleton<IRepositorioCatalogosTextos, RepositorioCatalogosTextosMemoria>();
         services.AddSingleton<IRepositorioRespuestas, RepositorioRespuestasMemoria>();
         services.AddSingleton<IRepositorioConversaciones, RepositorioConversacionesMemoria>();
         services.AddSingleton<IRepositorioEnrutamientosAporte, RepositorioEnrutamientosAporteMemoria>();
@@ -86,6 +87,8 @@ public static class ServiciosInfraestructura
             new RepositorioParticipantesCosmos(Contenedor(sp, "Participants", "participants")));
         services.AddSingleton<IRepositorioConfiguracion>(sp =>
             new RepositorioConfiguracionCosmos(Contenedor(sp, "Config", "config")));
+        services.AddSingleton<IRepositorioCatalogosTextos>(sp =>
+            new RepositorioCatalogosTextosCosmos(Contenedor(sp, "Config", "config")));
         services.AddSingleton<IRepositorioRespuestas>(sp =>
             new RepositorioRespuestasCosmos(Contenedor(sp, "Responses", "responses")));
         services.AddSingleton<IRepositorioConversaciones>(sp =>

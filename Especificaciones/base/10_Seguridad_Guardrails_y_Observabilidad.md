@@ -95,12 +95,21 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - Para I-09, métricas por conversación/campaña: número de aportes recuperados, tasa de conversaciones con tejido vs. autocontenidas (degradación), latencia de recuperación y **costo/latencia por conversación** (criterio de salida del core, Sprint 1b). No registrar los resúmenes de aportes en telemetría técnica.
 - Para I-05, medir por campaña la tasa de `Evaluacion.parafraseoDevuelto` no nulo y contrastarla con `usoTokens`/latencia de evaluación antes de encender campañas reales. El contenido del parafraseo queda en el plano de negocio (`responses`), nunca en telemetría técnica.
 - **Sin PII sensible ni secretos** en telemetría; los textos completos viven en el plano de negocio, no en logs técnicos.
+- **P-32:** agregar dimensiones de baja cardinalidad `idioma`, `catalogoVersion` y `origenTexto`
+  (`catalogo|cache|emergencia|legacy`). Nunca registrar el texto/frase del catálogo, su preview ni el
+  aporte para diagnosticar una selección de idioma.
 
 ### 6.3 Logging estructurado
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
 `solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27), `despertarProactivo` (P-28), `cierrePorInactividad` (P-29). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+
+- **`catalogoTextosConversacion` (P-32):** acciones `crearBorrador|editarBorrador|importar|activar|
+  rollback|rechazarValidacion|fallbackRuntime`, con actor interno cuando aplique, familia, idioma,
+  versión, resultado, motivo técnico, huella y `correlationId`. **Nunca** incluye mensajes, frases,
+  placeholders renderizados ni diferencias de contenido. La importación registra metadatos y tamaño,
+  no el JSON.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.
@@ -186,6 +195,8 @@ participante la confirme.
 
 ## 9. Criterios de aceptación (resumen; ver `13`)
 - Firma de webhook inválida se rechaza; válida se procesa.
+- En P-32, edición/activación/rollback del catálogo queda auditada sin contenido y una importación
+  maliciosa o sobredimensionada se rechaza antes de persistir/activar.
 - Excederse en mensajes/llamadas por campaña aplica el límite y registra el evento.
 - En una campaña continua, los cupos por participante usan las últimas 24 horas, mientras el
   presupuesto total de tokens de la campaña permanece acumulado.

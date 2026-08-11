@@ -284,6 +284,7 @@ internal static class EndpointsAdminResultados
             c.UsuarioId,
             c.PreguntaId,
             c.Canal,
+            c.Idioma,
             estado = c.Estado.ToString().ToLowerInvariant(),
             estadoMaquina = MinusculaInicial(c.EstadoMaquina.ToString()),
             c.RepreguntasUsadas,

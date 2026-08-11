@@ -30,7 +30,8 @@ public sealed class Conversacion
         int cicloParticipacion,
         string? origenAporteMessageId,
         string? enrutamientoAporteId,
-        IntencionControlPendiente? intencionControlPendiente)
+        IntencionControlPendiente? intencionControlPendiente,
+        string idioma)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -49,6 +50,7 @@ public sealed class Conversacion
         OrigenAporteMessageId = origenAporteMessageId;
         EnrutamientoAporteId = enrutamientoAporteId;
         IntencionControlPendiente = intencionControlPendiente;
+        Idioma = idioma;
     }
 
     public string Id { get; }
@@ -90,6 +92,8 @@ public sealed class Conversacion
     /// <summary>P-27: aclaración pendiente de salida; ausente conserva el flujo histórico.</summary>
     public IntencionControlPendiente? IntencionControlPendiente { get; }
 
+    public string Idioma { get; }
+
     /// <summary>¿La ventana de servicio de 24h sigue abierta? Decide texto libre vs plantilla (05 §2.2).</summary>
     public bool VentanaAbierta(DateTimeOffset ahora) => ahora < VentanaServicioVenceEn;
 
@@ -110,7 +114,8 @@ public sealed class Conversacion
         int cicloParticipacion = 1,
         string? origenAporteMessageId = null,
         string? enrutamientoAporteId = null,
-        IntencionControlPendiente? intencionControlPendiente = null)
+        IntencionControlPendiente? intencionControlPendiente = null,
+        string idioma = "es")
     {
         if (repreguntasUsadas < 0)
         {
@@ -134,6 +139,8 @@ public sealed class Conversacion
                 "La aclaración de salida solo puede existir mientras se espera su confirmación.");
         }
 
+        var idiomaNormalizado = NormalizarIdioma(idioma);
+
         return new Conversacion(
             DomainGuards.Required(id, nameof(id)),
             DomainGuards.Required(campaniaId, nameof(campaniaId)),
@@ -151,7 +158,8 @@ public sealed class Conversacion
             cicloParticipacion,
             string.IsNullOrWhiteSpace(origenAporteMessageId) ? null : origenAporteMessageId.Trim(),
             string.IsNullOrWhiteSpace(enrutamientoAporteId) ? null : enrutamientoAporteId.Trim(),
-            intencionControlPendiente);
+            intencionControlPendiente,
+            idiomaNormalizado);
     }
 
     /// <summary>Inicia un hilo nuevo (esperando la respuesta inicial), con la ventana abierta desde <paramref name="ahora"/>.</summary>
@@ -165,7 +173,8 @@ public sealed class Conversacion
         DateTimeOffset ahora,
         int cicloParticipacion = 1,
         string? origenAporteMessageId = null,
-        string? enrutamientoAporteId = null)
+        string? enrutamientoAporteId = null,
+        string idioma = "es")
         => Crear(
             id,
             campaniaId,
@@ -183,7 +192,8 @@ public sealed class Conversacion
             cicloParticipacion: cicloParticipacion,
             origenAporteMessageId: origenAporteMessageId,
             enrutamientoAporteId: enrutamientoAporteId,
-            intencionControlPendiente: null);
+            intencionControlPendiente: null,
+            idioma: idioma);
 
     /// <summary>Renueva la ventana de servicio desde el ultimo mensaje entrante (05 §2.2).</summary>
     public Conversacion RegistrarEntrante(DateTimeOffset timestampEntrante)
@@ -232,7 +242,8 @@ public sealed class Conversacion
             CicloParticipacion,
             OrigenAporteMessageId,
             EnrutamientoAporteId,
-            intencionControlPendiente: null);
+            intencionControlPendiente: null,
+            idioma: Idioma);
 
     private Conversacion With(
         EstadoConversacion? estado = null,
@@ -269,6 +280,20 @@ public sealed class Conversacion
             CicloParticipacion,
             OrigenAporteMessageId,
             EnrutamientoAporteId,
-            pendienteDestino);
+            pendienteDestino,
+            Idioma);
+    }
+
+    private static string NormalizarIdioma(string? idioma)
+    {
+        var normalizado = string.IsNullOrWhiteSpace(idioma) ? "es" : idioma.Trim().ToLowerInvariant();
+        if (normalizado is not ("es" or "en"))
+        {
+            throw new DomainValidationException(
+                "IDIOMA_CONVERSACION_INVALIDO",
+                "El idioma de la conversacion debe ser 'es' o 'en'.");
+        }
+
+        return normalizado;
     }
 }

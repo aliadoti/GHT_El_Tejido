@@ -16,6 +16,26 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > configuración o vacía ambas listas. No cambió P-27, sus alias, flags, endpoint, portal ni
 > configuración remota. **Siguiente cambio de código: pendiente de priorización expresa.**
 >
+> **🚧 `P-32` CONVERSACIÓN MULTIDIOMA Y CATÁLOGO DE TEXTOS — CORTE 2A/4 DONE LOCAL 2026-08-10.**
+> Verificado: `Usuario.Idioma` ya existe como campo de primer nivel, admite `es|en`, usa `es` por
+> defecto y está propagado a Cosmos/API/carga/portal. La iniciativa consume ese dato y define:
+> catálogo global versionado por idioma en Cosmos `config`; localizaciones de campaña bajo los mismos
+> ids; plantilla Meta resuelta por participante; snapshot de idioma por hilo; caché/última versión
+> válida; API/portal, JSON como importación/exportación de borradores, auditoría sin contenido, plan de
+> migración y QAS. **App Settings se conserva para operación** (flags, límites, timeouts, secretos
+> referenciados, caché y mapeos Meta); mensajes/frases editoriales dejan de ser su destino final.
+> Ya están implementados dominio, validación/huella, versionado/ETag, activación atómica, repositorios,
+> API, import/export, permisos, auditoría, proveedor con caché/LKG, emergencia del mismo idioma,
+> semillas explícitas `es/en` y gate `CatalogoTextosHabilitado=false`. La semilla `es` fotografía la
+> configuración efectiva y toda semilla queda borrador. El corte 2a ya fija el `idioma` en cada
+> conversación/ciclo, conserva `es` en documentos históricos, lo expone en Resultados y deja un
+> adaptador proveedor→textos sin conectar a salidas visibles. **Siguiente: corte 2b**, sustituir
+> incrementalmente textos/frases globales y detectores por el adaptador, con gate OFF y regresión
+> legacy antes de campañas/envío. Sin despliegue, configuración remota ni activación; se requieren
+> traducción inglesa y plantillas HSM aprobadas.
+> Spec: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`; inventario:
+> `planes/P-32_Inventario_y_Migracion_Textos.md`; QAS: `QAS/16_*`.
+>
 > **Registro de preparación — INICIATIVA OBJETIVO 2026-08-08 — `DT-QA-02` LISTADO DE EVALUACIONES.
 > IMPLEMENTACIÓN INMEDIATA. SPEC Y CONTRATO LISTOS, SIN CÓDIGO AÚN.**
 > `GET /api/admin/evaluaciones` devuelve **404**: la colección no existe (sí existe
@@ -196,10 +216,9 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > </details>
 >
-> **Pendiente de especificar:** soporte de **inglés** en el chatbot (segunda solicitud del 2026-08-06);
-> en análisis de alcance, no arrancar sin spec. **Nota:** `I-08 v2` ya incorpora la columna `Idioma`
-> (`es|en`) como campo de primer nivel de `Usuario`, así que la carga masiva **no** bloquea esa
-> iniciativa: el dato quedará disponible cuando se especifique.
+> **Soporte de inglés P-32: corte 1/4 DONE local (2026-08-10); pendiente de conexión al runtime.** `I-08 v2`
+> ya aporta `Usuario.Idioma` (`es|en`), por lo que el dato maestro no bloquea. No implementar sin leer
+> P-32, su inventario de migración y la guía QAS; no activar sin traducciones y plantillas Meta aprobadas.
 >
 > **ESTADO VIGENTE 2026-08-04 — `P-30` COMPLETA local (3/3).** El participante puede pedir retomar
 > una idea histórica propia dentro de la campaña y pregunta resueltas por P-26, elegirla por número o
@@ -536,9 +555,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-3. **No hay cambio de código seleccionado.** `DT-P27-01` ya quedó DONE local 2/2; no activar P-27 ni
-   cambiar configuración remota como continuación automática. La próxima iniciativa requiere
-   priorización expresa del usuario.
+3. **Completar P-32 corte 2b.** Sustituir gradualmente mensajes, variantes y detectores globales por
+   el adaptador del catálogo, usando el idioma ya fijado en el hilo. Mantener el gate OFF y demostrar
+   regresión legacy antes de activar, cambiar configuración remota o avanzar a campañas/envíos.
 
 4. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por
