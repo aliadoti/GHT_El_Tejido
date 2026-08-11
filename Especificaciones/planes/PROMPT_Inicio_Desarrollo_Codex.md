@@ -7,13 +7,14 @@
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
 > **HANDOFF DE DESARROLLO 2026-08-10:** `P-32` (conversación español/inglés y catálogo versionado de
-> textos) tiene el **corte 1/4 DONE local**. `Usuario.Idioma` ya existe (`es|en`, default `es`); no
+> textos) tiene los **cortes 1, 2a y 2b1 DONE local**. `Usuario.Idioma` ya existe (`es|en`, default `es`); no
 > volver a crearlo. Leer `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`,
 > `planes/P-32_Inventario_y_Migracion_Textos.md` y `QAS/16_*`. La decisión es Cosmos `config` para
 > contenido global versionado y localizaciones embebidas en campaña; App Settings solo para operación.
-> Catálogo/API/caché/LKG/emergencia/semillas listos; gate OFF, sin cambio remoto. Siguiente: corte 2,
-> snapshot de idioma + adaptador global con regresión legacy. No activar sin traducciones/plantillas
-> Meta inglesas aprobadas. El handoff histórico de
+> Catálogo/API/caché/LKG/emergencia/semillas, snapshot y mensajes globales del orquestador listos;
+> gate OFF, sin cambio remoto. Siguiente: corte 2b2, detectores/frases, aclaraciones P-27 y
+> enrutamiento con regresión legacy. No activar sin traducciones/plantillas Meta inglesas aprobadas.
+> El handoff histórico de
 > abajo se conserva como contexto; para estado operativo actual mandan `AVANCES.md` y `TODO.md`.
 
 > **HANDOFF VIGENTE 2026-08-05:** `P-26`, `P-27`, `P-28`, `P-29` y **`P-30` están completas

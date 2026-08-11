@@ -1,9 +1,9 @@
 # 16 — P-32: conversación en español/inglés y textos editables
 
-**Estado:** corte 1 y corte 2a DONE local. La API, semillas, caché/LKG, emergencia, snapshot de
-idioma por hilo y gate OFF están implementados; el catálogo aún no alimenta las salidas visibles ni
-el portal. No se pueden aprobar las pruebas bilingües de punta a punta hasta completar los cuatro
-cortes.
+**Estado:** corte 1, corte 2a y corte 2b1 DONE local. La API, semillas, caché/LKG, emergencia,
+snapshot de idioma y los mensajes globales registrados del orquestador están implementados; el gate
+sigue OFF y faltan detectores, enrutamiento, campañas y portal. No se pueden aprobar las pruebas
+bilingües de punta a punta hasta completar los cuatro cortes.
 
 ## Qué se quiere comprobar
 
@@ -28,6 +28,17 @@ cambiar un texto, publicarlo y revertirlo sin pedir una compilación o un despli
 **Deberías ver:** el hilo existente conserva `en`; el ciclo nuevo queda con `es`. Mientras
 `Conversacion:CatalogoTextosHabilitado=false`, ambos siguen mostrando el flujo legacy en español:
 esto es la regresión segura esperada, no un fallo de traducción.
+
+## Prueba 0.1 — mensajes globales conectados (técnica, corte 2b1)
+
+1. En un entorno de prueba aislado, prepara un catálogo inglés activo con un saludo y una variante de
+   continuación reconocibles.
+2. Con los demás cambios de P-32 aún incompletos, **no actives el gate fuera de esa prueba técnica**.
+3. Abre un hilo nuevo de un participante `en` y provoca una repregunta.
+
+**Deberías ver:** el saludo global y la coletilla de continuación salen del catálogo inglés. La
+pregunta y el contenido de campaña pueden seguir en español hasta el corte 3; por eso esta prueba no
+autoriza activar el catálogo en un ambiente compartido.
 
 ## Prueba 1 — mismo recorrido, dos idiomas
 

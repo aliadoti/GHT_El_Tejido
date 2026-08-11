@@ -57,6 +57,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly IWhatsAppGateway _gateway;
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
+    private readonly IResolutorTextosConversacion? _resolutorTextos;
     private readonly OpcionesMensajesConversacion _mensajes;
     private readonly ResolvedorTransicionConversacion _transicion;
     private readonly PoliticaLimitesConversacion _limites;
@@ -104,7 +105,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         TimeProvider tiempo,
         IConsolidadorIdeas? consolidadorIdeas = null,
         IRedactorTurnoConversacional? redactorTurno = null,
-        IClasificadorIntencionControl? clasificadorIntencionControl = null)
+        IClasificadorIntencionControl? clasificadorIntencionControl = null,
+        IResolutorTextosConversacion? resolutorTextos = null)
     {
         _conversaciones = conversaciones;
         _respuestas = respuestas;
@@ -114,6 +116,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _consolidadorIdeas = consolidadorIdeas;
         _redactorTurno = redactorTurno;
         _clasificadorIntencionControl = clasificadorIntencionControl;
+        _resolutorTextos = resolutorTextos;
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
@@ -279,9 +282,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         // §5.2: el texto lo redacta el LLM (I-20) y el servidor conserva el respaldo determinista para
         // el modelo apagado, la salida inválida, el cupo agotado o el fallo de la llamada.
-        var respaldo = TextoConfigurado(
-            _mensajes.PausaPorInactividad,
-            OpcionesMensajesConversacion.PausaPorInactividadDefault);
+        var respaldo = await TextoGlobalAsync(
+            conversacion,
+            "pausaPorInactividad",
+            TextoConfigurado(_mensajes.PausaPorInactividad, OpcionesMensajesConversacion.PausaPorInactividadDefault),
+            cancellationToken);
         var texto = await ComponerTurnoAsync(
             campania,
             campania.Preguntas.FirstOrDefault(pregunta => pregunta.Id == conversacion.PreguntaId),
@@ -547,9 +552,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var ahora = _tiempo.GetUtcNow();
         var usuario = participante.Usuario;
         var campania = participante.Campania;
-        var respaldo = TextoConfigurado(
-            _mensajes.SaludoReactivacion,
-            OpcionesMensajesConversacion.SaludoReactivacionDefault);
+        var respaldo = await TextoGlobalParaIdiomaAsync(
+            usuario.Idioma,
+            "saludoReactivacion",
+            TextoConfigurado(_mensajes.SaludoReactivacion, OpcionesMensajesConversacion.SaludoReactivacionDefault),
+            cancellationToken);
         var texto = await ComponerTurnoAsync(
             campania,
             participante.PreguntaVigente,
@@ -714,7 +721,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             {
                 await CerrarConAgradecimientoAsync(
                     conversacion.RegistrarEntrante(mensaje.Timestamp), numero, campania,
-                    SeleccionarAcuseContinuar(conversacion), emisor, ahora, cancellationToken);
+                    await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken), emisor, ahora, cancellationToken);
                 await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
                 return;
             }
@@ -759,9 +766,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             }
 
             var acuse = deseaRechazarGuardado
-                ? TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault)
+                ? await TextoGlobalAsync(
+                    conversacion,
+                    "acuseRechazoGuardado",
+                    TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
+                    cancellationToken)
                 : deseaContinuar
-                    ? SeleccionarAcuseContinuar(conversacion)
+                    ? await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken)
                     : null;
             await CerrarConAgradecimientoAsync(conversacion, numero, campania, acuse, emisor, ahora, cancellationToken);
             if (!cupoLlmExcedido)
@@ -853,7 +864,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var ofrecerMejora = !esFallback && !calificacionAlta && _limites.PuedeOfrecerMejora(conversacion, pregunta);
         if (ofrecerMejora)
         {
-            var invitacion = ConstruirInvitacionMejora(conversacion, evaluacion.RepreguntaSugerida);
+            var invitacion = await ConstruirInvitacionMejoraAsync(
+                conversacion,
+                evaluacion.RepreguntaSugerida,
+                cancellationToken);
             var texto = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
 
@@ -879,7 +893,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var cierreFinal = calificacionAlta
             ? Combinar(
-                TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
+                await TextoGlobalAsync(
+                    conversacion,
+                    "mensajeCalificacionAlta",
+                    TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
+                    cancellationToken),
                 campania.ConfigConversacional.MensajeCierre)
             : campania.ConfigConversacional.MensajeCierre;
         var cierre = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), cierreFinal);
@@ -1108,9 +1126,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var confirmada = await ObtenerVersionAsync(campania.Id, idea.VersionConfirmadaRef, cancellationToken);
-        var acuse = TextoConfigurado(_mensajes.AcuseReaperturaIdea, OpcionesMensajesConversacion.AcuseReaperturaIdeaDefault);
-        var invitacion = TextoConfigurado(
-            _mensajes.InvitacionReaperturaIdea, OpcionesMensajesConversacion.InvitacionReaperturaIdeaDefault);
+        var acuse = await TextoGlobalAsync(
+            conversacion,
+            "acuseReaperturaIdea",
+            TextoConfigurado(_mensajes.AcuseReaperturaIdea, OpcionesMensajesConversacion.AcuseReaperturaIdeaDefault),
+            cancellationToken);
+        var invitacion = await TextoGlobalAsync(
+            conversacion,
+            "invitacionReaperturaIdea",
+            TextoConfigurado(_mensajes.InvitacionReaperturaIdea, OpcionesMensajesConversacion.InvitacionReaperturaIdeaDefault),
+            cancellationToken);
         // I-20: el acuse y la invitación se redactan; la versión oficial se muestra íntegra en el medio.
         var texto = await ComponerTurnoAsync(
             campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Reabrir,
@@ -1146,8 +1171,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 $"{indice + 1}. {Acotar(version?.Texto ?? string.Empty, MaxCaracteresParafrasisSeleccion)}"));
         }
 
-        var pregunta = TextoConfigurado(
-            _mensajes.PreguntaSeleccionIdea, OpcionesMensajesConversacion.PreguntaSeleccionIdeaDefault);
+        var pregunta = await TextoGlobalAsync(
+            conversacion,
+            "preguntaSeleccionIdea",
+            TextoConfigurado(_mensajes.PreguntaSeleccionIdea, OpcionesMensajesConversacion.PreguntaSeleccionIdeaDefault),
+            cancellationToken);
         await EnviarAsync(
             conversacion, numero, Combinar(pregunta, string.Join("\n", lineas)), TipoEnvioMensaje.Repregunta,
             emisor, ahora, cancellationToken);
@@ -1545,15 +1573,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         await CerrarIdeaPorControlAsync(idea, campania, usuario, "participante", ahora, cancellationToken);
+        var acuse = await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken);
         if (await ContinuarConIdeaEnEsperaAsync(
-                conversacion, campania, usuario, pregunta, numero, emisor, SeleccionarAcuseContinuar(conversacion), ahora,
+                conversacion, campania, usuario, pregunta, numero, emisor, acuse, ahora,
                 cancellationToken))
         {
             return true;
         }
 
         await CerrarConAgradecimientoAsync(
-            conversacion, numero, campania, SeleccionarAcuseContinuar(conversacion), emisor, ahora, cancellationToken);
+            conversacion, numero, campania, acuse, emisor, ahora, cancellationToken);
         await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
         return true;
     }
@@ -1612,16 +1641,17 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await RegistrarCoachingAsync(
             usuario.Id, usuario.WhatsappNormalizado, "avance", cola, MotivoFinalizacionIdea.Participante,
             ahora, cancellationToken);
+        var acuse = await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken);
         if (idea is not null)
         {
             await ContinuarColaConsolidadaAsync(
-                conversacion, campania, usuario, pregunta, numero, emisor, SeleccionarAcuseContinuar(conversacion), ahora,
+                conversacion, campania, usuario, pregunta, numero, emisor, acuse, ahora,
                 cancellationToken);
         }
         else
         {
             await ContinuarOFinalizarColaAsync(
-                conversacion, campania, usuario, pregunta, numero, emisor, SeleccionarAcuseContinuar(conversacion), ahora,
+                conversacion, campania, usuario, pregunta, numero, emisor, acuse, ahora,
                 cancellationToken);
         }
 
@@ -1755,7 +1785,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await RegistrarConsolidacionAsync(
                 usuario, "cerrada", rechazada, null, "rechazoParticipante", null, ahora, cancellationToken);
             await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
-            var acuseRechazo = TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault);
+            var acuseRechazo = await TextoGlobalAsync(
+                conversacion,
+                "acuseRechazoGuardado",
+                TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
+                cancellationToken);
             // §4.5: el rechazo cierra solo esta idea; si otra espera turno, se sigue con ella.
             if (await ContinuarConIdeaEnEsperaAsync(
                     conversacion, campania, usuario, pregunta, numero, emisor, acuseRechazo, ahora,
@@ -1863,7 +1897,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         // La idea sigue abierta pero su versión confirmada ya fue evaluada: el artefacto se regenera.
         await _procesador.CompilarMarkdownIdeaAsync(campania.Id, idea.Id, cancellationToken);
-        var invitacion = ConstruirInvitacionMejora(conversacion, resultado.Evaluacion.RepreguntaSugerida);
+        var invitacion = await ConstruirInvitacionMejoraAsync(
+            conversacion,
+            resultado.Evaluacion.RepreguntaSugerida,
+            cancellationToken);
         var preguntaCoaching = string.IsNullOrWhiteSpace(resultado.Evaluacion.RepreguntaSugerida)
             ? EvaluadorLlm.RepreguntaNeutra
             : resultado.Evaluacion.RepreguntaSugerida.Trim();
@@ -1888,10 +1925,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
                 "omitidoYaEnviado", ahora, cancellationToken);
         }
-        var encabezadoResumen = TextoConfigurado(
-            _mensajes.EncabezadoResumenAvance, OpcionesMensajesConversacion.EncabezadoResumenAvanceDefault);
-        var preguntaResumen = TextoConfigurado(
-            _mensajes.PreguntaContinuarMadurando, OpcionesMensajesConversacion.PreguntaContinuarMadurandoDefault);
+        var encabezadoResumen = await TextoGlobalAsync(
+            conversacion,
+            "encabezadoResumenAvance",
+            TextoConfigurado(_mensajes.EncabezadoResumenAvance, OpcionesMensajesConversacion.EncabezadoResumenAvanceDefault),
+            cancellationToken);
+        var preguntaResumen = await TextoGlobalAsync(
+            conversacion,
+            "preguntaContinuarMadurando",
+            TextoConfigurado(_mensajes.PreguntaContinuarMadurando, OpcionesMensajesConversacion.PreguntaContinuarMadurandoDefault),
+            cancellationToken);
         var turnoCoaching = await ComponerTurnoAsync(
             campania, pregunta, usuario.Id, usuario.WhatsappNormalizado,
             enviarResumen ? ActoConversacional.ResumirAvance : ActoConversacional.Mejorar,
@@ -2491,7 +2534,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var ofrecerMejora = !calificacionAlta && _limites.PuedeOfrecerMejora(conversacion, pregunta);
         if (ofrecerMejora)
         {
-            var texto = Combinar(confirmacion, ConstruirInvitacionMejora(conversacion, repreguntaSugerida: null));
+            var texto = Combinar(
+                confirmacion,
+                await ConstruirInvitacionMejoraAsync(conversacion, repreguntaSugerida: null, cancellationToken));
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
             conversacion = conversacion.RegistrarRepregunta();
             await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -2500,7 +2545,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var cierreFinal = calificacionAlta
             ? Combinar(
-                TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
+                await TextoGlobalAsync(
+                    conversacion,
+                    "mensajeCalificacionAlta",
+                    TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
+                    cancellationToken),
                 campania.ConfigConversacional.MensajeCierre)
             : campania.ConfigConversacional.MensajeCierre;
         await EnviarAsync(conversacion, numero, Combinar(confirmacion, cierreFinal), TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
@@ -2825,7 +2874,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 conversacion, campania, usuario, pregunta, numero, emisor, idea,
                 EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante",
                 MotivoFinalizacionIdea.Rechazo,
-                TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
+                await TextoGlobalAsync(
+                    conversacion,
+                    "acuseRechazoGuardado",
+                    TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
+                    cancellationToken),
                 ahora,
                 cancellationToken);
             return;
@@ -2868,7 +2921,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await CerrarIdeaActivaYContinuarAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea,
                 EstadoResultadoIdeaConsolidada.Pendiente, null, "participante",
-                MotivoFinalizacionIdea.Participante, SeleccionarAcuseContinuar(conversacion), ahora, cancellationToken);
+                MotivoFinalizacionIdea.Participante,
+                await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken),
+                ahora,
+                cancellationToken);
             return;
         }
 
@@ -3415,10 +3471,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora,
                 cancellationToken);
             var acuse = intencion.DeseaRechazarGuardado
-                ? TextoConfigurado(
-                    _mensajes.AcuseRechazoGuardado,
-                    OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault)
-                : SeleccionarAcuseContinuar(conversacion);
+                ? await TextoGlobalAsync(
+                    conversacion,
+                    "acuseRechazoGuardado",
+                    TextoConfigurado(_mensajes.AcuseRechazoGuardado, OpcionesMensajesConversacion.AcuseRechazoGuardadoDefault),
+                    cancellationToken)
+                : await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken);
             await ContinuarOFinalizarColaAsync(
                 conversacion,
                 campania,
@@ -3909,7 +3967,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
-        var texto = Combinar(ResolverSaludoPrimerContacto(campania, usuario), pregunta.Texto);
+        var texto = Combinar(
+            await ResolverSaludoPrimerContactoAsync(campania, usuario, conversacion, cancellationToken),
+            pregunta.Texto);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, mensaje.PhoneNumberIdDestino, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -3921,7 +3981,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// activo, cae al texto configurable <c>Conversacion:Mensajes:SaludoPrimerContacto</c> para no
     /// enviar un saludo vacio. La plantilla de Meta del primer contacto proactivo es independiente.
     /// </summary>
-    private string ResolverSaludoPrimerContacto(Campania campania, Usuario usuario)
+    private async Task<string> ResolverSaludoPrimerContactoAsync(
+        Campania campania,
+        Usuario usuario,
+        DominioConversacion conversacion,
+        CancellationToken cancellationToken)
     {
         var mensajeInicial = RenderizadorMensaje.MensajeInicialActivo(campania);
         if (mensajeInicial is not null)
@@ -3933,7 +3997,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             }
         }
 
-        return TextoConfigurado(_mensajes.SaludoPrimerContacto, OpcionesMensajesConversacion.SaludoPrimerContactoDefault);
+        return await TextoGlobalAsync(
+            conversacion,
+            "saludoPrimerContacto",
+            TextoConfigurado(_mensajes.SaludoPrimerContacto, OpcionesMensajesConversacion.SaludoPrimerContactoDefault),
+            cancellationToken);
     }
 
     private async Task EnviarSiguientePreguntaPendienteAsync(
@@ -3961,7 +4029,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             null,
             ahora,
             idioma: usuario.Idioma);
-        var texto = Combinar(TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault), siguiente.Texto);
+        var texto = Combinar(
+            await TextoGlobalAsync(
+                conversacion,
+                "saludoSiguientePregunta",
+                TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault),
+                cancellationToken),
+            siguiente.Texto);
 
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -4120,9 +4194,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await EnviarAsync(
             conversacion,
             numero,
-            TextoConfigurado(
-                _mensajes.MensajeConfiguracionNoDisponible,
-                OpcionesMensajesConversacion.MensajeConfiguracionNoDisponibleDefault),
+            await TextoGlobalAsync(
+                conversacion,
+                "mensajeConfiguracionNoDisponible",
+                TextoConfigurado(_mensajes.MensajeConfiguracionNoDisponible, OpcionesMensajesConversacion.MensajeConfiguracionNoDisponibleDefault),
+                cancellationToken),
             TipoEnvioMensaje.Cierre,
             emisor,
             ahora,
@@ -4536,35 +4612,123 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// variante de respaldo rotada; siempre se anexa una coletilla rotada que ensena la salida del "no
     /// quiero mejorar" (ej. "asi esta bien"), para que el participante nunca quede atrapado.
     /// </summary>
-    private string ConstruirInvitacionMejora(DominioConversacion conversacion, string? repreguntaSugerida)
+    private async Task<string> ConstruirInvitacionMejoraAsync(
+        DominioConversacion conversacion,
+        string? repreguntaSugerida,
+        CancellationToken cancellationToken)
     {
         var semilla = SemillaVariante(conversacion);
         var nucleo = string.IsNullOrWhiteSpace(repreguntaSugerida)
-            ? SeleccionarInvitacionMejoraRespaldo(semilla)
+            ? await SeleccionarInvitacionMejoraRespaldoAsync(conversacion, semilla, cancellationToken)
             : repreguntaSugerida!.Trim();
 
         var coletilla = SeleccionarVariante(
-            _mensajes.InvitacionContinuarVariantes,
-            OpcionesMensajesConversacion.InvitacionContinuarVariantesDefault,
+            await FrasesGlobalesAsync(
+                conversacion,
+                "invitacionContinuarVariantes",
+                _mensajes.InvitacionContinuarVariantes,
+                OpcionesMensajesConversacion.InvitacionContinuarVariantesDefault,
+                cancellationToken),
             semilla);
 
         return string.IsNullOrWhiteSpace(coletilla) ? nucleo : nucleo + "\n\n" + coletilla;
     }
 
-    private string SeleccionarInvitacionMejoraRespaldo(int semilla)
+    private async Task<string> SeleccionarInvitacionMejoraRespaldoAsync(
+        DominioConversacion conversacion,
+        int semilla,
+        CancellationToken cancellationToken)
     {
-        var elegido = SeleccionarVariante(_mensajes.InvitacionMejoraVariantes, semilla);
+        var elegido = SeleccionarVariante(
+            await FrasesGlobalesAsync(
+                conversacion,
+                "invitacionMejoraVariantes",
+                _mensajes.InvitacionMejoraVariantes,
+                new[] { TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault) },
+                cancellationToken),
+            semilla);
         return string.IsNullOrWhiteSpace(elegido)
-            ? TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault)
+            ? await TextoGlobalAsync(
+                conversacion,
+                "invitacionMejora",
+                TextoConfigurado(_mensajes.InvitacionMejora, OpcionesMensajesConversacion.InvitacionMejoraDefault),
+                cancellationToken)
             : elegido!;
     }
 
-    private string SeleccionarAcuseContinuar(DominioConversacion conversacion)
+    private async Task<string> SeleccionarAcuseContinuarAsync(
+        DominioConversacion conversacion,
+        CancellationToken cancellationToken)
     {
-        var elegido = SeleccionarVariante(_mensajes.AcuseContinuarVariantes, SemillaVariante(conversacion));
+        var elegido = SeleccionarVariante(
+            await FrasesGlobalesAsync(
+                conversacion,
+                "acuseContinuarVariantes",
+                _mensajes.AcuseContinuarVariantes,
+                new[] { TextoConfigurado(_mensajes.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault) },
+                cancellationToken),
+            SemillaVariante(conversacion));
         return string.IsNullOrWhiteSpace(elegido)
-            ? TextoConfigurado(_mensajes.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault)
+            ? await TextoGlobalAsync(
+                conversacion,
+                "acuseContinuar",
+                TextoConfigurado(_mensajes.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault),
+                cancellationToken)
             : elegido!;
+    }
+
+    private async Task<string> TextoGlobalAsync(
+        DominioConversacion conversacion,
+        string clave,
+        string legado,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return legado;
+        }
+
+        var textos = await _resolutorTextos.ResolverAsync(conversacion, cancellationToken);
+        return textos.Mensajes.TryGetValue(clave, out var texto) && !string.IsNullOrWhiteSpace(texto)
+            ? texto.Trim()
+            : legado;
+    }
+
+    private async Task<string> TextoGlobalParaIdiomaAsync(
+        string idioma,
+        string clave,
+        string legado,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return legado;
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return textos.Mensajes.TryGetValue(clave, out var texto) && !string.IsNullOrWhiteSpace(texto)
+            ? texto.Trim()
+            : legado;
+    }
+
+    private async Task<IReadOnlyList<string>> FrasesGlobalesAsync(
+        DominioConversacion conversacion,
+        string clave,
+        IReadOnlyList<string>? configuradas,
+        IReadOnlyList<string> porDefecto,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return configuradas is { Count: > 0 } ? configuradas : porDefecto;
+        }
+
+        var textos = await _resolutorTextos.ResolverAsync(conversacion, cancellationToken);
+        return textos.Frases.TryGetValue(clave, out var frases) && frases.Count > 0
+            ? frases.ToArray()
+            : configuradas is { Count: > 0 }
+                ? configuradas
+                : porDefecto;
     }
 
     /// <summary>Elige una variante de la lista configurada o, si esta vacia, de la lista por defecto.</summary>

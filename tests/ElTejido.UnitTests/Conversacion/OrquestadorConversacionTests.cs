@@ -1833,6 +1833,56 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task Procesar_PrimerContacto_UsaElCatalogoDelIdiomaFijadoEnElHilo()
+    {
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverAsync(
+                Arg.Is<DominioConversacion>(conversacion => conversacion.Idioma == "en"),
+                Arg.Any<CancellationToken>())
+            .Returns(TextosCatalogo(
+                mensajes: new Dictionary<string, string> { ["saludoPrimerContacto"] = "Welcome from the catalog" }));
+
+        await Construir(resolutorTextos: resolutor).ProcesarMensajeEntranteAsync(
+            ParticipanteFrio(idioma: "en"),
+            Mensaje("Hello"),
+            CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Welcome from the catalog", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Inicial,
+            Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Idioma.Should().Be("en");
+    }
+
+    [Fact]
+    public async Task Procesar_Repregunta_UsaLasVariantesDelCatalogo()
+    {
+        await PrepararConversacionAsync();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Repreguntar, "¿Qué detalle falta?")));
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverAsync(Arg.Any<DominioConversacion>(), Arg.Any<CancellationToken>())
+            .Returns(TextosCatalogo(
+                frases: new Dictionary<string, IReadOnlyCollection<string>>
+                {
+                    ["invitacionContinuarVariantes"] = new[] { "Write catalog-next when you are ready." },
+                    ["invitacionMejoraVariantes"] = new[] { "Catalog improvement invitation." },
+                }));
+
+        await Construir(resolutorTextos: resolutor).ProcesarMensajeEntranteAsync(
+            Participante(),
+            Mensaje("My idea"),
+            CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("Write catalog-next when you are ready.", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Procesar_SegundoMensajeTrasPrimerContacto_EvaluaYOfreceMejora()
     {
         _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
@@ -2798,7 +2848,8 @@ public sealed class OrquestadorConversacionTests
         OpcionesConversacion? opciones = null,
         IConsolidadorIdeas? consolidador = null,
         IRedactorTurnoConversacional? redactor = null,
-        IClasificadorIntencionControl? clasificador = null)
+        IClasificadorIntencionControl? clasificador = null,
+        IResolutorTextosConversacion? resolutorTextos = null)
         => new(
             _conversaciones,
             _respuestas,
@@ -2815,7 +2866,8 @@ public sealed class OrquestadorConversacionTests
             _reloj,
             consolidador,
             redactor,
-            clasificador);
+            clasificador,
+            resolutorTextos);
 
     /// <summary>I-20: redactor que siempre devuelve la misma voz, para verificar la composición.</summary>
     private static IRedactorTurnoConversacional RedactorQueDevuelve(string puente, string? pregunta)
@@ -2940,11 +2992,11 @@ public sealed class OrquestadorConversacionTests
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
-    private static ParticipanteResuelto ParticipanteFrio()
+    private static ParticipanteResuelto ParticipanteFrio(string idioma = "es")
     {
         var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
         var campania = CrearCampania(new[] { pregunta });
-        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: idioma);
         // estadoEnvio = Pendiente: el envio inicial de campania nunca se hizo (primer contacto en frio).
         var participante = ParticipanteCampania.Crear(
             "pc_1", "c_1", "u_1", NumeroWhatsApp.FromNormalized(Numero),
@@ -2952,6 +3004,17 @@ public sealed class OrquestadorConversacionTests
             Epoca, null, null);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
+
+    private static TextosConversacionResueltos TextosCatalogo(
+        IReadOnlyDictionary<string, string>? mensajes = null,
+        IReadOnlyDictionary<string, IReadOnlyCollection<string>>? frases = null)
+        => new(
+            "en",
+            mensajes ?? new Dictionary<string, string>(StringComparer.Ordinal),
+            frases ?? new Dictionary<string, IReadOnlyCollection<string>>(StringComparer.Ordinal),
+            OrigenTextosConversacion.Catalogo,
+            VersionCatalogo: 1,
+            HuellaCatalogo: "huella-prueba");
 
     private static ParticipanteResuelto ParticipanteConMensajeInicial(string textoInicial)
     {

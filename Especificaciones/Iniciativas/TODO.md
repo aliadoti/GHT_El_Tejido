@@ -29,9 +29,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > semillas explícitas `es/en` y gate `CatalogoTextosHabilitado=false`. La semilla `es` fotografía la
 > configuración efectiva y toda semilla queda borrador. El corte 2a ya fija el `idioma` en cada
 > conversación/ciclo, conserva `es` en documentos históricos, lo expone en Resultados y deja un
-> adaptador proveedor→textos sin conectar a salidas visibles. **Siguiente: corte 2b**, sustituir
-> incrementalmente textos/frases globales y detectores por el adaptador, con gate OFF y regresión
-> legacy antes de campañas/envío. Sin despliegue, configuración remota ni activación; se requieren
+> adaptador proveedor→textos sin conectar a salidas visibles. El corte 2b1 ya conecta mensajes
+> globales registrados y variantes del orquestador, sin cambiar el gate. **Siguiente: corte 2b2**,
+> migrar detectores, aclaraciones P-27 y enrutamiento con gate OFF y regresión legacy antes de
+> campañas/envío. Sin despliegue, configuración remota ni activación; se requieren
 > traducción inglesa y plantillas HSM aprobadas.
 > Spec: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`; inventario:
 > `planes/P-32_Inventario_y_Migracion_Textos.md`; QAS: `QAS/16_*`.
@@ -555,9 +556,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-3. **Completar P-32 corte 2b.** Sustituir gradualmente mensajes, variantes y detectores globales por
-   el adaptador del catálogo, usando el idioma ya fijado en el hilo. Mantener el gate OFF y demostrar
-   regresión legacy antes de activar, cambiar configuración remota o avanzar a campañas/envíos.
+3. **Completar P-32 corte 2b2.** Resolver las frases de intención, aclaraciones P-27 y menús de
+   enrutamiento por el adaptador, usando el idioma ya fijado en el hilo. Mantener el gate OFF y
+   demostrar regresión legacy antes de activar, cambiar configuración remota o avanzar a campañas/envíos.
 
 4. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por

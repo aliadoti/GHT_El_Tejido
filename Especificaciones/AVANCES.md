@@ -1618,6 +1618,14 @@
   textos, detectores, Azure o configuración remota. Pruebas de snapshot, round-trip y regresión
   legacy añadidas. Handoff: corte 2b, migrar salidas/detectores globales de forma incremental y seguir
   con gate OFF.
+- 2026-08-10 - Codex - **P-32 corte 2b1/4 DONE local — mensajes globales conectados.**
+  `OrquestadorConversacion` resuelve por `ResolutorTextosConversacion` los mensajes globales ya
+  registrados (saludos de primer contacto/siguiente pregunta/reactivación, cierres, acuses, selección,
+  resumen e inactividad) y las variantes de mejora/continuación. Usa `Conversacion.Idioma`; la
+  reactivación, que no crea hilo, usa `Usuario.Idioma`. El gate sigue OFF y devuelve exactamente la
+  configuración legacy; las pruebas cubren saludo y variantes de catálogo. No cambió campaña,
+  detectores, aclaraciones P-27, Azure ni configuración remota. Handoff: 2b2, frases/detectores,
+  aclaraciones y enrutamiento; no activar antes de completar la migración.
 - 2026-08-10 - Codex - **P-32 conversación multidioma y catálogo versionado — ESPECIFICADA.** Rol:
   Arquitecto/Analista/AppSec; se confirmó `Usuario.Idioma` (`es|en`, default `es`) en dominio,
   persistencia y contratos. Se diseñaron catálogo Cosmos editable/versionado, localizaciones de

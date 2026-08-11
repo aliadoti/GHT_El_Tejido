@@ -13,6 +13,11 @@ public interface IResolutorTextosConversacion
     Task<TextosConversacionResueltos> ResolverAsync(
         ConversacionDominio conversacion,
         CancellationToken cancellationToken);
+
+    /// <summary>Permite resolver los mensajes que abren una ventana sin crear todavía un hilo.</summary>
+    Task<TextosConversacionResueltos> ResolverParaIdiomaAsync(
+        string idioma,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -47,7 +52,16 @@ public sealed class ResolutorTextosConversacion : IResolutorTextosConversacion
     {
         ArgumentNullException.ThrowIfNull(conversacion);
 
-        var resultado = await _proveedor.ObtenerParaRuntimeAsync(conversacion.Idioma, cancellationToken);
+        return await ResolverParaIdiomaAsync(conversacion.Idioma, cancellationToken);
+    }
+
+    public async Task<TextosConversacionResueltos> ResolverParaIdiomaAsync(
+        string idioma,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idioma);
+
+        var resultado = await _proveedor.ObtenerParaRuntimeAsync(idioma, cancellationToken);
         if (resultado.Version is null)
         {
             // El proveedor solo devuelve null con el gate apagado. El comportamiento anterior no
