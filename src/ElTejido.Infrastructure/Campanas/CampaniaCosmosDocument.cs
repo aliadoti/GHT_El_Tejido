@@ -53,6 +53,13 @@ internal sealed class CampaniaCosmosDocument
     [JsonProperty("usuariosHabilitados")]
     public IReadOnlyCollection<string> UsuariosHabilitados { get; init; } = [];
 
+    // P-32: ausente en documentos históricos = campaña española con sus campos escalares vigentes.
+    [JsonProperty("idiomasHabilitados")]
+    public IReadOnlyCollection<string>? IdiomasHabilitados { get; init; }
+
+    [JsonProperty("localizaciones")]
+    public IReadOnlyDictionary<string, LocalizacionCampaniaDocument>? Localizaciones { get; init; }
+
     [JsonProperty("creadoEn")]
     public DateTimeOffset CreadoEn { get; init; }
 
@@ -82,6 +89,11 @@ internal sealed class CampaniaCosmosDocument
             ConfigConversacional = ConfigConversacionalDocument.FromDomain(campania.ConfigConversacional),
             ConfigSeguridad = LimitesSeguridadDocument.FromDomain(campania.ConfigSeguridad),
             UsuariosHabilitados = campania.UsuariosHabilitados.ToArray(),
+            IdiomasHabilitados = campania.IdiomasHabilitados.ToArray(),
+            Localizaciones = campania.Localizaciones.ToDictionary(
+                localizacion => localizacion.Key,
+                localizacion => LocalizacionCampaniaDocument.FromDomain(localizacion.Value),
+                StringComparer.Ordinal),
             CreadoEn = campania.CreadoEn,
             ActualizadoEn = campania.ActualizadoEn,
         };
@@ -105,7 +117,12 @@ internal sealed class CampaniaCosmosDocument
             ConfigSeguridad.ToDomain(),
             UsuariosHabilitados,
             CreadoEn,
-            ActualizadoEn);
+            ActualizadoEn,
+            IdiomasHabilitados,
+            Localizaciones?.ToDictionary(
+                localizacion => localizacion.Key,
+                localizacion => localizacion.Value.ToDomain(localizacion.Key),
+                StringComparer.Ordinal));
     }
 
     public static string ToCosmosEstado(EstadoCampania estado)
@@ -228,6 +245,92 @@ internal sealed class CampaniaCosmosDocument
                 ParseEstadoRegistro(Estado),
                 PlantillaWhatsApp?.ToDomain());
         }
+    }
+
+    internal sealed class LocalizacionCampaniaDocument
+    {
+        [JsonProperty("nombre")]
+        public string? Nombre { get; init; }
+
+        [JsonProperty("descripcion")]
+        public string? Descripcion { get; init; }
+
+        [JsonProperty("objetivo")]
+        public string? Objetivo { get; init; }
+
+        [JsonProperty("mensajeCierre")]
+        public string? MensajeCierre { get; init; }
+
+        [JsonProperty("mensajesIniciales")]
+        public IReadOnlyDictionary<string, LocalizacionMensajeInicialDocument> MensajesIniciales { get; init; }
+            = new Dictionary<string, LocalizacionMensajeInicialDocument>();
+
+        [JsonProperty("preguntas")]
+        public IReadOnlyDictionary<string, LocalizacionPreguntaDocument> Preguntas { get; init; }
+            = new Dictionary<string, LocalizacionPreguntaDocument>();
+
+        public static LocalizacionCampaniaDocument FromDomain(LocalizacionCampania localizacion)
+            => new()
+            {
+                Nombre = localizacion.Nombre,
+                Descripcion = localizacion.Descripcion,
+                Objetivo = localizacion.Objetivo,
+                MensajeCierre = localizacion.MensajeCierre,
+                MensajesIniciales = localizacion.MensajesIniciales.ToDictionary(
+                    mensaje => mensaje.Key,
+                    mensaje => LocalizacionMensajeInicialDocument.FromDomain(mensaje.Value),
+                    StringComparer.Ordinal),
+                Preguntas = localizacion.Preguntas.ToDictionary(
+                    pregunta => pregunta.Key,
+                    pregunta => LocalizacionPreguntaDocument.FromDomain(pregunta.Value),
+                    StringComparer.Ordinal),
+            };
+
+        public LocalizacionCampania ToDomain(string idioma)
+            => LocalizacionCampania.Crear(
+                idioma,
+                Nombre,
+                Descripcion,
+                Objetivo,
+                MensajeCierre,
+                MensajesIniciales.ToDictionary(
+                    mensaje => mensaje.Key,
+                    mensaje => mensaje.Value.ToDomain(),
+                    StringComparer.Ordinal),
+                Preguntas.ToDictionary(
+                    pregunta => pregunta.Key,
+                    pregunta => pregunta.Value.ToDomain(),
+                    StringComparer.Ordinal));
+    }
+
+    internal sealed class LocalizacionMensajeInicialDocument
+    {
+        [JsonProperty("texto")]
+        public string? Texto { get; init; }
+
+        [JsonProperty("plantillaRef")]
+        public string? PlantillaRef { get; init; }
+
+        public static LocalizacionMensajeInicialDocument FromDomain(LocalizacionMensajeInicial localizacion)
+            => new() { Texto = localizacion.Texto, PlantillaRef = localizacion.PlantillaRef };
+
+        public LocalizacionMensajeInicial ToDomain()
+            => new(Texto, PlantillaRef);
+    }
+
+    internal sealed class LocalizacionPreguntaDocument
+    {
+        [JsonProperty("texto")]
+        public string? Texto { get; init; }
+
+        [JsonProperty("instruccion")]
+        public string? Instruccion { get; init; }
+
+        public static LocalizacionPreguntaDocument FromDomain(LocalizacionPregunta localizacion)
+            => new() { Texto = localizacion.Texto, Instruccion = localizacion.Instruccion };
+
+        public LocalizacionPregunta ToDomain()
+            => new(Texto, Instruccion);
     }
 
     internal sealed class PlantillaWhatsAppDocument

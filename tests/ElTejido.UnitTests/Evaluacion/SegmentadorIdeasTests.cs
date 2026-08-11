@@ -43,6 +43,24 @@ public sealed class SegmentadorIdeasTests
         fallback.Uso!.Total.Should().Be(10);
     }
 
+    [Fact]
+    public async Task SegmentarAsync_ContextoEnIngles_IndicaIdiomaYPreguntaLocalizada()
+    {
+        var client = Substitute.For<ILlmClient>();
+        client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta("""{ "ideas": [{ "texto": "An idea", "resumen": null }] }""", null));
+
+        await new SegmentadorIdeas(client).SegmentarAsync(Contexto() with
+        {
+            Idioma = "en",
+            TextoPreguntaEfectivo = "What would you improve?",
+        }, CancellationToken.None);
+
+        var request = client.ReceivedCalls().Single().GetArguments()[0].Should().BeOfType<LlmRequest>().Subject;
+        request.Mensajes.Should().Contain(m => m.Contenido.Contains("IDIOMA_DE_SALIDA: en"));
+        request.Mensajes.Should().Contain(m => m.Contenido.Contains("What would you improve?"));
+    }
+
     private static ContextoSegmentacionIdeas Contexto()
     {
         var pregunta = Pregunta.Crear(

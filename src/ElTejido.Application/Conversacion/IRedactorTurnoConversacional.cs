@@ -95,6 +95,15 @@ public sealed record ContextoRedaccionTurno(
     /// mantiene el resto de guardas (longitud, pregunta única, léxico y patrones de puntaje).
     /// </summary>
     public Rubrica? RubricaSnapshot { get; init; }
+
+    /// <summary>Idioma fijado por el hilo; no depende de detección del contenido ni del modelo.</summary>
+    public string Idioma { get; init; } = "es";
+
+    public string NombreCampaniaEfectivo { get; init; } = string.Empty;
+
+    public string TextoPreguntaEfectivo { get; init; } = string.Empty;
+
+    public string InstruccionPreguntaEfectiva { get; init; } = string.Empty;
 }
 
 /// <summary>Salida del redactor. El servidor decide qué hacer con ella; nunca la ejecuta a ciegas.</summary>

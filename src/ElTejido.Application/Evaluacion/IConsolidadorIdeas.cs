@@ -20,7 +20,12 @@ public sealed record ContextoConsolidacionIdeas(
     string NuevoAporte,
     ConfigLlm ConfigLlmSnapshot,
     int MaxCaracteresPropuesta,
-    int MaxIdeasPorMensaje);
+    int MaxIdeasPorMensaje)
+{
+    public string Idioma { get; init; } = "es";
+
+    public string TextoPreguntaEfectivo { get; init; } = string.Empty;
+}
 
 public sealed record NuevaIdeaDetectada(string Texto);
 

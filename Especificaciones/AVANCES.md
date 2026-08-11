@@ -4,9 +4,18 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-11 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec): **`P-32`
+  DONE local 4/4.** Evaluación, segmentación, consolidación y redacción reciben el snapshot `es|en`
+  y el contenido localizado; bajo el gate OFF conservan el contenido legacy exacto y, bajo ON, una
+  localización incompleta no llega al LLM. El portal administrativo agrega **Textos de conversación**
+  para semilla, importación/exportación JSON, edición de borrador y activación/reactivación explícita
+  con ETag. Backend Release y **855 pruebas no-Calibracion** verdes (768 unitarias + 87 integración);
+  portal **43/43**, build Angular y Prettier verdes con Node temporal 22.22.3. Commit local preparado;
+  no hubo push, despliegue, activación ni configuración remota. Siguiente: D5/UAT bilingüe controlada,
+  plantillas Meta inglesas aprobadas y revisión de costo antes de encender el gate.
 - Ultima actualizacion: 2026-08-10 (Codex, Arquitecto/Backend/SDET/AppSec): **`P-32` CORTE 1/4
   DONE local.** Se implementó la base vertical del catálogo: entidad inmutable `es|en`, estados
-  borrador/activo/inactivo, registro cerrado de 21 mensajes y 12 listas, validación de límites,
+  borrador/activo/inactivo, registro cerrado de 24 mensajes y 13 listas, validación de límites,
   placeholders y duplicados normalizados, huella SHA-256, versionado y ETag. Hay repositorios en
   memoria y Cosmos `config`; la activación transaccional deja un solo activo por idioma. La API admin
   permite listar, crear, clonar, editar borradores, activar, consultar el activo e importar/exportar
@@ -1626,6 +1635,34 @@
   configuración legacy; las pruebas cubren saludo y variantes de catálogo. No cambió campaña,
   detectores, aclaraciones P-27, Azure ni configuración remota. Handoff: 2b2, frases/detectores,
   aclaraciones y enrutamiento; no activar antes de completar la migración.
+- 2026-08-10 - Codex - **P-32 tramo 2b2 DONE local — enrutamiento multidioma.**
+  `EnrutamientoAporte` ahora fija y persiste `Idioma` (con lectura compatible de documentos históricos
+  como `es`) y `ServicioEnrutamientoParticipacion` resuelve desde el catálogo los menús, ayudas,
+  mensajes de ideas históricas y frases de cambiar campaña, retomar y despertar. Una selección pendiente
+  no cambia de idioma si el maestro se edita después. El gate sigue OFF y no hubo despliegue,
+  configuración remota ni activación. Pruebas unitarias cubren menú inglés/snapshot y round-trip Cosmos.
+  Handoff: terminar 2b2 en `OrquestadorConversacion` con detectores y aclaraciones P-27; después evaluar.
+- 2026-08-10 - Codex - **P-32 corte 2/4 DONE local — detectores y aclaración P-27 multidioma.**
+  `OrquestadorConversacion` resuelve por el snapshot del hilo todos los detectores deterministas:
+  continuar, confirmar, solicitar mejora, rechazo, reapertura y salidas P-27. Las tres respuestas de
+  aclaración P-27 son claves versionadas del catálogo; se añadieron `confirmar` y esos mensajes al
+  registro cerrado (24 mensajes, 13 listas). Un catálogo parcial conserva el comportamiento legacy
+  para pruebas de compatibilidad; un catálogo activo real se valida completo. Pruebas cubren comando
+  y menú P-27 en inglés, semillas y legado; no hubo cambio remoto, despliegue ni activación. Handoff:
+  corte 3, localizaciones de campaña y envío inicial mixto por participante.
+- 2026-08-11 - Codex - **P-32 corte 3/4 DONE local — campañas localizadas y envío inicial mixto.**
+  Las campañas conservan sus campos españoles históricos y añaden `idiomasHabilitados` más
+  `localizaciones` por los mismos IDs de mensaje y pregunta, con round-trip Cosmos compatible. El
+  portal de Campañas permite editar los textos por idioma y la API valida que una campaña bilingüe
+  tenga nombre, descripción, objetivo, cierre, mensajes, preguntas e instrucciones antes de activarse.
+  Con el gate aún OFF no cambia nada: se conserva el texto y plantilla globales históricos. Al
+  habilitarlo en un entorno aislado, cada envío resuelve `Usuario.Idioma → localización → plantillaRef
+  → mapeo Meta del ambiente`; una localización o mapeo faltante produce error individual y no detiene
+  el lote. `EnvioMensaje` conserva snapshots de idioma y alias sin contenido ni identificadores físicos.
+  Validado con build Release sin warnings y 12 pruebas unitarias focalizadas; el build Angular quedó
+  bloqueado por Node local 22.17.0 (Angular exige >=22.22.3), sin modificar dependencias. No hubo
+  despliegue, cambio remoto, activación ni commit. Handoff: corte 4, propagar idioma a LLM, completar
+  catálogo/rollback operativo y E2E bilingüe antes de activar.
 - 2026-08-10 - Codex - **P-32 conversación multidioma y catálogo versionado — ESPECIFICADA.** Rol:
   Arquitecto/Analista/AppSec; se confirmó `Usuario.Idioma` (`es|en`, default `es`) en dominio,
   persistencia y contratos. Se diseñaron catálogo Cosmos editable/versionado, localizaciones de

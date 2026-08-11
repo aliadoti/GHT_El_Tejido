@@ -31,7 +31,8 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
                 new IntentoSeleccion("wamid.sel1", TipoIntentoSeleccion.Campania, ResultadoIntentoSeleccion.Invalido, Ahora.AddMinutes(5)),
             ],
             actualizadoEn: Ahora.AddMinutes(5),
-            esEntradaProactiva: true);
+            esEntradaProactiva: true,
+            idioma: "en");
 
         var documento = EnrutamientoAporteCosmosDocument.FromDomain(enrutamiento);
         var reconstruido = documento.ToDomain();
@@ -39,6 +40,7 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
         documento.Type.Should().Be("EnrutamientoAporte");
         documento.CampaniaId.Should().Be("routing:u_8f3c", "la particion interna nunca es una campania real");
         documento.Estado.Should().Be("seleccionPregunta");
+        documento.Idioma.Should().Be("en");
         reconstruido.Id.Should().Be(enrutamiento.Id);
         reconstruido.Estado.Should().Be(EstadoEnrutamientoAporte.SeleccionPregunta);
         reconstruido.PhoneNumberIdDestino.Should().Be("123456789");
@@ -56,6 +58,7 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
         reconstruido.VenceEn.Should().Be(Ahora.AddHours(24));
         reconstruido.ProcesadoEn.Should().BeNull();
         reconstruido.EsEntradaProactiva.Should().BeTrue();
+        reconstruido.Idioma.Should().Be("en");
     }
 
     [Theory]

@@ -26,6 +26,7 @@ internal static class EndpointsAdminFase4
         campanias.MapPost("", CrearCampaniaAsync);
         campanias.MapGet("/{id}", ObtenerCampaniaAsync);
         campanias.MapPut("/{id}", ActualizarCampaniaAsync);
+        campanias.MapPut("/{id}/localizaciones", ActualizarLocalizacionesAsync);
         campanias.MapPatch("/{id}/estado", CambiarEstadoCampaniaAsync);
         campanias.MapPost("/{id}/duplicar", DuplicarCampaniaAsync);
         campanias.MapGet("/{id}/mensajes-iniciales", ListarMensajesInicialesAsync);
@@ -110,6 +111,21 @@ internal static class EndpointsAdminFase4
                 request.ConfigMarkdown is null ? null : ToConfigMarkdown(request.ConfigMarkdown),
                 request.ConfigConversacional is null ? null : ToConfigConversacional(request.ConfigConversacional),
                 request.ConfigSeguridad is null ? null : ToLimitesCampania(request.ConfigSeguridad)),
+            ct);
+        return Results.Ok(MapearCampania(campania));
+    }
+
+    private static async Task<IResult> ActualizarLocalizacionesAsync(
+        string id,
+        LocalizacionesCampaniaRequest request,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        var campania = await ServicioCampanias(contexto).ActualizarLocalizacionesAsync(
+            id,
+            new SolicitudActualizarLocalizacionesCampania(
+                request.IdiomasHabilitados,
+                ToLocalizaciones(request.Localizaciones)),
             ct);
         return Results.Ok(MapearCampania(campania));
     }
@@ -522,6 +538,33 @@ internal static class EndpointsAdminFase4
             RequerirTexto(request.Idioma, "plantillaWhatsApp.idioma"),
             request.Componentes);
 
+    private static IReadOnlyDictionary<string, LocalizacionCampania>? ToLocalizaciones(
+        IReadOnlyDictionary<string, LocalizacionCampaniaRequest>? localizaciones)
+    {
+        if (localizaciones is null)
+        {
+            return null;
+        }
+
+        return localizaciones.ToDictionary(
+            localizacion => localizacion.Key,
+            localizacion => LocalizacionCampania.Crear(
+                localizacion.Key,
+                localizacion.Value.Nombre,
+                localizacion.Value.Descripcion,
+                localizacion.Value.Objetivo,
+                localizacion.Value.MensajeCierre,
+                localizacion.Value.MensajesIniciales?.ToDictionary(
+                    mensaje => mensaje.Key,
+                    mensaje => new LocalizacionMensajeInicial(mensaje.Value.Texto, mensaje.Value.PlantillaRef),
+                    StringComparer.Ordinal),
+                localizacion.Value.Preguntas?.ToDictionary(
+                    pregunta => pregunta.Key,
+                    pregunta => new LocalizacionPregunta(pregunta.Value.Texto, pregunta.Value.Instruccion),
+                    StringComparer.Ordinal)),
+            StringComparer.Ordinal);
+    }
+
     private static object MapearCampaniaResumen(Campania campania)
         => new
         {
@@ -551,6 +594,22 @@ internal static class EndpointsAdminFase4
             configConversacional = MapearConfigConversacional(campania.ConfigConversacional),
             configSeguridad = MapearLimitesCampania(campania.ConfigSeguridad),
             usuariosHabilitados = campania.UsuariosHabilitados,
+            idiomasHabilitados = campania.IdiomasHabilitados,
+            localizaciones = campania.Localizaciones.ToDictionary(
+                localizacion => localizacion.Key,
+                localizacion => new
+                {
+                    localizacion.Value.Nombre,
+                    localizacion.Value.Descripcion,
+                    localizacion.Value.Objetivo,
+                    localizacion.Value.MensajeCierre,
+                    mensajesIniciales = localizacion.Value.MensajesIniciales.ToDictionary(
+                        mensaje => mensaje.Key,
+                        mensaje => new { mensaje.Value.Texto, mensaje.Value.PlantillaRef }),
+                    preguntas = localizacion.Value.Preguntas.ToDictionary(
+                        pregunta => pregunta.Key,
+                        pregunta => new { pregunta.Value.Texto, pregunta.Value.Instruccion }),
+                }, StringComparer.Ordinal),
             campania.CreadoEn,
             campania.ActualizadoEn,
         };
@@ -811,6 +870,18 @@ internal static class EndpointsAdminFase4
     private sealed record CambiarEstadoRequest(string? Estado);
     private sealed record CampaniaRequest(string? Nombre, string? Descripcion, string? Objetivo, string? RubricaRef, IReadOnlyDictionary<string, string>? PromptRefs, string? ConfigLlmRef, ConfigMarkdownRequest? ConfigMarkdown, ConfigConversacionalRequest? ConfigConversacional, LimitesSeguridadRequest? ConfigSeguridad);
     private sealed record CampaniaPatchRequest(string? Nombre, string? Descripcion, string? Objetivo, string? RubricaRef, IReadOnlyDictionary<string, string>? PromptRefs, string? ConfigLlmRef, ConfigMarkdownRequest? ConfigMarkdown, ConfigConversacionalRequest? ConfigConversacional, LimitesSeguridadRequest? ConfigSeguridad);
+    private sealed record LocalizacionesCampaniaRequest(
+        IReadOnlyCollection<string>? IdiomasHabilitados,
+        IReadOnlyDictionary<string, LocalizacionCampaniaRequest>? Localizaciones);
+    private sealed record LocalizacionCampaniaRequest(
+        string? Nombre,
+        string? Descripcion,
+        string? Objetivo,
+        string? MensajeCierre,
+        IReadOnlyDictionary<string, LocalizacionMensajeInicialRequest>? MensajesIniciales,
+        IReadOnlyDictionary<string, LocalizacionPreguntaRequest>? Preguntas);
+    private sealed record LocalizacionMensajeInicialRequest(string? Texto, string? PlantillaRef);
+    private sealed record LocalizacionPreguntaRequest(string? Texto, string? Instruccion);
     private sealed record ConfigMarkdownRequest(string? TipoArtefacto);
     private sealed record ConfigConversacionalRequest(
         int? MaxRepreguntas,

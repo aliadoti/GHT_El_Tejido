@@ -1,5 +1,6 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
+using ElTejido.Application.Configuracion;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Campanas;
@@ -22,6 +23,7 @@ public sealed class ServicioEnvios : IServicioEnvios
     private readonly IColaEnvios _cola;
     private readonly IAlmacenJobs _jobs;
     private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
+    private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
 
     public ServicioEnvios(
         IRepositorioCampanias campanias,
@@ -29,7 +31,8 @@ public sealed class ServicioEnvios : IServicioEnvios
         IRepositorioUsuarios usuarios,
         IColaEnvios cola,
         IAlmacenJobs jobs,
-        OpcionesPlantillaEnvioInicial plantillaEnvioInicial)
+        OpcionesPlantillaEnvioInicial plantillaEnvioInicial,
+        OpcionesCatalogoTextos? opcionesCatalogoTextos = null)
     {
         _campanias = campanias;
         _participantes = participantes;
@@ -37,6 +40,7 @@ public sealed class ServicioEnvios : IServicioEnvios
         _cola = cola;
         _jobs = jobs;
         _plantillaEnvioInicial = plantillaEnvioInicial;
+        _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
     }
 
     public Task<ResultadoEncolarEnvio> EncolarInicialesAsync(
@@ -128,7 +132,6 @@ public sealed class ServicioEnvios : IServicioEnvios
         }
 
         var mensaje = ResolverMensajeInicial(campania, mensajeInicialId);
-        var plantilla = ResolverPlantillaEnvioInicial(mensaje);
 
         var participantes = await _participantes.ListarParticipantesAsync(id, cancellationToken);
         var objetivos = participantes
@@ -147,18 +150,22 @@ public sealed class ServicioEnvios : IServicioEnvios
                 continue;
             }
 
-            var variables = RenderizadorMensaje.ConstruirVariables(usuario, campania);
+            var resolucion = ResolverContenidoParaParticipante(campania, mensaje, usuario.Idioma);
+            var variables = RenderizadorMensaje.ConstruirVariables(usuario, campania, resolucion.NombreCampania);
             var trabajo = new TrabajoEnvio(
                 job.Id,
                 id,
                 participante.UsuarioId,
                 participante.WhatsappNormalizado.Valor,
                 mensaje.Id,
-                plantilla,
+                resolucion.Plantilla,
                 variables,
-                RenderizadorMensaje.Reemplazar(mensaje.Texto, variables),
+                RenderizadorMensaje.Reemplazar(resolucion.Texto, variables),
                 tipo,
-                campania.ConfigConversacional.NumeroWhatsAppSaliente);
+                campania.ConfigConversacional.NumeroWhatsAppSaliente,
+                resolucion.Idioma,
+                resolucion.PlantillaRef,
+                resolucion.Error);
 
             await _cola.EncolarAsync(trabajo, cancellationToken);
         }
@@ -196,6 +203,60 @@ public sealed class ServicioEnvios : IServicioEnvios
         return PlantillaWhatsApp.Crear(_plantillaEnvioInicial.Nombre, idioma, componentes);
     }
 
+    private ResolucionContenidoEnvio ResolverContenidoParaParticipante(
+        Campania campania,
+        MensajeInicial mensaje,
+        string idiomaUsuario)
+    {
+        // Gate OFF: no se leen borradores multidioma y se conserva el envío histórico exacto.
+        if (!_opcionesCatalogoTextos.Habilitado)
+        {
+            return new ResolucionContenidoEnvio(
+                campania.Nombre,
+                mensaje.Texto,
+                ResolverPlantillaEnvioInicial(mensaje),
+                null,
+                "es",
+                null);
+        }
+
+        var idioma = idiomaUsuario.Trim().ToLowerInvariant();
+        if (!campania.TryObtenerLocalizacion(idioma, out var localizacion))
+        {
+            return ResolucionContenidoEnvio.ConError(
+                idioma,
+                "IDIOMA_CAMPANIA_NO_HABILITADO: el idioma del participante no esta habilitado en la campania.");
+        }
+
+        if (string.IsNullOrWhiteSpace(localizacion.Nombre)
+            || string.IsNullOrWhiteSpace(localizacion.Descripcion)
+            || string.IsNullOrWhiteSpace(localizacion.Objetivo)
+            || string.IsNullOrWhiteSpace(localizacion.MensajeCierre)
+            || !localizacion.MensajesIniciales.TryGetValue(mensaje.Id, out var mensajeLocalizado)
+            || string.IsNullOrWhiteSpace(mensajeLocalizado.Texto))
+        {
+            return ResolucionContenidoEnvio.ConError(
+                idioma,
+                "LOCALIZACION_CAMPANIA_INCOMPLETA: falta contenido localizado obligatorio para el participante.");
+        }
+
+        if (string.IsNullOrWhiteSpace(mensajeLocalizado.PlantillaRef)
+            || !_plantillaEnvioInicial.TryResolver(mensajeLocalizado.PlantillaRef, idioma, out var plantilla))
+        {
+            return ResolucionContenidoEnvio.ConError(
+                idioma,
+                "PLANTILLA_CAMPANIA_NO_CONFIGURADA: no existe una plantilla Meta aprobada para el alias e idioma del participante.");
+        }
+
+        return new ResolucionContenidoEnvio(
+            localizacion.Nombre,
+            mensajeLocalizado.Texto,
+            plantilla,
+            mensajeLocalizado.PlantillaRef,
+            idioma,
+            null);
+    }
+
     private static MensajeInicial ResolverMensajeInicial(Campania campania, string? mensajeInicialId)
     {
         var activos = campania.MensajesIniciales
@@ -223,5 +284,17 @@ public sealed class ServicioEnvios : IServicioEnvios
         }
 
         return id.Trim();
+    }
+
+    private sealed record ResolucionContenidoEnvio(
+        string NombreCampania,
+        string Texto,
+        PlantillaWhatsApp? Plantilla,
+        string? PlantillaRef,
+        string Idioma,
+        string? Error)
+    {
+        public static ResolucionContenidoEnvio ConError(string idioma, string error)
+            => new(string.Empty, string.Empty, null, null, idioma, error);
     }
 }

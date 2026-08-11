@@ -41,6 +41,12 @@ internal sealed class EnvioMensajeCosmosDocument
     [JsonProperty("error")]
     public string? Error { get; init; }
 
+    [JsonProperty("idioma", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Idioma { get; init; }
+
+    [JsonProperty("plantillaRef", NullValueHandling = NullValueHandling.Ignore)]
+    public string? PlantillaRef { get; init; }
+
     public static EnvioMensajeCosmosDocument FromDomain(EnvioMensaje envio)
     {
         return new EnvioMensajeCosmosDocument
@@ -56,6 +62,8 @@ internal sealed class EnvioMensajeCosmosDocument
             WhatsappMessageId = envio.WhatsappMessageId,
             FechaEnvio = envio.FechaEnvio,
             Error = envio.Error,
+            Idioma = envio.Idioma,
+            PlantillaRef = envio.PlantillaRef,
         };
     }
 
@@ -71,6 +79,8 @@ internal sealed class EnvioMensajeCosmosDocument
             CosmosEnumMaps.ToTipoEnvio(Tipo),
             WhatsappMessageId,
             FechaEnvio,
-            Error);
+            Error,
+            Idioma,
+            PlantillaRef);
     }
 }

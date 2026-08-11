@@ -319,6 +319,53 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task P32_P27_AmbiguaEnIngles_UsaLaAclaracionDelCatalogo()
+    {
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Ambigua, null));
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverAsync(Arg.Any<DominioConversacion>(), Arg.Any<CancellationToken>())
+            .Returns(TextosCatalogoCompleto("en"));
+        await PrepararConversacionEnRepreguntaAsync("en");
+
+        await Construir(
+                new OpcionesConversacion { ClasificacionIntencionControl = true },
+                clasificador: clasificador,
+                resolutorTextos: resolutor)
+            .ProcesarMensajeEntranteAsync(
+                ParticipanteConClasificacionControl("en"),
+                Mensaje("I am not sure"),
+                CancellationToken.None);
+
+        _conversaciones.Ultima!.Idioma.Should().Be("en");
+        _conversaciones.Ultima.EstadoMaquina.Should().Be(EstadoMaquinaConversacion.EsperandoConfirmacionSalida);
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains("What would you prefer?", StringComparison.Ordinal)),
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task P32_ComandoDeterministaEnIngles_FinalizaSinEvaluar()
+    {
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverAsync(Arg.Any<DominioConversacion>(), Arg.Any<CancellationToken>())
+            .Returns(TextosCatalogoCompleto("en"));
+        await PrepararConversacionEnRepreguntaAsync("en");
+
+        await Construir(resolutorTextos: resolutor).ProcesarMensajeEntranteAsync(
+            Participante(idioma: "en"),
+            Mensaje("stop now"),
+            CancellationToken.None);
+
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+        await _evaluador.DidNotReceive().EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task P27_CupoYaConsumidoPorClasificacion_OmiteLlmYRegistraLaRazonSinPii()
     {
         var clasificador = Substitute.For<IClasificadorIntencionControl>();
@@ -2883,12 +2930,12 @@ public sealed class OrquestadorConversacionTests
             DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca),
             CancellationToken.None);
 
-    private Task PrepararConversacionEnRepreguntaAsync()
+    private Task PrepararConversacionEnRepreguntaAsync(string idioma = "es")
         => _conversaciones.GuardarConversacionAsync(
             DominioConversacion.Crear(
                 "conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", EstadoConversacion.Abierta,
                 EstadoMaquinaConversacion.EsperandoRepregunta, repreguntasUsadas: 1, Epoca.AddHours(24), null,
-                Epoca, fechaCierre: null),
+                Epoca, fechaCierre: null, idioma: idioma),
             CancellationToken.None);
 
     /// <summary>Persiste un Mensaje(in) previo en el hilo estandar, para los contadores de cupos.</summary>
@@ -2905,23 +2952,25 @@ public sealed class OrquestadorConversacionTests
             CancellationToken.None);
 
     private static ParticipanteResuelto Participante(
-        int maxRepreguntas = 1, EstadoCampania estadoCampania = EstadoCampania.Activa)
+        int maxRepreguntas = 1,
+        EstadoCampania estadoCampania = EstadoCampania.Activa,
+        string idioma = "es")
     {
         var pregunta = CrearPregunta("p_1", 1, maxRepreguntas);
         var campania = CrearCampania(new[] { pregunta }, estado: estadoCampania);
-        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: idioma);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
 
-    private static ParticipanteResuelto ParticipanteConClasificacionControl()
+    private static ParticipanteResuelto ParticipanteConClasificacionControl(string idioma = "es")
     {
         var pregunta = CrearPregunta("p_1", 1, 1);
         var campania = CrearCampania(
             new[] { pregunta },
             configConversacional: ConfigConversacional.Crear(
                 1, "Gracias por participar.", clasificacionIntencionControl: true));
-        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante);
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: idioma);
         var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
         return new ParticipanteResuelto(usuario, campania, participante, pregunta);
     }
@@ -3015,6 +3064,18 @@ public sealed class OrquestadorConversacionTests
             OrigenTextosConversacion.Catalogo,
             VersionCatalogo: 1,
             HuellaCatalogo: "huella-prueba");
+
+    private static TextosConversacionResueltos TextosCatalogoCompleto(string idioma)
+    {
+        var catalogo = CatalogosTextosSemilla.CrearSolicitud(idioma);
+        return new TextosConversacionResueltos(
+            catalogo.Idioma,
+            catalogo.Mensajes,
+            catalogo.Frases,
+            OrigenTextosConversacion.Catalogo,
+            VersionCatalogo: 1,
+            HuellaCatalogo: "huella-prueba");
+    }
 
     private static ParticipanteResuelto ParticipanteConMensajeInicial(string textoInicial)
     {

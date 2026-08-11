@@ -1,4 +1,5 @@
 using ElTejido.Application.Common;
+using ElTejido.Application.Configuracion;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Identidad;
 using ElTejido.Application.Respuestas;
@@ -176,6 +177,30 @@ public sealed class ServicioEnrutamientoParticipacionTests
         menu.Should().Contain("número o con el nombre");
         _logs.Should().Contain(l => l.Resultado == "ofrecido" && l.TipoEvento == TipoEventoSeguridad.EnrutamientoParticipacion);
         _logs.Should().OnlyContain(l => !l.Detalle!.Contains("Se me ocurrio"), "el texto del participante nunca va a telemetria");
+    }
+
+    [Fact]
+    public async Task P32_MenuPendiente_UsaCatalogoInglesYConservaSuIdiomaAnteCambioEnElMaestro()
+    {
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverParaIdiomaAsync("en", Arg.Any<CancellationToken>()).Returns(TextosCatalogo("en"));
+        var usuarioIngles = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: "en");
+        var usuarioEspanol = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: "es");
+        var candidatos = new[]
+        {
+            Candidato("c_1", nombre: "Alpha"),
+            Candidato("c_2", nombre: "Beta"),
+        };
+        var servicio = Servicio(resolutorTextos: resolutor);
+
+        await servicio.ResolverAsync(usuarioIngles, candidatos, Mensaje("wamid.en", "A new idea"), CancellationToken.None);
+        await servicio.ResolverAsync(usuarioEspanol, candidatos, Mensaje("wamid.invalid", "not a number"), CancellationToken.None);
+
+        var ruta = _enrutamientos.Documentos.Should().ContainSingle().Which;
+        ruta.Idioma.Should().Be("en");
+        _enviados.Should().HaveCount(2);
+        _enviados.Should().OnlyContain(texto => texto.Contains("Which campaign does your contribution belong to?"));
+        await resolutor.Received().ResolverParaIdiomaAsync("en", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -609,7 +634,8 @@ public sealed class ServicioEnrutamientoParticipacionTests
     private ServicioEnrutamientoParticipacion Servicio(
         TimeProvider? reloj = null,
         bool despertarProactivo = false,
-        bool retomarIdeas = false)
+        bool retomarIdeas = false,
+        IResolutorTextosConversacion? resolutorTextos = null)
     {
         var logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
         logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(_logs.Add), Arg.Any<CancellationToken>())
@@ -626,7 +652,20 @@ public sealed class ServicioEnrutamientoParticipacionTests
                 RetomarIdeasHabilitado = retomarIdeas,
             },
             reloj ?? new RelojFijo(Ahora),
-            _respuestas);
+            _respuestas,
+            resolutorTextos);
+    }
+
+    private static TextosConversacionResueltos TextosCatalogo(string idioma)
+    {
+        var catalogo = CatalogosTextosSemilla.CrearSolicitud(idioma);
+        return new TextosConversacionResueltos(
+            catalogo.Idioma,
+            catalogo.Mensajes,
+            catalogo.Frases,
+            OrigenTextosConversacion.Catalogo,
+            VersionCatalogo: 1,
+            HuellaCatalogo: "test");
     }
 
     private IdeaConsolidada IdeaHistorica(

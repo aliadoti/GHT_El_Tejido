@@ -96,20 +96,22 @@ describe('paneles de campanias', () => {
     const panel = host.querySelector<HTMLElement>('[role="tabpanel"]');
 
     expect(tablist?.getAttribute('aria-label')).toBe('Secciones de la campaña');
-    expect(tabs.length).toBe(4);
-    expect(new Set(tabs.map((tab) => tab.id)).size).toBe(4);
+    expect(tabs.length).toBe(5);
+    expect(new Set(tabs.map((tab) => tab.id)).size).toBe(5);
     expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual([
       'true',
       'false',
       'false',
       'false',
+      'false',
     ]);
-    expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1]);
+    expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1, -1]);
     expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual([
       'Paso 1, Configuracion',
       'Paso 2, Mensajes iniciales, completo',
       'Paso 3, Preguntas, pendiente',
-      'Paso 4, Participantes, completo',
+      'Paso 4, Textos por idioma, completo',
+      'Paso 5, Participantes, completo',
     ]);
     expect(panel?.id).toBe(tabs[0].getAttribute('aria-controls'));
     expect(panel?.getAttribute('aria-labelledby')).toBe(tabs[0].id);
@@ -123,18 +125,18 @@ describe('paneles de campanias', () => {
 
     tabs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     fixture.detectChanges();
-    expect(document.activeElement).toBe(tabs[3]);
-    expect(tabs[3].getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tabs[4]);
+    expect(tabs[4].getAttribute('aria-selected')).toBe('true');
 
-    tabs[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    tabs[4].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
     fixture.detectChanges();
     expect(document.activeElement).toBe(tabs[0]);
     expect(tabs[0].getAttribute('aria-selected')).toBe('true');
 
     tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     fixture.detectChanges();
-    expect(document.activeElement).toBe(tabs[3]);
-    expect(tabs[3].getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(tabs[4]);
+    expect(tabs[4].getAttribute('aria-selected')).toBe('true');
 
     tabs[2].click();
     fixture.detectChanges();

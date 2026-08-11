@@ -68,6 +68,15 @@ export const routes: Routes = [
           import('./features/config-llm/config-llm.page').then((m) => m.ConfigLlmPage),
       },
       {
+        path: 'textos-conversacion',
+        canActivate: [adminGuard],
+        title: 'Textos de conversación - Tejido de Red',
+        loadComponent: () =>
+          import('./features/catalogos-textos/catalogos-textos.page').then(
+            (m) => m.CatalogosTextosPage,
+          ),
+      },
+      {
         path: 'resultados',
         title: 'Resultados - Tejido de Red',
         loadComponent: () =>

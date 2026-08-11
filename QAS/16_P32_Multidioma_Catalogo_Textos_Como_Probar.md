@@ -1,9 +1,9 @@
 # 16 — P-32: conversación en español/inglés y textos editables
 
-**Estado:** corte 1, corte 2a y corte 2b1 DONE local. La API, semillas, caché/LKG, emergencia,
-snapshot de idioma y los mensajes globales registrados del orquestador están implementados; el gate
-sigue OFF y faltan detectores, enrutamiento, campañas y portal. No se pueden aprobar las pruebas
-bilingües de punta a punta hasta completar los cuatro cortes.
+**Estado:** cortes 1 a 4 DONE local. La API, semillas, caché/LKG, emergencia, snapshot de idioma,
+mensajes globales, enrutamiento, detectores, localizaciones de campaña, envío inicial mixto y los
+contextos LLM están implementados. El gate sigue OFF; la activación requiere una prueba controlada de
+ambos idiomas, plantillas Meta aprobadas, D5/UAT y revisión de costo.
 
 ## Qué se quiere comprobar
 
@@ -40,6 +40,26 @@ esto es la regresión segura esperada, no un fallo de traducción.
 pregunta y el contenido de campaña pueden seguir en español hasta el corte 3; por eso esta prueba no
 autoriza activar el catálogo en un ambiente compartido.
 
+## Prueba 0.2 — menú pendiente con snapshot (técnica, tramo 2b2)
+
+1. En un entorno aislado y con el catálogo inglés activo, usa dos campañas elegibles para un
+   participante `en` y envía un aporte para provocar el menú de campaña.
+2. Cambia el idioma de ese participante a `es` en el maestro antes de responder un valor inválido al menú.
+
+**Deberías ver:** ambos menús siguen en inglés. La selección pendiente conserva el idioma que tenía
+cuando nació; el cambio del maestro solo aplica a rutas y ciclos nuevos. Con el gate OFF, se conserva el
+texto español heredado como regresión segura.
+
+## Prueba 0.3 — comandos y aclaración P-27 en inglés (técnica, corte 2b2)
+
+1. En un entorno aislado con catálogo inglés activo, abre un hilo `en` que esté esperando una mejora.
+2. Envía una frase corta de salida como `stop now`; repite el recorrido con una frase ambigua para abrir
+   el menú de aclaración.
+
+**Deberías ver:** `stop now` termina el recorrido sin evaluar ese texto como una idea. La aclaración
+pregunta en inglés qué hacer y las opciones 1, 2 y 3 conservan el mismo efecto que en español. Con el
+gate OFF, el sistema mantiene el texto y la interpretación heredados en español.
+
 ## Prueba 1 — mismo recorrido, dos idiomas
 
 1. Envía el mensaje inicial a los dos participantes.
@@ -65,10 +85,23 @@ registrados por separado.
 **Algo va mal si:** todo el lote usa una sola plantilla, el inglés recibe español o el error de una
 plantilla detiene también al otro participante.
 
+### Configuración previa del lote mixto (corte 3)
+
+1. En **Campañas**, abre la campaña y entra a **Textos por idioma**.
+2. Marca inglés, completa todos los campos de español e inglés y guarda. Cada mensaje inicial debe
+   tener un alias de plantilla; no escribas claves ni secretos en esa pantalla.
+3. En el ambiente de prueba, configura el mapeo de cada alias e idioma con la plantilla Meta ya
+   aprobada. Ejemplo: `WhatsApp__PlantillaEnvioInicial__Mapeos__inicio_campania__en__Nombre`.
+4. Prueba primero con la palanca multidioma apagada: ambos participantes conservan el envío histórico
+   en español. Enciéndela solo en un entorno aislado cuando el catálogo global esté listo.
+
+**Deberías ver:** al encender la palanca en pruebas, cada participante recibe la plantilla de su
+idioma. Si falta contenido o mapeo inglés, solo ese envío queda en error; los demás continúan.
+
 ## Prueba 3 — cambiar un texto sin desplegar
 
 1. Abre **Textos de conversación**, elige el idioma inglés y crea una versión borrador desde la
-   versión activa.
+   semilla si aún no existe una versión; si existe, selecciona el borrador de la lista.
 2. Cambia un saludo visible, guarda y usa la vista previa.
 3. Comprueba que el borrador todavía no afecta la conversación.
 4. Activa la versión y abre un hilo nuevo en inglés.
@@ -84,7 +117,7 @@ texto español.
 1. Intenta guardar una versión con un campo obligatorio vacío, un placeholder inventado o una frase
    duplicada.
 2. Confirma que el portal explica el error y que la versión activa sigue intacta.
-3. Activa una versión válida y luego usa **Volver a esta versión** sobre la anterior.
+3. Activa una versión válida y luego usa **Reactivar esta versión** sobre la anterior.
 4. Abre un hilo nuevo.
 
 **Deberías ver:** el contenido inválido nunca se publica y el rollback restaura el texto anterior sin

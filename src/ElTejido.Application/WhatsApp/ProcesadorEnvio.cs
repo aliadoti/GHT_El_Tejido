@@ -31,7 +31,9 @@ public sealed class ProcesadorEnvio
 
     public async Task<EnvioResultado> ProcesarAsync(TrabajoEnvio trabajo, CancellationToken cancellationToken)
     {
-        var resultado = trabajo.Plantilla is not null
+        var resultado = !string.IsNullOrWhiteSpace(trabajo.ErrorPrevalidacion)
+            ? EnvioResultado.Fallo(trabajo.ErrorPrevalidacion)
+            : trabajo.Plantilla is not null
             ? await _gateway.EnviarPlantillaAsync(
                 trabajo.Numero,
                 trabajo.Plantilla,
@@ -59,7 +61,9 @@ public sealed class ProcesadorEnvio
             trabajo.Tipo,
             resultado.WhatsappMessageId,
             ahora,
-            resultado.Error);
+            resultado.Error,
+            trabajo.Idioma,
+            trabajo.PlantillaRef);
         await _participantes.RegistrarEnvioAsync(envio, cancellationToken);
 
         await ActualizarParticipanteAsync(trabajo, estado, ahora, cancellationToken);

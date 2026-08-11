@@ -1,7 +1,8 @@
 # P-32 — Conversación multidioma y catálogo versionado de textos
 
-**Estado:** **EN IMPLEMENTACIÓN 2026-08-10**; **corte 1 DONE local (1/4)**. Catálogo, API,
-caché/LKG, emergencia `es/en`, semillas explícitas y gate OFF listos; conexión al runtime pendiente.
+**Estado:** **DONE local 2026-08-11 (4/4)**. Catálogo/API, caché/LKG, emergencia `es/en`,
+localizaciones, envío inicial mixto, contextos LLM, portal operativo y gate OFF listos. Falta solo la
+activación controlada fuera del repositorio.
 **Solicitud:** conversación en español e inglés según el idioma del maestro de usuarios y edición de
 textos sin recompilar.
 **Áreas afectadas:** maestro de usuarios, campañas, envío inicial, enrutamiento, orquestador,
@@ -331,9 +332,9 @@ operación.
 | Corte | Entrega verificable | Pruebas mínimas |
 |---|---|---|
 | 1 | **DONE local 2026-08-10.** Contratos aditivos, entidad/repositorio de catálogo, validación/versionado, proveedor con caché/última versión válida y API admin. Gate OFF. Semilla `es` desde valores efectivos actuales y catálogo `en` curado. | Esquema, claves, límites, borrador/inmutabilidad, ETag/activación atómica, caché/fallo Cosmos, JSON import/export, permisos y regresión legacy. |
-| 2 | **2a DONE local 2026-08-10:** `Conversacion.Idioma` queda fijado al crear o abrir un ciclo, persiste en Cosmos, conserva `es` en documentos históricos y se expone en Resultados. **2b1 DONE local:** los mensajes globales registrados y las variantes de mejora/continuar ya se resuelven por el adaptador en `OrquestadorConversacion`, usando el snapshot del hilo; la reactivación sin hilo usa `Usuario.Idioma`. **Pendiente 2b2:** detectores `es/en`, textos de aclaración P-27 y enrutamiento; después propagar snapshot a evaluación. | 2a: round-trip Cosmos, hilo nuevo `en`, transiciones inmutables y regresión legacy con gate OFF. 2b1: saludo/repregunta desde catálogo y variantes en inglés; gate OFF conserva el legado. 2b2: comandos de salida, fallback correcto y telemetría sin contenido. |
-| 3 | Localizaciones de campaña, validación de completitud, portal de campaña y envío inicial mixto con plantilla por participante. | Campaña legacy `es`; campaña bilingüe; faltante `en` bloquea; lote mixto usa dos plantillas; fallo de una no detiene las demás; snapshots de envío. |
-| 4 | Propagación completa a LLM, portal de catálogo, E2E `es/en`, QAS, migración final y deprecación documentada de variables editoriales. | Mismos recorridos en ambos idiomas, guardrails y fallback; edición/rollback sin build; build/test/lint/format/diff verdes. |
+| 2 | **DONE local 2026-08-10.** `Conversacion.Idioma` queda fijado al crear o abrir un ciclo, persiste en Cosmos, conserva `es` en documentos históricos y se expone en Resultados. Los mensajes globales, variantes, menús/frases de enrutamiento, detectores del orquestador y aclaraciones P-27 se resuelven por el adaptador con el snapshot del hilo o ruta. `EnrutamientoAporte.Idioma` conserva el idioma de una selección pendiente aunque cambie el maestro. El gate sigue OFF. **Siguiente:** localizaciones de campaña del corte 3; después propagar idioma a evaluación/LLM en el corte 4. | Round-trip Cosmos, hilo/ruta nueva `en`, transiciones inmutables, menú y aclaración inglesa, comando determinista inglés y regresión legacy con gate OFF. |
+| 3 | **DONE local 2026-08-11.** Localizaciones embebidas, validación de completitud, portal de campaña y envío inicial mixto con plantilla por participante. Gate OFF conserva el flujo histórico; con ON el fallo localizado se registra por participante y el lote sigue. | Campaña legacy `es`; campaña bilingüe; faltante `en` bloquea; lote mixto usa dos plantillas; fallo de una no detiene las demás; snapshots de envío. |
+| 4 | **DONE local 2026-08-11.** Evaluación, segmentación, consolidación y redacción reciben idioma y contenido localizado; el redactor ya no impone español. También se localizan saludo/pregunta inicial y la siguiente pregunta. Portal administrativo: semilla, importación/exportación JSON, borrador, edición, activación y reactivación explícita con ETag. QAS y deprecación documentada. | 768 unitarias + 87 integración verdes; portal 43/43, build Angular y Prettier verdes con Node temporal `22.22.3`; pruebas focalizadas `es/en` para los cuatro contextos LLM. |
 
 El inventario de migración define qué clave sale de cada origen actual. Cada corte mantiene el gate
 apagado y no cambia configuración remota. Activar requiere UAT bilingüe, plantillas Meta aprobadas y

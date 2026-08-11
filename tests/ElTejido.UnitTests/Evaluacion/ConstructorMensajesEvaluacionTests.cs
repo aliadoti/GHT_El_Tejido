@@ -31,6 +31,23 @@ public sealed class ConstructorMensajesEvaluacionTests
     }
 
     [Fact]
+    public void Construir_ContextoEnIngles_ExigeSalidaYUsaContenidoLocalizado()
+    {
+        var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto() with
+        {
+            Idioma = "en",
+            NombreCampaniaEfectivo = "Neighbourhood ideas",
+            ObjetivoCampaniaEfectivo = "Improve public spaces",
+            TextoPreguntaEfectivo = "What would you improve?",
+            InstruccionPreguntaEfectiva = "Describe one concrete action.",
+        });
+
+        mensajes[0].Contenido.Should().Contain("IDIOMA_DE_SALIDA_OBLIGATORIO: en");
+        mensajes[1].Contenido.Should().Contain("Neighbourhood ideas").And.Contain("Improve public spaces");
+        mensajes[2].Contenido.Should().Contain("What would you improve?").And.Contain("Describe one concrete action.");
+    }
+
+    [Fact]
     public void Construir_SystemIncluyePistaDeFocoEnElEjeDebilSinRevelarLaRubrica()
     {
         var mensajes = ConstructorMensajesEvaluacion.Construir(CrearContexto());

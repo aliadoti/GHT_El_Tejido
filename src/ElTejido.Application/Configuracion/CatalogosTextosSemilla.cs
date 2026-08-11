@@ -74,12 +74,16 @@ public static class CatalogosTextosSemilla
             ["ayudaSeleccionCampaniaInvalida"] = Texto(mensajes?.AyudaSeleccionCampaniaInvalida, OpcionesMensajesConversacion.AyudaSeleccionCampaniaInvalidaDefault),
             ["encabezadoSeleccionPregunta"] = Texto(mensajes?.EncabezadoSeleccionPregunta, OpcionesMensajesConversacion.EncabezadoSeleccionPreguntaDefault),
             ["instruccionSeleccionPregunta"] = Texto(mensajes?.InstruccionSeleccionPregunta, OpcionesMensajesConversacion.InstruccionSeleccionPreguntaDefault),
+            ["menuAclaracionSalida"] = "¿Qué prefieres? Responde 1 para seguir con esta idea, 2 para dejar esta idea y pasar a la siguiente, o 3 para terminar por ahora.",
+            ["respaldoAclaracionSalida"] = "Puedes continuar con tu idea o indicar una salida cuando lo necesites.",
+            ["acuseAclaracionContinuar"] = "Perfecto, continuemos con esta idea.",
         };
 
     private static IReadOnlyDictionary<string, IReadOnlyCollection<string>> FrasesEs(OpcionesConversacion? opciones)
     {
         var mensajes = opciones?.Mensajes;
         var finalizacion = ResolutorFrasesFinalizacion.Resolver(opciones ?? new OpcionesConversacion());
+        var continuar = Lista(opciones?.FrasesContinuar, DetectorIntencionContinuar.FrasesPorDefecto);
         return new Dictionary<string, IReadOnlyCollection<string>>(StringComparer.Ordinal)
         {
             ["invitacionMejoraVariantes"] = Lista(
@@ -91,7 +95,10 @@ public static class CatalogosTextosSemilla
             ["acuseContinuarVariantes"] = Lista(
                 mensajes?.AcuseContinuarVariantes,
                 new[] { Texto(mensajes?.AcuseContinuar, OpcionesMensajesConversacion.AcuseContinuarDefault) }),
-            ["continuar"] = Lista(opciones?.FrasesContinuar, DetectorIntencionContinuar.FrasesPorDefecto),
+            ["continuar"] = continuar,
+            ["confirmar"] = CombinarSinDuplicadas(
+                continuar,
+                ["si", "sí", "correcto", "eso es", "exacto", "confirmo"]),
             ["finalizarIdea"] = finalizacion.FinalizarIdea.Frases,
             ["finalizarParticipacion"] = finalizacion.FinalizarParticipacion.Frases,
             ["solicitarMejora"] = Lista(opciones?.FrasesSolicitarMejora, DetectorIntencionContinuar.FrasesSolicitarMejoraPorDefecto),
@@ -112,6 +119,31 @@ public static class CatalogosTextosSemilla
     {
         var valores = configurada?.ToArray() ?? Array.Empty<string>();
         return valores.Length == 0 ? porDefecto : valores;
+    }
+
+    private static IReadOnlyCollection<string> CombinarSinDuplicadas(
+        IEnumerable<string> primeras,
+        IEnumerable<string> adicionales)
+        => primeras.Concat(adicionales)
+            .Where(valor => !string.IsNullOrWhiteSpace(valor))
+            .GroupBy(NormalizarFrase, StringComparer.Ordinal)
+            .Select(grupo => grupo.First())
+            .ToArray();
+
+    private static string NormalizarFrase(string valor)
+    {
+        var descompuesto = valor.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+        var sinAcentos = new string(descompuesto
+            .Where(caracter => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(caracter)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        var limpio = new System.Text.StringBuilder(sinAcentos.Length);
+        foreach (var caracter in sinAcentos)
+        {
+            limpio.Append(char.IsLetterOrDigit(caracter) ? caracter : ' ');
+        }
+
+        return string.Join(' ', limpio.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static IReadOnlyDictionary<string, string> MensajesEn()
@@ -138,6 +170,9 @@ public static class CatalogosTextosSemilla
             ["ayudaSeleccionCampaniaInvalida"] = "I didn't recognize that option. Your contribution is still saved.",
             ["encabezadoSeleccionPregunta"] = "Which question would you like to contribute to?",
             ["instruccionSeleccionPregunta"] = "Reply with the number or the full question text.",
+            ["menuAclaracionSalida"] = "What would you prefer? Reply 1 to continue with this idea, 2 to leave this idea and move to the next one, or 3 to finish for now.",
+            ["respaldoAclaracionSalida"] = "You can continue with your idea or indicate that you want to leave when you need to.",
+            ["acuseAclaracionContinuar"] = "Perfect, let's continue with this idea.",
         };
 
     private static IReadOnlyDictionary<string, IReadOnlyCollection<string>> FrasesEn()
@@ -159,6 +194,12 @@ public static class CatalogosTextosSemilla
             {
                 "done", "let's continue", "continue", "next question", "it is fine as is",
                 "it is good as is", "leave it as is", "I am satisfied", "I don't want to improve it",
+            },
+            ["confirmar"] = new[]
+            {
+                "done", "let's continue", "continue", "next question", "it is fine as is",
+                "it is good as is", "leave it as is", "I am satisfied", "I don't want to improve it",
+                "yes", "correct", "that's right", "exactly", "I confirm",
             },
             ["finalizarIdea"] = new[]
             {

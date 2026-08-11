@@ -18,6 +18,11 @@ public interface IServicioGestionCampanias
         SolicitudActualizarCampania solicitud,
         CancellationToken cancellationToken);
 
+    Task<Campania> ActualizarLocalizacionesAsync(
+        string id,
+        SolicitudActualizarLocalizacionesCampania solicitud,
+        CancellationToken cancellationToken);
+
     Task<Campania> CambiarEstadoCampaniaAsync(
         string id,
         EstadoCampania estado,
@@ -88,6 +93,10 @@ public sealed record SolicitudActualizarCampania(
     ConfigMarkdown? ConfigMarkdown,
     ConfigConversacional? ConfigConversacional,
     LimitesSeguridad? ConfigSeguridad);
+
+public sealed record SolicitudActualizarLocalizacionesCampania(
+    IReadOnlyCollection<string>? IdiomasHabilitados,
+    IReadOnlyDictionary<string, LocalizacionCampania>? Localizaciones);
 
 public sealed record SolicitudGuardarMensajeInicial(
     string NombreInterno,

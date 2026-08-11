@@ -13,6 +13,7 @@ import { RouterLink } from '@angular/router';
 import {
   Campania,
   ConfigLlm,
+  LocalizacionCampania,
   ParticipanteCampania,
   ParticipantePreview,
   Pregunta,
@@ -44,7 +45,7 @@ export interface CampaniaEdicionForm extends CampaniaCrearForm {
   participacionContinua: boolean;
   clasificacionIntencionControl: boolean;
 }
-export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'participantes';
+export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'localizaciones' | 'participantes';
 export interface MensajeInicialForm {
   nombreInterno: string;
   texto: string;
@@ -574,6 +575,198 @@ export class MensajesInicialesPanel implements OnChanges {
 }
 
 @Component({
+  selector: 'app-localizaciones-campania-panel',
+  standalone: true,
+  imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<article>
+    <h4>Textos por idioma</h4>
+    <p class="muted">
+      Los IDs técnicos se comparten. Edita el contenido visible por idioma; el alias de plantilla se
+      mapea por ambiente y no lleva secretos.
+    </p>
+    <form class="form-grid" (ngSubmit)="guardarCambios()">
+      <label
+        >Idioma<select
+          name="idiomaLocalizacion"
+          [(ngModel)]="idioma"
+          (ngModelChange)="cargarIdioma()"
+        >
+          <option value="es">Español</option>
+          <option value="en">English</option>
+        </select></label
+      >
+      <label class="checkbox-field"
+        ><input type="checkbox" name="inglesHabilitado" [(ngModel)]="inglesHabilitado" /> Habilitar
+        inglés para esta campaña</label
+      >
+      <label>Nombre visible<input name="localizacionNombre" [(ngModel)]="actual.nombre" /></label>
+      <label
+        >Descripción<textarea
+          name="localizacionDescripcion"
+          rows="2"
+          [(ngModel)]="actual.descripcion"
+        ></textarea>
+      </label>
+      <label
+        >Objetivo<textarea
+          name="localizacionObjetivo"
+          rows="2"
+          [(ngModel)]="actual.objetivo"
+        ></textarea>
+      </label>
+      <label
+        >Mensaje de cierre<textarea
+          name="localizacionCierre"
+          rows="2"
+          [(ngModel)]="actual.mensajeCierre"
+        ></textarea>
+      </label>
+      <h5 class="subhead">Mensajes iniciales</h5>
+      @for (mensaje of campania().mensajesIniciales ?? []; track mensaje.id) {
+        <div class="edit-block">
+          <strong>{{ mensaje.nombreInterno }}</strong>
+          <label
+            >Texto<textarea
+              [name]="'texto-' + mensaje.id"
+              rows="2"
+              [ngModel]="textoMensaje(mensaje.id)"
+              (ngModelChange)="cambiarTextoMensaje(mensaje.id, $event)"
+            ></textarea>
+          </label>
+          <label
+            >Alias de plantilla Meta<input
+              [name]="'plantilla-' + mensaje.id"
+              [ngModel]="plantillaRef(mensaje.id)"
+              (ngModelChange)="cambiarPlantillaRef(mensaje.id, $event)"
+              placeholder="ej: inicio_campania"
+          /></label>
+        </div>
+      }
+      <h5 class="subhead">Preguntas</h5>
+      @for (pregunta of campania().preguntas ?? []; track pregunta.id) {
+        <div class="edit-block">
+          <strong>{{ pregunta.categoria }}</strong>
+          <label
+            >Texto<textarea
+              [name]="'pregunta-' + pregunta.id"
+              rows="2"
+              [ngModel]="textoPregunta(pregunta.id)"
+              (ngModelChange)="cambiarTextoPregunta(pregunta.id, $event)"
+            ></textarea>
+          </label>
+          <label
+            >Instrucción<textarea
+              [name]="'instruccion-' + pregunta.id"
+              rows="2"
+              [ngModel]="instruccionPregunta(pregunta.id)"
+              (ngModelChange)="cambiarInstruccionPregunta(pregunta.id, $event)"
+            ></textarea>
+          </label>
+        </div>
+      }
+      <button class="primary-button" type="submit" [disabled]="!esAdmin()">
+        Guardar textos por idioma
+      </button>
+    </form>
+  </article>`,
+})
+export class LocalizacionesCampaniaPanel implements OnChanges {
+  readonly campania = input.required<Campania>();
+  readonly esAdmin = input.required<boolean>();
+  readonly guardar = output<{
+    idiomasHabilitados: string[];
+    localizaciones: Record<string, LocalizacionCampania>;
+  }>();
+  protected idioma = 'es';
+  protected inglesHabilitado = false;
+  protected actual: LocalizacionCampania = {};
+  private localizaciones: Record<string, LocalizacionCampania> = {};
+
+  ngOnChanges(): void {
+    this.inglesHabilitado = (this.campania().idiomasHabilitados ?? ['es']).includes('en');
+    this.localizaciones = structuredClone(this.campania().localizaciones ?? {});
+    this.cargarIdioma();
+  }
+
+  protected cargarIdioma(): void {
+    const existente = this.localizaciones[this.idioma];
+    if (existente) {
+      this.actual = existente;
+      return;
+    }
+    this.actual = this.desdeLegado(this.idioma);
+    this.localizaciones[this.idioma] = this.actual;
+  }
+
+  protected textoMensaje(id: string): string {
+    return this.actual.mensajesIniciales?.[id]?.texto ?? '';
+  }
+  protected plantillaRef(id: string): string {
+    return this.actual.mensajesIniciales?.[id]?.plantillaRef ?? '';
+  }
+  protected textoPregunta(id: string): string {
+    return this.actual.preguntas?.[id]?.texto ?? '';
+  }
+  protected instruccionPregunta(id: string): string {
+    return this.actual.preguntas?.[id]?.instruccion ?? '';
+  }
+  protected cambiarTextoMensaje(id: string, texto: string): void {
+    this.mensaje(id).texto = texto;
+  }
+  protected cambiarPlantillaRef(id: string, plantillaRef: string): void {
+    this.mensaje(id).plantillaRef = plantillaRef;
+  }
+  protected cambiarTextoPregunta(id: string, texto: string): void {
+    this.pregunta(id).texto = texto;
+  }
+  protected cambiarInstruccionPregunta(id: string, instruccion: string): void {
+    this.pregunta(id).instruccion = instruccion;
+  }
+
+  protected guardarCambios(): void {
+    this.localizaciones[this.idioma] = this.actual;
+    this.guardar.emit({
+      idiomasHabilitados: this.inglesHabilitado ? ['es', 'en'] : ['es'],
+      localizaciones: this.localizaciones,
+    });
+  }
+
+  private mensaje(id: string) {
+    this.actual.mensajesIniciales ??= {};
+    return (this.actual.mensajesIniciales[id] ??= {});
+  }
+  private pregunta(id: string) {
+    this.actual.preguntas ??= {};
+    return (this.actual.preguntas[id] ??= {});
+  }
+  private desdeLegado(idioma: string): LocalizacionCampania {
+    const campania = this.campania();
+    return {
+      nombre: idioma === 'es' ? campania.nombre : '',
+      descripcion: idioma === 'es' ? campania.descripcion : '',
+      objetivo: idioma === 'es' ? campania.objetivo : '',
+      mensajeCierre: idioma === 'es' ? (campania.configConversacional?.mensajeCierre ?? '') : '',
+      mensajesIniciales: Object.fromEntries(
+        (campania.mensajesIniciales ?? []).map((mensaje) => [
+          mensaje.id,
+          { texto: idioma === 'es' ? mensaje.texto : '', plantillaRef: '' },
+        ]),
+      ),
+      preguntas: Object.fromEntries(
+        (campania.preguntas ?? []).map((pregunta) => [
+          pregunta.id,
+          {
+            texto: idioma === 'es' ? pregunta.texto : '',
+            instruccion: idioma === 'es' ? pregunta.instruccion : '',
+          },
+        ]),
+      ),
+    };
+  }
+}
+
+@Component({
   selector: 'app-preguntas-panel',
   standalone: true,
   imports: [FormsModule],
@@ -977,7 +1170,8 @@ export class CampaniaDetallePanel {
     { id: 'config' as const, numero: 1, nombre: 'Configuracion' },
     { id: 'mensajes' as const, numero: 2, nombre: 'Mensajes iniciales' },
     { id: 'preguntas' as const, numero: 3, nombre: 'Preguntas' },
-    { id: 'participantes' as const, numero: 4, nombre: 'Participantes' },
+    { id: 'localizaciones' as const, numero: 4, nombre: 'Textos por idioma' },
+    { id: 'participantes' as const, numero: 5, nombre: 'Participantes' },
   ];
   protected estadoPaso(tab: TabCampania): { simbolo: string; texto: string } | null {
     if (tab === 'config') return null;
@@ -1001,7 +1195,9 @@ export class CampaniaDetallePanel {
     if (this.activa() === 'mensajes')
       return 'Cuando tengas el mensaje inicial, sigue con las preguntas en el paso 3.';
     if (this.activa() === 'preguntas')
-      return 'Cuando tengas una pregunta activa, agrega participantes en el paso 4.';
+      return 'Revisa los textos por idioma antes de agregar participantes.';
+    if (this.activa() === 'localizaciones')
+      return 'Con los textos completos, agrega participantes en el paso 5.';
     return 'Cuando tengas participantes, ya puedes activar la campania y ver sus envios.';
   }
   protected idPestana(tab: TabCampania): string {

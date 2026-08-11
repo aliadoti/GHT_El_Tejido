@@ -86,8 +86,29 @@ export interface Campania {
   configConversacional?: ConfigConversacional;
   configSeguridad?: ConfigSeguridad;
   usuariosHabilitados?: string[];
+  idiomasHabilitados?: string[];
+  localizaciones?: Record<string, LocalizacionCampania>;
   creadoEn: string;
   actualizadoEn: string;
+}
+
+export interface LocalizacionCampania {
+  nombre?: string | null;
+  descripcion?: string | null;
+  objetivo?: string | null;
+  mensajeCierre?: string | null;
+  mensajesIniciales?: Record<string, LocalizacionMensajeInicial>;
+  preguntas?: Record<string, LocalizacionPregunta>;
+}
+
+export interface LocalizacionMensajeInicial {
+  texto?: string | null;
+  plantillaRef?: string | null;
+}
+
+export interface LocalizacionPregunta {
+  texto?: string | null;
+  instruccion?: string | null;
 }
 
 export interface ConfigConversacional {

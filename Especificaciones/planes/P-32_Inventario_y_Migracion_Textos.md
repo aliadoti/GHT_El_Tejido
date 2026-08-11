@@ -1,9 +1,10 @@
 # P-32 — Inventario y migración de textos conversacionales
 
-**Estado:** corte 1, corte 2a y corte 2b1 DONE local 2026-08-10. El corte 2a fija `idioma` en el
+**Estado:** cortes 1, 2 y 3 DONE local 2026-08-11. El corte 2a fija `idioma` en el
 hilo/ciclo; el 2b1 conecta al adaptador los mensajes globales registrados y las variantes que emite
-`OrquestadorConversacion`, sin activar el catálogo. El inventario sigue vigente para el 2b2 (detectores,
-P-27 y enrutamiento) y los cortes 3–4. Sin configuración remota, despliegue ni activación.
+`OrquestadorConversacion`, sin activar el catálogo. El 2b2 completa menús/frases de enrutamiento, detectores
+del orquestador y aclaraciones P-27 por snapshot de idioma. El corte 3 agrega localizaciones embebidas,
+edición administrativa, validación y envío mixto por participante. Sin configuración remota, despliegue ni activación.
 **Spec rectora:** `../Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`.
 
 ## 1. Objetivo
@@ -80,8 +81,8 @@ vigente.
 | Componente | Riesgo | Acción del corte 2/4 |
 |---|---|---|
 | `Conversacion/OpcionesConversacion.cs` | Defaults y variantes españolas. | Conservar solo respaldo mínimo `es/en`; lecturas normales por clave. |
-| `Conversacion/OrquestadorConversacion.cs` | Acuses, aclaraciones y fallbacks incrustados. | **2b1:** mensajes globales registrados y variantes ya usan el adaptador. **Pendiente 2b2:** aclaraciones P-27 y salidas que dependen de localización de campaña. |
-| `Conversacion/ServicioEnrutamientoParticipacion.cs` | Menús de campaña/pregunta y errores de selección. | Resolver con snapshot de idioma; los nombres de campaña/pregunta también se localizan. |
+| `Conversacion/OrquestadorConversacion.cs` | Acuses, aclaraciones y fallbacks incrustados. | **2b DONE:** mensajes globales, variantes, detectores y aclaraciones P-27 usan el adaptador. Siguen las salidas que dependen de localización de campaña (corte 3). |
+| `Conversacion/ServicioEnrutamientoParticipacion.cs` | Menús de campaña/pregunta y errores de selección. | **2b DONE:** resuelve catálogo y frases con `EnrutamientoAporte.Idioma`, persistido en Cosmos; los nombres de campaña/pregunta quedan para localizaciones del corte 3. |
 | `Conversacion/DetectorEntradaProactiva.cs` | Vocabulario español. | Catálogo de frases por idioma con guardas equivalentes. |
 | `Conversacion/DetectorIntencionContinuar.cs` | Listas compiladas y cobertura inglesa parcial. | Resolver listas del idioma; comandos críticos bilingües de respaldo. |
 | `Conversacion/RedactorTurnoConversacional.cs` | Instrucción explícita “en español”. | Recibir `idioma` y producir en el idioma efectivo. |
@@ -125,6 +126,14 @@ funcionando. No se crean copias `_en` porque dividirían participantes, resultad
 7. **UAT y rollback:** editar un texto, activar versión, comprobar propagación y reactivar la previa.
 8. **Deprecar:** cuando la regresión sea verde, dejar de editar `Conversacion:Mensajes:*` y
    `Conversacion:Frases*`; documentar fecha de retiro antes de eliminarlas en una iniciativa posterior.
+
+### 6.1 Mapeo operativo de plantillas (corte 3)
+
+`plantillaRef` es editorial y se guarda con la localización del mensaje. El nombre físico aprobado por
+Meta queda por ambiente bajo `WhatsApp:PlantillaEnvioInicial:Mapeos:{plantillaRef}:{idioma}` con
+`Nombre`, `Idioma` y `Componentes`. Es configuración operativa no secreta: se puede administrar en
+App Settings sin recompilar, pero nunca en Cosmos ni en los logs. El bloque legado `Nombre/Idioma/
+Componentes` sigue siendo el respaldo exacto mientras el gate está apagado.
 
 ## 7. Checklist de cierre del inventario
 

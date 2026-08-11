@@ -25,6 +25,7 @@ import {
   formularioDesdePregunta,
   MensajeInicialForm,
   MensajesInicialesPanel,
+  LocalizacionesCampaniaPanel,
   ParticipantesCampaniaPanel,
   ParticipantesFiltro,
   PreguntaActualizada,
@@ -42,6 +43,7 @@ import {
     CampaniaDetallePanel,
     CampaniaConfiguracionPanel,
     MensajesInicialesPanel,
+    LocalizacionesCampaniaPanel,
     PreguntasPanel,
     ParticipantesCampaniaPanel,
   ],
@@ -111,6 +113,13 @@ import {
               (actualizar)="actualizarPregunta(campania.id, $event)"
             />
           }
+          @case ('localizaciones') {
+            <app-localizaciones-campania-panel
+              [campania]="campania"
+              [esAdmin]="auth.isAdmin()"
+              (guardar)="actualizarLocalizaciones(campania.id, $event)"
+            />
+          }
           @case ('participantes') {
             <app-participantes-campania-panel
               [participantes]="participantes()"
@@ -156,9 +165,9 @@ export class CampaniasPage {
   protected readonly orientacion = signal('');
   protected readonly creacionVersion = signal(0);
   protected readonly creacionVisible = signal(false);
-  protected readonly detalleTab = signal<'config' | 'mensajes' | 'preguntas' | 'participantes'>(
-    'config',
-  );
+  protected readonly detalleTab = signal<
+    'config' | 'mensajes' | 'preguntas' | 'localizaciones' | 'participantes'
+  >('config');
   private filtro: CampaniasFiltro = { estado: '', busqueda: '' };
 
   constructor() {
@@ -280,6 +289,16 @@ export class CampaniasPage {
         },
         error: (err: unknown) => this.reportarError(err),
       });
+  }
+  protected actualizarLocalizaciones(id: string, localizaciones: unknown): void {
+    this.api.actualizarLocalizacionesCampania(id, localizaciones).subscribe({
+      next: (campania) => {
+        this.selected.set(campania);
+        this.load();
+        this.notificaciones.exito('Textos por idioma actualizados.');
+      },
+      error: (err: unknown) => this.reportarError(err),
+    });
   }
   protected cambiarEstado(campania: Campania, estado: string): void {
     if (estado === 'activa') {

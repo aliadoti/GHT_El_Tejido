@@ -18,4 +18,7 @@ public sealed record TrabajoEnvio(
     IReadOnlyDictionary<string, string> Variables,
     string TextoLibre,
     TipoEnvioMensaje Tipo,
-    string? AliasNumeroSaliente = null);
+    string? AliasNumeroSaliente = null,
+    string? Idioma = null,
+    string? PlantillaRef = null,
+    string? ErrorPrevalidacion = null);

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using ElTejido.Application.Common;
+using ElTejido.Application.Configuracion;
 using ElTejido.Application.Identidad;
 using ElTejido.Application.Respuestas;
 using ElTejido.Application.Seguridad;
@@ -115,7 +116,10 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     private readonly DetectorEntradaProactiva _entradaProactiva;
     private readonly bool _despertarProactivoHabilitado;
     private readonly bool _retomarIdeasHabilitado;
+    private readonly int _maxCaracteresIntencionContinuar;
+    private readonly int _maxCaracteresDespertarProactivo;
     private readonly DetectorIntencionContinuar _retomarIdea;
+    private readonly IResolutorTextosConversacion? _resolutorTextos;
     private readonly TimeProvider _tiempo;
 
     public ServicioEnrutamientoParticipacion(
@@ -126,7 +130,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         IProveedorCorrelacion correlacion,
         OpcionesConversacion opciones,
         TimeProvider tiempo,
-        IRepositorioRespuestas? respuestas = null)
+        IRepositorioRespuestas? respuestas = null,
+        IResolutorTextosConversacion? resolutorTextos = null)
     {
         _enrutamientos = enrutamientos;
         _conversaciones = conversaciones;
@@ -147,11 +152,14 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             opciones.MaxCaracteresDespertarProactivo);
         _despertarProactivoHabilitado = opciones.DespertarProactivoHabilitado;
         _retomarIdeasHabilitado = opciones.RetomarIdeasHabilitado;
+        _maxCaracteresIntencionContinuar = opciones.MaxCaracteresIntencionContinuar;
+        _maxCaracteresDespertarProactivo = opciones.MaxCaracteresDespertarProactivo;
         _retomarIdea = new DetectorIntencionContinuar(
             opciones.FrasesRevisitarIdea is { Count: > 0 }
                 ? opciones.FrasesRevisitarIdea
                 : DetectorIntencionContinuar.FrasesRevisitarIdeaPorDefecto,
             opciones.MaxCaracteresIntencionContinuar);
+        _resolutorTextos = resolutorTextos;
         _tiempo = tiempo;
     }
 
@@ -191,7 +199,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
 
         // P-30: una peticion generica de retomar precede a la afinidad y a un aporte nuevo. El
         // servidor resuelve primero campania/pregunta y nunca entrega esta frase como contenido.
-        if (_retomarIdeasHabilitado && _respuestas is not null && _retomarIdea.Coincide(mensaje.Texto))
+        if (_retomarIdeasHabilitado
+            && _respuestas is not null
+            && await CoincideRetomarIdeaAsync(usuario.Idioma, mensaje.Texto, cancellationToken))
         {
             return await IniciarRetomarIdeaAsync(usuario, candidatos, mensaje, ahora, cancellationToken);
         }
@@ -201,7 +211,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         var afinidad = await ObtenerAfinidadVigenteAsync(usuario.Id, candidatos, ahora, cancellationToken);
         if (afinidad is not null)
         {
-            if (_cambioCampania.Coincide(mensaje.Texto))
+            if (await CoincideCambioCampaniaAsync(afinidad.Enrutamiento.Idioma, mensaje.Texto, cancellationToken))
             {
                 return await SuspenderAfinidadYReofrecerAsync(usuario, candidatos, afinidad, mensaje, ahora, cancellationToken);
             }
@@ -231,7 +241,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         // no abre una conversación ni se guarda como aporte raíz; el siguiente texto real vuelve a P-26.
         if (_despertarProactivoHabilitado
             && !elegibles.Any(e => e.TrabajoPendiente)
-            && _entradaProactiva.Coincide(mensaje.Texto))
+            && await CoincideEntradaProactivaAsync(usuario.Idioma, mensaje.Texto, cancellationToken))
         {
             return elegibles.Count == 1
                 ? new ResultadoEnrutamiento.DespertarProactivo(elegibles[0].Candidato)
@@ -322,7 +332,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 ahora);
             await _enrutamientos.GuardarAsync(invalido, cancellationToken);
             await RegistrarAsync(usuario, "invalido", Detalle(pendiente), ahora, cancellationToken);
-            await EnviarMenuCampaniasAsync(usuario, invalido.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
+            await EnviarMenuCampaniasAsync(usuario, invalido.Idioma, invalido.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
             return new ResultadoEnrutamiento.SeleccionPendiente(pendiente.Id);
         }
 
@@ -377,7 +387,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         var ofrecido = enrutamiento.OfrecerPreguntas(OpcionesPregunta(preguntas), ahora);
         await _enrutamientos.GuardarAsync(ofrecido, cancellationToken);
         await RegistrarAsync(usuario, "ofrecido", Detalle(ofrecido), ahora, cancellationToken);
-        await EnviarMenuPreguntasAsync(usuario, ofrecido.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: false, cancellationToken);
+        await EnviarMenuPreguntasAsync(usuario, ofrecido.Idioma, ofrecido.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: false, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(ofrecido.Id);
     }
 
@@ -390,7 +400,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         CancellationToken cancellationToken)
     {
         // §5.1 paso 3: el cambio explicito de campania tambien aplica durante la seleccion de pregunta.
-        if (_cambioCampania.Coincide(mensaje.Texto))
+        if (await CoincideCambioCampaniaAsync(pendiente.Idioma, mensaje.Texto, cancellationToken))
         {
             var elegiblesCambio = pendiente.EsRetomarIdea
                 ? await CalcularElegiblesRetomarAsync(candidatos, usuario.Id, cancellationToken)
@@ -419,7 +429,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 ahora);
             await _enrutamientos.GuardarAsync(invalido, cancellationToken);
             await RegistrarAsync(usuario, "invalido", Detalle(pendiente), ahora, cancellationToken);
-            await EnviarMenuPreguntasAsync(usuario, invalido.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
+            await EnviarMenuPreguntasAsync(usuario, invalido.Idioma, invalido.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
             return new ResultadoEnrutamiento.SeleccionPendiente(pendiente.Id);
         }
 
@@ -450,7 +460,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             var reofrecido = invalidado.OfrecerPreguntas(OpcionesPregunta(vigentes), ahora);
             await _enrutamientos.GuardarAsync(reofrecido, cancellationToken);
             await RegistrarAsync(usuario, "ofrecido", Detalle(reofrecido), ahora, cancellationToken);
-            await EnviarMenuPreguntasAsync(usuario, reofrecido.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
+            await EnviarMenuPreguntasAsync(usuario, reofrecido.Idioma, reofrecido.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
             return new ResultadoEnrutamiento.SeleccionPendiente(reofrecido.Id);
         }
 
@@ -516,7 +526,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         var elegibles = await CalcularElegiblesRetomarAsync(candidatos, usuario.Id, cancellationToken);
         if (elegibles.Count == 0)
         {
-            await EnviarSinIdeasHistoricasAsync(usuario, mensaje.PhoneNumberIdDestino, cancellationToken);
+            await EnviarSinIdeasHistoricasAsync(usuario, usuario.Idioma, mensaje.PhoneNumberIdDestino, cancellationToken);
             return new ResultadoEnrutamiento.SinElegibles();
         }
 
@@ -537,11 +547,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 ahora,
                 phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
                 campaniasOfrecidas: Opciones(elegibles),
-                modo: ModoEnrutamientoAporte.RetomarIdea);
+                modo: ModoEnrutamientoAporte.RetomarIdea,
+                idioma: usuario.Idioma);
             await _enrutamientos.GuardarAsync(seleccionarCampania, cancellationToken);
             await RegistrarRetomarAsync(usuario, "ofrecido", seleccionarCampania, ahora, cancellationToken);
             await EnviarMenuCampaniasAsync(
-                usuario, seleccionarCampania.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
+                usuario, seleccionarCampania.Idioma, seleccionarCampania.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
             return new ResultadoEnrutamiento.SeleccionPendiente(seleccionarCampania.Id);
         }
 
@@ -556,7 +567,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
             campaniaSeleccionadaId: unico.Campania.Id,
             preguntasOfrecidas: OpcionesPregunta(preguntas),
-            modo: ModoEnrutamientoAporte.RetomarIdea);
+            modo: ModoEnrutamientoAporte.RetomarIdea,
+            idioma: usuario.Idioma);
 
         if (preguntas.Count == 1)
         {
@@ -569,7 +581,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         await _enrutamientos.GuardarAsync(enrutamiento, cancellationToken);
         await RegistrarRetomarAsync(usuario, "ofrecido", enrutamiento, ahora, cancellationToken);
         await EnviarMenuPreguntasAsync(
-            usuario, enrutamiento.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
+            usuario, enrutamiento.Idioma, enrutamiento.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(enrutamiento.Id);
     }
 
@@ -587,7 +599,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         if (opciones.Count == 0)
         {
             await _enrutamientos.GuardarAsync(enrutamiento.Cancelar(ahora), cancellationToken);
-            await EnviarSinIdeasHistoricasAsync(usuario, mensaje.PhoneNumberIdDestino, cancellationToken);
+            await EnviarSinIdeasHistoricasAsync(usuario, enrutamiento.Idioma, mensaje.PhoneNumberIdDestino, cancellationToken);
             return new ResultadoEnrutamiento.SinElegibles();
         }
 
@@ -602,7 +614,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         }
 
         await _enrutamientos.GuardarAsync(ofrecido, cancellationToken);
-        await EnviarMenuIdeasAsync(usuario, opciones, mensaje.PhoneNumberIdDestino, false, cancellationToken);
+        await EnviarMenuIdeasAsync(usuario, ofrecido.Idioma, opciones, mensaje.PhoneNumberIdDestino, false, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(ofrecido.Id);
     }
 
@@ -624,7 +636,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 ahora);
             await _enrutamientos.GuardarAsync(invalido, cancellationToken);
             await RegistrarRetomarAsync(usuario, "invalido", invalido, ahora, cancellationToken);
-            await EnviarMenuIdeasAsync(usuario, invalido.IdeasOfrecidas, mensaje.PhoneNumberIdDestino, true, cancellationToken);
+            await EnviarMenuIdeasAsync(usuario, invalido.Idioma, invalido.IdeasOfrecidas, mensaje.PhoneNumberIdDestino, true, cancellationToken);
             return new ResultadoEnrutamiento.SeleccionPendiente(invalido.Id);
         }
 
@@ -644,7 +656,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         {
             await _enrutamientos.GuardarAsync(pendiente.Cancelar(ahora), cancellationToken);
             await RegistrarRetomarAsync(usuario, "invalido", pendiente, ahora, cancellationToken);
-            await EnviarSinIdeasHistoricasAsync(usuario, mensaje.PhoneNumberIdDestino, cancellationToken);
+            await EnviarSinIdeasHistoricasAsync(usuario, pendiente.Idioma, mensaje.PhoneNumberIdDestino, cancellationToken);
             return new ResultadoEnrutamiento.SinElegibles();
         }
 
@@ -737,7 +749,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         var reofrecido = enrutamiento.OfrecerCampanias(Opciones(elegibles), ahora);
         await _enrutamientos.GuardarAsync(reofrecido, cancellationToken);
         await RegistrarAsync(usuario, "ofrecido", Detalle(reofrecido), ahora, cancellationToken);
-        await EnviarMenuCampaniasAsync(usuario, reofrecido.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
+        await EnviarMenuCampaniasAsync(usuario, reofrecido.Idioma, reofrecido.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: true, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(reofrecido.Id);
     }
 
@@ -766,12 +778,13 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             ahora,
             phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
             campaniasOfrecidas: Opciones(elegibles),
-            esEntradaProactiva: esEntradaProactiva);
+            esEntradaProactiva: esEntradaProactiva,
+            idioma: usuario.Idioma);
 
         // §11: primero se conserva el aporte; si Cosmos falla no se muestra un menu que pueda perderlo.
         await _enrutamientos.GuardarAsync(enrutamiento, cancellationToken);
         await RegistrarAsync(usuario, "ofrecido", Detalle(enrutamiento), ahora, cancellationToken);
-        await EnviarMenuCampaniasAsync(usuario, enrutamiento.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: false, cancellationToken);
+        await EnviarMenuCampaniasAsync(usuario, enrutamiento.Idioma, enrutamiento.CampaniasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: false, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(enrutamiento.Id);
     }
 
@@ -818,10 +831,11 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             ahora,
             phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
             campaniaSeleccionadaId: candidato.Campania.Id,
-            preguntasOfrecidas: OpcionesPregunta(preguntas));
+            preguntasOfrecidas: OpcionesPregunta(preguntas),
+            idioma: usuario.Idioma);
         await _enrutamientos.GuardarAsync(enrutamiento, cancellationToken);
         await RegistrarAsync(usuario, "ofrecido", Detalle(enrutamiento), ahora, cancellationToken);
-        await EnviarMenuPreguntasAsync(usuario, enrutamiento.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: false, cancellationToken);
+        await EnviarMenuPreguntasAsync(usuario, enrutamiento.Idioma, enrutamiento.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, conAyuda: false, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(enrutamiento.Id);
     }
 
@@ -1150,59 +1164,94 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             ahora,
             enrutamiento.PhoneNumberIdDestino ?? seleccion.PhoneNumberIdDestino);
 
-    private Task EnviarMenuCampaniasAsync(
+    private async Task EnviarMenuCampaniasAsync(
         Usuario usuario,
+        string idioma,
         IReadOnlyList<OpcionCampaniaOfrecida> opciones,
         string? emisor,
         bool conAyuda,
         CancellationToken cancellationToken)
-        => EnviarMenuAsync(
+        => await EnviarMenuAsync(
             usuario,
-            Texto(_mensajes.EncabezadoSeleccionCampania, OpcionesMensajesConversacion.EncabezadoSeleccionCampaniaDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "encabezadoSeleccionCampania",
+                Texto(_mensajes.EncabezadoSeleccionCampania, OpcionesMensajesConversacion.EncabezadoSeleccionCampaniaDefault),
+                cancellationToken),
             opciones.OrderBy(o => o.Orden).Select(o => $"{o.Orden}. {o.NombreSnapshot}"),
-            Texto(_mensajes.InstruccionSeleccionCampania, OpcionesMensajesConversacion.InstruccionSeleccionCampaniaDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "instruccionSeleccionCampania",
+                Texto(_mensajes.InstruccionSeleccionCampania, OpcionesMensajesConversacion.InstruccionSeleccionCampaniaDefault),
+                cancellationToken),
             emisor,
             conAyuda,
+            idioma,
             cancellationToken);
 
-    private Task EnviarMenuPreguntasAsync(
+    private async Task EnviarMenuPreguntasAsync(
         Usuario usuario,
+        string idioma,
         IReadOnlyList<OpcionPreguntaOfrecida> opciones,
         string? emisor,
         bool conAyuda,
         CancellationToken cancellationToken)
-        => EnviarMenuAsync(
+        => await EnviarMenuAsync(
             usuario,
-            Texto(_mensajes.EncabezadoSeleccionPregunta, OpcionesMensajesConversacion.EncabezadoSeleccionPreguntaDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "encabezadoSeleccionPregunta",
+                Texto(_mensajes.EncabezadoSeleccionPregunta, OpcionesMensajesConversacion.EncabezadoSeleccionPreguntaDefault),
+                cancellationToken),
             opciones.OrderBy(o => o.Orden).Select(o => $"{o.Orden}. {o.TextoSnapshot}"),
-            Texto(_mensajes.InstruccionSeleccionPregunta, OpcionesMensajesConversacion.InstruccionSeleccionPreguntaDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "instruccionSeleccionPregunta",
+                Texto(_mensajes.InstruccionSeleccionPregunta, OpcionesMensajesConversacion.InstruccionSeleccionPreguntaDefault),
+                cancellationToken),
             emisor,
             conAyuda,
+            idioma,
             cancellationToken);
 
-    private Task EnviarMenuIdeasAsync(
+    private async Task EnviarMenuIdeasAsync(
         Usuario usuario,
+        string idioma,
         IReadOnlyList<OpcionIdeaOfrecida> opciones,
         string? emisor,
         bool conAyuda,
         CancellationToken cancellationToken)
-        => EnviarMenuAsync(
+        => await EnviarMenuAsync(
             usuario,
-            Texto(_mensajes.PreguntaSeleccionIdea, OpcionesMensajesConversacion.PreguntaSeleccionIdeaDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "preguntaSeleccionIdea",
+                Texto(_mensajes.PreguntaSeleccionIdea, OpcionesMensajesConversacion.PreguntaSeleccionIdeaDefault),
+                cancellationToken),
             opciones.OrderBy(o => o.Orden).Select(
                 o => $"{o.Orden}. {o.ResumenSnapshot} ({o.EstadoSnapshot})"),
-            Texto(_mensajes.InstruccionSeleccionIdea, OpcionesMensajesConversacion.InstruccionSeleccionIdeaDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "instruccionSeleccionIdea",
+                Texto(_mensajes.InstruccionSeleccionIdea, OpcionesMensajesConversacion.InstruccionSeleccionIdeaDefault),
+                cancellationToken),
             emisor,
             conAyuda,
+            idioma,
             cancellationToken);
 
-    private Task EnviarSinIdeasHistoricasAsync(
+    private async Task EnviarSinIdeasHistoricasAsync(
         Usuario usuario,
+        string idioma,
         string? emisor,
         CancellationToken cancellationToken)
-        => _gateway.EnviarTextoAsync(
+        => await _gateway.EnviarTextoAsync(
             usuario.WhatsappNormalizado.Valor,
-            Texto(_mensajes.SinIdeasHistoricas, OpcionesMensajesConversacion.SinIdeasHistoricasDefault),
+            await TextoCatalogoAsync(
+                idioma,
+                "sinIdeasHistoricas",
+                Texto(_mensajes.SinIdeasHistoricas, OpcionesMensajesConversacion.SinIdeasHistoricasDefault),
+                cancellationToken),
             TipoEnvioMensaje.Repregunta,
             cancellationToken,
             emisor);
@@ -1214,12 +1263,17 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         string instruccion,
         string? emisor,
         bool conAyuda,
+        string idioma,
         CancellationToken cancellationToken)
     {
         var texto = new StringBuilder();
         if (conAyuda)
         {
-            texto.AppendLine(Texto(_mensajes.AyudaSeleccionCampaniaInvalida, OpcionesMensajesConversacion.AyudaSeleccionCampaniaInvalidaDefault));
+            texto.AppendLine(await TextoCatalogoAsync(
+                idioma,
+                "ayudaSeleccionCampaniaInvalida",
+                Texto(_mensajes.AyudaSeleccionCampaniaInvalida, OpcionesMensajesConversacion.AyudaSeleccionCampaniaInvalidaDefault),
+                cancellationToken));
         }
 
         texto.AppendLine(encabezado);
@@ -1238,6 +1292,75 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             TipoEnvioMensaje.Repregunta,
             cancellationToken,
             emisor);
+    }
+
+    private async Task<bool> CoincideCambioCampaniaAsync(
+        string idioma,
+        string texto,
+        CancellationToken cancellationToken)
+        => (await FrasesCatalogoAsync(
+                idioma,
+                "cambiarCampania",
+                _cambioCampania,
+                cancellationToken))
+            .Coincide(texto);
+
+    private async Task<bool> CoincideRetomarIdeaAsync(
+        string idioma,
+        string texto,
+        CancellationToken cancellationToken)
+        => (await FrasesCatalogoAsync(
+                idioma,
+                "revisitarIdea",
+                _retomarIdea,
+                cancellationToken))
+            .Coincide(texto);
+
+    private async Task<bool> CoincideEntradaProactivaAsync(
+        string idioma,
+        string texto,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return _entradaProactiva.Coincide(texto);
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return new DetectorEntradaProactiva(
+                textos.Frases["despertarProactivo"],
+                _maxCaracteresDespertarProactivo)
+            .Coincide(texto);
+    }
+
+    private async Task<DetectorIntencionContinuar> FrasesCatalogoAsync(
+        string idioma,
+        string clave,
+        DetectorIntencionContinuar respaldo,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return respaldo;
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return new DetectorIntencionContinuar(textos.Frases[clave], _maxCaracteresIntencionContinuar);
+    }
+
+    private async Task<string> TextoCatalogoAsync(
+        string idioma,
+        string clave,
+        string respaldo,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return respaldo;
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return textos.Mensajes[clave];
     }
 
     private async Task<EnrutamientoAporte?> ObtenerSeleccionPendienteAsync(

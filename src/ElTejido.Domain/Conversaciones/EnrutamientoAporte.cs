@@ -19,6 +19,7 @@ public sealed class EnrutamientoAporte
     private EnrutamientoAporte(
         string id,
         string usuarioId,
+        string idioma,
         string whatsappMessageId,
         string? phoneNumberIdDestino,
         string textoOriginal,
@@ -39,6 +40,7 @@ public sealed class EnrutamientoAporte
     {
         Id = id;
         UsuarioId = usuarioId;
+        Idioma = NormalizarIdioma(idioma);
         WhatsappMessageId = whatsappMessageId;
         PhoneNumberIdDestino = phoneNumberIdDestino;
         TextoOriginal = textoOriginal;
@@ -61,6 +63,12 @@ public sealed class EnrutamientoAporte
     public string Id { get; }
 
     public string UsuarioId { get; }
+
+    /// <summary>
+    /// P-32: idioma fijado al iniciar la selección. Evita que un cambio posterior en el maestro de
+    /// usuarios altere un menú pendiente o la frase con la que se interpreta su respuesta.
+    /// </summary>
+    public string Idioma { get; }
 
     /// <summary>Id del mensaje entrante de Meta; junto al usuario hace determinista el Id (idempotencia ante reintentos).</summary>
     public string WhatsappMessageId { get; }
@@ -146,7 +154,8 @@ public sealed class EnrutamientoAporte
         bool esEntradaProactiva = false,
         ModoEnrutamientoAporte modo = ModoEnrutamientoAporte.Aporte,
         IEnumerable<OpcionIdeaOfrecida>? ideasOfrecidas = null,
-        string? ideaSeleccionadaId = null)
+        string? ideaSeleccionadaId = null,
+        string idioma = "es")
     {
         var usuario = DomainGuards.Required(usuarioId, nameof(usuarioId));
         var mensaje = DomainGuards.Required(whatsappMessageId, nameof(whatsappMessageId));
@@ -155,6 +164,7 @@ public sealed class EnrutamientoAporte
         return new EnrutamientoAporte(
             GenerarId(usuario, mensaje),
             usuario,
+            idioma,
             mensaje,
             string.IsNullOrWhiteSpace(phoneNumberIdDestino) ? null : phoneNumberIdDestino.Trim(),
             DomainGuards.Required(textoOriginal, nameof(textoOriginal)),
@@ -340,6 +350,7 @@ public sealed class EnrutamientoAporte
         => new(
             Id,
             UsuarioId,
+            Idioma,
             WhatsappMessageId,
             PhoneNumberIdDestino,
             TextoOriginal,
@@ -357,6 +368,9 @@ public sealed class EnrutamientoAporte
             (actualizadoEn ?? ActualizadoEn).ToUniversalTime(),
             VenceEn,
             (procesadoEn ?? ProcesadoEn)?.ToUniversalTime());
+
+    private static string NormalizarIdioma(string? idioma)
+        => string.Equals(idioma?.Trim(), "en", StringComparison.OrdinalIgnoreCase) ? "en" : "es";
 }
 
 /// <summary>Estados del enrutamiento (03 §3.6.1). El vencimiento y las transiciones son server-side.</summary>

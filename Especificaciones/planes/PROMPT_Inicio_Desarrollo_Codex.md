@@ -6,14 +6,18 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF DE DESARROLLO 2026-08-10:** `P-32` (conversación español/inglés y catálogo versionado de
-> textos) tiene los **cortes 1, 2a y 2b1 DONE local**. `Usuario.Idioma` ya existe (`es|en`, default `es`); no
+> **HANDOFF DE DESARROLLO 2026-08-11:** `P-32` (conversación español/inglés y catálogo versionado de
+> textos) tiene los **cortes 1 a 4 DONE local**. `Usuario.Idioma` ya existe (`es|en`, default `es`); no
 > volver a crearlo. Leer `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`,
 > `planes/P-32_Inventario_y_Migracion_Textos.md` y `QAS/16_*`. La decisión es Cosmos `config` para
 > contenido global versionado y localizaciones embebidas en campaña; App Settings solo para operación.
 > Catálogo/API/caché/LKG/emergencia/semillas, snapshot y mensajes globales del orquestador listos;
-> gate OFF, sin cambio remoto. Siguiente: corte 2b2, detectores/frases, aclaraciones P-27 y
-> enrutamiento con regresión legacy. No activar sin traducciones/plantillas Meta inglesas aprobadas.
+> gate OFF, sin cambio remoto. El enrutamiento fija `EnrutamientoAporte.Idioma`; menús, detectores,
+> frases y aclaraciones P-27 usan catálogo. Las campañas ahora guardan localizaciones por idioma, se
+> editan en el portal y el envío inicial resuelve por participante la plantilla Meta de su alias lógico.
+> El corte 4 propaga idioma/contenido a LLM y agrega el portal operativo de catálogo. Siguiente:
+> D5/UAT bilingüe, plantillas Meta inglesas aprobadas y revisión de costo antes de activar. No activar
+> sin esas evidencias.
 > El handoff histórico de
 > abajo se conserva como contexto; para estado operativo actual mandan `AVANCES.md` y `TODO.md`.
 

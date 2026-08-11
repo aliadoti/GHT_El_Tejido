@@ -31,7 +31,11 @@ public sealed class PoliticaIntencionControl
             resolucion.FinalizarParticipacion.Frases, opciones.MaxCaracteresClasificacionIntencionControl);
     }
 
-    private PoliticaIntencionControl(
+    /// <summary>
+    /// P-32: construye la misma política determinista con las frases ya resueltas para el idioma
+    /// inmutable del hilo. La transición sigue perteneciendo exclusivamente al servidor.
+    /// </summary>
+    public PoliticaIntencionControl(
         IEnumerable<string> frasesFinalizarIdea,
         IEnumerable<string> frasesFinalizarParticipacion,
         int maxCaracteres)

@@ -19,7 +19,9 @@ public sealed class EnvioMensaje
         TipoEnvioMensaje tipo,
         string? whatsappMessageId,
         DateTimeOffset fechaEnvio,
-        string? error)
+        string? error,
+        string? idioma,
+        string? plantillaRef)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -31,6 +33,8 @@ public sealed class EnvioMensaje
         WhatsappMessageId = whatsappMessageId;
         FechaEnvio = fechaEnvio;
         Error = error;
+        Idioma = idioma;
+        PlantillaRef = plantillaRef;
     }
 
     public string Id { get; }
@@ -53,6 +57,12 @@ public sealed class EnvioMensaje
 
     public string? Error { get; }
 
+    /// <summary>Snapshot del idioma del usuario al preparar el envío; no contiene contenido del participante.</summary>
+    public string? Idioma { get; }
+
+    /// <summary>Alias lógico de plantilla resuelto para el envío, sin identificador físico de Meta.</summary>
+    public string? PlantillaRef { get; }
+
     public static EnvioMensaje Crear(
         string id,
         string campaniaId,
@@ -63,7 +73,9 @@ public sealed class EnvioMensaje
         TipoEnvioMensaje tipo,
         string? whatsappMessageId,
         DateTimeOffset fechaEnvio,
-        string? error)
+        string? error,
+        string? idioma = null,
+        string? plantillaRef = null)
     {
         return new EnvioMensaje(
             DomainGuards.Required(id, nameof(id)),
@@ -75,6 +87,8 @@ public sealed class EnvioMensaje
             tipo,
             string.IsNullOrWhiteSpace(whatsappMessageId) ? null : whatsappMessageId.Trim(),
             fechaEnvio.ToUniversalTime(),
-            string.IsNullOrWhiteSpace(error) ? null : error.Trim());
+            string.IsNullOrWhiteSpace(error) ? null : error.Trim(),
+            string.IsNullOrWhiteSpace(idioma) ? null : idioma.Trim().ToLowerInvariant(),
+            string.IsNullOrWhiteSpace(plantillaRef) ? null : plantillaRef.Trim());
     }
 }

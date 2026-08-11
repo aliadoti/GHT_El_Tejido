@@ -50,4 +50,15 @@ public sealed record ContextoEvaluacion(
     public string? IdeaId { get; init; }
 
     public string? VersionIdeaId { get; init; }
+
+    /// <summary>Snapshot del hilo; el modelo recibe una instrucción de salida, pero nunca lo decide.</summary>
+    public string Idioma { get; init; } = "es";
+
+    public string NombreCampaniaEfectivo { get; init; } = string.Empty;
+
+    public string ObjetivoCampaniaEfectivo { get; init; } = string.Empty;
+
+    public string TextoPreguntaEfectivo { get; init; } = string.Empty;
+
+    public string InstruccionPreguntaEfectiva { get; init; } = string.Empty;
 }

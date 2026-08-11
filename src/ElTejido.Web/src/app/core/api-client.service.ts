@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 type QueryValue = string | number | boolean | null | undefined | readonly string[];
@@ -11,12 +11,20 @@ export class ApiClient {
     return this.http.get<T>(url, { params: this.toParams(query) });
   }
 
-  post<T>(url: string, body?: unknown, query?: Record<string, QueryValue>) {
-    return this.http.post<T>(url, body ?? {}, { params: this.toParams(query) });
+  post<T>(
+    url: string,
+    body?: unknown,
+    query?: Record<string, QueryValue>,
+    headers?: Record<string, string>,
+  ) {
+    return this.http.post<T>(url, body ?? {}, {
+      params: this.toParams(query),
+      headers: headers ? new HttpHeaders(headers) : undefined,
+    });
   }
 
-  put<T>(url: string, body: unknown) {
-    return this.http.put<T>(url, body);
+  put<T>(url: string, body: unknown, headers?: Record<string, string>) {
+    return this.http.put<T>(url, body, { headers: headers ? new HttpHeaders(headers) : undefined });
   }
 
   patch<T>(url: string, body: unknown) {

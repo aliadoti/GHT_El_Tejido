@@ -43,6 +43,25 @@ public sealed class ConsolidadorIdeasTests
         fallback.Motivo.Should().Be("salida_invalida:no_json");
     }
 
+    [Fact]
+    public async Task ConsolidarAsync_ContextoEnIngles_IndicaIdiomaYPreguntaLocalizada()
+    {
+        var client = Substitute.For<ILlmClient>();
+        client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(
+            """{"idea_consolidada_propuesta":"An actionable idea.","tipo_cambio":"complemento","nuevas_ideas":[],"requiere_aclaracion":false,"pregunta_aclaracion":null,"anomalia_seguridad":false}""",
+            null));
+
+        await new ConsolidadorIdeas(client).ConsolidarAsync(Contexto() with
+        {
+            Idioma = "en",
+            TextoPreguntaEfectivo = "What would you improve?",
+        }, CancellationToken.None);
+
+        var request = client.ReceivedCalls().Single().GetArguments()[0].Should().BeOfType<LlmRequest>().Subject;
+        request.Mensajes.Should().Contain(m => m.Contenido.Contains("IDIOMA_DE_SALIDA: en"));
+        request.Mensajes.Should().Contain(m => m.Contenido.Contains("What would you improve?"));
+    }
+
     private static ContextoConsolidacionIdeas Contexto()
     {
         var pregunta = Pregunta.Crear("p_1", "Pregunta", "Instruccion", "categoria", 1, EstadoRegistro.Activo,

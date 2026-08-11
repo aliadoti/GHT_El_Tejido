@@ -24,8 +24,12 @@ public static class RenderizadorMensaje
             .FirstOrDefault();
 
     /// <summary>Variables disponibles para reemplazo (nombre/area/empresa/campania + dinamicas del usuario).</summary>
-    public static IReadOnlyDictionary<string, string> ConstruirVariables(Usuario usuario, Campania campania)
+    public static IReadOnlyDictionary<string, string> ConstruirVariables(
+        Usuario usuario,
+        Campania campania,
+        string? nombreCampania = null)
     {
+        var nombreEfectivoCampania = nombreCampania ?? campania.Nombre;
         var variables = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["nombre"] = usuario.Nombre,
@@ -34,8 +38,9 @@ public static class RenderizadorMensaje
             ["area"] = usuario.Area ?? string.Empty,
             ["empresa"] = usuario.Empresa ?? string.Empty,
             ["campaña"] = campania.Nombre,
-            ["campania"] = campania.Nombre,
+            ["campania"] = nombreEfectivoCampania,
         };
+        variables["campaña"] = nombreEfectivoCampania;
 
         foreach (var propiedad in usuario.PropiedadesDinamicas)
         {

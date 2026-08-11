@@ -20,7 +20,12 @@ public sealed record ContextoSegmentacionIdeas(
     Pregunta Pregunta,
     string Texto,
     IReadOnlyList<string> HistorialReciente,
-    ConfigLlm ConfigLlmSnapshot);
+    ConfigLlm ConfigLlmSnapshot)
+{
+    public string Idioma { get; init; } = "es";
+
+    public string TextoPreguntaEfectivo { get; init; } = string.Empty;
+}
 
 public sealed record IdeaSegmentada(int Indice, string Texto, string? Resumen);
 

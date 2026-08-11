@@ -1,5 +1,6 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
+using ElTejido.Application.Configuracion;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Usuarios;
 using ElTejido.Application.WhatsApp;
@@ -152,8 +153,51 @@ public sealed class ServicioEnviosTests
         _encolados.Should().ContainSingle().Which.UsuarioId.Should().Be("u_2");
     }
 
-    private ServicioEnvios Construir(OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
-        => new(_campanias, _participantes, _usuarios, _cola, _jobs, plantillaEnvioInicial ?? _plantillaEnvioInicial);
+    [Fact]
+    public async Task EncolarIniciales_CampaniaBilingue_ResuelveTextoYPlantillaPorParticipante()
+    {
+        _campanias.ObtenerCampaniaPorIdAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(CrearCampaniaBilingue());
+        ConfigurarParticipantes(
+            CrearParticipante("u_es", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta),
+            CrearParticipante("u_en", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta));
+
+        await Construir(
+            CrearOpcionesBilingues(),
+            new OpcionesCatalogoTextos { Habilitado = true })
+            .EncolarInicialesAsync(CampaniaId, null, null, CancellationToken.None);
+
+        _encolados.Should().ContainSingle(trabajo => trabajo.UsuarioId == "u_es")
+            .Which.Plantilla!.Nombre.Should().Be("inicio_es_meta");
+        var ingles = _encolados.Should().ContainSingle(trabajo => trabajo.UsuarioId == "u_en").Which;
+        ingles.Plantilla!.Nombre.Should().Be("inicio_en_meta");
+        ingles.TextoLibre.Should().Be("Hello Usuario u_en from Convention 2026");
+        ingles.Idioma.Should().Be("en");
+        ingles.PlantillaRef.Should().Be("inicio_campania");
+    }
+
+    [Fact]
+    public async Task EncolarIniciales_LocalizacionIncompleta_DejaErrorIndividualYSigueElLote()
+    {
+        _campanias.ObtenerCampaniaPorIdAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(CrearCampaniaBilingue(sinIngles: true));
+        ConfigurarParticipantes(
+            CrearParticipante("u_es", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta),
+            CrearParticipante("u_en", EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta));
+
+        var resultado = await Construir(
+            CrearOpcionesBilingues(),
+            new OpcionesCatalogoTextos { Habilitado = true })
+            .EncolarInicialesAsync(CampaniaId, null, null, CancellationToken.None);
+
+        resultado.Encolados.Should().Be(2);
+        _encolados.Should().ContainSingle(trabajo => trabajo.UsuarioId == "u_es" && trabajo.ErrorPrevalidacion == null);
+        _encolados.Should().ContainSingle(trabajo => trabajo.UsuarioId == "u_en")
+            .Which.ErrorPrevalidacion.Should().StartWith("LOCALIZACION_CAMPANIA_INCOMPLETA:");
+    }
+
+    private ServicioEnvios Construir(
+        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null,
+        OpcionesCatalogoTextos? opcionesCatalogo = null)
+        => new(_campanias, _participantes, _usuarios, _cola, _jobs, plantillaEnvioInicial ?? _plantillaEnvioInicial, opcionesCatalogo);
 
     private void ConfigurarCampania(EstadoCampania estado, string? numeroWhatsAppSaliente = null)
         => _campanias.ObtenerCampaniaPorIdAsync(CampaniaId, Arg.Any<CancellationToken>())
@@ -193,6 +237,44 @@ public sealed class ServicioEnviosTests
             Epoca);
     }
 
+    private static Campania CrearCampaniaBilingue(bool sinIngles = false)
+    {
+        var mensaje = MensajeInicial.Crear("mi_1", "saludo", "Hola {{nombre}}", 1, new[] { "nombre" }, EstadoRegistro.Activo, null);
+        var pregunta = FabricasDominio.CrearPregunta("p_1", 1);
+        var localizaciones = new Dictionary<string, LocalizacionCampania>(StringComparer.Ordinal)
+        {
+            ["es"] = LocalizacionCampania.Crear(
+                "es", "Convencion 2026", "Descripcion", "Objetivo", "Gracias.",
+                new Dictionary<string, LocalizacionMensajeInicial> { ["mi_1"] = new("Hola {{nombre}}", "inicio_campania") },
+                new Dictionary<string, LocalizacionPregunta> { ["p_1"] = new("Pregunta", "Instruccion") }),
+            ["en"] = LocalizacionCampania.Crear(
+                "en", "Convention 2026", "Description", "Objective", "Thanks.",
+                sinIngles
+                    ? new Dictionary<string, LocalizacionMensajeInicial>()
+                    : new Dictionary<string, LocalizacionMensajeInicial> { ["mi_1"] = new("Hello {{nombre}} from {{campania}}", "inicio_campania") },
+                new Dictionary<string, LocalizacionPregunta> { ["p_1"] = new("Question", "Instruction") }),
+        };
+
+        return Campania.Crear(
+            CampaniaId, "Campania", "Descripcion", "Objetivo", EstadoCampania.Activa,
+            new[] { mensaje }, new[] { pregunta }, "rub_1", null, "llm_1",
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta), ConfigConversacional.Crear(1, "Gracias."),
+            LimitesSeguridad.Crear(1500, 10, 2), null, Epoca, Epoca, new[] { "es", "en" }, localizaciones);
+    }
+
+    private static OpcionesPlantillaEnvioInicial CrearOpcionesBilingues()
+        => new()
+        {
+            Mapeos = new Dictionary<string, Dictionary<string, PlantillaEnvioInicialConfigurada>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["inicio_campania"] = new(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["es"] = new() { Nombre = "inicio_es_meta", Idioma = "es_CO", Componentes = ["nombre", "campania"] },
+                    ["en"] = new() { Nombre = "inicio_en_meta", Idioma = "en_US", Componentes = ["nombre", "campania"] },
+                },
+            },
+        };
+
     private static ParticipanteCampania CrearParticipante(
         string usuarioId,
         EstadoEnvio estadoEnvio,
@@ -222,5 +304,6 @@ public sealed class ServicioEnviosTests
             null,
             null,
             Epoca,
-            Epoca);
+            Epoca,
+            idioma: id == "u_en" ? "en" : "es");
 }

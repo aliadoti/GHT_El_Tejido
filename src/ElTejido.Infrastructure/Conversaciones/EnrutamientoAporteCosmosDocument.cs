@@ -25,6 +25,9 @@ internal sealed class EnrutamientoAporteCosmosDocument
     [JsonProperty("usuarioId")]
     public string UsuarioId { get; init; } = string.Empty;
 
+    [JsonProperty("idioma", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Idioma { get; init; }
+
     [JsonProperty("whatsappMessageId")]
     public string WhatsappMessageId { get; init; } = string.Empty;
 
@@ -86,6 +89,7 @@ internal sealed class EnrutamientoAporteCosmosDocument
             Type = DocumentType,
             CampaniaId = enrutamiento.ParticionRouting,
             UsuarioId = enrutamiento.UsuarioId,
+            Idioma = enrutamiento.Idioma,
             WhatsappMessageId = enrutamiento.WhatsappMessageId,
             PhoneNumberIdDestino = enrutamiento.PhoneNumberIdDestino,
             TextoOriginal = enrutamiento.TextoOriginal,
@@ -162,7 +166,8 @@ internal sealed class EnrutamientoAporteCosmosDocument
             MapearModo(Modo, EsEntradaProactiva),
             IdeasOfrecidas.Select(o => new OpcionIdeaOfrecida(
                 o.IdeaId, o.ConversacionId, o.ResumenSnapshot, o.EstadoSnapshot, o.Orden)),
-            IdeaSeleccionadaId);
+            IdeaSeleccionadaId,
+            Idioma ?? "es");
 
     private static string MapearEstado(EstadoEnrutamientoAporte estado)
         => estado switch

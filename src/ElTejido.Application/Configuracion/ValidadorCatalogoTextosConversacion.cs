@@ -31,6 +31,9 @@ public static partial class ValidadorCatalogoTextosConversacion
         "ayudaSeleccionCampaniaInvalida",
         "encabezadoSeleccionPregunta",
         "instruccionSeleccionPregunta",
+        "menuAclaracionSalida",
+        "respaldoAclaracionSalida",
+        "acuseAclaracionContinuar",
     };
 
     public static readonly IReadOnlySet<string> ClavesFrases = new HashSet<string>(StringComparer.Ordinal)
@@ -39,6 +42,7 @@ public static partial class ValidadorCatalogoTextosConversacion
         "invitacionContinuarVariantes",
         "acuseContinuarVariantes",
         "continuar",
+        "confirmar",
         "finalizarIdea",
         "finalizarParticipacion",
         "solicitarMejora",

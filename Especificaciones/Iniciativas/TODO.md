@@ -16,7 +16,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > configuración o vacía ambas listas. No cambió P-27, sus alias, flags, endpoint, portal ni
 > configuración remota. **Siguiente cambio de código: pendiente de priorización expresa.**
 >
-> **🚧 `P-32` CONVERSACIÓN MULTIDIOMA Y CATÁLOGO DE TEXTOS — CORTE 2A/4 DONE LOCAL 2026-08-10.**
+> **✅ `P-32` CONVERSACIÓN MULTIDIOMA Y CATÁLOGO DE TEXTOS — 4/4 DONE LOCAL 2026-08-11.**
 > Verificado: `Usuario.Idioma` ya existe como campo de primer nivel, admite `es|en`, usa `es` por
 > defecto y está propagado a Cosmos/API/carga/portal. La iniciativa consume ese dato y define:
 > catálogo global versionado por idioma en Cosmos `config`; localizaciones de campaña bajo los mismos
@@ -30,10 +30,13 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > configuración efectiva y toda semilla queda borrador. El corte 2a ya fija el `idioma` en cada
 > conversación/ciclo, conserva `es` en documentos históricos, lo expone en Resultados y deja un
 > adaptador proveedor→textos sin conectar a salidas visibles. El corte 2b1 ya conecta mensajes
-> globales registrados y variantes del orquestador, sin cambiar el gate. **Siguiente: corte 2b2**,
-> migrar detectores, aclaraciones P-27 y enrutamiento con gate OFF y regresión legacy antes de
-> campañas/envío. Sin despliegue, configuración remota ni activación; se requieren
-> traducción inglesa y plantillas HSM aprobadas.
+> globales registrados y variantes del orquestador, sin cambiar el gate. El corte 2b2 completa
+> enrutamiento, detectores y aclaraciones P-27 por catálogo/snapshot. El corte 3 ya entrega
+> localizaciones de campaña, edición de portal, validación y envío inicial mixto por participante;
+> conserva el gate OFF y el legado. **Siguiente: corte 4**, idioma en LLM, catálogo/rollback operativo
+> y E2E bilingüe. Backend: 768 unitarias + 87 integración; portal 43/43, build Angular y Prettier verdes.
+> Sin despliegue,
+> configuración remota ni activación; se requieren D5/UAT, traducción inglesa y plantillas HSM aprobadas.
 > Spec: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`; inventario:
 > `planes/P-32_Inventario_y_Migracion_Textos.md`; QAS: `QAS/16_*`.
 >
@@ -556,8 +559,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-3. **Completar P-32 corte 2b2.** Resolver las frases de intención, aclaraciones P-27 y menús de
-   enrutamiento por el adaptador, usando el idioma ya fijado en el hilo. Mantener el gate OFF y
+3. **Iniciar P-32 corte 3.** Diseñar e implementar localizaciones completas de campaña y el envío
+   inicial mixto por participante; el catálogo global, snapshots, detectores y aclaraciones P-27 ya
+   están implementados. Mantener el gate OFF y
    demostrar regresión legacy antes de activar, cambiar configuración remota o avanzar a campañas/envíos.
 
 4. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags

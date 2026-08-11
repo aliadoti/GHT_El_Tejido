@@ -85,9 +85,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly DetectorIntencionContinuar _intencionRevisitarAnterior;
     private readonly DetectorIntencionContinuar _intencionRevisitarIdea;
     private readonly int _maxCaracteresIntencion;
+    private readonly int _maxCaracteresIntencionControl;
     private readonly IClasificadorIntencionControl? _clasificadorIntencionControl;
     private readonly PoliticaIntencionControl _politicaIntencionControl;
     private readonly bool _clasificacionIntencionControlHabilitada;
+    private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -106,7 +108,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IConsolidadorIdeas? consolidadorIdeas = null,
         IRedactorTurnoConversacional? redactorTurno = null,
         IClasificadorIntencionControl? clasificadorIntencionControl = null,
-        IResolutorTextosConversacion? resolutorTextos = null)
+        IResolutorTextosConversacion? resolutorTextos = null,
+        OpcionesCatalogoTextos? opcionesCatalogoTextos = null)
     {
         _conversaciones = conversaciones;
         _respuestas = respuestas;
@@ -117,6 +120,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _redactorTurno = redactorTurno;
         _clasificadorIntencionControl = clasificadorIntencionControl;
         _resolutorTextos = resolutorTextos;
+        _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
@@ -164,6 +168,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             opciones.MaxCaracteresIntencionContinuar);
         _intencionRechazoIdea = intencionRechazoGuardado;
         _maxCaracteresIntencion = opciones.MaxCaracteresIntencionContinuar;
+        _maxCaracteresIntencionControl = opciones.MaxCaracteresClasificacionIntencionControl;
         _politicaIntencionControl = new PoliticaIntencionControl(opciones);
         _clasificacionIntencionControlHabilitada = opciones.ClasificacionIntencionControl;
         _intencionRevisitarAnterior = new DetectorIntencionContinuar(
@@ -295,7 +300,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             ActoConversacional.Pausar,
             respaldo,
             ahora,
-            cancellationToken);
+            cancellationToken,
+            idioma: conversacion.Idioma);
 
         var resultado = await EnviarAsync(
             conversacion,
@@ -565,7 +571,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             ActoConversacional.Reactivar,
             respaldo,
             ahora,
-            cancellationToken);
+            cancellationToken,
+            idioma: usuario.Idioma);
 
         var resultado = await _gateway.EnviarTextoAsync(
             usuario.WhatsappNormalizado.Valor,
@@ -655,7 +662,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // guardado): solo cuentan cuando ya ofrecimos una mejora (esperandoRepregunta); el primer mensaje
         // (su respuesta real) nunca se interpreta asi. El rechazo devuelto es la intencion previa a la E/S:
         // debajo se confirma que exista al menos una respuesta madura que degradar antes de cerrar por ello.
-        var situacion = _transicion.Interpretar(
+        var detectores = await ResolverDetectoresAsync(conversacion, cancellationToken);
+        var situacion = detectores.Transicion.Interpretar(
             conversacion.EstadoMaquina, conversacion.RepreguntasUsadas, pregunta.MaxRepreguntas, mensaje.Texto);
         var esRepregunta = situacion.EsRepregunta;
         var revisionesAgotadas = situacion.RevisionesAgotadas;
@@ -1018,8 +1026,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return false;
         }
 
-        var pideAnterior = _intencionRevisitarAnterior.Coincide(texto);
-        if (!pideAnterior && !_intencionRevisitarIdea.Coincide(texto))
+        var detectores = await ResolverDetectoresAsync(conversacion, cancellationToken);
+        var pideAnterior = detectores.RevisitarAnterior.Coincide(texto);
+        if (!pideAnterior && !detectores.RevisitarIdea.Coincide(texto))
         {
             return false;
         }
@@ -1142,7 +1151,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             respaldo: Combinar(Combinar(acuse, confirmada?.Texto ?? string.Empty), invitacion),
             ahora, cancellationToken,
             cuerpo: confirmada?.Texto,
-            versionCompleta: confirmada?.Texto);
+            versionCompleta: confirmada?.Texto,
+            idioma: conversacion.Idioma);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(
             conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
@@ -1331,7 +1341,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        var determinista = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva, texto);
+        var politica = (await ResolverDetectoresAsync(conversacion, cancellationToken)).PoliticaIntencionControl;
+        var determinista = politica.Resolver(estadoPrevio, hayUnidadActiva, texto);
         if (determinista is DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion)
         {
             await RegistrarClasificacionIntencionControlAsync(
@@ -1375,7 +1386,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             cancellationToken);
         if (resultado is ResultadoClasificacionIntencionControl.Exito exito)
         {
-            var decision = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva, texto, exito.Intencion);
+            var decision = politica.Resolver(estadoPrevio, hayUnidadActiva, texto, exito.Intencion);
             await RegistrarClasificacionIntencionControlAsync(
                 campania.Id,
                 usuario,
@@ -1464,12 +1475,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await GuardarSalidaPendienteAsync(
                 conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
             await EnviarAsync(
-                conversacion, numero, RespaldoAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora,
+                conversacion,
+                numero,
+                await TextoGlobalAsync(conversacion, "respaldoAclaracionSalida", RespaldoAclaracionSalida, cancellationToken),
+                TipoEnvioMensaje.Repregunta,
+                emisor,
+                ahora,
                 cancellationToken);
             return ResultadoSalidaPendiente.Consumida;
         }
 
-        var alias = _politicaIntencionControl.Resolver(estadoPrevio, hayUnidadActiva: true, texto);
+        var alias = (await ResolverDetectoresAsync(conversacion, cancellationToken)).PoliticaIntencionControl
+            .Resolver(estadoPrevio, hayUnidadActiva: true, texto);
         if (alias is DecisionIntencionControl.FinalizarIdea or DecisionIntencionControl.FinalizarParticipacion)
         {
             return ResultadoSalidaPendiente.ConDecision(alias);
@@ -1481,8 +1498,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             await GuardarSalidaPendienteAsync(
                 conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
             await EnviarAsync(
-                conversacion, numero, "Perfecto, continuemos con esta idea.", TipoEnvioMensaje.Repregunta, emisor,
-                ahora, cancellationToken);
+                conversacion,
+                numero,
+                await TextoGlobalAsync(conversacion, "acuseAclaracionContinuar", "Perfecto, continuemos con esta idea.", cancellationToken),
+                TipoEnvioMensaje.Repregunta,
+                emisor,
+                ahora,
+                cancellationToken);
             return ResultadoSalidaPendiente.Consumida;
         }
 
@@ -1502,14 +1524,26 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 .AvanzarA(EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
                 .ConIntencionControlPendiente(IntencionControlPendiente.Crear(1, pendiente.CreadoEn));
             await GuardarSalidaPendienteAsync(reintentando, cancellationToken);
-            await EnviarAsync(reintentando, numero, MenuAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+            await EnviarAsync(
+                reintentando,
+                numero,
+                await TextoGlobalAsync(reintentando, "menuAclaracionSalida", MenuAclaracionSalida, cancellationToken),
+                TipoEnvioMensaje.Repregunta,
+                emisor,
+                ahora,
+                cancellationToken);
             return ResultadoSalidaPendiente.Consumida;
         }
 
         await GuardarSalidaPendienteAsync(
             conversacion.AvanzarA(EstadoMaquinaConversacion.EsperandoRepregunta), cancellationToken);
         await EnviarAsync(
-            conversacion, numero, RespaldoAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora,
+            conversacion,
+            numero,
+            await TextoGlobalAsync(conversacion, "respaldoAclaracionSalida", RespaldoAclaracionSalida, cancellationToken),
+            TipoEnvioMensaje.Repregunta,
+            emisor,
+            ahora,
             cancellationToken);
         return ResultadoSalidaPendiente.Consumida;
     }
@@ -1531,7 +1565,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             .AvanzarA(EstadoMaquinaConversacion.EsperandoConfirmacionSalida)
             .ConIntencionControlPendiente(IntencionControlPendiente.Crear(0, ahora));
         await GuardarSalidaPendienteAsync(esperando, cancellationToken);
-        await EnviarAsync(esperando, numero, MenuAclaracionSalida, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
+        await EnviarAsync(
+            esperando,
+            numero,
+            await TextoGlobalAsync(esperando, "menuAclaracionSalida", MenuAclaracionSalida, cancellationToken),
+            TipoEnvioMensaje.Repregunta,
+            emisor,
+            ahora,
+            cancellationToken);
     }
 
     private async Task<bool> EjecutarControlSimpleAsync(
@@ -1746,7 +1787,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var idea = IdeaConsolidada.Crear(ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, 1, ahora);
         var propuesta = await ProponerVersionAsync(
-            campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea, versionVigente: null,
+            campania, pregunta, conversacion.Idioma, contexto.Contexto.ConfigLlmSnapshot, idea, versionVigente: null,
             respuestaId, texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
         if (propuesta.PreguntaAclaracion is not null)
         {
@@ -1778,7 +1819,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         NumeroWhatsApp numero, string? emisor, IdeaConsolidada idea, string texto, DateTimeOffset ahora,
         CancellationToken cancellationToken, bool confirmacionAutomatica = false)
     {
-        if (!confirmacionAutomatica && _intencionRechazoIdea.Coincide(texto))
+        var detectores = await ResolverDetectoresAsync(conversacion, cancellationToken);
+        if (!confirmacionAutomatica && detectores.RechazoIdea.Coincide(texto))
         {
             var rechazada = idea.Cerrar(EstadoResultadoIdeaConsolidada.Rechazada, null, "rechazoParticipante", ahora);
             await _respuestas.GuardarIdeaConsolidadaAsync(rechazada, cancellationToken);
@@ -1803,8 +1845,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var confirmacionExplicita = confirmacionAutomatica || _intencionConfirmacion.Coincide(texto);
-        var confirmacionImplicitaMejora = !confirmacionAutomatica && _intencionSolicitarMejora.Coincide(texto);
+        var confirmacionExplicita = confirmacionAutomatica || detectores.Confirmacion.Coincide(texto);
+        var confirmacionImplicitaMejora = !confirmacionAutomatica && detectores.SolicitarMejora.Coincide(texto);
         if (!confirmacionExplicita && !confirmacionImplicitaMejora)
         {
             await CrearPropuestaComplementariaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, texto, ahora, cancellationToken);
@@ -1866,7 +1908,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var madura = resultado is not ResultadoEvaluacion.Fallback
             && _limites.UmbralAlcanzado(resultado.Evaluacion.CalificacionTotal, contexto.Contexto.RubricaSnapshot.Escala,
                 _limites.ResolverUmbralBase(campania, pregunta));
-        var conforme = !confirmacionAutomatica && confirmacionExplicita && _transicion.Interpretar(
+        var conforme = !confirmacionAutomatica && confirmacionExplicita && detectores.Transicion.Interpretar(
             EstadoMaquinaConversacion.EsperandoRepregunta, 0, pregunta.MaxRepreguntas, texto).DeseaContinuar;
 
         if (madura || conforme || resultado is ResultadoEvaluacion.Fallback || pregunta.MaxRepreguntas <= 0)
@@ -1945,7 +1987,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             cuerpo: enviarResumen ? Combinar(Combinar(resultado.Evaluacion.RetroalimentacionEnviada, encabezadoResumen), version.Texto) : resultado.Evaluacion.RetroalimentacionEnviada,
             versionCompleta: enviarResumen ? version.Texto : null,
             retroalimentacionValidada: resultado.Evaluacion.RetroalimentacionEnviada,
-            preguntaAprobada: enviarResumen ? preguntaResumen : preguntaCoaching);
+            preguntaAprobada: enviarResumen ? preguntaResumen : preguntaCoaching,
+            idioma: conversacion.Idioma);
         if (enviarResumen)
         {
             idea = idea.ConResumenEnviado(version.NumeroVersion, ahora);
@@ -2006,7 +2049,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var propuesta = await ProponerVersionAsync(
-            campania, pregunta, contexto.Contexto.ConfigLlmSnapshot, idea,
+            campania, pregunta, conversacion.Idioma, contexto.Contexto.ConfigLlmSnapshot, idea,
             await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
             respuestaId, texto, TipoAporteIdea.Complemento, ahora, cancellationToken);
         if (propuesta.PreguntaAclaracion is not null)
@@ -2129,7 +2172,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var idea = IdeaConsolidada.Crear(
             ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, ideaIndice, ahora);
         var propuesta = await ProponerVersionAsync(
-            campania, pregunta, configLlm, idea, versionVigente: null, respuestaId, texto,
+            campania, pregunta, conversacion.Idioma, configLlm, idea, versionVigente: null, respuestaId, texto,
             TipoAporteIdea.NuevaIdea, ahora, cancellationToken);
         await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
         idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
@@ -2144,14 +2187,31 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// corrección previa a la primera confirmación conserva el aporte original y encadena la versión.
     /// </summary>
     private async Task<PropuestaConsolidada> ProponerVersionAsync(
-        Campania campania, Pregunta pregunta, ConfigLlm configLlm, IdeaConsolidada idea,
+        Campania campania, Pregunta pregunta, string idioma, ConfigLlm configLlm, IdeaConsolidada idea,
         VersionIdeaConsolidada? versionVigente, string aporteId, string aporteTexto,
         TipoAporteIdea tipoFallback, DateTimeOffset ahora, CancellationToken cancellationToken)
     {
+        var contenido = ResolverContenidoLlm(campania, pregunta, idioma);
+        if (contenido is null)
+        {
+            var numeroFallback = (versionVigente?.NumeroVersion ?? 0) + 1;
+            var versionFallback = VersionIdeaConsolidada.Crear(
+                $"{idea.Id}_v{numeroFallback}", campania.Id, idea.Id, numeroFallback, versionVigente?.Id,
+                aporteTexto,
+                (versionVigente?.AporteIdsAcumulados ?? Array.Empty<string>()).Append(aporteId).ToArray(),
+                new[] { aporteId }, tipoFallback, EstadoConfirmacionVersionIdea.Propuesta, null, null, null,
+                CrearSnapshotConfig(configLlm), ahora);
+            return new PropuestaConsolidada(versionFallback, Array.Empty<NuevaIdeaDetectada>(), true, null, null);
+        }
+
         var propuesta = await _consolidadorIdeas!.ConsolidarAsync(
             new ContextoConsolidacionIdeas(
                 campania, pregunta, versionVigente?.Texto, aporteTexto, configLlm,
-                _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje),
+                _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje)
+            {
+                Idioma = contenido.Idioma,
+                TextoPreguntaEfectivo = contenido.TextoPregunta,
+            },
             cancellationToken);
         var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, aporteTexto, tipoFallback);
         var numeroVersion = (versionVigente?.NumeroVersion ?? 0) + 1;
@@ -2192,7 +2252,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // I-20: la aclaración también se redacta; el respaldo es la pregunta cruda del consolidador.
         var texto = await ComponerTurnoAsync(
             campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Aclarar,
-            respaldo: propuesta.PreguntaAclaracion!, ahora, cancellationToken);
+            respaldo: propuesta.PreguntaAclaracion!, ahora, cancellationToken, idioma: conversacion.Idioma);
         await EnviarAsync(
             conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(
@@ -2293,7 +2353,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             respaldo: TextoConfirmacion(textoPropuesto),
             ahora, cancellationToken,
             cuerpo: textoPropuesto,
-            versionCompleta: textoPropuesto);
+            versionCompleta: textoPropuesto,
+            idioma: conversacion.Idioma);
         await EnviarAsync(
             conversacion, numero, Combinar(prefijo, texto), TipoEnvioMensaje.Repregunta, emisor, ahora,
             cancellationToken);
@@ -2322,7 +2383,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string? versionCompleta = null,
         string? retroalimentacionValidada = null,
         string? preguntaAprobada = null,
-        Rubrica? rubrica = null)
+        Rubrica? rubrica = null,
+        string? idioma = null)
     {
         if (_redactorTurno is null || !_redaccion.Habilitada || pregunta is null)
         {
@@ -2349,8 +2411,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return respaldo;
         }
 
+        var contenido = ResolverContenidoLlm(campania, pregunta, idioma ?? "es");
+        if (contenido is null)
+        {
+            return respaldo;
+        }
+
         var contexto = new ContextoRedaccionTurno(campania, pregunta, acto, configLlm, _redaccion.MaxCaracteres)
         {
+            Idioma = contenido.Idioma,
+            NombreCampaniaEfectivo = contenido.NombreCampania,
+            TextoPreguntaEfectivo = contenido.TextoPregunta,
+            InstruccionPreguntaEfectiva = contenido.InstruccionPregunta,
             VersionCompleta = versionCompleta,
             RetroalimentacionValidada = retroalimentacionValidada,
             PreguntaAprobada = preguntaAprobada,
@@ -2678,7 +2750,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             var idea = IdeaConsolidada.Crear(
                 ideaId, campania.Id, usuario.Id, pregunta.Id, conversacion.Id, respuestaId, segmentada.Indice, ahora);
             var propuesta = await ProponerVersionAsync(
-                campania, pregunta, contextoBase.ConfigLlmSnapshot, idea, versionVigente: null,
+                campania, pregunta, conversacion.Idioma, contextoBase.ConfigLlmSnapshot, idea, versionVigente: null,
                 respuestaId, segmentada.Texto, TipoAporteIdea.Inicial, ahora, cancellationToken);
             await _respuestas.GuardarVersionIdeaAsync(propuesta.Version, cancellationToken);
             idea = idea.ConPropuesta(propuesta.Version.Id, ahora);
@@ -2868,7 +2940,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // §4.5: "no lo guardes" cierra solo esta idea como rechazada, conservando su historial. Los
         // aportes I-19 nunca se sellan como maduros (la madurez vive en la idea), asi que no hay
         // respuestas que degradar como en el flujo I-17 §5.4.
-        if (_intencionRechazoIdea.Coincide(texto))
+        var detectores = await ResolverDetectoresAsync(conversacion, cancellationToken);
+        if (detectores.RechazoIdea.Coincide(texto))
         {
             await CerrarIdeaActivaYContinuarAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea,
@@ -2911,7 +2984,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var intencion = _transicion.Interpretar(
+        var intencion = detectores.Transicion.Interpretar(
             EstadoMaquinaConversacion.EsperandoRepregunta, activa.RepreguntasUsadas, pregunta.MaxRepreguntas, texto);
 
         // §4.2: en pendienteConfirmacion "así está bien" primero confirma la versión y se evalúa una vez;
@@ -2948,7 +3021,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion && _intencionConfirmacion.Coincide(texto))
+        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion && detectores.Confirmacion.Coincide(texto))
         {
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, intencion.DeseaContinuar,
@@ -2961,7 +3034,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // completa para diagnosticarla contra la rúbrica y abrir una sola pregunta socrática si hace falta.
         // El Mensaje entrante queda auditado por el pipeline, pero no se guarda como Respuesta ni versión.
         if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion
-            && _intencionSolicitarMejora.Coincide(texto))
+            && detectores.SolicitarMejora.Coincide(texto))
         {
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, conforme: false,
@@ -3151,7 +3224,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var propuesta = await ProponerVersionAsync(
-            campania, pregunta, contextoDisponible.Contexto.ConfigLlmSnapshot, idea,
+            campania, pregunta, conversacion.Idioma, contextoDisponible.Contexto.ConfigLlmSnapshot, idea,
             await ObtenerVersionVigenteAsync(campania.Id, idea, cancellationToken),
             respuestaId, texto, tipoAporte, ahora, cancellationToken);
         if (propuesta.PreguntaAclaracion is not null)
@@ -3417,7 +3490,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var intencion = _transicion.Interpretar(
+        var detectores = await ResolverDetectoresAsync(conversacion, cancellationToken);
+        var intencion = detectores.Transicion.Interpretar(
             EstadoMaquinaConversacion.EsperandoRepregunta,
             activa.RepreguntasUsadas,
             pregunta.MaxRepreguntas,
@@ -3715,7 +3789,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             ahora, cancellationToken,
             cuerpo: evaluacion.RetroalimentacionEnviada,
             retroalimentacionValidada: evaluacion.RetroalimentacionEnviada,
-            preguntaAprobada: preguntaCoaching);
+            preguntaAprobada: preguntaCoaching,
+            idioma: conversacion.Idioma);
         var turno = Combinar(prefijo, redactado);
         await EnviarAsync(conversacion, numero, turno, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
 
@@ -3742,7 +3817,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         // respaldo exacto. Es un acto sin pregunta (§4.1).
         var cierre = await ComponerTurnoAsync(
             campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Cerrar,
-            respaldo: campania.ConfigConversacional.MensajeCierre, ahora, cancellationToken);
+            respaldo: campania.ConfigConversacional.MensajeCierre, ahora, cancellationToken, idioma: conversacion.Idioma);
         var texto = Combinar(prefijo, cierre);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
         conversacion = conversacion.Cerrar(ahora);
@@ -3834,7 +3909,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                     contexto.Pregunta,
                     textoOriginal,
                     contexto.HistorialReciente,
-                    contexto.ConfigLlmSnapshot),
+                    contexto.ConfigLlmSnapshot)
+                {
+                    Idioma = contexto.Idioma,
+                    TextoPreguntaEfectivo = contexto.TextoPreguntaEfectivo,
+                },
                 cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -3969,7 +4048,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         var texto = Combinar(
             await ResolverSaludoPrimerContactoAsync(campania, usuario, conversacion, cancellationToken),
-            pregunta.Texto);
+            ResolverTextoPreguntaVisible(campania, pregunta, conversacion.Idioma));
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, mensaje.PhoneNumberIdDestino, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -3990,7 +4069,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var mensajeInicial = RenderizadorMensaje.MensajeInicialActivo(campania);
         if (mensajeInicial is not null)
         {
-            var texto = RenderizadorMensaje.Renderizar(mensajeInicial, usuario, campania);
+            var texto = ResolverTextoMensajeInicialVisible(campania, mensajeInicial, conversacion.Idioma);
+            texto = RenderizadorMensaje.Reemplazar(texto, RenderizadorMensaje.ConstruirVariables(usuario, campania));
             if (!string.IsNullOrWhiteSpace(texto))
             {
                 return texto.Trim();
@@ -4035,7 +4115,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 "saludoSiguientePregunta",
                 TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault),
                 cancellationToken),
-            siguiente.Texto);
+            ResolverTextoPreguntaVisible(campania, siguiente, conversacion.Idioma));
 
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -4277,6 +4357,20 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return ContextoDisponible.NoDisponible("config_llm_no_activa");
         }
 
+        var idiomaConversacion = "es";
+        if (_opcionesCatalogoTextos.Habilitado)
+        {
+            var conversacion = await _conversaciones.ObtenerConversacionAsync(
+                campania.Id, conversacionId, cancellationToken);
+            idiomaConversacion = conversacion?.Idioma ?? usuario.Idioma;
+        }
+
+        var contenido = ResolverContenidoLlm(campania, pregunta, idiomaConversacion);
+        if (contenido is null)
+        {
+            return ContextoDisponible.NoDisponible("localizacion_campania_incompleta");
+        }
+
         var historial = await ConstruirHistorialAsync(campania.Id, conversacionId, cancellationToken);
 
         return ContextoDisponible.Disponible(
@@ -4289,7 +4383,58 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 historial,
                 rubrica,
                 prompt,
-                configLlm));
+                configLlm)
+            {
+                Idioma = contenido.Idioma,
+                NombreCampaniaEfectivo = contenido.NombreCampania,
+                ObjetivoCampaniaEfectivo = contenido.ObjetivoCampania,
+                TextoPreguntaEfectivo = contenido.TextoPregunta,
+                InstruccionPreguntaEfectiva = contenido.InstruccionPregunta,
+            });
+    }
+
+    private ContenidoLlmCampania? ResolverContenidoLlm(Campania campania, Pregunta pregunta, string idioma)
+    {
+        if (!_opcionesCatalogoTextos.Habilitado)
+        {
+            return new ContenidoLlmCampania(
+                "es", campania.Nombre, campania.Objetivo, pregunta.Texto, pregunta.Instruccion);
+        }
+
+        var idiomaNormalizado = idioma.Trim().ToLowerInvariant();
+        if (!campania.TryObtenerLocalizacion(idiomaNormalizado, out var localizacion)
+            || string.IsNullOrWhiteSpace(localizacion.Nombre)
+            || string.IsNullOrWhiteSpace(localizacion.Objetivo)
+            || !localizacion.Preguntas.TryGetValue(pregunta.Id, out var preguntaLocalizada)
+            || string.IsNullOrWhiteSpace(preguntaLocalizada.Texto)
+            || string.IsNullOrWhiteSpace(preguntaLocalizada.Instruccion))
+        {
+            return null;
+        }
+
+        return new ContenidoLlmCampania(
+            idiomaNormalizado,
+            localizacion.Nombre,
+            localizacion.Objetivo,
+            preguntaLocalizada.Texto,
+            preguntaLocalizada.Instruccion);
+    }
+
+    private string ResolverTextoPreguntaVisible(Campania campania, Pregunta pregunta, string idioma)
+        => ResolverContenidoLlm(campania, pregunta, idioma)?.TextoPregunta ?? pregunta.Texto;
+
+    private string ResolverTextoMensajeInicialVisible(Campania campania, MensajeInicial mensaje, string idioma)
+    {
+        if (!_opcionesCatalogoTextos.Habilitado)
+        {
+            return mensaje.Texto;
+        }
+
+        return campania.TryObtenerLocalizacion(idioma, out var localizacion)
+            && localizacion.MensajesIniciales.TryGetValue(mensaje.Id, out var localizado)
+            && !string.IsNullOrWhiteSpace(localizado.Texto)
+            ? localizado.Texto
+            : string.Empty;
     }
 
     /// <summary>
@@ -4731,6 +4876,61 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 : porDefecto;
     }
 
+    /// <summary>
+    /// P-32: agrupa los detectores de un turno bajo el snapshot de idioma del hilo. Si el adaptador
+    /// no está conectado o un doble de prueba aporta un catálogo parcial, se conserva exactamente la
+    /// política heredada; un catálogo activo real ya se valida completo antes de llegar aquí.
+    /// </summary>
+    private async Task<DetectoresConversacion> ResolverDetectoresAsync(
+        DominioConversacion conversacion,
+        CancellationToken cancellationToken)
+    {
+        var legado = new DetectoresConversacion(
+            _transicion,
+            _intencionConfirmacion,
+            _intencionSolicitarMejora,
+            _intencionRechazoIdea,
+            _intencionRevisitarAnterior,
+            _intencionRevisitarIdea,
+            _politicaIntencionControl);
+        if (_resolutorTextos is null)
+        {
+            return legado;
+        }
+
+        var textos = await _resolutorTextos.ResolverAsync(conversacion, cancellationToken);
+        if (!textos.Frases.TryGetValue("continuar", out var continuar)
+            || continuar.Count == 0
+            || !textos.Frases.TryGetValue("confirmar", out var confirmar)
+            || confirmar.Count == 0
+            || !textos.Frases.TryGetValue("solicitarMejora", out var solicitarMejora)
+            || solicitarMejora.Count == 0
+            || !textos.Frases.TryGetValue("rechazoGuardado", out var rechazoGuardado)
+            || rechazoGuardado.Count == 0
+            || !textos.Frases.TryGetValue("revisitarAnterior", out var revisitarAnterior)
+            || revisitarAnterior.Count == 0
+            || !textos.Frases.TryGetValue("revisitarIdea", out var revisitarIdea)
+            || revisitarIdea.Count == 0
+            || !textos.Frases.TryGetValue("finalizarIdea", out var finalizarIdea)
+            || finalizarIdea.Count == 0
+            || !textos.Frases.TryGetValue("finalizarParticipacion", out var finalizarParticipacion)
+            || finalizarParticipacion.Count == 0)
+        {
+            return legado;
+        }
+
+        var detectorContinuar = new DetectorIntencionContinuar(continuar, _maxCaracteresIntencion);
+        var detectorRechazo = new DetectorIntencionContinuar(rechazoGuardado, _maxCaracteresIntencion);
+        return new DetectoresConversacion(
+            new ResolvedorTransicionConversacion(detectorContinuar, detectorRechazo),
+            new DetectorIntencionContinuar(confirmar, _maxCaracteresIntencion),
+            new DetectorIntencionContinuar(solicitarMejora, _maxCaracteresIntencion),
+            detectorRechazo,
+            new DetectorIntencionContinuar(revisitarAnterior, _maxCaracteresIntencion),
+            new DetectorIntencionContinuar(revisitarIdea, _maxCaracteresIntencion),
+            new PoliticaIntencionControl(finalizarIdea, finalizarParticipacion, _maxCaracteresIntencionControl));
+    }
+
     /// <summary>Elige una variante de la lista configurada o, si esta vacia, de la lista por defecto.</summary>
     private static string? SeleccionarVariante(IReadOnlyList<string>? variantes, IReadOnlyList<string> porDefecto, int semilla)
         => SeleccionarVariante(variantes is { Count: > 0 } ? variantes : porDefecto, semilla);
@@ -4804,7 +5004,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return false;
         }
 
-        if (!_intencionRevisitarAnterior.Coincide(texto) && !_intencionRevisitarIdea.Coincide(texto))
+        var detectores = await ResolverDetectoresAsync(cerrada, cancellationToken);
+        if (!detectores.RevisitarAnterior.Coincide(texto) && !detectores.RevisitarIdea.Coincide(texto))
         {
             return false;
         }
@@ -4832,6 +5033,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     /// <summary>Resultado de intentar resolver una lista de selección ya ofrecida (I-19 §4.7).</summary>
     private sealed record ResultadoSeleccionIdea(bool Manejado, DominioConversacion Conversacion);
+
+    private sealed record DetectoresConversacion(
+        ResolvedorTransicionConversacion Transicion,
+        DetectorIntencionContinuar Confirmacion,
+        DetectorIntencionContinuar SolicitarMejora,
+        DetectorIntencionContinuar RechazoIdea,
+        DetectorIntencionContinuar RevisitarAnterior,
+        DetectorIntencionContinuar RevisitarIdea,
+        PoliticaIntencionControl PoliticaIntencionControl);
 
     /// <summary>
     /// Versión propuesta para una idea, más las ideas nuevas que el consolidador separó (I-19 §4.6) y la
@@ -4865,4 +5075,11 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         public static ContextoDisponible NoDisponible(string motivo) => new(null, motivo);
     }
+
+    private sealed record ContenidoLlmCampania(
+        string Idioma,
+        string NombreCampania,
+        string ObjetivoCampania,
+        string TextoPregunta,
+        string InstruccionPregunta);
 }

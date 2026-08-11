@@ -19,17 +19,20 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
     private readonly IRepositorioUsuarios _usuarios;
     private readonly IRepositorioParticipantes _participantes;
     private readonly TimeProvider _tiempo;
+    private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
 
     public ServicioGestionCampanias(
         IRepositorioCampanias campanias,
         IRepositorioUsuarios usuarios,
         IRepositorioParticipantes participantes,
-        TimeProvider tiempo)
+        TimeProvider tiempo,
+        OpcionesCatalogoTextos? opcionesCatalogoTextos = null)
     {
         _campanias = campanias;
         _usuarios = usuarios;
         _participantes = participantes;
         _tiempo = tiempo;
+        _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
     }
 
     public Task<IReadOnlyCollection<Campania>> BuscarCampaniasAsync(
@@ -92,6 +95,20 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         return actualizado;
     }
 
+    public async Task<Campania> ActualizarLocalizacionesAsync(
+        string id,
+        SolicitudActualizarLocalizacionesCampania solicitud,
+        CancellationToken cancellationToken)
+    {
+        var existente = await ObtenerCampaniaAsync(id, cancellationToken);
+        var actualizado = CopiarCampania(
+            existente,
+            idiomasHabilitados: solicitud.IdiomasHabilitados,
+            localizaciones: solicitud.Localizaciones);
+        await _campanias.GuardarCampaniaAsync(actualizado, cancellationToken);
+        return actualizado;
+    }
+
     public async Task<Campania> CambiarEstadoCampaniaAsync(
         string id,
         EstadoCampania estado,
@@ -99,6 +116,15 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
     {
         var existente = await ObtenerCampaniaAsync(id, cancellationToken);
         ValidarTransicion(existente.Estado, estado);
+
+        if (_opcionesCatalogoTextos.Habilitado && estado == EstadoCampania.Activa)
+        {
+            var errores = ValidadorLocalizacionesCampania.Validar(existente);
+            if (errores.Count > 0)
+            {
+                throw new ErrorValidacion("La campaña no tiene localizaciones completas para activarse.", errores);
+            }
+        }
 
         var actualizado = CopiarCampania(existente, estado: estado);
         await _campanias.GuardarCampaniaAsync(actualizado, cancellationToken);
@@ -125,7 +151,9 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             original.ConfigSeguridad,
             null,
             ahora,
-            ahora);
+            ahora,
+            original.IdiomasHabilitados,
+            original.Localizaciones);
 
         await _campanias.GuardarCampaniaAsync(copia, cancellationToken);
         return copia;
@@ -278,6 +306,13 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         var asociados = new List<ParticipanteCampania>();
         foreach (var usuario in usuarios)
         {
+            if (_opcionesCatalogoTextos.Habilitado
+                && !campania.IdiomasHabilitados.Contains(usuario.Idioma, StringComparer.Ordinal))
+            {
+                throw new ErrorConflicto(
+                    "IDIOMA_CAMPANIA_NO_HABILITADO: el idioma del participante no esta habilitado en la campania.");
+            }
+
             var existente = await _participantes.ObtenerParticipantePorUsuarioAsync(campania.Id, usuario.Id, cancellationToken);
             var participante = ParticipanteCampania.Crear(
                 existente?.Id ?? $"pc_{campania.Id}_{usuario.Id}",
@@ -398,7 +433,9 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         ConfigMarkdown? configMarkdown = null,
         ConfigConversacional? configConversacional = null,
         LimitesSeguridad? configSeguridad = null,
-        IReadOnlyCollection<string>? usuariosHabilitados = null)
+        IReadOnlyCollection<string>? usuariosHabilitados = null,
+        IReadOnlyCollection<string>? idiomasHabilitados = null,
+        IReadOnlyDictionary<string, LocalizacionCampania>? localizaciones = null)
         => Campania.Crear(
             actual.Id,
             nombre ?? actual.Nombre,
@@ -415,7 +452,9 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             configSeguridad ?? actual.ConfigSeguridad,
             usuariosHabilitados ?? actual.UsuariosHabilitados,
             actual.CreadoEn,
-            _tiempo.GetUtcNow());
+            _tiempo.GetUtcNow(),
+            idiomasHabilitados ?? actual.IdiomasHabilitados,
+            localizaciones ?? actual.Localizaciones);
 
     private static void ValidarTransicion(EstadoCampania actual, EstadoCampania destino)
     {

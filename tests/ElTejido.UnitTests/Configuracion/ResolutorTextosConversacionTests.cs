@@ -46,6 +46,18 @@ public sealed class ResolutorTextosConversacionTests
         resultado.Mensajes["saludoPrimerContacto"].Should().StartWith("Hello!");
     }
 
+    [Fact]
+    public void Semillas_IncluyenConfirmacionYAclaracionesP27PorIdioma()
+    {
+        var espanol = CatalogosTextosSemilla.CrearSolicitud("es");
+        var ingles = CatalogosTextosSemilla.CrearSolicitud("en");
+
+        espanol.Frases["confirmar"].Should().Contain("confirmo");
+        ingles.Frases["confirmar"].Should().Contain("yes");
+        ingles.Mensajes["menuAclaracionSalida"].Should().StartWith("What would you prefer?");
+        ingles.Mensajes["respaldoAclaracionSalida"].Should().StartWith("You can continue");
+    }
+
     private static DominioConversacion Conversacion(string idioma)
         => DominioConversacion.Iniciar(
             "conv_1", "c_1", "u_1", "p_1", "whatsapp", null, DateTimeOffset.UnixEpoch, idioma: idioma);

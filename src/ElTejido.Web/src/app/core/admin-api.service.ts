@@ -28,6 +28,25 @@ import {
   UsuarioAdmin,
 } from './api-models';
 
+export interface ContenidoCatalogoTextos {
+  mensajes: Record<string, string>;
+  frases: Record<string, string[]>;
+}
+
+export interface CatalogoTextos extends ContenidoCatalogoTextos {
+  familiaId: string;
+  idioma: 'es' | 'en';
+  version: number;
+  estado: 'borrador' | 'activo' | 'inactivo';
+  etag: string;
+  huella: string;
+}
+
+export interface CatalogoTextosEfectivo {
+  origen: string;
+  catalogo: CatalogoTextos | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly api = inject(ApiClient);
@@ -128,6 +147,57 @@ export class AdminApiService {
 
   actualizarCampania(id: string, body: unknown) {
     return this.api.put<Campania>(`/api/admin/campanias/${id}`, body);
+  }
+
+  actualizarLocalizacionesCampania(id: string, body: unknown) {
+    return this.api.put<Campania>(`/api/admin/campanias/${id}/localizaciones`, body);
+  }
+
+  catalogosTextos(query?: Record<string, string | number | undefined>) {
+    return this.api.get<CatalogoTextos[]>('/api/admin/catalogos-textos', query);
+  }
+
+  versionesCatalogoTextos(familiaId: string, idioma: string) {
+    return this.api.get<CatalogoTextos[]>(
+      `/api/admin/catalogos-textos/${encodeURIComponent(familiaId)}/${idioma}/versiones`,
+    );
+  }
+
+  catalogoTextosEfectivo(idioma: string) {
+    return this.api.get<CatalogoTextosEfectivo>('/api/admin/catalogos-textos/efectivo', { idioma });
+  }
+
+  crearSemillaCatalogoTextos(idioma: string) {
+    return this.api.post<CatalogoTextos>(`/api/admin/catalogos-textos/semillas/${idioma}`);
+  }
+
+  importarCatalogoTextos(
+    contenido: ContenidoCatalogoTextos & { familiaId: string; idioma: string },
+  ) {
+    return this.api.post<CatalogoTextos>('/api/admin/catalogos-textos/importar', contenido);
+  }
+
+  exportarCatalogoTextos(catalogo: CatalogoTextos) {
+    return this.api.getBlob(
+      `/api/admin/catalogos-textos/${encodeURIComponent(catalogo.familiaId)}/${catalogo.idioma}/versiones/${catalogo.version}/exportar`,
+    );
+  }
+
+  actualizarCatalogoTextos(catalogo: CatalogoTextos, contenido: ContenidoCatalogoTextos) {
+    return this.api.put<CatalogoTextos>(
+      `/api/admin/catalogos-textos/${encodeURIComponent(catalogo.familiaId)}/${catalogo.idioma}/versiones/${catalogo.version}`,
+      contenido,
+      { 'If-Match': catalogo.etag },
+    );
+  }
+
+  activarCatalogoTextos(catalogo: CatalogoTextos) {
+    return this.api.post<CatalogoTextos>(
+      `/api/admin/catalogos-textos/${encodeURIComponent(catalogo.familiaId)}/${catalogo.idioma}/versiones/${catalogo.version}/activar`,
+      {},
+      undefined,
+      { 'If-Match': catalogo.etag },
+    );
   }
 
   cambiarEstadoCampania(id: string, estado: string) {

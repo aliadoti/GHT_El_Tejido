@@ -52,6 +52,27 @@ public sealed class RedactorTurnoConversacionalTests
     }
 
     [Fact]
+    public async Task ContextoEnIngles_ExigeSalidaYUsaLaPreguntaLocalizada()
+    {
+        LlmRequest? enviado = null;
+        _client.CompletarJsonAsync(Arg.Do<LlmRequest>(request => enviado = request), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta("{\"puente\":\"Thanks.\",\"pregunta\":\"Could you share more?\"}", null));
+
+        await Construir().RedactarAsync(Contexto(ActoConversacional.Mejorar) with
+        {
+            Idioma = "en",
+            NombreCampaniaEfectivo = "Neighbourhood ideas",
+            TextoPreguntaEfectivo = "What would you improve?",
+            InstruccionPreguntaEfectiva = "Describe one action.",
+        }, CancellationToken.None);
+
+        var sistema = enviado!.Mensajes.Single(m => m.Rol == LlmMensaje.RolSistema).Contenido;
+        var datos = enviado.Mensajes.Single(m => m.Rol == LlmMensaje.RolUsuario).Contenido;
+        sistema.Should().Contain("IDIOMA_DE_SALIDA_OBLIGATORIO: en").And.NotContain("en español");
+        datos.Should().Contain("Neighbourhood ideas").And.Contain("What would you improve?");
+    }
+
+    [Fact]
     public async Task JsonInvalido_DegradaAFallbackSinTexto()
     {
         Responder("esto no es json");

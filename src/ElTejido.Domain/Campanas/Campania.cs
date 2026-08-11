@@ -19,6 +19,8 @@ public sealed class Campania
         ConfigConversacional configConversacional,
         LimitesSeguridad configSeguridad,
         IReadOnlyCollection<string> usuariosHabilitados,
+        IReadOnlyCollection<string> idiomasHabilitados,
+        IReadOnlyDictionary<string, LocalizacionCampania> localizaciones,
         DateTimeOffset creadoEn,
         DateTimeOffset actualizadoEn)
     {
@@ -36,6 +38,8 @@ public sealed class Campania
         ConfigConversacional = configConversacional;
         ConfigSeguridad = configSeguridad;
         UsuariosHabilitados = usuariosHabilitados;
+        IdiomasHabilitados = idiomasHabilitados;
+        Localizaciones = localizaciones;
         CreadoEn = creadoEn;
         ActualizadoEn = actualizadoEn;
     }
@@ -68,6 +72,12 @@ public sealed class Campania
 
     public IReadOnlyCollection<string> UsuariosHabilitados { get; }
 
+    /// <summary>Idiomas editoriales admitidos por la campaña; un documento histórico equivale a <c>es</c>.</summary>
+    public IReadOnlyCollection<string> IdiomasHabilitados { get; }
+
+    /// <summary>Contenido editorial por idioma, indexado por código ISO corto.</summary>
+    public IReadOnlyDictionary<string, LocalizacionCampania> Localizaciones { get; }
+
     public DateTimeOffset CreadoEn { get; }
 
     public DateTimeOffset ActualizadoEn { get; }
@@ -90,7 +100,9 @@ public sealed class Campania
         LimitesSeguridad configSeguridad,
         IEnumerable<string>? usuariosHabilitados,
         DateTimeOffset creadoEn,
-        DateTimeOffset actualizadoEn)
+        DateTimeOffset actualizadoEn,
+        IEnumerable<string>? idiomasHabilitados = null,
+        IReadOnlyDictionary<string, LocalizacionCampania>? localizaciones = null)
     {
         var fechaCreacionUtc = creadoEn.ToUniversalTime();
         var fechaActualizacionUtc = actualizadoEn.ToUniversalTime();
@@ -117,8 +129,51 @@ public sealed class Campania
             configConversacional,
             configSeguridad,
             NormalizeStrings(usuariosHabilitados),
+            NormalizeIdiomas(idiomasHabilitados),
+            NormalizeLocalizaciones(localizaciones),
             fechaCreacionUtc,
             fechaActualizacionUtc);
+    }
+
+    /// <summary>
+    /// Resuelve el contenido para un idioma. El español conserva el respaldo de los campos históricos;
+    /// para inglés no existe fallback silencioso a español.
+    /// </summary>
+    public bool TryObtenerLocalizacion(string idioma, out LocalizacionCampania localizacion)
+    {
+        var normalizado = idioma.Trim().ToLowerInvariant();
+        if (!IdiomasHabilitados.Contains(normalizado, StringComparer.Ordinal))
+        {
+            localizacion = null!;
+            return false;
+        }
+
+        if (Localizaciones.TryGetValue(normalizado, out localizacion!))
+        {
+            return true;
+        }
+
+        if (normalizado == "es")
+        {
+            localizacion = LocalizacionCampania.Crear(
+                "es",
+                Nombre,
+                Descripcion,
+                Objetivo,
+                ConfigConversacional.MensajeCierre,
+                MensajesIniciales.ToDictionary(
+                    mensaje => mensaje.Id,
+                    mensaje => new LocalizacionMensajeInicial(mensaje.Texto, null),
+                    StringComparer.Ordinal),
+                Preguntas.ToDictionary(
+                    pregunta => pregunta.Id,
+                    pregunta => new LocalizacionPregunta(pregunta.Texto, pregunta.Instruccion),
+                    StringComparer.Ordinal));
+            return true;
+        }
+
+        localizacion = null!;
+        return false;
     }
 
     private static IReadOnlyCollection<T> NormalizeCollection<T>(IEnumerable<T>? values)
@@ -138,6 +193,40 @@ public sealed class Campania
             .Where(value => value.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static IReadOnlyCollection<string> NormalizeIdiomas(IEnumerable<string>? values)
+    {
+        var idiomas = NormalizeStrings(values)
+            .Select(idioma => idioma.ToLowerInvariant())
+            .ToArray();
+        if (idiomas.Length == 0)
+        {
+            return new[] { "es" };
+        }
+
+        if (idiomas.Any(idioma => idioma is not ("es" or "en")))
+        {
+            throw new DomainValidationException("IDIOMA_NO_SOPORTADO", "Los idiomas de la campaña deben ser 'es' o 'en'.");
+        }
+
+        return idiomas;
+    }
+
+    private static IReadOnlyDictionary<string, LocalizacionCampania> NormalizeLocalizaciones(
+        IReadOnlyDictionary<string, LocalizacionCampania>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return new Dictionary<string, LocalizacionCampania>(StringComparer.Ordinal);
+        }
+
+        return values
+            .Where(value => !string.IsNullOrWhiteSpace(value.Key))
+            .ToDictionary(
+                value => value.Key.Trim().ToLowerInvariant(),
+                value => value.Value,
+                StringComparer.Ordinal);
     }
 
     private static IReadOnlyDictionary<string, string> NormalizeMap(IReadOnlyDictionary<string, string>? values)
