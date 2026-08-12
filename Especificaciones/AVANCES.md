@@ -903,10 +903,12 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Iniciar P-32 corte 2.** Agregar snapshot de idioma al hilo/ciclo y un adaptador que proyecte
-  catálogo a los mensajes/frases globales. Mantener el gate OFF y probar regresión legacy antes de
-  migrar detectores o textos visibles. Para activar se requieren traducciones inglesas y plantillas
-  HSM aprobadas.
+- [ ] **Validar operativamente P-32; no hay un corte de código pendiente.** Ejecutar D5 real y UAT
+  bilingüe en un ambiente aislado usando `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y
+  `QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md`: recorrido E2E `es/en`, lote mixto, edición,
+  activación y rollback del catálogo. Antes de una activación productiva se requieren traducciones
+  aprobadas, plantillas Meta inglesas, revisión de costo/latencia y acta de cambio. El gate permanece
+  OFF fuera de la ventana autorizada.
 - [ ] **Desplegar `I-08 v2`.** La iniciativa esta COMPLETA local (7/7 pasos); faltan por subir los
   cortes 2, 3 y 4 (commits `d07b9f0`, `e5e4b37`, `982c7b7`). Un push a `main` dispara el CD.
   Despues del despliegue, probar contra Azure: descargar la plantilla desde el portal, diligenciar

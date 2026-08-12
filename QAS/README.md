@@ -22,7 +22,8 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 13 | [Prompt para Claude Code — pruebas conversacionales](13_Prompt_ClaudeCode_Pruebas_Conversacionales.md) | Variante centrada en el flujo del coach por WhatsApp simulado. |
 | 14 | [P-31 · Resumen de la consolidación](14_P31_Resumen_Consolidacion_Como_Probar.md) | Cómo comprobar que el participante ve su idea acumulada antes de terminarla. |
 | 15 | [I-08 v2 · Carga masiva](15_I08v2_Carga_Masiva_Como_Probar.md) | Guía ejecutable de la carga por Excel/CSV: datos sucios, idempotencia, modos, **conflicto de titular y reasignación**, y el guardarraíl de un solo activo por teléfono. |
-| 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | Corte 1/4 DONE local: catálogo/API/caché/semillas. La aceptación conversacional completa sigue pendiente de los cortes 2–4. |
+| 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | P-32 4/4 DONE local. Guía de regresión, E2E bilingüe, lote mixto, catálogo, rollback, D5 y UAT antes de una activación. |
+| 17 | [Prompt · validación completa P-32](17_Prompt_Ejecutar_Validacion_Completa_P32.md) | Prompt listo para delegar D5, E2E bilingüe, lote mixto, catálogo, rollback, UAT y pendientes operativos de P-32. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)
@@ -45,9 +46,10 @@ El **no determinismo del LLM** se gestiona en todo el paquete con **criterios cu
 
 ## Nota de estado (2026-08-07)
 
-**Actualización 2026-08-10:** P-32 tiene el corte 1/4 DONE local. La guía **16** define la aceptación
-completa; no debe reportarse como PASS conversacional ni activarse todavía porque el runtime,
-campañas, envío mixto y portal siguen pendientes.
+**Actualización 2026-08-12:** P-32 está **4/4 DONE local**. La guía **16** y el prompt **17** cubren
+la validación operativa pendiente. No debe reportarse como PASS de producción ni activarse fuera de
+una ventana aislada y autorizada: faltan D5 real, UAT bilingüe, plantillas Meta inglesas aprobadas,
+revisión de costo/latencia y acta de cambio.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

@@ -482,13 +482,15 @@ deja de iniciar.
 
 ---
 
-## D. Aún no se prueba (por ahora)
+## D. Validaciones operativas pendientes
 
-- 🚧 **P-32 — Conversación en español/inglés y textos editables:** **corte 1/4 DONE local.**
-  El catálogo/API/caché/semillas ya existen, pero el flujo completo todavía no usa el catálogo
-  bilingüe. Al completar los cortes restantes, usar `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`: dos
-  participantes `es/en`, lote mixto, cambio de texto sin desplegar, rollback y bloqueo de campañas
-  incompletas. **No dar por aprobado hoy** solo porque el maestro permita escoger inglés.
+- 🚧 **P-32 — Conversación en español/inglés y textos editables:** **4/4 DONE local; falta validación
+  operativa.** El recorrido completo ya usa el idioma del participante, campañas localizadas, envío
+  mixto y catálogo editable. Antes de aprobarlo, usar
+  `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y el prompt `QAS/17_*`: dos participantes
+  `es/en`, lote mixto, cambio y rollback de texto, campaña incompleta, D5 real y UAT de GHT. **No dar
+  por aprobado ni activar en producción** hasta tener plantillas Meta inglesas, costo/latencia, UAT y
+  acta de cambio; fuera de la ventana autorizada la palanca sigue apagada.
 
 - ✅ **P-28 — Volver a saludar antes de una idea nueva:** **implementada localmente (3/3); viene
   apagada.** Pide al equipo que la active solo en una prueba. Con una persona que ya terminó sus

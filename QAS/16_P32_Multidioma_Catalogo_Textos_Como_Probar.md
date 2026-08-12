@@ -2,8 +2,9 @@
 
 **Estado:** cortes 1 a 4 DONE local. La API, semillas, caché/LKG, emergencia, snapshot de idioma,
 mensajes globales, enrutamiento, detectores, localizaciones de campaña, envío inicial mixto y los
-contextos LLM están implementados. El gate sigue OFF; la activación requiere una prueba controlada de
-ambos idiomas, plantillas Meta aprobadas, D5/UAT y revisión de costo.
+contextos LLM están implementados. El gate sigue OFF. Esta guía deja lista la validación operativa
+pendiente; la activación productiva requiere una prueba controlada de ambos idiomas, plantillas Meta
+aprobadas, D5, UAT, revisión de costo/latencia y acta de cambio.
 
 ## Qué se quiere comprobar
 
@@ -16,6 +17,19 @@ cambiar un texto, publicarlo y revertirlo sin pedir una compilación o un despli
 2. Usa una campaña de prueba con versión española e inglesa completa.
 3. Confirma con el equipo que hay una plantilla inicial aprobada por Meta para cada idioma.
 4. No uses datos reales ni números de participantes de la convención.
+5. Define una ventana aislada y autorizada. El responsable humano activa temporalmente
+   `Conversacion:CatalogoTextosHabilitado=true` solo allí; fuera de esa ventana debe permanecer en
+   `false`.
+6. Conserva la versión activa actual de cada idioma y anota quién aprobó la prueba. No cambies
+   secretos, URLs, rúbricas ni prompts para hacer que una prueba pase.
+
+## Orden de ejecución completo
+
+Ejecuta primero la **Prueba 0** con la palanca apagada; debe comprobarse que el comportamiento
+histórico no cambió. Después, en la ventana autorizada y con la palanca encendida, ejecuta las
+pruebas 1 a 6. Completa luego D5 y UAT de esta misma guía. Si falta una plantilla Meta, una
+traducción aprobada, acceso o autorización, marca el caso como **BLOCKED**; no lo conviertas en PASS
+ni en FAIL técnico.
 
 ## Prueba 0 — snapshot del hilo (disponible desde corte 2a)
 
@@ -33,12 +47,12 @@ esto es la regresión segura esperada, no un fallo de traducción.
 
 1. En un entorno de prueba aislado, prepara un catálogo inglés activo con un saludo y una variante de
    continuación reconocibles.
-2. Con los demás cambios de P-32 aún incompletos, **no actives el gate fuera de esa prueba técnica**.
+2. Conserva la prueba dentro de la ventana aislada autorizada; **no actives el gate fuera de ella**.
 3. Abre un hilo nuevo de un participante `en` y provoca una repregunta.
 
 **Deberías ver:** el saludo global y la coletilla de continuación salen del catálogo inglés. La
-pregunta y el contenido de campaña pueden seguir en español hasta el corte 3; por eso esta prueba no
-autoriza activar el catálogo en un ambiente compartido.
+pregunta y el contenido de campaña también deben estar en inglés cuando la localización está completa.
+Esta prueba aislada no autoriza activar el catálogo en un ambiente compartido.
 
 ## Prueba 0.2 — menú pendiente con snapshot (técnica, tramo 2b2)
 
@@ -148,6 +162,51 @@ envía español como sustituto.
 **Algo va mal si:** la campaña se activa incompleta, el participante recibe una mezcla o el sistema
 inventa una traducción.
 
+## Prueba 7 — D5 real: calidad equivalente del modelo
+
+Esta prueba cuesta llamadas reales al modelo y requiere las credenciales y presupuesto ya aprobados.
+No se sustituye por las pruebas unitarias locales.
+
+1. Ejecuta el banco de calibración real siguiendo `tests/Calibracion/README.md`, con los idiomas
+   disponibles en el conjunto y con la configuración del ambiente aislado.
+2. Añade y ejecuta, si no estaban ya incluidos, al menos cuatro pares equivalentes `es/en`: idea fuerte,
+   idea débil, texto hostil/inyección y solicitud de terminar.
+3. Compara por pares: decisión de estado, seguridad, ausencia de fuga de rúbrica/secretos y naturalidad.
+   El texto no tiene que ser una traducción literal, pero debe conservar el mismo propósito y no mezclar
+   idiomas.
+4. Guarda el reporte generado, el identificador de la configuración usada y el costo/tokens observados.
+
+**Deberías ver:** las decisiones deterministas coinciden entre idiomas, el modelo no revela información
+protegida y el inglés responde naturalmente sin forzar español.
+
+**Algo va mal si:** cambia un estado por el idioma, aparece información sensible, hay una respuesta en
+el idioma equivocado o el costo/latencia supera el límite acordado. Detén la activación y conserva la
+evidencia.
+
+## Prueba 8 — UAT bilingüe: aceptación de negocio
+
+1. Pide a una persona de GHT que complete el recorrido `es` y a otra el recorrido `en`, sin explicarles
+   qué respuesta esperan.
+2. Cada persona confirma que entiende saludo, pregunta, ayudas, coaching, cierre y reingreso; también
+   revisa que la idea conserve el idioma que escribió.
+3. El administrador repite el cambio de un saludo inglés, activación de la versión y rollback de la
+   Prueba 3/4 mientras los participantes no tienen un hilo nuevo abierto.
+4. Registra por separado: aceptado, observación menor, defecto o bloqueo; no sustituyas el visto bueno
+   de GHT por el del ejecutor técnico.
+
+**Deberías ver:** GHT acepta que ambos recorridos son claros y funcionalmente equivalentes. El cambio
+editorial aplica a hilos nuevos y el rollback restaura el texto anterior.
+
+## Cierre de la ventana y decisión
+
+1. Apaga la palanca multidioma si la ventana no termina en una activación formal aprobada.
+2. Conserva las versiones de catálogo y los datos de prueba; no borres evidencia para ocultar un fallo.
+3. Registra el resultado en `QAS/resultados/Resultados_P32_Multidioma_<fecha>.md` con: ambiente,
+   ejecutor, autorización, versiones/huellas, plantillas Meta, estado de cada prueba (PASS/FAIL/BLOCKED),
+   enlaces a capturas/reportes, costo/latencia, decisión UAT y decisión final.
+4. Solo se recomienda activación productiva si todas las pruebas aplicables están PASS, D5/UAT están
+   aprobados y existe el acta de cambio. Cualquier FAIL o BLOCKED deja el gate OFF.
+
 ## Evidencia mínima
 
 - capturas de los dos hilos completos;
@@ -155,4 +214,6 @@ inventa una traducción.
 - resultado del lote mixto;
 - captura del rechazo de contenido inválido;
 - prueba de activación y rollback; y
-- confirmación de que no hubo build, despliegue ni cambio de secretos.
+- reporte D5 real con comparación `es/en`, costo y latencia;
+- visto bueno o hallazgos UAT de GHT; y
+- confirmación de que no hubo build, despliegue ni cambio de secretos fuera de la ventana autorizada.

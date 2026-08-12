@@ -19,19 +19,19 @@ Los módulos funcionales y sus fronteras están en `ARQ §1.3` y mapeados a carp
 
 ## 2. Stack y versiones (vinculante)
 
-| Capa | Tecnología | Versión MVP | Notas |
-|---|---|---|---|
-| Runtime backend | .NET | **8 LTS** | Fijado en `global.json`. Soporte LTS, encaje Azure nativo (`ARQ §14 D2`). |
-| Lenguaje backend | C# | 12 | `Nullable` on, warnings-as-errors. |
-| Web framework | ASP.NET Core | 8 | Webhook + `/api/*` + hosting estático. |
-| Base de datos | Azure Cosmos DB for NoSQL | Serverless | SDK `Microsoft.Azure.Cosmos` v3. (`ARQ §14 D3`) |
-| Secretos | Azure Key Vault | Standard | Acceso por Managed Identity + RBAC. (`ARQ §14 D5`) |
-| Artefactos | Azure Blob Storage | Standard LRS, Hot | Markdown + logs fríos. (`ARQ §14 D9`) |
-| Observabilidad | Application Insights | — | Telemetría, trazas, alertas. |
-| Hosting | Azure App Service | Linux **B1 Basic** | Always On para webhook estable. (`ARQ §2.2`) |
-| Frontend | **Angular** | **22** (última estable, jun-2026) | Standalone components, signals, OnPush. (Decisión del cliente; sustituye la sugerencia React de `ARQ §14 D8`.) |
-| LLM (por defecto) | **Azure OpenAI** | — | Proveedor por defecto **configurable**; el sistema soporta Azure OpenAI, OpenAI compatible, OpenRouter y Anthropic nativo (`REQ §19`). El código no asume un proveedor único. |
-| CI/CD | GitHub Actions | — | Sin Bicep en el MVP (decisión del cliente). Recursos creados a mano por el portal. |
+| Capa              | Tecnología                | Versión MVP                       | Notas                                                                                                                                                                         |
+| ----------------- | ------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime backend   | .NET                      | **8 LTS**                         | Fijado en `global.json`. Soporte LTS, encaje Azure nativo (`ARQ §14 D2`).                                                                                                     |
+| Lenguaje backend  | C#                        | 12                                | `Nullable` on, warnings-as-errors.                                                                                                                                            |
+| Web framework     | ASP.NET Core              | 8                                 | Webhook + `/api/*` + hosting estático.                                                                                                                                        |
+| Base de datos     | Azure Cosmos DB for NoSQL | Serverless                        | SDK `Microsoft.Azure.Cosmos` v3. (`ARQ §14 D3`)                                                                                                                               |
+| Secretos          | Azure Key Vault           | Standard                          | Acceso por Managed Identity + RBAC. (`ARQ §14 D5`)                                                                                                                            |
+| Artefactos        | Azure Blob Storage        | Standard LRS, Hot                 | Markdown + logs fríos. (`ARQ §14 D9`)                                                                                                                                         |
+| Observabilidad    | Application Insights      | —                                 | Telemetría, trazas, alertas.                                                                                                                                                  |
+| Hosting           | Azure App Service         | Linux **B1 Basic**                | Always On para webhook estable. (`ARQ §2.2`)                                                                                                                                  |
+| Frontend          | **Angular**               | **22** (última estable, jun-2026) | Standalone components, signals, OnPush. (Decisión del cliente; sustituye la sugerencia React de `ARQ §14 D8`.)                                                                |
+| LLM (por defecto) | **Azure OpenAI**          | —                                 | Proveedor por defecto **configurable**; el sistema soporta Azure OpenAI, OpenAI compatible, OpenRouter y Anthropic nativo (`REQ §19`). El código no asume un proveedor único. |
+| CI/CD             | GitHub Actions            | —                                 | Sin Bicep en el MVP (decisión del cliente). Recursos creados a mano por el portal.                                                                                            |
 
 > **Nota sobre el frontend:** la arquitectura aprobada sugería React/Vite, pero el cliente fijó **Angular (última versión)**. Esta es la única desviación respecto a `ARQ` y queda formalizada aquí. Todo lo demás de `ARQ` se mantiene.
 

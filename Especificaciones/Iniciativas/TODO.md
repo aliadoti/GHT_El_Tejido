@@ -33,12 +33,13 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > globales registrados y variantes del orquestador, sin cambiar el gate. El corte 2b2 completa
 > enrutamiento, detectores y aclaraciones P-27 por catálogo/snapshot. El corte 3 ya entrega
 > localizaciones de campaña, edición de portal, validación y envío inicial mixto por participante;
-> conserva el gate OFF y el legado. **Siguiente: corte 4**, idioma en LLM, catálogo/rollback operativo
-> y E2E bilingüe. Backend: 768 unitarias + 87 integración; portal 43/43, build Angular y Prettier verdes.
+> conserva el gate OFF y el legado. **Los cuatro cortes están terminados:** el corte 4 propagó el
+> idioma a evaluación, segmentación, consolidación y redacción, y completó el portal de catálogo y
+> su rollback. Backend: 768 unitarias + 87 integración; portal 43/43, build Angular y Prettier verdes.
 > Sin despliegue,
 > configuración remota ni activación; se requieren D5/UAT, traducción inglesa y plantillas HSM aprobadas.
 > Spec: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`; inventario:
-> `planes/P-32_Inventario_y_Migracion_Textos.md`; QAS: `QAS/16_*`.
+> `planes/P-32_Inventario_y_Migracion_Textos.md`; QAS: `QAS/16_*` y prompt ejecutable `QAS/17_*`.
 >
 > **Registro de preparación — INICIATIVA OBJETIVO 2026-08-08 — `DT-QA-02` LISTADO DE EVALUACIONES.
 > IMPLEMENTACIÓN INMEDIATA. SPEC Y CONTRATO LISTOS, SIN CÓDIGO AÚN.**
@@ -220,9 +221,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > </details>
 >
-> **Soporte de inglés P-32: corte 1/4 DONE local (2026-08-10); pendiente de conexión al runtime.** `I-08 v2`
-> ya aporta `Usuario.Idioma` (`es|en`), por lo que el dato maestro no bloquea. No implementar sin leer
-> P-32, su inventario de migración y la guía QAS; no activar sin traducciones y plantillas Meta aprobadas.
+> **Soporte de inglés P-32: 4/4 DONE local (2026-08-11); pendiente solo de validación operativa.**
+> `I-08 v2` aporta `Usuario.Idioma` (`es|en`) y P-32 ya lo consume en runtime, campañas, envíos y
+> contextos LLM. No activar sin traducciones aprobadas, plantillas Meta inglesas, D5/UAT bilingüe,
+> revisión de costo/latencia y acta de cambio.
 >
 > **ESTADO VIGENTE 2026-08-04 — `P-30` COMPLETA local (3/3).** El participante puede pedir retomar
 > una idea histórica propia dentro de la campaña y pregunta resueltas por P-26, elegirla por número o
@@ -559,10 +561,10 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
 
-3. **Iniciar P-32 corte 3.** Diseñar e implementar localizaciones completas de campaña y el envío
-   inicial mixto por participante; el catálogo global, snapshots, detectores y aclaraciones P-27 ya
-   están implementados. Mantener el gate OFF y
-   demostrar regresión legacy antes de activar, cambiar configuración remota o avanzar a campañas/envíos.
+3. **Ejecutar la validación operativa de P-32, no más desarrollo.** Usar `QAS/16` y el prompt
+   `QAS/17` en un ambiente aislado: D5 real, recorrido E2E `es/en`, lote mixto, edición/rollback y
+   UAT. Mantener el gate OFF fuera de esa ventana; no activar, desplegar ni cambiar configuración
+   remota sin acta y autorización expresa.
 
 4. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por
