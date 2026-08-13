@@ -14,6 +14,14 @@
 - Impacto / reversibilidad: <a que afecta, si cierra o no fronteras post-MVP>
 ```
 
+### variacion-no-duplicacion-redaccion-dt-i20-01 - Regla global para mensajes nuevos
+- Fecha: 2026-08-13 - Agente/Rol: Codex - Arquitecto/Backend/SDET - Decisión del usuario: aplicar la corrección a todas las campañas de ahora en adelante, sin importar las conversaciones pasadas.
+- Decisión: `Queda claro que...`, `Se entiende que...`, `Es evidente que...` y equivalentes son expresiones válidas; el problema es su uso sistemático, no su existencia. I-20 debe pedir variación natural y el servidor debe omitir un puente que duplique una oración, prefijo o primera oración equivalente del cuerpo que insertará.
+- Alcance temporal: la regla opera sobre cada envío nuevo después del despliegue, incluso si pertenece a una campaña existente. No reescribe mensajes, conversaciones, ideas, evaluaciones ni Markdown históricos; no requiere migración.
+- Configuración y reversibilidad: sin flag ni opt-in por campaña, pues es una corrección transversal de calidad. El rollback es revertir la aplicación; no deja datos que restaurar.
+- Alternativas descartadas: prohibir las expresiones (pierde una formulación válida); configurar listas por campaña (fragmenta la voz y deja campañas sin protección); segundo LLM para similitud semántica (costo, latencia y no hace falta para eliminar la duplicación confirmada).
+- Spec: `Iniciativas/DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md`.
+
 ---
 
 ## Supuestos registrados

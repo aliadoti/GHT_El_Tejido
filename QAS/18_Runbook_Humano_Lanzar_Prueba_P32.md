@@ -1,0 +1,84 @@
+# 18 — Runbook humano para lanzar la prueba P-32 en Azure
+
+Esta guía la sigue el humano que autoriza y lanza al agente. El agente crea los datos de prueba y
+ejecuta las pruebas; el humano controla el acceso temporal y los secretos.
+
+## Antes de iniciar
+
+1. Confirma que usarás un **ambiente aislado de pruebas**, nunca producción.
+2. Ten la URL del ambiente y permiso administrativo para el portal y para cambiar su configuración.
+3. Confirma que existen y están activos, sin modificarlos: rúbrica **`rúbrica OpenBrain v3.4`**,
+   prompt **`Evaluación con rubrica OpenBrain Thought-Scoring`** y configuración LLM
+   **`OpenRouter-Terra`**. El agente los reutiliza; no necesita ni debe recibir la key de OpenRouter.
+4. Si se probará envío real, confirma que las plantillas Meta en inglés están aprobadas. Si no lo están,
+   la prueba de envío real quedará `BLOCKED`, pero las simulaciones pueden continuar.
+
+## Preparar la simulación
+
+1. Un administrador autorizado obtiene de Key Vault la clave diagnóstica configurada para el App
+   Service, normalmente el secreto **`diag-key`**. No la envíes por chat, correo, prompt, archivo ni
+   captura.
+2. En Azure Portal abre el **App Service de pruebas** → **Configuration** → **Application settings**.
+3. Cambia temporalmente `Simulacion__Habilitada` a `true` y guarda. Espera a que el App Service reinicie
+   y responda de nuevo. No cambies `Diagnostico__ClaveSecretName`, `wa-appsec` ni `llm-key`.
+4. Abre una terminal PowerShell nueva y controlada. Pega este bloque; pedirá la clave sin mostrarla y la
+   entregará únicamente a los procesos iniciados desde esa terminal:
+
+```powershell
+$claveSegura = Read-Host 'Pega la diag-key (no se mostrará)' -AsSecureString
+$punteroClave = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($claveSegura)
+
+try {
+    $env:GHT_DIAG_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($punteroClave)
+
+    # Inicia aquí UN agente. Elige uno de estos comandos si está instalado:
+    # claude
+    # codex
+}
+finally {
+    if ($punteroClave -ne [IntPtr]::Zero) {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($punteroClave)
+    }
+
+    Remove-Item Env:\GHT_DIAG_KEY -ErrorAction SilentlyContinue
+}
+```
+
+5. Dentro del agente recién iniciado escribe solo:
+
+```text
+Lee y ejecuta estrictamente QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md.
+```
+
+El archivo contiene las instrucciones para crear usuarios y campañas nuevos en cada corrida, reutilizar
+la rúbrica, prompt y OpenRouter existentes, usar la clave únicamente como `X-Diag-Key` y guardar el
+reporte. No pegues la clave en el mensaje al agente.
+
+## Durante la ejecución
+
+1. Revisa que el agente identifique el ambiente, autorización y plan antes de actuar.
+2. Debe crear usuarios y campañas con un identificador único de corrida; no debe reutilizar ni borrar
+  datos anteriores.
+3. Si informa `404` en simulación, no le entregues secretos adicionales: debe marcar `BLOCKED`. Revisa
+  después, como humano, que la simulación esté habilitada y que la variable se haya inyectado en la
+  misma sesión que inició el agente.
+4. D5 real, UAT y envío WhatsApp real solo se ejecutan si sus autorizaciones externas existen. Un
+  bloqueo externo es resultado válido; no se debe forzar con claves o datos no autorizados.
+
+## Cierre obligatorio
+
+1. Espera el reporte `QAS/resultados/Resultados_P32_Multidioma_<fecha>.md` y revisa el estado de cada
+   prueba antes de cerrar la terminal.
+2. Cierra el agente. El bloque PowerShell elimina `GHT_DIAG_KEY` al salir; si interrumpes la sesión,
+   ejecuta manualmente `Remove-Item Env:\GHT_DIAG_KEY` en esa misma terminal.
+3. En Azure Portal vuelve `Simulacion__Habilitada` a `false`, guarda y espera el reinicio.
+4. Confirma que el reporte no contiene claves, teléfonos completos ni contenido confidencial.
+5. No actives P-32 en producción: solo puede decidirse después de PASS en las pruebas aplicables, D5,
+   UAT, plantillas Meta, revisión de costo/latencia y acta de cambio.
+
+## Si el agente se ejecuta dentro de una aplicación y no en la terminal
+
+Una variable creada en PowerShell no llega a una sesión de Codex/ChatGPT que ya estaba abierta. Usa la
+función de **Secrets** o **Environment variables** de esa plataforma para crear `GHT_DIAG_KEY` al iniciar
+una sesión nueva. Si la plataforma no la ofrece, ejecuta Claude Code o Codex CLI desde la terminal
+controlada descrita arriba. Nunca copies la clave en el chat como alternativa.

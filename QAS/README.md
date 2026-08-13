@@ -24,6 +24,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 15 | [I-08 v2 · Carga masiva](15_I08v2_Carga_Masiva_Como_Probar.md) | Guía ejecutable de la carga por Excel/CSV: datos sucios, idempotencia, modos, **conflicto de titular y reasignación**, y el guardarraíl de un solo activo por teléfono. |
 | 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | P-32 4/4 DONE local. Guía de regresión, E2E bilingüe, lote mixto, catálogo, rollback, D5 y UAT antes de una activación. |
 | 17 | [Prompt · validación completa P-32](17_Prompt_Ejecutar_Validacion_Completa_P32.md) | Prompt listo para delegar D5, E2E bilingüe, lote mixto, catálogo, rollback, UAT y pendientes operativos de P-32. |
+| 18 | [Runbook humano · lanzar P-32](18_Runbook_Humano_Lanzar_Prueba_P32.md) | Pasos seguros para habilitar la simulación, inyectar `GHT_DIAG_KEY`, lanzar el agente y cerrar la ventana. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)

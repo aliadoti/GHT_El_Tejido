@@ -4,6 +4,13 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/SDET): **`DT-I20-01` especificada y
+  lista para implementar; sin código.** Resuelve dos síntomas confirmados: uso sistemático de
+  “Queda claro que...” y duplicación de un mismo reconocimiento entre el puente I-20 y el cuerpo
+  validado insertado por el servidor. La frase queda permitida, pero deja de ser obligatoria; una
+  guarda determinista omite el puente repetido. Aplicará a todo mensaje futuro de todas las campañas,
+  sin flag, migración, cambio de contrato ni edición histórica. Spec `Iniciativas/DT-I20-01_*` y
+  guía `QAS/19_*`. Siguiente de código si se prioriza: implementar sus cinco pasos y ejecutar D5.
 - Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/SDET/AppSec): **correcciones de
   validación P-32 DONE local.** El botón de reactivar ya ejecuta rollback real: la API admite una
   versión inactiva, conserva ETag/atomicidad y audita `rollback`. Una campaña que declara `en` exige
@@ -911,6 +918,11 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **`DT-I20-01` — variación y no duplicación de redacción (lista para implementar).** Leer
+  `Iniciativas/DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md`, implementar sus
+  cinco pasos y validar con `QAS/19_DT-I20-01_Variacion_Redaccion_Como_Probar.md`. La corrección
+  aplica a todas las campañas en mensajes nuevos; no crear flag, migración ni configuración por
+  campaña. Antes de desplegar, ejecutar D5 con ejemplos reales anonimizados.
 - [ ] **Validar operativamente P-32; no hay un corte de código pendiente.** Ejecutar D5 real y UAT
   bilingüe en un ambiente aislado usando `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y
   `QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md`: recorrido E2E `es/en`, lote mixto, edición,
@@ -1328,6 +1340,13 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-08-13 - Codex - **DT-I20-01 especificada, sin código.** Rol: Arquitecto/Backend/SDET.
+  Se documentó la corrección del uso repetitivo de aperturas y de la duplicación visible entre puente
+  y cuerpo I-20. La frase “Queda claro que...” permanece permitida; la solución exige variedad
+  editorial y una guarda determinista que omite el puente equivalente al cuerpo. Sin contrato,
+  persistencia, flag, portal, despliegue ni modificación de mensajes históricos. Entregables:
+  `Iniciativas/DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md` y `QAS/19_*`.
 
 - 2026-08-04 - Codex - **P-30 retomar ideas del pasado (COMPLETA local 3/3, sin push).** Rol:
   Arquitecto/Backend/AppSec/SDET. REQ-014, `Iniciativas/P-30_…` §5-§12 y

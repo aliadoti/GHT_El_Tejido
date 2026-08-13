@@ -22,6 +22,11 @@ cambiar un texto, publicarlo y revertirlo sin pedir una compilación o un despli
    `false`.
 6. Conserva la versión activa actual de cada idioma y anota quién aprobó la prueba. No cambies
    secretos, URLs, rúbricas ni prompts para hacer que una prueba pase.
+7. Si la ejecución será contra Azure, un operador autorizado habilita temporalmente
+   `Simulacion__Habilitada=true` y entrega al proceso del agente la clave como variable secreta
+   `GHT_DIAG_KEY`. El agente solo la usa como header `X-Diag-Key`; nunca debe verla en texto, buscarla
+   en Key Vault ni registrarla. Al terminar, el operador apaga la simulación y elimina la variable de
+   la sesión. El procedimiento humano completo está en `QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md`.
 
 ## Orden de ejecución completo
 
