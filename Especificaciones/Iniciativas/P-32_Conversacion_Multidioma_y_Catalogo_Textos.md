@@ -325,6 +325,13 @@ Si el idioma cambia después de asociarlo, el envío revalida por participante y
 tipificado sin detener el lote. La entrada a una campaña inconsistente no avanza estado y alerta a
 operación.
 
+**Defensa en profundidad (corrección 2026-08-13):** una campaña que declara un idioma distinto de
+`es` se valida completa al activarse aun cuando el gate de runtime esté apagado; no puede quedar
+"bilingüe" e inválida para activarla después. La asociación a una campaña bilingüe incompleta devuelve
+`409 CAMPANIA_IDIOMA_INCOMPLETA`, y el enrutamiento excluye de forma segura cualquier registro
+histórico inconsistente que hubiera quedado antes de esta validación. Así, un participante `en` nunca
+entra a una conversación que pueda degradar silenciosamente a español.
+
 ---
 
 ## 11. Plan de migración e implementación
@@ -334,7 +341,7 @@ operación.
 | 1 | **DONE local 2026-08-10.** Contratos aditivos, entidad/repositorio de catálogo, validación/versionado, proveedor con caché/última versión válida y API admin. Gate OFF. Semilla `es` desde valores efectivos actuales y catálogo `en` curado. | Esquema, claves, límites, borrador/inmutabilidad, ETag/activación atómica, caché/fallo Cosmos, JSON import/export, permisos y regresión legacy. |
 | 2 | **DONE local 2026-08-10.** `Conversacion.Idioma` queda fijado al crear o abrir un ciclo, persiste en Cosmos, conserva `es` en documentos históricos y se expone en Resultados. Los mensajes globales, variantes, menús/frases de enrutamiento, detectores del orquestador y aclaraciones P-27 se resuelven por el adaptador con el snapshot del hilo o ruta. `EnrutamientoAporte.Idioma` conserva el idioma de una selección pendiente aunque cambie el maestro. El gate sigue OFF. **Siguiente:** localizaciones de campaña del corte 3; después propagar idioma a evaluación/LLM en el corte 4. | Round-trip Cosmos, hilo/ruta nueva `en`, transiciones inmutables, menú y aclaración inglesa, comando determinista inglés y regresión legacy con gate OFF. |
 | 3 | **DONE local 2026-08-11.** Localizaciones embebidas, validación de completitud, portal de campaña y envío inicial mixto con plantilla por participante. Gate OFF conserva el flujo histórico; con ON el fallo localizado se registra por participante y el lote sigue. | Campaña legacy `es`; campaña bilingüe; faltante `en` bloquea; lote mixto usa dos plantillas; fallo de una no detiene las demás; snapshots de envío. |
-| 4 | **DONE local 2026-08-11.** Evaluación, segmentación, consolidación y redacción reciben idioma y contenido localizado; el redactor ya no impone español. También se localizan saludo/pregunta inicial y la siguiente pregunta. Portal administrativo: semilla, importación/exportación JSON, borrador, edición, activación y reactivación explícita con ETag. QAS y deprecación documentada. | 768 unitarias + 87 integración verdes; portal 43/43, build Angular y Prettier verdes con Node temporal `22.22.3`; pruebas focalizadas `es/en` para los cuatro contextos LLM. |
+| 4 | **DONE local 2026-08-11; corrección P-32 local 2026-08-13.** Evaluación, segmentación, consolidación y redacción reciben idioma y contenido localizado; el redactor ya no impone español. También se localizan saludo/pregunta inicial y la siguiente pregunta. Portal administrativo: semilla, importación/exportación JSON, borrador, edición, activación y reactivación explícita con ETag. La reactivación de una versión inactiva ahora es un rollback real auditado; campañas bilingües incompletas se bloquean en activación, asociación y enrutamiento. QAS y deprecación documentada. | Backend 771 unitarias + 87 integración verdes; portal 43/43 previo, build Angular y Prettier verdes con Node temporal `22.22.3`; regresiones de rollback y campaña bilingüe incompleta. |
 
 El inventario de migración define qué clave sale de cada origen actual. Cada corte mantiene el gate
 apagado y no cambia configuración remota. Activar requiere UAT bilingüe, plantillas Meta aprobadas y

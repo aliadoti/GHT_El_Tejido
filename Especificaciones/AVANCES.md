@@ -4,6 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/SDET/AppSec): **correcciones de
+  validación P-32 DONE local.** El botón de reactivar ya ejecuta rollback real: la API admite una
+  versión inactiva, conserva ETag/atomicidad y audita `rollback`. Una campaña que declara `en` exige
+  localizaciones completas al activar incluso con el gate runtime OFF; la asociación la rechaza con
+  `CAMPANIA_IDIOMA_INCOMPLETA` y el enrutamiento descarta seguros históricos inconsistentes. Build
+  Release sin warnings y **858 pruebas no-Calibracion** verdes (771 unitarias + 87 integración).
+  Sin push, despliegue, activación ni configuración remota. Siguiente: repetir Pruebas 4 y 6 de
+  `QAS/16`, luego D5/UAT/Meta/costo antes de encender el gate.
 - Ultima actualizacion: 2026-08-11 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec): **`P-32`
   DONE local 4/4.** Evaluación, segmentación, consolidación y redacción reciben el snapshot `es|en`
   y el contenido localizado; bajo el gate OFF conservan el contenido legacy exacto y, bajo ON, una

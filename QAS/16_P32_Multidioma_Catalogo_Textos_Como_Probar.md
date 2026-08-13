@@ -135,7 +135,8 @@ texto español.
 4. Abre un hilo nuevo.
 
 **Deberías ver:** el contenido inválido nunca se publica y el rollback restaura el texto anterior sin
-desplegar. El historial de versiones sigue visible.
+desplegar. El historial de versiones sigue visible y la bitácora registra el rollback, sin guardar el
+contenido editorial.
 
 **Algo va mal si:** se activa solo una parte, desaparece el historial o hay que copiar manualmente el
 texto anterior.
@@ -153,14 +154,20 @@ anterior.
 
 ## Prueba 6 — campaña incompleta
 
-1. Deja a propósito una pregunta o cierre inglés sin diligenciar en una campaña de prueba.
-2. Intenta activar la campaña o asociar/enviar al participante inglés.
+1. Deja a propósito una pregunta o cierre inglés sin diligenciar en una campaña de prueba que tenga
+   inglés habilitado.
+2. Intenta activarla y asociar al participante inglés. Repite la activación con la palanca multidioma
+   apagada: una campaña que ya declara inglés tampoco puede quedar activa incompleta para encenderla
+   después.
+3. Si existe una asociación histórica creada antes de la corrección, intenta iniciar la conversación.
 
-**Deberías ver:** la operación se bloquea con una explicación clara del contenido faltante. No se
-envía español como sustituto.
+**Deberías ver:** la activación se bloquea y la asociación devuelve una explicación clara del contenido
+faltante. Una asociación histórica inconsistente no abre conversación. No se envía español como
+sustituto.
 
-**Algo va mal si:** la campaña se activa incompleta, el participante recibe una mezcla o el sistema
-inventa una traducción.
+**Algo va mal si:** la campaña se activa incompleta, se puede asociar el participante inglés, se abre
+una conversación histórica inconsistente, el participante recibe una mezcla o el sistema inventa una
+traducción.
 
 ## Prueba 7 — D5 real: calidad equivalente del modelo
 

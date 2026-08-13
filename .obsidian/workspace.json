@@ -11,10 +11,14 @@
             "id": "9b6a542bf4acce9c",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Especificaciones/Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "P-32_Conversacion_Multidioma_y_Catalogo_Textos"
             }
           }
         ]
@@ -181,8 +185,19 @@
       "bases:Create new base": false
     }
   },
-  "active": "d7b3a10ae41f7f3b",
+  "active": "9b6a542bf4acce9c",
   "lastOpenFiles": [
+    "QAS/resultados/Resultados_P32_Multidioma_2026-08-12.md",
+    "src/ElTejido.Api/appsettings.Development.json.tmp.23500.0cef7ad2a5d7",
+    "src/ElTejido.Api/appsettings.Development.json.tmp.23500.fb369bf1cbbd",
+    "src/ElTejido.Api/bin/Debug/net8.0/RBush.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/System.IO.Packaging.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/SixLabors.Fonts.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/DocumentFormat.OpenXml.Framework.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/ClosedXML.Parser.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/ClosedXML.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/DocumentFormat.OpenXml.dll",
+    "src/ElTejido.Api/bin/Debug/net8.0/ExcelNumberFormat.dll",
     "QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md",
     "Especificaciones/Iniciativas/TODO.md",
     "Presentacion/Flujos_Conversacionales.md",
@@ -193,16 +208,6 @@
     "Especificaciones/base/01_Convenciones_para_Agentes.md",
     "Especificaciones/Iniciativas/I-05_Parafraseo_Transparencia.md",
     "Especificaciones/Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md",
-    "Client_partner/02_Backlog_Requerimientos/Estimacion_Costo_Desarrollo_El_Tejido_v2_FabricaColombia.xlsx",
-    "src/ElTejido.Api/wwwroot/chunk-LNHf_ewF.js",
-    "src/ElTejido.Api/wwwroot/chunk-CbLQaFi6.js",
-    "src/ElTejido.Api/wwwroot/chunk-C0Yo1R-w.js",
-    "src/ElTejido.Api/wwwroot/chunk-BC748mHL.js",
-    "src/ElTejido.Api/wwwroot/chunk-mZvbPed5.js",
-    "src/ElTejido.Api/wwwroot/chunk-BDUWnKuH.js",
-    "src/ElTejido.Api/wwwroot/chunk-ClVvJqOr.js",
-    "src/ElTejido.Api/wwwroot/chunk-J6cAQmBf.js",
-    "src/ElTejido.Api/wwwroot/chunk-CN6GZO7G.js",
     "Client_partner/Guia_Rapida_Palancas_Conversacion_Admin.md",
     "QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md",
     "Especificaciones/planes/P-32_Inventario_y_Migracion_Textos.md",
@@ -219,7 +224,6 @@
     "Especificaciones/Iniciativas/I-06_Multi_Idea_N_Registros.md",
     "QAS/14_P31_Resumen_Consolidacion_Como_Probar.md",
     "Especificaciones/Iniciativas/I-10_Flag_Base_Previa_vs_Blanco.md",
-    "Especificaciones/Iniciativas/I-12_Seed_Thoughts.md",
     "QAS/resultados/2026-08-06/portal_login.png",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",
     "src/ElTejido.Api/wwwroot/brand/eltejido-logo.png",

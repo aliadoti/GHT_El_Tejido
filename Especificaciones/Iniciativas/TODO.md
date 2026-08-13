@@ -35,7 +35,9 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > localizaciones de campaña, edición de portal, validación y envío inicial mixto por participante;
 > conserva el gate OFF y el legado. **Los cuatro cortes están terminados:** el corte 4 propagó el
 > idioma a evaluación, segmentación, consolidación y redacción, y completó el portal de catálogo y
-> su rollback. Backend: 768 unitarias + 87 integración; portal 43/43, build Angular y Prettier verdes.
+> su rollback. La corrección local del 2026-08-13 habilita la reactivación real de una versión
+> inactiva y bloquea campañas bilingües incompletas en activación, asociación y enrutamiento.
+> Backend: 770 unitarias + 87 integración; portal 43/43 previo, build Angular y Prettier verdes.
 > Sin despliegue,
 > configuración remota ni activación; se requieren D5/UAT, traducción inglesa y plantillas HSM aprobadas.
 > Spec: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`; inventario:

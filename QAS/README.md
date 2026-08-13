@@ -51,6 +51,10 @@ la validación operativa pendiente. No debe reportarse como PASS de producción 
 una ventana aislada y autorizada: faltan D5 real, UAT bilingüe, plantillas Meta inglesas aprobadas,
 revisión de costo/latencia y acta de cambio.
 
+**Corrección 2026-08-13:** se corrigieron localmente el rollback editorial y la protección de campañas
+bilingües incompletas; se deben repetir las Pruebas 4 y 6 de la guía **16** antes de continuar con
+D5/UAT. Validación local: 858 pruebas backend verdes.
+
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:
 

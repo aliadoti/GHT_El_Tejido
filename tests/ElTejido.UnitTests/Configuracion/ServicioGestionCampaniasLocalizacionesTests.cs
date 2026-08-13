@@ -51,6 +51,26 @@ public sealed class ServicioGestionCampaniasLocalizacionesTests
     }
 
     [Fact]
+    public async Task Activar_CampaniaBilingueIncompleta_DevuelveValidacionAunqueElGateEsteApagado()
+    {
+        var servicio = new ServicioGestionCampanias(
+            new RepositorioCampaniasMemoria(), _usuarios, _participantes, TimeProvider.System,
+            new OpcionesCatalogoTextos { Habilitado = false });
+        var campania = await CrearCampaniaAsync(servicio);
+        await servicio.AgregarMensajeInicialAsync(campania.Id, Mensaje(), CancellationToken.None);
+        await servicio.AgregarPreguntaAsync(campania.Id, Pregunta(), CancellationToken.None);
+        await servicio.ActualizarLocalizacionesAsync(
+            campania.Id,
+            new SolicitudActualizarLocalizacionesCampania(["es", "en"], new Dictionary<string, LocalizacionCampania>()),
+            CancellationToken.None);
+
+        var accion = () => servicio.CambiarEstadoCampaniaAsync(campania.Id, EstadoCampania.Activa, CancellationToken.None);
+
+        await accion.Should().ThrowAsync<ErrorValidacion>()
+            .WithMessage("*localizaciones completas*");
+    }
+
+    [Fact]
     public async Task Asociar_UsuarioConIdiomaNoHabilitado_DevuelveConflictoTipificado()
     {
         var campania = await CrearCampaniaAsync();
@@ -65,8 +85,31 @@ public sealed class ServicioGestionCampaniasLocalizacionesTests
             .WithMessage("IDIOMA_CAMPANIA_NO_HABILITADO*");
     }
 
+    [Fact]
+    public async Task Asociar_CampaniaBilingueIncompleta_DevuelveConflictoAunqueElGateEsteApagado()
+    {
+        var servicio = new ServicioGestionCampanias(
+            new RepositorioCampaniasMemoria(), _usuarios, _participantes, TimeProvider.System,
+            new OpcionesCatalogoTextos { Habilitado = false });
+        var campania = await CrearCampaniaAsync(servicio);
+        await servicio.ActualizarLocalizacionesAsync(
+            campania.Id,
+            new SolicitudActualizarLocalizacionesCampania(["es", "en"], new Dictionary<string, LocalizacionCampania>()),
+            CancellationToken.None);
+        _usuarios.ObtenerUsuarioPorIdAsync("u_en", Arg.Any<CancellationToken>()).Returns(UsuarioIngles());
+
+        var accion = () => servicio.AsociarParticipantesAsync(
+            campania.Id, new SolicitudAsociarParticipantes(["u_en"], null), CancellationToken.None);
+
+        await accion.Should().ThrowAsync<ErrorConflicto>()
+            .WithMessage("CAMPANIA_IDIOMA_INCOMPLETA*");
+    }
+
     private Task<Campania> CrearCampaniaAsync()
-        => _servicio.CrearCampaniaAsync(
+        => CrearCampaniaAsync(_servicio);
+
+    private static Task<Campania> CrearCampaniaAsync(ServicioGestionCampanias servicio)
+        => servicio.CrearCampaniaAsync(
             new SolicitudGuardarCampania(
                 "Campania", "Descripcion", "Objetivo", "rub_1", null, "llm_1",
                 ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),

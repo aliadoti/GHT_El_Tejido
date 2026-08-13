@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Identidad;
@@ -932,6 +933,11 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         var elegibles = new List<CampaniaElegible>();
         foreach (var candidato in candidatos)
         {
+            if (EsCampaniaBilingueIncompleta(candidato.Campania))
+            {
+                continue;
+            }
+
             var pendiente = await TieneTrabajoPendienteAsync(candidato.Campania, usuarioId, cancellationToken);
             if (pendiente || candidato.Campania.ConfigConversacional.ParticipacionContinua)
             {
@@ -957,7 +963,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         }
 
         var elegibles = new List<CampaniaElegible>();
-        foreach (var candidato in candidatos.Where(c => c.Campania.Estado == EstadoCampania.Activa))
+        foreach (var candidato in candidatos.Where(c => c.Campania.Estado == EstadoCampania.Activa && !EsCampaniaBilingueIncompleta(c.Campania)))
         {
             if ((await PreguntasConIdeasHistoricasAsync(candidato.Campania, usuarioId, cancellationToken)).Count > 0)
             {
@@ -993,6 +999,10 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
 
         return resultado;
     }
+
+    private static bool EsCampaniaBilingueIncompleta(Campania campania)
+        => campania.IdiomasHabilitados.Any(idioma => !string.Equals(idioma, "es", StringComparison.OrdinalIgnoreCase))
+            && ValidadorLocalizacionesCampania.Validar(campania).Count > 0;
 
     private async Task<IReadOnlyList<OpcionIdeaOfrecida>> OpcionesIdeasHistoricasAsync(
         string campaniaId,

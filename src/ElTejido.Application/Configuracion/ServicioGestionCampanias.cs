@@ -117,7 +117,7 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         var existente = await ObtenerCampaniaAsync(id, cancellationToken);
         ValidarTransicion(existente.Estado, estado);
 
-        if (_opcionesCatalogoTextos.Habilitado && estado == EstadoCampania.Activa)
+        if (EsBilingue(existente) && estado == EstadoCampania.Activa)
         {
             var errores = ValidadorLocalizacionesCampania.Validar(existente);
             if (errores.Count > 0)
@@ -302,6 +302,15 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             throw new ErrorValidacion("No hay usuarios activos para asociar.", new[] { new DetalleError("participantes", "vacio") });
         }
 
+        var erroresLocalizacion = EsBilingue(campania)
+            ? ValidadorLocalizacionesCampania.Validar(campania)
+            : Array.Empty<DetalleError>();
+        if (erroresLocalizacion.Count > 0)
+        {
+            throw new ErrorConflicto(
+                "CAMPANIA_IDIOMA_INCOMPLETA: la campaña bilingüe no tiene localizaciones completas.");
+        }
+
         var ahora = _tiempo.GetUtcNow();
         var asociados = new List<ParticipanteCampania>();
         foreach (var usuario in usuarios)
@@ -476,6 +485,9 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             throw new ErrorConflicto("La transicion de estado de la campania no es valida.");
         }
     }
+
+    private static bool EsBilingue(Campania campania)
+        => campania.IdiomasHabilitados.Any(idioma => !string.Equals(idioma, "es", StringComparison.OrdinalIgnoreCase));
 
     private static string RequerirId(string id)
     {

@@ -171,9 +171,9 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         CancellationToken cancellationToken)
     {
         var actual = await ObtenerAsync(familiaId, idioma, version, cancellationToken);
-        if (actual.Catalogo.Estado != EstadoCatalogoTextos.Borrador)
+        if (actual.Catalogo.Estado is not (EstadoCatalogoTextos.Borrador or EstadoCatalogoTextos.Inactivo))
         {
-            throw new ErrorConflicto("Solo una version en borrador puede activarse.");
+            throw new ErrorConflicto("Solo una version en borrador o inactiva puede activarse.");
         }
 
         // Revalida el snapshot completo al activar para impedir que datos historicos invalidos lleguen al runtime.
@@ -184,7 +184,11 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
             Requerir(actorId, "actorId"));
         var guardado = await _repositorio.ActivarAsync(activo, Requerir(etag, "If-Match"), cancellationToken);
         _invalidacionCache?.Invalidar(guardado.Catalogo.Idioma);
-        await AuditarAsync("activar", guardado.Catalogo, actorId, cancellationToken);
+        await AuditarAsync(
+            actual.Catalogo.Estado == EstadoCatalogoTextos.Inactivo ? "rollback" : "activar",
+            guardado.Catalogo,
+            actorId,
+            cancellationToken);
         return guardado;
     }
 

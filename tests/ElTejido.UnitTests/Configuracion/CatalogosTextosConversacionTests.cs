@@ -95,6 +95,32 @@ public sealed class CatalogosTextosConversacionTests
     }
 
     [Fact]
+    public async Task Reactivar_VersionInactiva_RestauraElCatalogoYRegistraRollback()
+    {
+        var repositorio = new RepositorioCatalogosTextosMemoria();
+        var logs = Substitute.For<IRepositorioLogSeguridad>();
+        var servicio = new ServicioGestionCatalogosTextos(repositorio, logs, TimeProvider.System);
+        var contenido = ContenidoValido();
+        var primera = await servicio.CrearAsync(
+            new SolicitudGuardarCatalogoTextos("conversacion-global", "en", contenido.Mensajes, contenido.Frases),
+            "admin-1", CancellationToken.None);
+        await servicio.ActivarAsync("conversacion-global", "en", 1, primera.Etag, "admin-1", CancellationToken.None);
+        var segunda = await servicio.CrearVersionAsync("conversacion-global", "en", null, "admin-2", CancellationToken.None);
+        await servicio.ActivarAsync("conversacion-global", "en", 2, segunda.Etag, "admin-2", CancellationToken.None);
+        var inactiva = (await repositorio.ListarVersionesAsync("conversacion-global", "en", CancellationToken.None))
+            .Single(version => version.Catalogo.Version == 1);
+
+        var reactivada = await servicio.ActivarAsync(
+            "conversacion-global", "en", 1, inactiva.Etag, "admin-3", CancellationToken.None);
+
+        reactivada.Catalogo.Estado.Should().Be(EstadoCatalogoTextos.Activo);
+        (await repositorio.ObtenerActivoAsync("en", CancellationToken.None))!.Catalogo.Version.Should().Be(1);
+        await logs.Received().RegistrarAsync(
+            Arg.Is<LogSeguridad>(log => log.Detalle != null && log.Detalle.Contains("accion=rollback", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ActualizarBorrador_EtagObsoleto_DevuelveConflicto()
     {
         var repositorio = new RepositorioCatalogosTextosMemoria();
