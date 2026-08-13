@@ -99,14 +99,32 @@ public sealed class RedactorTurnoConversacional : IRedactorTurnoConversacional
             .AppendLine("- No prometas implementar, aprobar ni garantizar nada.")
             .AppendLine("- No inventes datos, nombres, fechas ni cifras que no estén en los datos.")
             .AppendLine("- No repitas la idea completa: el sistema la muestra por su cuenta.")
+            // DT-I20-01 §4.1: la fórmula de reconocimiento sigue disponible, pero deja de ser la
+            // apertura obligatoria; la variedad la propone el modelo y la duplicación la corta el
+            // servidor (§4.2), nunca al revés.
+            .AppendLine(
+                "- Varía la apertura: reconocimiento concreto, conexión con lo ya dicho, pregunta directa "
+                + "o transición breve. \"Queda claro\", \"se entiende\" y \"es evidente\" están permitidas, "
+                + "pero no son la apertura por defecto ni se repiten en turnos seguidos.")
+            .AppendLine("- No repitas, parafrasees ni anticipes lo que dirá otra parte del mismo mensaje.")
             .AppendLine(
                 PoliticaRedaccionConversacional.AdmitePregunta(contexto.Acto)
                     ? "- Formula UNA sola pregunta, y solo en el campo pregunta."
                     : "- Este acto NO lleva pregunta: deja pregunta en null.")
-            .Append("- Cada campo, máximo ").Append(contexto.MaxCaracteres).AppendLine(" caracteres.")
-            .AppendLine("Devuelve SOLO JSON válido: {\"puente\":\"string o null\",\"pregunta\":\"string o null\"}.");
+            .Append("- Cada campo, máximo ").Append(contexto.MaxCaracteres).AppendLine(" caracteres.");
+
+        // DT-I20-01 §4.1: indicación estructural. El cuerpo validado ya reconoce el avance, así que el
+        // puente solo cabe si cumple una función distinta; si no, se devuelve nulo y el mensaje abre
+        // con el texto aprobado.
+        if (!string.IsNullOrWhiteSpace(contexto.RetroalimentacionValidada))
+        {
+            sistema.AppendLine(
+                "- El mensaje ya incluye un texto aprobado que reconoce el avance: tu puente NO puede "
+                + "reconocer lo mismo. Si no aporta una función distinta, devuelve puente en null.");
+        }
 
         sistema
+            .AppendLine("Devuelve SOLO JSON válido: {\"puente\":\"string o null\",\"pregunta\":\"string o null\"}.")
             .Append("IDIOMA_DE_SALIDA_OBLIGATORIO: ").AppendLine(contexto.Idioma)
             .AppendLine("Los campos visibles para la persona deben salir exclusivamente en ese idioma.");
 

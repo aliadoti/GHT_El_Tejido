@@ -1075,6 +1075,56 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task DTI2001_PuenteQueRepiteElCuerpo_SeEnviaUnaSolaVezYLoRegistra()
+    {
+        ConfigurarAlmacenIdeas();
+        var logs = new List<LogSeguridad>();
+        _logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(log => logs.Add(log)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var redactor = RedactorQueDevuelve("Aporte inicial.", "¿Va bien así?");
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: ConsolidadorQueAcumula(), redactor: redactor)
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        // §4.2: el cuerpo validado manda; el puente equivalente se omite y no sale dos veces.
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            "Aporte inicial\n\n¿Va bien así?",
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        var evento = logs.Single(log => log.TipoEvento == TipoEventoSeguridad.RedaccionConversacional);
+        evento.Resultado.Should().Be("redactado");
+        // §5: motivo técnico fijo, nunca la frase omitida ni el aporte.
+        evento.Detalle.Should().Contain("ajuste:puente_duplicado_omitido");
+        evento.Detalle.Should().NotContain("Aporte inicial");
+    }
+
+    [Fact]
+    public async Task DTI2001_PuenteDistinto_ConservaElOrdenPuenteCuerpoPregunta()
+    {
+        ConfigurarAlmacenIdeas();
+        var logs = new List<LogSeguridad>();
+        _logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(log => logs.Add(log)), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var redactor = RedactorQueDevuelve("Recojo lo que me contaste.", "¿Va bien así?");
+        await PrepararConversacionAsync();
+
+        await Construir(consolidador: ConsolidadorQueAcumula(), redactor: redactor)
+            .ProcesarMensajeEntranteAsync(Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            "Recojo lo que me contaste.\n\nAporte inicial\n\n¿Va bien así?",
+            TipoEnvioMensaje.Repregunta,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        logs.Single(log => log.TipoEvento == TipoEventoSeguridad.RedaccionConversacional)
+            .Detalle.Should().Contain("ajuste:ninguno");
+    }
+
+    [Fact]
     public async Task I20_RedactorEnFallback_ConservaExactamenteElTextoDeHoy()
     {
         ConfigurarAlmacenIdeas();

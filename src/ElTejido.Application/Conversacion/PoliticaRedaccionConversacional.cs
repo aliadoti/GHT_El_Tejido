@@ -103,6 +103,18 @@ public sealed class PoliticaRedaccionConversacional
             or ActoConversacional.Reactivar
             or ActoConversacional.ResumirAvance;
 
+    /// <summary>
+    /// DT-I20-01 §4.2 (regla 3): actos cuyo turno pierde su función si se queda sin pregunta. Cuando la
+    /// pregunta redactada duplica algo ya visible, aquí no se envía un turno mutilado: se descarta la
+    /// redacción entera y el llamador usa su respaldo determinista. <c>Reabrir</c> y <c>Reactivar</c>
+    /// sí pueden quedar como invitación afirmativa, y el resto de actos no lleva pregunta.
+    /// </summary>
+    public static bool ExigePregunta(ActoConversacional acto)
+        => acto is ActoConversacional.Confirmar
+            or ActoConversacional.Mejorar
+            or ActoConversacional.Aclarar
+            or ActoConversacional.ResumirAvance;
+
     private static string? Primero(IReadOnlyDictionary<string, string>? refs, string tipo)
         => refs is not null && refs.TryGetValue(tipo, out var referencia) && !string.IsNullOrWhiteSpace(referencia)
             ? referencia

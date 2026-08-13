@@ -1,4 +1,4 @@
- Eres un **equipo de ingeniería senior con más de 25 años de experiencia** construyendo software de producción. Actúas simultáneamente con la mentalidad y el rigor de estos roles, y declaras explícitamente desde qué rol decides en cada momento:
+Eres un **equipo de ingeniería senior con más de 25 años de experiencia** construyendo software de producción. Actúas simultáneamente con la mentalidad y el rigor de estos roles, y declaras explícitamente desde qué rol decides en cada momento:
 
 - **Arquitecto de software / Tech Lead** — protege las fronteras de módulos y los contratos; evita sobre-ingeniería.
 - **Ingeniero backend senior (.NET 8 / C#)** — implementa el dominio y la infraestructura.
@@ -9,13 +9,27 @@
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **✅ `DT-I20-01` VARIACIÓN Y NO DUPLICACIÓN EN LA REDACCIÓN — DONE LOCAL 2026-08-13 (5/5 de `§7`).**
+> `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria: las instrucciones de
+> evaluación y del redactor piden alternar reconocimiento concreto, conexión, pregunta directa o
+> transición breve, y cuando el turno lleva retroalimentación validada el redactor debe devolver
+> `puente: null` si no aporta una función distinta. La guarda determinista nueva
+> (`FiltroDuplicacionTurno`, pura) normaliza sin tildes ni puntuación, compara por oraciones y por
+> prefijos de palabras y omite el puente que repita el cuerpo validado; una pregunta duplicada se
+> omite si el acto lo admite y, si el acto la exige (`Confirmar`/`Mejorar`/`Aclarar`/`ResumirAvance`),
+> el turno sale con su respaldo determinista. La auditoría de redacción añade `ajuste:<motivo>` sin
+> texto. **Sin flag, contrato, portal, migración ni configuración remota:** aplica a todo mensaje
+> nuevo de todas las campañas tras el despliegue. Backend: build Release `-warnaserror`, **785
+> unitarias (766 sin Calibración) + 88 de integración**, `dotnet format` y `git diff --check` verdes.
+> **Siguiente: D5 con ejemplos reales anonimizados antes de desplegar; no hay flag que apagar, el
+> rollback es revertir el commit.** Spec: `Iniciativas/DT-I20-01_*`; QAS: `QAS/19_*`.
+>
 > **✅ `DT-P27-01` CONFIGURACIÓN VERSIONADA DE FRASES DE FINALIZACIÓN — DONE LOCAL 2026-08-08 (2/2).**
 > Cada lista se valida después de normalizar: vacío, duplicado o límite descarta la lista completa y
 > conserva el default compilado. El inicio registra en una bitácora append-only la versión aplicada,
 > default o descartada sin exponer aliases; la reversión restaura una revisión del origen de
 > configuración o vacía ambas listas. No cambió P-27, sus alias, flags, endpoint, portal ni
-> configuración remota. **Siguiente cambio de código priorizado: `DT-I20-01`, variación y no
-> duplicación de redacción; lista para implementar.**
+> configuración remota. **`DT-I20-01` ya cerró 5/5 (arriba); no hay otro cambio de código priorizado.**
 >
 > **✅ `P-32` CONVERSACIÓN MULTIDIOMA Y CATÁLOGO DE TEXTOS — 4/4 DONE LOCAL 2026-08-11.**
 > Verificado: `Usuario.Idioma` ya existe como campo de primer nivel, admite `es|en`, usa `es` por
@@ -356,12 +370,11 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa objetivo vigente: `DT-QA-02` — `GET /api/admin/evaluaciones` (listado + detección de
-huérfanas).** Habilitador de QA para el dry-run; hoy la colección devuelve 404 y no hay forma de
-enumerar evaluaciones desde la API. Orden de `DT-QA-02 §8`: `ListarEvaluacionesAsync` en el puerto
-(**sin default**) + los dos adaptadores → endpoint con filtros y paginación, DTO sin texto libre →
-diagnóstico de enlace + bloque `resumen` → `04 §5.8` y referencia en `09 §5` → caso de QA en `QAS/02`
-y fila en la matriz. Aditivo y de solo lectura: no toca `03` ni el criterio de vigencia de I-16.
+**No hay iniciativa de código objetivo: todo lo priorizado está DONE local.** `DT-QA-02` cerró el
+2026-08-08 (`GET /api/admin/evaluaciones` con diagnóstico de huérfanas), `DT-P27-01` cerró 2/2 y
+`DT-I20-01` cerró 5/5 el 2026-08-13. **El trabajo vigente es operativo**: D5 de `DT-I20-01`,
+validación bilingüe de `P-32` y el acta de flags. Un nuevo cambio de código requiere priorización
+expresa del usuario.
 
 `I-08 v2` quedó **completa (7/7) y desplegada** el 2026-08-07, validada contra Azure el 2026-08-08
 (13 casos PASS). **No cargar datos reales**: falta que GHT entregue el archivo con `Telefono`
@@ -496,7 +509,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 36 | **`P-30` retomar ideas del pasado** | **DONE local 2026-08-04 (3/3)** | **Codex** | Selector histórico determinista por participante, campaña y pregunta, sin filtro por estado/ciclo; selección por número o título/resumen exacto, misma idea y conversación reabiertas, curaduría suspendida, kill-switch OFF, Cosmos, telemetría sin texto, E2E y QAS. Backend 729/729, build/format/diff verdes. |
 | **37** | **`P-31` resumen de la consolidación al alcanzar un umbral propio** | 2026-08-06/07 | Codex/Claude | **DONE 3/3 y DESPLEGADO (2026-08-07).** Commits `6ba6ce0` · `32794fb` · `6d02492`. Build Release, **664 unitarias + 77 integración**, formato y `git diff --check` verdes. E2E simulada: inicio → aporte sobre umbral → resumen → mejora sin repetirlo. Guía: `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. **Flags OFF**; encenderlos exige D5 real + UAT + acta de flags, y elegir el umbral (rango útil 0.40–0.55 con base 0.6). Consulta bajo demanda del consolidado sigue **fuera de alcance**. Detalle original ↓ |
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea (campos aditivos en `IdeaConsolidada` + Cosmos) y **sin depender de los flags de P-27**. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF + opt-out por campaña. Corte 1 = perilla/política/dominio sin efecto observable; 2 = acto `ResumirAvance` y enganche en `ConfirmarOCorregirIdeaAsync`; 3 = E2E simulada, QAS y cierre. **Decisión abierta:** consulta bajo demanda del consolidado (fuera de alcance hasta decidirla). Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`. |
-| **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **Lista para implementar** | Codex | I-20: permite ocasionalmente `Queda claro que...`, pero corrige su uso mecánico y la repetición real entre puente y cuerpo en un mismo envío. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
+| **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
 | **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **DT-P27-01 ya cerró 2/2; siguiente prioridad pendiente de decisión.** |
@@ -556,14 +569,17 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: desplegar `I-08 v2`.** La iniciativa está **completa local (7/7)**; faltan por
-   subir los cortes 2, 3 y 4 (`d07b9f0`, `e5e4b37`, `982c7b7`). Un push a `main` dispara el CD.
-   Tras desplegar, probar contra Azure: descargar la plantilla desde el portal, diligenciar 2-3 filas
-   de prueba, subirla y verificar el reporte por fila y el código asignado.
+1. **ARRANCA AQUÍ: D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local
+   y verde, sin push. Pasa un banco de ejemplos reales anonimizados por el redactor y comprueba:
+   (a) `Queda claro que...` aparece de forma ocasional y no como apertura fija; (b) ningún envío
+   repite el mismo reconocimiento entre puente y cuerpo; (c) no suben los respaldos deterministas
+   —revisa `motivo:` y el nuevo `ajuste:` en la telemetría de redacción—. Guía humana: `QAS/19_*`.
+   No hay flag que apagar: el rollback es revertir el commit de aplicación.
 
 2. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
-   que GHT entregue el archivo con `Telefono` diligenciado (`§9`).
+   que GHT entregue el archivo con `Telefono` diligenciado (`§9`). `I-08 v2` ya está desplegada y
+   validada contra Azure (2026-08-08, 13 casos PASS).
 
 3. **Ejecutar la validación operativa de P-32, no más desarrollo.** Usar `QAS/16` y el prompt
    `QAS/17` en un ambiente aislado: D5 real, recorrido E2E `es/en`, lote mixto, edición/rollback y

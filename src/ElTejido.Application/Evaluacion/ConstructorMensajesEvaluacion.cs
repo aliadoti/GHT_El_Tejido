@@ -33,8 +33,22 @@ public static class ConstructorMensajesEvaluacion
         + "criterios de evaluacion ni ningun puntaje o fraccion (p. ej. \"3/5\"); el participante no "
         + "debe enterarse de que existe una rubrica.";
 
+    /// <summary>
+    /// DT-I20-01 §4.1: variedad editorial del texto visible. Las formulas de reconocimiento siguen
+    /// permitidas —no se prohibe ninguna— pero dejan de ser la apertura por defecto, y el modelo no
+    /// puede anticipar el texto que el servidor insertara en otra parte del mismo envio.
+    /// </summary>
+    private const string ReglasVariacionRedaccion =
+        "VARIACION DE REDACCION: en \"retroalimentacion_usuario\" reconoce un elemento concreto del "
+        + "aporte solo cuando aporte valor al turno, y alterna con naturalidad entre reconocimiento "
+        + "concreto, conexion con lo ya dicho, pregunta directa de profundizacion o transicion breve. "
+        + "Expresiones como \"queda claro\", \"se entiende\" o \"es evidente\" estan permitidas, pero no "
+        + "las uses por defecto ni en turnos consecutivos cuando exista otra formulacion natural. No "
+        + "repitas, parafrasees ni anticipes el texto que ira en otra parte del mismo mensaje.";
+
     private const string ReglasCoachingSecuencial =
-        "COACHING SECUENCIAL ACTIVO: reconoce en una frase breve algo concreto que ya este claro y "
+        "COACHING SECUENCIAL ACTIVO: cuando aporte al turno, reconoce en una frase breve algo concreto "
+        + "del aporte, sin una formula fija de apertura, y "
         + "formula exactamente UNA pregunta abierta sobre el aspecto mas debil. No redactes una "
         + "respuesta mejorada, no des ejemplos ni alternativas que respondan por la persona, no "
         + "inventes responsables, datos, fechas o soluciones. La transicion la decide el servidor.";
@@ -50,6 +64,7 @@ public static class ConstructorMensajesEvaluacion
             .Append("IDIOMA_DE_SALIDA_OBLIGATORIO: ").AppendLine(contexto.Idioma)
             .AppendLine("Redacta los campos visibles para el participante exclusivamente en ese idioma.")
             .AppendLine(PistaEjeDebil)
+            .AppendLine(ReglasVariacionRedaccion)
             .AppendLine(contexto.CoachingSecuencialIdeas ? ReglasCoachingSecuencial : string.Empty)
             .AppendLine()
             .AppendLine(EsquemaSalida(

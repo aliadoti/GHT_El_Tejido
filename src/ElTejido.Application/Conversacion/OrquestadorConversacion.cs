@@ -876,7 +876,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 conversacion,
                 evaluacion.RepreguntaSugerida,
                 cancellationToken);
-            var texto = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), invitacion);
+            var texto = CombinarSinDuplicar(
+                Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), invitacion);
             await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Repregunta, emisor, ahora, cancellationToken);
 
             conversacion = conversacion.RegistrarRepregunta();
@@ -1982,7 +1983,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             enviarResumen ? ActoConversacional.ResumirAvance : ActoConversacional.Mejorar,
             respaldo: enviarResumen
                 ? Combinar(Combinar(Combinar(resultado.Evaluacion.RetroalimentacionEnviada, encabezadoResumen), version.Texto), preguntaResumen)
-                : Combinar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion),
+                : CombinarSinDuplicar(resultado.Evaluacion.RetroalimentacionEnviada, invitacion),
             ahora, cancellationToken,
             cuerpo: enviarResumen ? Combinar(Combinar(resultado.Evaluacion.RetroalimentacionEnviada, encabezadoResumen), version.Texto) : resultado.Evaluacion.RetroalimentacionEnviada,
             versionCompleta: enviarResumen ? version.Texto : null,
@@ -2431,27 +2432,34 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         };
 
         var resultado = await _redactorTurno.RedactarAsync(contexto, cancellationToken);
-        await RegistrarRedaccionAsync(
-            usuarioId, numeroUsuario, acto, resultado, _redaccion.UsaPromptDeVoz(campania, pregunta, acto),
-            ahora, cancellationToken);
-
-        if (resultado is not ResultadoRedaccionTurno.Exito redactado)
-        {
-            return respaldo;
-        }
 
         // El orden es siempre puente → cuerpo → pregunta: así la versión consolidada queda íntegra y
-        // visible, y el modelo no puede sustituirla ni esconderla (§4). Se recorta el resultado: un
-        // acto sin cuerpo ni pregunta (P-28 `Reactivar`, P-29 `Pausar`) dejaba el separador colgando.
-        var texto = Combinar(redactado.Puente, cuerpo ?? string.Empty);
-        return (string.IsNullOrWhiteSpace(redactado.Pregunta)
-            ? (string.IsNullOrWhiteSpace(texto) ? respaldo : texto)
-            : Combinar(texto, redactado.Pregunta)).Trim();
+        // visible, y el modelo no puede sustituirla ni esconderla (§4). Un acto sin cuerpo ni pregunta
+        // (P-28 `Reactivar`, P-29 `Pausar`) no deja el separador colgando.
+        // DT-I20-01 §4.2: antes de unir, la guarda determinista descarta el puente que repita el cuerpo
+        // validado; si la pregunta duplicada deja al acto sin su función, se cae al respaldo.
+        var composicion = resultado is ResultadoRedaccionTurno.Exito redactado
+            ? FiltroDuplicacionTurno.Componer(
+                redactado.Puente,
+                cuerpo,
+                redactado.Pregunta,
+                PoliticaRedaccionConversacional.ExigePregunta(acto))
+            : null;
+
+        await RegistrarRedaccionAsync(
+            usuarioId, numeroUsuario, acto, resultado, _redaccion.UsaPromptDeVoz(campania, pregunta, acto),
+            composicion?.Motivo, ahora, cancellationToken);
+
+        return composicion is null || composicion.RequiereRespaldo ? respaldo : composicion.Texto;
     }
 
     /// <summary>
     /// I-20 (10 §6.2): una entrada por llamada al redactor. Sin el texto redactado ni el rechazado:
     /// solo acto, si se redactó o se usó el respaldo, el motivo técnico y los tokens de esa llamada.
+    /// <para>
+    /// DT-I20-01 §5: <paramref name="ajuste"/> añade el motivo no sensible de la guarda de duplicación
+    /// (p. ej. <c>puente_duplicado_omitido</c>). Es un código fijo, nunca la frase omitida.
+    /// </para>
     /// </summary>
     private Task RegistrarRedaccionAsync(
         string usuarioId,
@@ -2459,12 +2467,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         ActoConversacional acto,
         ResultadoRedaccionTurno resultado,
         bool promptDeVoz,
+        string? ajuste,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
         var motivo = resultado is ResultadoRedaccionTurno.Fallback fallback ? fallback.Motivo : "ninguno";
         var detalle = FormattableString.Invariant(
-            $"accion:{MinusculaInicial(acto.ToString())};motivo:{motivo};promptVoz:{promptDeVoz};promptTokens:{resultado.Uso?.PromptTokens ?? 0};completionTokens:{resultado.Uso?.CompletionTokens ?? 0}");
+            $"accion:{MinusculaInicial(acto.ToString())};motivo:{motivo};ajuste:{ajuste ?? "ninguno"};promptVoz:{promptDeVoz};promptTokens:{resultado.Uso?.PromptTokens ?? 0};completionTokens:{resultado.Uso?.CompletionTokens ?? 0}");
         return _logSeguridad.RegistrarAsync(
             LogSeguridad.Crear(
                 "log_" + Guid.NewGuid().ToString("N"),
@@ -3785,7 +3794,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var preguntaHilo = campania.Preguntas.FirstOrDefault(p => p.Id == conversacion.PreguntaId);
         var redactado = await ComponerTurnoAsync(
             campania, preguntaHilo, usuarioId, numero, ActoConversacional.Mejorar,
-            respaldo: Combinar(evaluacion.RetroalimentacionEnviada, preguntaCoaching),
+            respaldo: CombinarSinDuplicar(evaluacion.RetroalimentacionEnviada, preguntaCoaching),
             ahora, cancellationToken,
             cuerpo: evaluacion.RetroalimentacionEnviada,
             retroalimentacionValidada: evaluacion.RetroalimentacionEnviada,
@@ -4973,6 +4982,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
     private static string Combinar(string? primero, string segundo)
         => string.IsNullOrWhiteSpace(primero) ? segundo : primero.Trim() + "\n\n" + segundo;
+
+    /// <summary>
+    /// DT-I20-01 §4.3: al ensamblar dos fragmentos visibles que vienen del LLM (retro, repregunta,
+    /// invitación), el segundo se omite si repite una oración del primero — en ese caso su contenido ya
+    /// está a la vista. Conservador: nunca descarta el fragmento validado, solo el añadido redundante.
+    /// </summary>
+    private static string CombinarSinDuplicar(string? primero, string segundo)
+        => FiltroDuplicacionTurno.RepiteUnaOracion(segundo, primero)
+            ? primero!.Trim()
+            : Combinar(primero, segundo);
 
     private static string TextoConfigurado(string? valor, string fallback)
         => string.IsNullOrWhiteSpace(valor) ? fallback : valor.Trim();

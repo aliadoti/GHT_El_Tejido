@@ -20,7 +20,8 @@
 - Alcance temporal: la regla opera sobre cada envío nuevo después del despliegue, incluso si pertenece a una campaña existente. No reescribe mensajes, conversaciones, ideas, evaluaciones ni Markdown históricos; no requiere migración.
 - Configuración y reversibilidad: sin flag ni opt-in por campaña, pues es una corrección transversal de calidad. El rollback es revertir la aplicación; no deja datos que restaurar.
 - Alternativas descartadas: prohibir las expresiones (pierde una formulación válida); configurar listas por campaña (fragmenta la voz y deja campañas sin protección); segundo LLM para similitud semántica (costo, latencia y no hace falta para eliminar la duplicación confirmada).
-- Spec: `Iniciativas/DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md`.
+- Decisión de implementación (2026-08-13, Claude Opus 5, Backend/SDET): una **pregunta duplicada** descarta la redacción completa —y sale el respaldo determinista— solo en los actos que pierden su función sin pregunta (`Confirmar`, `Mejorar`, `Aclarar`, `ResumirAvance`); en `Reabrir` y `Reactivar` la pregunta se omite y el turno queda como invitación afirmativa. La comparación se hace por **oraciones completas y prefijos de palabras** tras normalizar (minúsculas, sin tildes, sin puntuación, espacios colapsados): compartir palabras sueltas no descarta nada, para no perder contenido válido.
+- Spec: `Iniciativas/DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md`. Implementada localmente el 2026-08-13 (5/5); pendiente D5 y despliegue.
 
 ---
 

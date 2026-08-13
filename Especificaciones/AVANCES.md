@@ -4,6 +4,18 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-13 (Claude Opus 5, Arquitecto/Backend/SDET): **`DT-I20-01` DONE local
+  (5/5 pasos de §7).** La instrucción de evaluación y la del redactor piden variedad y siguen
+  permitiendo “Queda claro que...”, que deja de ser la apertura obligatoria; cuando el turno lleva
+  retroalimentación validada, el redactor recibe además la indicación de devolver `puente: null` si no
+  aporta una función distinta. La guarda determinista nueva (`FiltroDuplicacionTurno`, pura y
+  testeable) normaliza sin tildes ni puntuación, compara por oraciones y prefijos, y omite el puente
+  que repita el cuerpo validado; una pregunta duplicada se omite si el acto lo admite y, si el acto la
+  exige (`Confirmar`/`Mejorar`/`Aclarar`/`ResumirAvance`), cae al respaldo determinista. La auditoría
+  de redacción suma `ajuste:<motivo>` sin texto. Sin flag, contrato, portal, migración ni cambio
+  remoto. Backend: build Release `-warnaserror`, **785 unitarias (766 sin Calibración) + 88 de
+  integración**, `dotnet format` y `git diff --check` verdes. **Pendiente antes de desplegar: D5 con
+  ejemplos reales anonimizados.**
 - Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/SDET): **`DT-I20-01` especificada y
   lista para implementar; sin código.** Resuelve dos síntomas confirmados: uso sistemático de
   “Queda claro que...” y duplicación de un mismo reconocimiento entre el puente I-20 y el cuerpo
@@ -918,11 +930,15 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`DT-I20-01` — variación y no duplicación de redacción (lista para implementar).** Leer
-  `Iniciativas/DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md`, implementar sus
-  cinco pasos y validar con `QAS/19_DT-I20-01_Variacion_Redaccion_Como_Probar.md`. La corrección
-  aplica a todas las campañas en mensajes nuevos; no crear flag, migración ni configuración por
-  campaña. Antes de desplegar, ejecutar D5 con ejemplos reales anonimizados.
+- [ ] **`DT-I20-01`: D5 con ejemplos reales anonimizados (código DONE local, sin push).** El código de
+  los cinco pasos de `§7` está implementado y verde; lo que falta es la validación de calidad antes de
+  desplegar: pasar un banco de ejemplos de campañas reales por el redactor y comprobar (a) que
+  “Queda claro que...” aparece de forma ocasional y no como apertura fija, (b) que ningún envío repite
+  el mismo reconocimiento, y (c) que no aumentan los respaldos deterministas (`ajuste:` y `motivo:` en
+  la telemetría de redacción). Guía humana: `QAS/19_DT-I20-01_Variacion_Redaccion_Como_Probar.md`.
+  No hay flag que apagar: el rollback es revertir el commit de aplicación.
+- [ ] **Sin trabajo de código priorizado después de `DT-I20-01`.** Lo siguiente es operativo (P-32 y el
+  acta de flags); un nuevo cambio de código requiere priorización expresa del usuario.
 - [ ] **Validar operativamente P-32; no hay un corte de código pendiente.** Ejecutar D5 real y UAT
   bilingüe en un ambiente aislado usando `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y
   `QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md`: recorrido E2E `es/en`, lote mixto, edición,
@@ -1212,6 +1228,7 @@
 | P-29 | Cierre conversacional por tiempo | DONE local 2/2; D5/UAT/costo pendiente | `09d4d84` + cambios locales corte 2 | backend 723/723 (651+72), build/format/diff verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 sin temporizador, umbral, estado ni motivo nuevos. |
 | P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
+| DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -1340,6 +1357,29 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-08-13 - Claude Opus 5 - **DT-I20-01 implementada (DONE local 5/5, sin push).** Rol:
+  Arquitecto/Backend/SDET. I-20, `Iniciativas/DT-I20-01_*` §4/§6/§7 y
+  `SUPUESTOS.md#variacion-no-duplicacion-redaccion-dt-i20-01`. (1) `ConstructorMensajesEvaluacion`
+  suma la regla `VARIACION DE REDACCION` para `retroalimentacion_usuario` y el coaching secuencial
+  deja de pedir una apertura fija; las fórmulas de reconocimiento siguen permitidas. (2)
+  `RedactorTurnoConversacional` recibe la misma regla de voz y, cuando el turno lleva
+  retroalimentación validada, la indicación estructural de devolver `puente: null` si no aporta una
+  función distinta; el texto aprobado sigue viajando como dato delimitado. (3) Nuevo
+  `FiltroDuplicacionTurno` (puro, sin E/S): normaliza minúsculas/sin tildes/sin puntuación/espacios
+  colapsados, compara por oraciones completas y por prefijos de palabras, y compone
+  `puente → cuerpo → pregunta` omitiendo el puente equivalente, prefijo o superconjunto del cuerpo.
+  (4) `PoliticaRedaccionConversacional.ExigePregunta` fija los actos que no pueden quedar sin pregunta
+  (`Confirmar`, `Mejorar`, `Aclarar`, `ResumirAvance`): allí una pregunta duplicada descarta la
+  redacción entera y sale el respaldo; en `Reabrir`/`Reactivar` solo se omite la pregunta. (5) La
+  guarda corre en el único punto de composición de I-20 y en los ensamblajes de respaldo que unen
+  retro con invitación o repregunta (`CombinarSinDuplicar`), y la auditoría añade `ajuste:<motivo>`
+  (`puente_duplicado_omitido` / `pregunta_duplicada_omitida` / `duplicacion_sin_salida_valida` /
+  `ninguno`) sin registrar texto. Sin flag, contrato `03`/`04`, portal, migración ni configuración
+  remota. Pruebas nuevas: `FiltroDuplicacionTurnoTests` (9 casos de §6), 2 del redactor, 1 del
+  constructor de evaluación y 2 del orquestador (puente duplicado y orden preservado). Build Release
+  `-warnaserror`, 785 unitarias (766 sin Calibración) + 88 de integración, `dotnet format` y
+  `git diff --check` verdes. **Falta D5 con ejemplos reales antes de desplegar.**
 
 - 2026-08-13 - Codex - **DT-I20-01 especificada, sin código.** Rol: Arquitecto/Backend/SDET.
   Se documentó la corrección del uso repetitivo de aperturas y de la duplicación visible entre puente

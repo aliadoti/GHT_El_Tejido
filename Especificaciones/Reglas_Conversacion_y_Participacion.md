@@ -3,7 +3,7 @@
 > Documento de consulta de las **reglas de negocio** del flujo de interacción con el participante por
 > WhatsApp. Resume el comportamiento implementado en `OrquestadorConversacion` y servicios asociados.
 > Fuente de verdad del código: `05_Backend_WhatsApp_y_Conversacion.md` (§2, §4), `08` (evaluación LLM)
-> y `09` (Markdown). Última revisión: 2026-08-13 (`DT-I20-01` lista para implementar; variación
+> y `09` (Markdown). Última revisión: 2026-08-13 (`DT-I20-01` implementada localmente; variación
 > natural y no duplicación dentro de un mismo envío).
 
 ## 1. Visión general del flujo
@@ -101,7 +101,7 @@ promesa de implementación, se **descarta entera** y el turno sale con su **resp
 el texto anterior a I-20**; lo mismo si se apaga el kill-switch o si el cupo de llamadas está agotado.
 Nunca cambia evaluación, estados ni límites.
 
-**Variación y no duplicación DT-I20-01 (lista para implementar):** una expresión como “Queda claro
+**Variación y no duplicación DT-I20-01 (implementada localmente 2026-08-13, sin desplegar):** una expresión como “Queda claro
 que...” es válida cuando corresponde, pero no debe convertirse en la apertura fija del coach. Las
 instrucciones de evaluación y redacción piden alternar reconocimiento concreto, conexión con el aporte,
 pregunta directa o transición breve. Al armar un mensaje, el servidor elimina un puente que repita una

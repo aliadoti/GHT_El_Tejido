@@ -2,7 +2,7 @@
 
 | Campo | Decisión |
 |---|---|
-| Estado | **LISTA PARA IMPLEMENTAR** |
+| Estado | **DONE LOCAL 2026-08-13 (5/5 pasos de §7).** Backend: build Release `-warnaserror`, 785 unitarias (766 sin Calibración) + 88 de integración, `dotnet format` y `git diff --check` verdes. Falta D5 con ejemplos reales y despliegue. |
 | Alcance | I-20, evaluación/coaching y composición del mensaje saliente |
 | Aplica | Todas las campañas y todo mensaje **nuevo** generado después del despliegue |
 | No aplica | Mensajes ya enviados, historial, ideas, evaluaciones ni Markdown históricos |
@@ -59,6 +59,8 @@ Antes de combinar `puente`, `cuerpo` y `pregunta`, el servidor normaliza para co
 
 La guarda es deliberadamente conservadora: compara equivalencia y prefijos, no intenta inferir similitud semántica con otro LLM. Ante duda conserva el cuerpo validado y elimina solo el adorno redundante.
 
+**Qué actos exigen pregunta (decisión de implementación, 2026-08-13):** `Confirmar`, `Mejorar`, `Aclarar` y `ResumirAvance` pierden su función sin pregunta, así que una pregunta duplicada en ellos descarta la redacción completa y el turno sale con su respaldo determinista. `Reabrir` y `Reactivar` admiten quedar como invitación afirmativa, así que allí la pregunta duplicada solo se omite. El resto de actos no lleva pregunta y la guarda del redactor ya la rechaza.
+
 ### 4.3 Alcance por tipo de turno
 
 La variación aplica a toda salida LLM visible de evaluación y redacción. La guarda de composición aplica a cualquier acto I-20 que tenga puente y cuerpo (`Confirmar`, `Mejorar`, `Reabrir`, `ResumirAvance` y los que se agreguen). Los respaldos deterministas permanecen compatibles; solo pasan por la misma prevención de duplicación cuando se ensamblen con otro fragmento.
@@ -85,11 +87,19 @@ No se reescriben `MensajeInicial`, plantillas Meta, preguntas configuradas por c
 
 ## 7. Orden de implementación
 
-1. Añadir las reglas editoriales a `ConstructorMensajesEvaluacion` y `RedactorTurnoConversacional`, con pruebas de los mensajes construidos.
-2. Extraer una ayuda pura y testeable de comparación/filtrado de segmentos en la capa Conversación.
-3. Aplicarla en el único punto de composición de I-20 y en los ensamblajes de respaldo que combinen fragmentos visibles.
-4. Registrar el motivo técnico no sensible cuando se omita un puente.
-5. Ejecutar pruebas focalizadas y la compuerta local completa; realizar D5 con un banco de ejemplos de campañas reales antes de desplegar.
+1. ✅ Añadir las reglas editoriales a `ConstructorMensajesEvaluacion` y `RedactorTurnoConversacional`, con pruebas de los mensajes construidos.
+2. ✅ Extraer una ayuda pura y testeable de comparación/filtrado de segmentos en la capa Conversación.
+3. ✅ Aplicarla en el único punto de composición de I-20 y en los ensamblajes de respaldo que combinen fragmentos visibles.
+4. ✅ Registrar el motivo técnico no sensible cuando se omita un puente.
+5. ⏳ Ejecutar pruebas focalizadas y la compuerta local completa (**hecho**); realizar D5 con un banco de ejemplos de campañas reales antes de desplegar (**pendiente**).
+
+### 7.1 Qué quedó implementado (2026-08-13)
+
+- `ConstructorMensajesEvaluacion`: regla `VARIACION DE REDACCION` para `retroalimentacion_usuario` y coaching secuencial sin fórmula fija de apertura.
+- `RedactorTurnoConversacional`: regla de variedad en las instrucciones duras del sistema y, cuando el turno lleva retroalimentación validada, indicación estructural de devolver `puente: null` si no aporta una función distinta.
+- `FiltroDuplicacionTurno` (nuevo, puro): normaliza (minúsculas, sin tildes, sin puntuación, espacios colapsados), compara por oraciones y por prefijos de palabras, y compone `puente → cuerpo → pregunta` omitiendo lo redundante.
+- `PoliticaRedaccionConversacional.ExigePregunta`: define los actos que no pueden quedarse sin pregunta.
+- `OrquestadorConversacion`: la guarda corre en el único punto de composición I-20 y en los ensamblajes de respaldo que unen retro + invitación/repregunta; la auditoría de redacción añade `ajuste:<motivo>` (`puente_duplicado_omitido`, `pregunta_duplicada_omitida`, `duplicacion_sin_salida_valida` o `ninguno`), sin texto.
 
 ## 8. Cómo probarlo en lenguaje simple
 

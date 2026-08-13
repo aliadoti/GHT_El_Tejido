@@ -217,6 +217,46 @@ public sealed class RedactorTurnoConversacionalTests
         sistema.Should().Contain("No menciones rúbrica").And.Contain("UNA sola pregunta");
     }
 
+    [Fact]
+    public async Task DTI2001_ElSistemaPideVariedadSinProhibirLaFormulaDeReconocimiento()
+    {
+        LlmRequest? enviado = null;
+        _client.CompletarJsonAsync(Arg.Do<LlmRequest>(request => enviado = request), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta("{\"puente\":\"Listo.\",\"pregunta\":\"¿Correcto?\"}", null));
+
+        await Construir().RedactarAsync(Contexto(ActoConversacional.Mejorar), CancellationToken.None);
+
+        var sistema = enviado!.Mensajes.Single(m => m.Rol == LlmMensaje.RolSistema).Contenido;
+        // §6.1: la fórmula sigue permitida; lo que se prohíbe es usarla como apertura por defecto.
+        sistema.Should().Contain("Varía la apertura")
+            .And.Contain("\"Queda claro\", \"se entiende\" y \"es evidente\" están permitidas")
+            .And.Contain("no son la apertura por defecto")
+            .And.Contain("No repitas, parafrasees ni anticipes");
+        // Sin cuerpo validado no aplica la indicación estructural (§4.1).
+        sistema.Should().NotContain("devuelve puente en null");
+    }
+
+    [Fact]
+    public async Task DTI2001_ConRetroalimentacionValidada_PideNoRepetirElAcuseDelCuerpo()
+    {
+        LlmRequest? enviado = null;
+        _client.CompletarJsonAsync(Arg.Do<LlmRequest>(request => enviado = request), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta("{\"puente\":null,\"pregunta\":\"¿Qué sigue?\"}", null));
+
+        var resultado = await Construir().RedactarAsync(
+            Contexto(ActoConversacional.Mejorar) with { RetroalimentacionValidada = "Ya queda claro el avance." },
+            CancellationToken.None);
+
+        var sistema = enviado!.Mensajes.Single(m => m.Rol == LlmMensaje.RolSistema).Contenido;
+        var datos = enviado.Mensajes.Single(m => m.Rol == LlmMensaje.RolUsuario).Contenido;
+        sistema.Should().Contain("tu puente NO puede").And.Contain("devuelve puente en null");
+        // 08 §5: el texto aprobado sigue viajando como dato delimitado, no como instrucción.
+        sistema.Should().NotContain("Ya queda claro el avance.");
+        datos.Should().Contain("RETROALIMENTACION_YA_APROBADA: Ya queda claro el avance.");
+        // Un puente nulo con pregunta válida es una salida legítima (§4.1).
+        resultado.Should().BeOfType<ResultadoRedaccionTurno.Exito>().Which.Puente.Should().BeNull();
+    }
+
     private void Responder(string json)
         => _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(json, UsoTokensLlm.Crear(20, 8)));

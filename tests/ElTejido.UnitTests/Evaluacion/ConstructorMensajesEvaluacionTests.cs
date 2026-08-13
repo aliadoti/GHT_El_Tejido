@@ -87,6 +87,18 @@ public sealed class ConstructorMensajesEvaluacionTests
     }
 
     [Fact]
+    public void Construir_DTI2001_PideVariacionSinProhibirLaFormulaDeReconocimiento()
+    {
+        var system = ConstructorMensajesEvaluacion.Construir(CrearContexto())[0].Contenido;
+
+        // §6.1: "queda claro" sigue siendo una salida valida; deja de ser la apertura obligatoria.
+        system.Should().Contain("VARIACION DE REDACCION");
+        system.Should().Contain("\"queda claro\"");
+        system.Should().Contain("estan permitidas, pero no las uses por defecto");
+        system.Should().Contain("No repitas, parafrasees ni anticipes el texto que ira en otra parte");
+    }
+
+    [Fact]
     public void Construir_CoachingI18_ExigeUnaPreguntaSinResponderPorLaPersona()
     {
         var mensajes = ConstructorMensajesEvaluacion.Construir(
