@@ -11,17 +11,20 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
     private readonly IRepositorioLogSeguridad _auditoria;
     private readonly TimeProvider _tiempo;
     private readonly IInvalidacionCacheCatalogosTextos? _invalidacionCache;
+    private readonly PoliticaLimitesCatalogoTextos _limites;
 
     public ServicioGestionCatalogosTextos(
         IRepositorioCatalogosTextos repositorio,
         IRepositorioLogSeguridad auditoria,
         TimeProvider tiempo,
-        IInvalidacionCacheCatalogosTextos? invalidacionCache = null)
+        IInvalidacionCacheCatalogosTextos? invalidacionCache = null,
+        OpcionesCatalogoTextos? opciones = null)
     {
         _repositorio = repositorio;
         _auditoria = auditoria;
         _tiempo = tiempo;
         _invalidacionCache = invalidacionCache;
+        _limites = (opciones ?? new OpcionesCatalogoTextos()).Limites;
     }
 
     public Task<IReadOnlyCollection<VersionCatalogoTextos>> BuscarAsync(
@@ -130,6 +133,59 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         return creado;
     }
 
+    public async Task<VersionCatalogoTextos> CrearDesdeSemillaAsync(
+        SolicitudGuardarCatalogoTextos solicitud,
+        OrigenSemillaCatalogoTextos origen,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        var familiaId = Requerir(solicitud.FamiliaId, "familiaId");
+        var idioma = ValidarIdioma(solicitud.Idioma);
+        var versiones = await _repositorio.ListarVersionesAsync(familiaId, idioma, cancellationToken);
+        var version = versiones.Count == 0 ? 1 : versiones.Max(x => x.Catalogo.Version) + 1;
+
+        // Una semilla invalida (tipicamente la fotografia legacy) no escribe nada: CrearCatalogo
+        // valida antes de construir y el error tipificado sube con todos los detalles.
+        var catalogo = CrearCatalogo(
+            familiaId,
+            idioma,
+            version,
+            solicitud.Mensajes,
+            solicitud.Frases,
+            actorId,
+            _tiempo.GetUtcNow());
+        var creado = await _repositorio.CrearAsync(catalogo, cancellationToken);
+        await AuditarAsync(
+            origen == OrigenSemillaCatalogoTextos.Legacy ? "importarLegacy" : "crearSemillaBase",
+            creado.Catalogo,
+            actorId,
+            cancellationToken);
+        return creado;
+    }
+
+    public async Task<ResultadoPrevalidacionCatalogoTextos> PrevalidarSemillaAsync(
+        SolicitudGuardarCatalogoTextos solicitud,
+        OrigenSemillaCatalogoTextos origen,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        var familiaId = Requerir(solicitud.FamiliaId, "familiaId");
+        var idioma = ValidarIdioma(solicitud.Idioma);
+        var resultado = ValidadorCatalogoTextosConversacion.Prevalidar(
+            familiaId,
+            idioma,
+            solicitud.Mensajes,
+            solicitud.Frases,
+            _limites);
+        // Prevalidar no crea documentos ni invalida cache (DT-P32-02 §7); solo deja rastro del intento.
+        await AuditarPrevalidacionAsync(
+            origen == OrigenSemillaCatalogoTextos.Legacy ? "prevalidarLegacy" : "prevalidarBase",
+            resultado,
+            actorId,
+            cancellationToken);
+        return resultado;
+    }
+
     public async Task<VersionCatalogoTextos> ActualizarBorradorAsync(
         string familiaId,
         string idioma,
@@ -177,7 +233,10 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         }
 
         // Revalida el snapshot completo al activar para impedir que datos historicos invalidos lleguen al runtime.
-        ValidadorCatalogoTextosConversacion.ValidarYCalcularHuella(actual.Catalogo.Mensajes, actual.Catalogo.Frases);
+        ValidadorCatalogoTextosConversacion.ValidarYCalcularHuella(
+            actual.Catalogo.Mensajes,
+            actual.Catalogo.Frases,
+            _limites);
         var activo = actual.Catalogo.CambiarEstado(
             EstadoCatalogoTextos.Activo,
             _tiempo.GetUtcNow(),
@@ -192,7 +251,7 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         return guardado;
     }
 
-    private static CatalogoTextosConversacion CrearCatalogo(
+    private CatalogoTextosConversacion CrearCatalogo(
         string familiaId,
         string idioma,
         int version,
@@ -202,7 +261,7 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         DateTimeOffset creadoEn,
         DateTimeOffset? actualizadoEn = null)
     {
-        var huella = ValidadorCatalogoTextosConversacion.ValidarYCalcularHuella(mensajes, frases);
+        var huella = ValidadorCatalogoTextosConversacion.ValidarYCalcularHuella(mensajes, frases, _limites);
         return CatalogoTextosConversacion.Crear(
             familiaId,
             idioma,
@@ -218,7 +277,7 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
             huella);
     }
 
-    private async Task AuditarAsync(
+    private Task AuditarAsync(
         string accion,
         CatalogoTextosConversacion catalogo,
         string actorId,
@@ -226,18 +285,42 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
     {
         var detalle = $"accion={accion};familia={catalogo.FamiliaId};idioma={catalogo.Idioma};" +
             $"version={catalogo.Version};huella={catalogo.Huella}";
-        await _auditoria.RegistrarAsync(
+        return RegistrarAsync(detalle, "ok", actorId, cancellationToken);
+    }
+
+    /// <summary>
+    /// DT-P32-02 §7: la revision deja accion, idioma, conteos y resultado. Nunca mensajes, frases,
+    /// el JSON revisado ni el detalle de las diferencias.
+    /// </summary>
+    private Task AuditarPrevalidacionAsync(
+        string accion,
+        ResultadoPrevalidacionCatalogoTextos resultado,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        var detalle = $"accion={accion};familia={resultado.FamiliaId};idioma={resultado.Idioma};" +
+            $"mensajes={resultado.Conteos.Mensajes};gruposFrases={resultado.Conteos.GruposFrases};" +
+            $"frases={resultado.Conteos.Frases};errores={resultado.Errores.Count};" +
+            $"maxFrasesPorGrupo={_limites.MaxFrasesPorGrupo}";
+        return RegistrarAsync(detalle, resultado.Valido ? "valido" : "invalido", actorId, cancellationToken);
+    }
+
+    private async Task RegistrarAsync(
+        string detalle,
+        string resultado,
+        string actorId,
+        CancellationToken cancellationToken)
+        => await _auditoria.RegistrarAsync(
             LogSeguridad.Crear(
                 "catalogo_" + Guid.NewGuid().ToString("N"),
                 TipoEventoSeguridad.CatalogoTextosConversacion,
                 Requerir(actorId, "actorId"),
                 numero: null,
-                resultado: "ok",
+                resultado,
                 detalle,
                 correlationId: null,
                 timestamp: _tiempo.GetUtcNow()),
             cancellationToken);
-    }
 
     private static int ValidarVersion(int version)
     {

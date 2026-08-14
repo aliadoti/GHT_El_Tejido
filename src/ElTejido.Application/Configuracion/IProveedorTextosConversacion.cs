@@ -34,7 +34,36 @@ public interface IInvalidacionCacheCatalogosTextos
 
 public sealed class OpcionesCatalogoTextos
 {
+    private int _maxFrasesPorGrupo = PoliticaLimitesCatalogoTextos.MaxFrasesPorGrupoDefault;
+    private int _maxBytesImportacionJson = PoliticaLimitesCatalogoTextos.MaxBytesImportacionJsonDefault;
+
     public bool Habilitado { get; set; }
 
     public int CacheSegundos { get; set; } = 60;
+
+    /// <summary>
+    /// DT-P32-02 §2.4: limite operativo de frases por grupo. Se ajusta al rango compilado
+    /// (<c>1..500</c>) para que un valor mal configurado no derribe el arranque ni abra el techo.
+    /// </summary>
+    public int MaxFrasesPorGrupo
+    {
+        get => _maxFrasesPorGrupo;
+        set => _maxFrasesPorGrupo = Math.Clamp(
+            value,
+            PoliticaLimitesCatalogoTextos.MinFrasesPorGrupo,
+            PoliticaLimitesCatalogoTextos.TechoFrasesPorGrupo);
+    }
+
+    /// <summary>DT-P32-02 §2.4: tamano maximo del JSON de edicion masiva; techo compilado de 1 MiB.</summary>
+    public int MaxBytesImportacionJson
+    {
+        get => _maxBytesImportacionJson;
+        set => _maxBytesImportacionJson = Math.Clamp(
+            value,
+            PoliticaLimitesCatalogoTextos.MinBytesImportacionJson,
+            PoliticaLimitesCatalogoTextos.TechoBytesImportacionJson);
+    }
+
+    public PoliticaLimitesCatalogoTextos Limites
+        => PoliticaLimitesCatalogoTextos.Crear(MaxFrasesPorGrupo, MaxBytesImportacionJson);
 }

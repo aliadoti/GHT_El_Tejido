@@ -1117,6 +1117,37 @@
   endpoint de detalle. No hay flags, logs con PII, despliegue ni configuración remota nuevos.
 - Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`.
 
+### semillas-y-limites-catalogo-dt-p32-02 - Base curada, fotografía legacy y límite operativo de frases
+- Fecha: 2026-08-14 - Agente/Rol: Arquitecto/Backend senior/SDET/AppSec - Commit: corte 1/3 de DT-P32-02 (local)
+- Contexto: la corrida P-32 del 2026-08-13 dejó el ambiente sin catálogo `es` porque
+  `POST /semillas/es` fotografiaba App Settings y una lista heredada de 31 frases invalidaba el
+  catálogo completo. La spec separa ambos orígenes; al implementarla aparecieron cuatro detalles no
+  resueltos por escrito.
+- Decisión:
+  - `CatalogosTextosSemilla.CrearBase(idioma)` no lee `OpcionesConversacion`; `CrearDesdeLegacy`
+    exige esas opciones. Como **no existe configuración legacy en inglés**, `CrearDesdeLegacy("en")`
+    devuelve la misma base curada inglesa en vez de fallar: es la fotografía honesta del ambiente.
+  - El runtime revalida el catálogo activo con el **límite operativo configurado**, no con el
+    compilado. Si no, ampliar `MaxFrasesPorGrupo` activaría un catálogo que el proveedor luego
+    rechazaría, degradando la conversación a la versión de emergencia sin causa visible.
+  - Un límite configurado fuera de rango se **ajusta al techo compilado** (`1..500` frases,
+    `1 KiB..1 MiB` de JSON) en vez de derribar el arranque. El contenido nunca se recorta: el exceso
+    devuelve `debe_tener_entre_1_y_{max}_elementos` y cero escrituras.
+  - La descarga legacy usa ya la forma canónica `formato:catalogo-textos/v1` de `§3.2` (archivo
+    `catalogo-{familiaId}-{idioma}-legacy-editable.json`) para que el corte 2 no cambie el contrato
+    del archivo que un administrador ya corrigió a mano.
+  - Prevalidar audita `prevalidarLegacy`/`prevalidarBase` con acción, idioma, conteos, número de
+    errores y límite efectivo; nunca mensajes, frases ni el JSON. No crea documentos ni invalida caché.
+- Alternativa(s) descartada(s): truncar la lista heredada al límite (pierde vocabulario sin avisar);
+  completar los grupos inválidos con defaults (mezcla silenciosa base/legacy que la spec prohíbe);
+  fallar el arranque ante un límite mal configurado (deja el ambiente sin API por un dato editorial);
+  dejar el límite compilado (obliga a recompilar para ampliar vocabulario, que es el defecto de fondo).
+- Impacto / reversibilidad: aditivo. `POST /semillas/{idioma}` conserva su semántica P-32 y el gate
+  `Conversacion:CatalogoTextosHabilitado` sigue OFF. Rollback = revertir el commit; no hay flag nuevo
+  ni configuración remota que tocar.
+- Spec: `Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`; plan
+  `planes/DT-P32-02_Plan_Implementacion_Semillas_y_JSON.md`; QAS `22_*`.
+
 ### resumen-consolidacion-p31 - Umbral de resumen propio, independiente del umbral de madurez
 - Fecha: 2026-08-06 - Agente/Rol: Arquitecto/Analista - Commit: n/a (solo especificación)
 - Contexto: REQ-052 (GHT, 2026-08-06). El participante no ve el progreso de su idea: I-19 mantiene la versión consolidada canónica pero solo se la muestra al pedir confirmación (§4.1) o al reabrir una idea cerrada (§4.7); en el coaching normal (P-25) recibe retroalimentación y una pregunta de foco, nunca el texto acumulado. Al cruzar el umbral base, la rama `madura` de `OrquestadorConversacion.ConfirmarOCorregirIdeaAsync` cierra la idea y el hilo enviando `retroalimentación + mensajeCierre`, sin mostrar el resultado ni preguntar nada. Spec P-31.

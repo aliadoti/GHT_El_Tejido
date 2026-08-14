@@ -6,31 +6,47 @@ namespace ElTejido.Application.Configuracion;
 /// <summary>
 /// Semillas revisables y respaldo minimo del mismo idioma. Crear una semilla no la persiste ni la
 /// activa: esa mutacion solo ocurre mediante el caso de uso administrativo explicito.
+/// DT-P32-02 §2.1 separa dos origenes de borrador que antes estaban mezclados: la <b>base curada</b>
+/// (compilada, valida en toda compilacion, independiente de App Settings) y la <b>fotografia
+/// legacy</b> (valores efectivos del ambiente, que pueden ser invalidos y se prevalidan aparte).
 /// </summary>
 public static class CatalogosTextosSemilla
 {
     public const string FamiliaId = "catalogo_conversacion";
 
+    /// <summary>
+    /// DT-P32-02 §2.1: base curada `es/en`. No lee configuracion del ambiente, de modo que una lista
+    /// legacy invalida nunca impide inicializar el catalogo de un ambiente nuevo.
+    /// </summary>
+    public static SolicitudGuardarCatalogoTextos CrearBase(string idioma)
+        => Crear(idioma, opcionesLegacy: null);
+
+    /// <summary>
+    /// DT-P32-02 §2.1: fotografia de <c>Conversacion:Mensajes:*</c> y <c>Conversacion:Frases*</c>
+    /// efectivos. Conserva todas las entradas tal como estan configuradas —sin truncar ni completar
+    /// con defaults por grupo—, asi que puede resultar invalida y debe prevalidarse antes de guardar.
+    /// El ingles no tiene configuracion legacy propia: devuelve la misma base curada.
+    /// </summary>
+    public static SolicitudGuardarCatalogoTextos CrearDesdeLegacy(
+        string idioma,
+        OpcionesConversacion opcionesEfectivas)
+    {
+        ArgumentNullException.ThrowIfNull(opcionesEfectivas);
+        return Crear(idioma, opcionesEfectivas);
+    }
+
+    /// <summary>
+    /// Compatibilidad P-32 (<c>POST /semillas/{idioma}</c>): con opciones efectivas se comporta como
+    /// la fotografia legacy y sin ellas como la base curada. El portal nuevo usa las rutas explicitas.
+    /// </summary>
     public static SolicitudGuardarCatalogoTextos CrearSolicitud(
         string idioma,
         OpcionesConversacion? opcionesEfectivas = null)
-    {
-        var normalizado = idioma?.Trim().ToLowerInvariant();
-        return normalizado switch
-        {
-            "es" => new SolicitudGuardarCatalogoTextos(
-                FamiliaId,
-                "es",
-                MensajesEs(opcionesEfectivas?.Mensajes),
-                FrasesEs(opcionesEfectivas)),
-            "en" => new SolicitudGuardarCatalogoTextos(FamiliaId, "en", MensajesEn(), FrasesEn()),
-            _ => throw new ArgumentOutOfRangeException(nameof(idioma), "El idioma debe ser 'es' o 'en'."),
-        };
-    }
+        => Crear(idioma, opcionesEfectivas);
 
     public static VersionCatalogoTextos CrearVersionEmergencia(string idioma)
     {
-        var solicitud = CrearSolicitud(idioma);
+        var solicitud = CrearBase(idioma);
         var huella = ValidadorCatalogoTextosConversacion.ValidarYCalcularHuella(
             solicitud.Mensajes,
             solicitud.Frases);
@@ -48,6 +64,21 @@ public static class CatalogosTextosSemilla
             DateTimeOffset.UnixEpoch,
             huella);
         return new VersionCatalogoTextos(catalogo, $"\"emergencia-{solicitud.Idioma}-v1\"");
+    }
+
+    private static SolicitudGuardarCatalogoTextos Crear(string idioma, OpcionesConversacion? opcionesLegacy)
+    {
+        var normalizado = idioma?.Trim().ToLowerInvariant();
+        return normalizado switch
+        {
+            "es" => new SolicitudGuardarCatalogoTextos(
+                FamiliaId,
+                "es",
+                MensajesEs(opcionesLegacy?.Mensajes),
+                FrasesEs(opcionesLegacy)),
+            "en" => new SolicitudGuardarCatalogoTextos(FamiliaId, "en", MensajesEn(), FrasesEn()),
+            _ => throw new ArgumentOutOfRangeException(nameof(idioma), "El idioma debe ser 'es' o 'en'."),
+        };
     }
 
     private static IReadOnlyDictionary<string, string> MensajesEs(OpcionesMensajesConversacion? mensajes)

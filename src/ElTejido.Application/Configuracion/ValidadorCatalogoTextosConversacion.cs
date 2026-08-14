@@ -66,7 +66,56 @@ public static partial class ValidadorCatalogoTextosConversacion
         "nombre", "campaña", "campania", "empresa", "area",
     };
 
+    /// <summary>
+    /// Valida el catalogo completo y devuelve su huella. <paramref name="limites"/> ausente usa la
+    /// politica compilada (DT-P32-02 §2.4); el runtime y la administracion pasan la configurada.
+    /// </summary>
     public static string ValidarYCalcularHuella(
+        IReadOnlyDictionary<string, string>? mensajes,
+        IReadOnlyDictionary<string, IReadOnlyCollection<string>>? frases,
+        PoliticaLimitesCatalogoTextos? limites = null)
+    {
+        if (mensajes is null || frases is null)
+        {
+            throw new ErrorValidacion("El catalogo esta incompleto.", ErroresDeAusencia(mensajes, frases));
+        }
+
+        var errores = Revisar(mensajes, frases, limites ?? PoliticaLimitesCatalogoTextos.PorDefecto);
+        if (errores.Count > 0)
+        {
+            throw new ErrorValidacion("El catalogo de textos no es valido.", errores);
+        }
+
+        return CalcularHuella(mensajes, frases);
+    }
+
+    /// <summary>
+    /// DT-P32-02 §3.3: prevalidacion pura. No persiste, no audita y no invalida cache; ejecuta
+    /// exactamente las mismas reglas que la escritura real y devuelve todos los errores detectables.
+    /// </summary>
+    public static ResultadoPrevalidacionCatalogoTextos Prevalidar(
+        string familiaId,
+        string idioma,
+        IReadOnlyDictionary<string, string>? mensajes,
+        IReadOnlyDictionary<string, IReadOnlyCollection<string>>? frases,
+        PoliticaLimitesCatalogoTextos? limites = null)
+    {
+        var conteos = new ConteosCatalogoTextos(
+            mensajes?.Count ?? 0,
+            frases?.Count ?? 0,
+            frases?.Sum(grupo => grupo.Value?.Count ?? 0) ?? 0);
+        var errores = mensajes is null || frases is null
+            ? ErroresDeAusencia(mensajes, frases)
+            : Revisar(mensajes, frases, limites ?? PoliticaLimitesCatalogoTextos.PorDefecto);
+        return new ResultadoPrevalidacionCatalogoTextos(
+            errores.Count == 0,
+            familiaId,
+            idioma,
+            conteos,
+            errores);
+    }
+
+    private static IReadOnlyList<DetalleError> ErroresDeAusencia(
         IReadOnlyDictionary<string, string>? mensajes,
         IReadOnlyDictionary<string, IReadOnlyCollection<string>>? frases)
     {
@@ -81,15 +130,19 @@ public static partial class ValidadorCatalogoTextosConversacion
             errores.Add(new DetalleError("frases", "obligatorio"));
         }
 
-        if (errores.Count > 0)
-        {
-            throw new ErrorValidacion("El catalogo esta incompleto.", errores);
-        }
+        return errores;
+    }
 
-        ValidarClaves(mensajes!, ClavesMensajes, "mensajes", errores);
-        ValidarClaves(frases!, ClavesFrases, "frases", errores);
+    private static IReadOnlyList<DetalleError> Revisar(
+        IReadOnlyDictionary<string, string> mensajes,
+        IReadOnlyDictionary<string, IReadOnlyCollection<string>> frases,
+        PoliticaLimitesCatalogoTextos limites)
+    {
+        var errores = new List<DetalleError>();
+        ValidarClaves(mensajes, ClavesMensajes, "mensajes", errores);
+        ValidarClaves(frases, ClavesFrases, "frases", errores);
 
-        foreach (var item in mensajes!)
+        foreach (var item in mensajes)
         {
             if (string.IsNullOrWhiteSpace(item.Value))
             {
@@ -97,9 +150,11 @@ public static partial class ValidadorCatalogoTextosConversacion
                 continue;
             }
 
-            if (item.Value.Length > 1000)
+            if (item.Value.Length > PoliticaLimitesCatalogoTextos.MaxCaracteresMensaje)
             {
-                errores.Add(new DetalleError($"mensajes.{item.Key}", "excede_1000_caracteres"));
+                errores.Add(new DetalleError(
+                    $"mensajes.{item.Key}",
+                    $"excede_{PoliticaLimitesCatalogoTextos.MaxCaracteresMensaje}_caracteres"));
             }
 
             if (HtmlRegex().IsMatch(item.Value))
@@ -117,20 +172,28 @@ public static partial class ValidadorCatalogoTextosConversacion
             }
         }
 
-        foreach (var item in frases!)
+        foreach (var item in frases)
         {
-            if (item.Value is null || item.Value.Count is < 1 or > 30)
+            // El exceso se rechaza completo: DT-P32-02 §2.4 prohibe truncar o mezclar con defaults.
+            if (item.Value is null
+                || item.Value.Count < PoliticaLimitesCatalogoTextos.MinFrasesPorGrupo
+                || item.Value.Count > limites.MaxFrasesPorGrupo)
             {
-                errores.Add(new DetalleError($"frases.{item.Key}", "debe_tener_entre_1_y_30_elementos"));
+                errores.Add(new DetalleError(
+                    $"frases.{item.Key}",
+                    $"debe_tener_entre_{PoliticaLimitesCatalogoTextos.MinFrasesPorGrupo}_y_{limites.MaxFrasesPorGrupo}_elementos"));
                 continue;
             }
 
             var normalizadas = new HashSet<string>(StringComparer.Ordinal);
             foreach (var frase in item.Value)
             {
-                if (string.IsNullOrWhiteSpace(frase) || frase.Length > 200)
+                if (string.IsNullOrWhiteSpace(frase)
+                    || frase.Length > PoliticaLimitesCatalogoTextos.MaxCaracteresFrase)
                 {
-                    errores.Add(new DetalleError($"frases.{item.Key}", "frase_vacia_o_excede_200_caracteres"));
+                    errores.Add(new DetalleError(
+                        $"frases.{item.Key}",
+                        $"frase_vacia_o_excede_{PoliticaLimitesCatalogoTextos.MaxCaracteresFrase}_caracteres"));
                     continue;
                 }
 
@@ -146,11 +209,13 @@ public static partial class ValidadorCatalogoTextosConversacion
             }
         }
 
-        if (errores.Count > 0)
-        {
-            throw new ErrorValidacion("El catalogo de textos no es valido.", errores);
-        }
+        return errores;
+    }
 
+    private static string CalcularHuella(
+        IReadOnlyDictionary<string, string> mensajes,
+        IReadOnlyDictionary<string, IReadOnlyCollection<string>> frases)
+    {
         var canonico = new StringBuilder();
         foreach (var item in mensajes.OrderBy(x => x.Key, StringComparer.Ordinal))
         {

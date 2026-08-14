@@ -1,6 +1,8 @@
 # DT-P32-02 — Semillas seguras, edición masiva y readiness del catálogo de textos
 
-> **Estado:** ESPECIFICADA — 2026-08-14 — 0/3, sin código ni cambios de configuración remota.
+> **Estado:** EN CURSO — 1/3 — corte 1/3 DONE local 2026-08-14 (semilla base separada del legacy,
+> límites operativos con techo, prevalidación pura y rutas de semilla). Sin portal, sin despliegue y
+> sin cambios de configuración remota. **Siguiente: corte 2/3.**
 > **Prioridad:** inmediata; debe implementarse y validarse antes de retomar `DT-I20-02`.
 > **Origen:** `QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md`, donde la semilla `es`
 > fue rechazada porque `FrasesDespertarProactivo` heredó más de 30 elementos.
@@ -250,14 +252,19 @@ archivo corregido. El portal no intenta reparar JSON, truncar listas ni activar 
 
 ## 8. Cortes de implementación
 
-### Corte 1/3 — Semilla base y validación reutilizable
+### Corte 1/3 — Semilla base y validación reutilizable — ✅ DONE local 2026-08-14
 
-- separar semilla base de fotografía legacy en Application;
-- parametrizar límites operativos con techo seguro;
-- crear prevalidación pura compartida por seed/import;
-- agregar rutas de semilla base y preview/import legacy;
-- mantener compatible la ruta P-32 existente;
-- pruebas unitarias de semilla `es/en`, legacy con más de 30 frases y ausencia de truncamiento.
+- separar semilla base de fotografía legacy en Application; ✅ `CatalogosTextosSemilla.CrearBase` /
+  `CrearDesdeLegacy`, con `CrearSolicitud` delegando para conservar la semántica P-32;
+- parametrizar límites operativos con techo seguro; ✅ `PoliticaLimitesCatalogoTextos` +
+  `OpcionesCatalogoTextos.MaxFrasesPorGrupo`/`MaxBytesImportacionJson` con clamp;
+- crear prevalidación pura compartida por seed/import; ✅
+  `ValidadorCatalogoTextosConversacion.Prevalidar(...)`, mismas reglas que la escritura;
+- agregar rutas de semilla base y preview/import legacy; ✅ `/base`, `/legacy/preview`,
+  `/legacy/exportar` y `POST /legacy`;
+- mantener compatible la ruta P-32 existente; ✅ `POST /semillas/{idioma}` sin cambios;
+- pruebas unitarias de semilla `es/en`, legacy con más de 30 frases y ausencia de truncamiento. ✅
+  15 unitarias y 7 de integración nuevas (804 + 94 en verde).
 
 ### Corte 2/3 — JSON masivo, readiness y campañas
 

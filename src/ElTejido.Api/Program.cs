@@ -23,6 +23,11 @@ var opcionesCatalogoTextos = new OpcionesCatalogoTextos
     // P-32: nace apagado. El preview administrativo no depende de este gate.
     Habilitado = builder.Configuration.GetValue<bool>("Conversacion:CatalogoTextosHabilitado"),
     CacheSegundos = builder.Configuration.GetValue<int?>("Conversacion:CatalogoTextos:CacheSegundos") ?? 60,
+    // DT-P32-02 §2.4: limites operativos editables sin recompilar, acotados por techos compilados.
+    MaxFrasesPorGrupo = builder.Configuration.GetValue<int?>("Conversacion:CatalogoTextos:MaxFrasesPorGrupo")
+        ?? PoliticaLimitesCatalogoTextos.MaxFrasesPorGrupoDefault,
+    MaxBytesImportacionJson = builder.Configuration.GetValue<int?>("Conversacion:CatalogoTextos:MaxBytesImportacionJson")
+        ?? PoliticaLimitesCatalogoTextos.MaxBytesImportacionJsonDefault,
 };
 builder.Services.AddSingleton(opcionesCatalogoTextos);
 

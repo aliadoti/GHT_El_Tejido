@@ -37,6 +37,26 @@ public interface IServicioGestionCatalogosTextos
         string actorId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// DT-P32-02 §2.1/§4: crea una version nueva en borrador desde una semilla, distinguiendo en la
+    /// auditoria si el origen fue la base curada o la fotografia legacy. Nunca activa ni sobrescribe.
+    /// </summary>
+    Task<VersionCatalogoTextos> CrearDesdeSemillaAsync(
+        SolicitudGuardarCatalogoTextos solicitud,
+        OrigenSemillaCatalogoTextos origen,
+        string actorId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// DT-P32-02 §3.3: prevalida una semilla sin escribir nada. Devuelve todos los errores
+    /// detectables y registra la revision en auditoria con conteos, nunca con contenido.
+    /// </summary>
+    Task<ResultadoPrevalidacionCatalogoTextos> PrevalidarSemillaAsync(
+        SolicitudGuardarCatalogoTextos solicitud,
+        OrigenSemillaCatalogoTextos origen,
+        string actorId,
+        CancellationToken cancellationToken);
+
     Task<VersionCatalogoTextos> ActualizarBorradorAsync(
         string familiaId,
         string idioma,
@@ -53,6 +73,16 @@ public interface IServicioGestionCatalogosTextos
         string etag,
         string actorId,
         CancellationToken cancellationToken);
+}
+
+/// <summary>DT-P32-02 §2.1: los dos origenes de borrador que ahora estan separados.</summary>
+public enum OrigenSemillaCatalogoTextos
+{
+    /// <summary>Base curada compilada `es/en`, independiente de App Settings.</summary>
+    Base,
+
+    /// <summary>Fotografia de la configuracion legacy efectiva del ambiente.</summary>
+    Legacy,
 }
 
 public sealed record SolicitudContenidoCatalogoTextos(

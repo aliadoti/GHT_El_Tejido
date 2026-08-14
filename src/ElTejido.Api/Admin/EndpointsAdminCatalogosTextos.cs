@@ -18,6 +18,11 @@ internal static class EndpointsAdminCatalogosTextos
         grupo.MapPost("", CrearAsync);
         grupo.MapPost("/importar", ImportarAsync);
         grupo.MapPost("/semillas/{idioma}", CrearDesdeSemillaAsync);
+        // DT-P32-02 §4: la base curada y la fotografia legacy dejan de compartir una sola ruta.
+        grupo.MapPost("/semillas/{idioma}/base", CrearSemillaBaseAsync);
+        grupo.MapGet("/semillas/{idioma}/legacy/preview", PrevalidarSemillaLegacyAsync);
+        grupo.MapGet("/semillas/{idioma}/legacy/exportar", ExportarSemillaLegacyAsync);
+        grupo.MapPost("/semillas/{idioma}/legacy", CrearSemillaLegacyAsync);
         grupo.MapGet("/efectivo", ObtenerEfectivoAsync);
         grupo.MapGet("/{familiaId}/{idioma}/versiones", ListarVersionesAsync);
         grupo.MapPost("/{familiaId}/{idioma}/versiones", CrearVersionAsync);
@@ -198,6 +203,126 @@ internal static class EndpointsAdminCatalogosTextos
             $"/api/admin/catalogos-textos/{creado.Catalogo.FamiliaId}/{creado.Catalogo.Idioma}/versiones/{creado.Catalogo.Version}",
             Mapear(creado));
     }
+
+    /// <summary>DT-P32-02 §2.1: borrador desde la base curada; no lee App Settings.</summary>
+    private static async Task<IResult> CrearSemillaBaseAsync(
+        string idioma,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var creado = await Servicio(context).CrearDesdeSemillaAsync(
+            SemillaBase(idioma),
+            OrigenSemillaCatalogoTextos.Base,
+            Actor(context),
+            cancellationToken);
+        context.Response.Headers.ETag = creado.Etag;
+        return Creado(creado);
+    }
+
+    /// <summary>
+    /// DT-P32-02 §4: prevalida la configuracion legacy efectiva sin persistir. Responde `200` con
+    /// `valido:false` cuando el contenido es legible pero incumple reglas, para que el admin pueda
+    /// corregirlo; nunca devuelve los textos revisados.
+    /// </summary>
+    private static async Task<IResult> PrevalidarSemillaLegacyAsync(
+        string idioma,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var resultado = await Servicio(context).PrevalidarSemillaAsync(
+            SemillaLegacy(idioma, context),
+            OrigenSemillaCatalogoTextos.Legacy,
+            Actor(context),
+            cancellationToken);
+        return Results.Ok(new
+        {
+            valido = resultado.Valido,
+            familiaId = resultado.FamiliaId,
+            idioma = resultado.Idioma,
+            conteos = new
+            {
+                mensajes = resultado.Conteos.Mensajes,
+                gruposFrases = resultado.Conteos.GruposFrases,
+                frases = resultado.Conteos.Frases,
+            },
+            errores = resultado.Errores
+                .Select(error => new { field = error.Campo, issue = error.Problema })
+                .ToArray(),
+        });
+    }
+
+    /// <summary>
+    /// DT-P32-02 §6: descarga la fotografia legacy completa aunque sea invalida, para corregirla
+    /// fuera de linea sin perder entradas. No trunca, no persiste y no mezcla valores base.
+    /// </summary>
+    private static IResult ExportarSemillaLegacyAsync(string idioma, HttpContext context)
+    {
+        var solicitud = SemillaLegacy(idioma, context);
+        return ArchivoEditable(
+            solicitud,
+            $"catalogo-{solicitud.FamiliaId}-{solicitud.Idioma}-legacy-editable.json");
+    }
+
+    /// <summary>DT-P32-02 §4: solo una fotografia legacy valida completa puede crear borrador.</summary>
+    private static async Task<IResult> CrearSemillaLegacyAsync(
+        string idioma,
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var creado = await Servicio(context).CrearDesdeSemillaAsync(
+            SemillaLegacy(idioma, context),
+            OrigenSemillaCatalogoTextos.Legacy,
+            Actor(context),
+            cancellationToken);
+        context.Response.Headers.ETag = creado.Etag;
+        return Creado(creado);
+    }
+
+    private static SolicitudGuardarCatalogoTextos SemillaBase(string idioma)
+        => ConstruirSemilla(() => CatalogosTextosSemilla.CrearBase(idioma), idioma);
+
+    private static SolicitudGuardarCatalogoTextos SemillaLegacy(string idioma, HttpContext context)
+        => ConstruirSemilla(
+            () => CatalogosTextosSemilla.CrearDesdeLegacy(
+                idioma,
+                context.RequestServices.GetRequiredService<OpcionesConversacion>()),
+            idioma);
+
+    private static SolicitudGuardarCatalogoTextos ConstruirSemilla(
+        Func<SolicitudGuardarCatalogoTextos> fabrica,
+        string idioma)
+    {
+        try
+        {
+            return fabrica();
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            throw new ErrorValidacion(
+                "El idioma debe ser 'es' o 'en'.",
+                new[] { new DetalleError("idioma", "valor_invalido") });
+        }
+    }
+
+    private static IResult ArchivoEditable(SolicitudGuardarCatalogoTextos solicitud, string nombreArchivo)
+    {
+        var json = JsonSerializer.Serialize(
+            new
+            {
+                formato = FormatoCatalogoTextos.V1,
+                familiaId = solicitud.FamiliaId,
+                idioma = solicitud.Idioma,
+                mensajes = solicitud.Mensajes,
+                frases = solicitud.Frases,
+            },
+            new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+        return Results.File(Encoding.UTF8.GetBytes(json), "application/json; charset=utf-8", nombreArchivo);
+    }
+
+    private static IResult Creado(VersionCatalogoTextos creado)
+        => Results.Created(
+            $"/api/admin/catalogos-textos/{creado.Catalogo.FamiliaId}/{creado.Catalogo.Idioma}/versiones/{creado.Catalogo.Version}",
+            Mapear(creado));
 
     private static async Task<IResult> ExportarAsync(
         string familiaId,

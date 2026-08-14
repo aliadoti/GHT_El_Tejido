@@ -146,16 +146,19 @@ public sealed class ProveedorTextosConversacion : IProveedorTextosConversacion, 
         }
     }
 
-    private static void ValidarSnapshot(VersionCatalogoTextos version)
+    private void ValidarSnapshot(VersionCatalogoTextos version)
     {
         if (version.Catalogo.Estado != EstadoCatalogoTextos.Activo)
         {
             throw new InvalidDataException("El repositorio devolvio un catalogo no activo.");
         }
 
+        // DT-P32-02 §2.4: el runtime revalida con el mismo limite operativo con que se activo, para
+        // que ampliar el vocabulario por configuracion no degrade el catalogo a emergencia.
         var huella = ValidadorCatalogoTextosConversacion.ValidarYCalcularHuella(
             version.Catalogo.Mensajes,
-            version.Catalogo.Frases);
+            version.Catalogo.Frases,
+            _opciones.Limites);
         if (!string.Equals(huella, version.Catalogo.Huella, StringComparison.Ordinal))
         {
             throw new InvalidDataException("La huella del catalogo activo no coincide con su contenido.");
