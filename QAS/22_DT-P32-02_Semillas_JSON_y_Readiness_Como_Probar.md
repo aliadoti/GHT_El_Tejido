@@ -1,6 +1,13 @@
 # QAS 22 — DT-P32-02: semillas, JSON masivo y readiness
 
-> **Estado:** guía preparada; ejecutar después de implementar `DT-P32-02`.
+> **Estado:** lista para ejecutar. `DT-P32-02` quedó **3/3 DONE local el 2026-08-14** (backend 817
+> unitarias + 103 de integración; portal 57/57, build y Prettier verdes). Falta la corrida real:
+> requiere autorización para desplegar en un ambiente aislado.
+> **Dónde está cada acción en el portal:** todo vive en **Textos de conversación**. «Empezar el
+> contenido de este idioma» tiene *Crear semilla base*, *Revisar configuración anterior* y *Descargar
+> configuración anterior como JSON*; el panel de la versión seleccionada tiene *Descargar JSON para
+> edición masiva*; «Cargar JSON editado» tiene el selector de archivo y, tras la revisión, *Importar
+> como nuevo borrador* y *Cancelar*; el panel «Preparación» muestra el readiness de `es/en`.
 > **Objetivo:** comprobar que un ambiente puede inicializar catálogos `es/en`, editar todo el
 > contenido mediante descarga/carga JSON y bloquear campañas que no estén listas, sin compilar ni
 > publicar accidentalmente.

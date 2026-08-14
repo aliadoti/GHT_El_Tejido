@@ -2,8 +2,10 @@
 
 **Estado:** cortes 1 a 4 DONE local. La API, semillas, caché/LKG, emergencia, snapshot de idioma,
 mensajes globales, enrutamiento, detectores, localizaciones de campaña, envío inicial mixto y los
-contextos LLM están implementados. `DT-P32-02` está especificada 0/3 para corregir la semilla `es`,
-formalizar edición masiva JSON/readiness y proteger la activación bilingüe. El gate sigue OFF. Esta
+contextos LLM están implementados. `DT-P32-02` quedó **3/3 DONE local (2026-08-14)**: la semilla base
+`es/en` ya no depende de la configuración anterior, la edición masiva JSON descargar→revisar→confirmar
+crea siempre una versión nueva en borrador, el readiness informa el gate real y la activación bilingüe
+exige catálogo activo por idioma. El gate sigue OFF. Esta
 guía se ejecuta después de implementar y pasar `QAS/22`; la activación productiva requiere además una
 prueba controlada de ambos idiomas, plantillas Meta aprobadas, D5, UAT, costo/latencia y acta.
 

@@ -1,9 +1,11 @@
 # DT-P32-02 — Semillas seguras, edición masiva y readiness del catálogo de textos
 
-> **Estado:** EN CURSO — 2/3 — cortes 1 y 2 DONE local 2026-08-14 (semilla base separada del legacy,
-> límites operativos con techo, prevalidación pura, rutas de semilla, JSON masivo, readiness y
-> precondición de campaña bilingüe). Sin portal, sin despliegue y sin cambios de configuración
-> remota. **Siguiente: corte 3/3 (portal, QAS y handoff).**
+> **Estado:** **DONE local — 3/3 — 2026-08-14.** Semilla base separada del legacy, límites operativos
+> con techo, prevalidación pura, rutas de semilla, JSON masivo, readiness, precondición de campaña
+> bilingüe y portal completo. Backend 817 unitarias + 103 de integración; portal 57/57, build Angular
+> y Prettier verdes. Sin despliegue, sin activación y sin cambios de configuración remota.
+> **Siguiente: autorización para desplegar en ambiente aislado, ejecutar `QAS/22` y luego `QAS/17`
+> completo; solo con ambas en green se retoma `DT-I20-02`.**
 > **Prioridad:** inmediata; debe implementarse y validarse antes de retomar `DT-I20-02`.
 > **Origen:** `QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md`, donde la semilla `es`
 > fue rechazada porque `FrasesDespertarProactivo` heredó más de 30 elementos.
@@ -282,13 +284,17 @@ archivo corregido. El portal no intenta reparar JSON, truncar listas ni activar 
 - pruebas API, ETag, auditoría sin contenido y regresión gate OFF. ✅ 13 unitarias y 9 de
   integración nuevas (817 + 103 en verde).
 
-### Corte 3/3 — Portal, QAS y handoff
+### Corte 3/3 — Portal, QAS y handoff — ✅ DONE local 2026-08-14
 
-- implementar el flujo descargar → editar → prevalidar → confirmar → nuevo borrador;
-- mostrar conteos, errores, diferencia y readiness;
-- pruebas Angular de accesibilidad, mismo archivo corregido y no activación;
-- actualizar `QAS/16`, `QAS/17`, `QAS/22`, AVANCES y TODO;
-- ejecutar validación local completa secuencial.
+- implementar el flujo descargar → editar → prevalidar → confirmar → nuevo borrador; ✅ en **Textos de
+  conversación**, con confirmación separada y `Cancelar`;
+- mostrar conteos, errores, diferencia y readiness; ✅ panel «Preparación», resumen de la revisión con
+  motivos en lenguaje de administrador y tabla de diferencias contra la versión activa;
+- pruebas Angular de accesibilidad, mismo archivo corregido y no activación; ✅ 14 pruebas nuevas
+  (57/57 en total);
+- actualizar `QAS/16`, `QAS/17`, `QAS/22`, AVANCES y TODO; ✅ más P-32 y `11 §` ya alineado;
+- ejecutar validación local completa secuencial. ✅ backend 817 + 103, `dotnet format`,
+  `git diff --check`, `ng test` 57/57, `ng build` y Prettier verdes.
 
 Después de desplegar controladamente, se ejecuta `QAS/22` y luego la corrida completa P-32 de
 `QAS/17`. Solo si ambas quedan verdes, incluidos los pasos con gate ON, D5/UAT y los prerequisitos

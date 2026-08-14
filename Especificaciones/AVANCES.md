@@ -4,7 +4,23 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-02`
+- Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Frontend/SDET/AppSec): **`DT-P32-02`
+  COMPLETA local 3/3 — corte 3/3 (portal, QAS y cierre documental).** La pantalla **Textos de
+  conversación** separa **Crear semilla base** de **Revisar configuración anterior**, permite
+  descargar la configuración anterior aunque su revisión falle, descargar el **JSON para edición
+  masiva** de cualquier versión y recorrer descargar → editar → revisar → confirmar: el archivo se
+  revisa contra el servidor **sin escribir**, los problemas se explican en lenguaje de administrador
+  (campo + motivo, sin jerga) y solo **Importar como nuevo borrador** crea la versión, que queda
+  seleccionada y comparada contra la activa. El selector de archivo se limpia tras cada intento para
+  reintentar el mismo archivo corregido, valida el máximo configurado antes de leerlo y nunca repara
+  JSON, trunca listas ni activa. El panel **Preparación** muestra el gate real, los límites efectivos
+  y, por idioma, si hay activo/borrador y qué campañas quedan bloqueadas. Se conserva la edición
+  individual, guardar, activar, reactivar y rollback. Portal **57/57** (14 pruebas nuevas), build
+  Angular y Prettier verdes con Node 24.18.0; backend sin cambios (**817 + 103**). Sin push, sin
+  despliegue, sin activación y con el gate OFF.
+  **Siguiente: autorización para desplegar en un ambiente aislado, ejecutar `QAS/22` y luego `QAS/17`
+  completo; solo con ambas en green se retoma `DT-I20-02`.**
+- Actualizacion anterior: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-02`
   corte 2/3 DONE local — edición masiva JSON, readiness y precondición de campaña bilingüe.**
   `/exportar` entrega la forma canónica editable (`formato:catalogo-textos/v1`, `metadatos`
   informativos, nombre `*-editable.json`); `POST /importar/prevalidar` revisa el mismo cuerpo que la
@@ -989,20 +1005,19 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Implementar `DT-P32-02` corte 3/3 (portal, QAS y handoff).** Leer `Iniciativas/DT-P32-02_*`
-  §6 y el plan `planes/DT-P32-02_*` §4. En **Textos de conversación** (`src/ElTejido.Web`, ampliar la
-  pantalla existente, no crear otra): separar **Crear semilla base** de **Revisar/importar
-  configuración anterior**, permitir **Descargar configuración anterior como JSON** aunque falle la
-  prevalidación, **Descargar JSON para edición masiva** de cualquier versión, selector `.json` con el
-  máximo configurado, prevalidación visible (idioma, conteos 29/16, lista completa de errores),
-  confirmación separada **Importar como nuevo borrador**, selección automática del borrador creado y
-  comparación con la activa, y tarjeta de readiness `es/en` con el motivo de bloqueo. El input de
-  archivo debe limpiarse tras cada intento para poder reintentar el **mismo** archivo corregido; el
-  portal no repara JSON, no trunca listas y no activa. Backend ya expone todo: `/semillas/{idioma}/base`,
-  `/legacy/preview`, `/legacy/exportar`, `/legacy`, `/importar/prevalidar` (acepta `?idioma=` y
-  `?familiaId=`), `/importar` y `/readiness`. Cerrar actualizando `QAS/16`, `QAS/17`, `QAS/22`,
-  AVANCES y TODO, y correr la validación local completa (backend + Node `22.22.3`/`24.15.0` para
-  `ng test`/`ng build` y Prettier). No desplegar ni tocar configuración remota.
+- [ ] **`DT-P32-02` está COMPLETA local (3/3): lo que sigue es operativo, con autorización expresa.**
+  Pedir autorización para desplegar en un **ambiente aislado** (un push a `main` dispara el CD) y
+  luego: crear y revisar borradores base `es/en`, probar descarga/revisión/carga del JSON, activar
+  explícitamente los catálogos aprobados, ejecutar `QAS/22` completo y después `QAS/17` con gate ON
+  solo en la ventana autorizada, verificando que el aporte y la idea consolidada en inglés
+  permanezcan en inglés. Cualquier FAIL o BLOCKED mantiene el gate OFF y obliga a corregir y repetir.
+  Registrar D5/UAT, Meta, costo/latencia y rollback. **Solo con `QAS/22` y `QAS/17` en green se
+  cambia el handoff a `DT-I20-02` corte 1/3.**
+- [x] **(HECHO 2026-08-14, Claude Opus 5 — portal 57/57, build Angular y Prettier verdes; backend sin
+  cambios 817 + 103) `DT-P32-02` corte 3/3.** Portal completo del flujo descargar → editar → revisar
+  → confirmar, con semilla base y configuración anterior separadas, readiness `es/en` visible,
+  comparación contra la activa, reintento del mismo archivo corregido y ninguna activación
+  automática. `QAS/16`, `QAS/22`, P-32 y la spec quedaron sincronizados.
 - [x] **(HECHO 2026-08-14, Claude Opus 5 — backend 920: 817 unitarias + 103 integración; build
   Release `-warnaserror`, format y diff verdes) `DT-P32-02` corte 2/3.** Descarga editable canónica,
   `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño
@@ -1322,7 +1337,7 @@
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
-| DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | Cortes 1/3 y 2/3 DONE local; siguiente corte 3/3 | `77377ec` (contrato 04) + pendiente | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Gate OFF, sin portal ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador sin tocar la anterior ni la activa (`QAS/22`, pruebas 1 a 5). Falta corte 3 (portal, QAS y handoff). |
+| DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; en espera de DT-P32-02 green | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Se retoma después de la nueva corrida P-32 green; QAS `21_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
@@ -1462,6 +1477,45 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-14 - Claude Opus 5 - **`DT-P32-02` corte 3/3 — portal de edición masiva, readiness visible
+  y cierre documental (COMPLETA local 3/3).** Rol: Frontend senior Angular para la pantalla, SDET
+  para las pruebas, UX/A11Y para el lenguaje y los anuncios, y Tech Lead para el cierre. Cubre
+  `DT-P32-02 §6`, `11 §` (portal) y `QAS/22`.
+  **Qué cambió:** (1) `AdminApiService` incorpora las rutas del corte 1 y 2 (`/semillas/{idioma}/base`,
+  `/legacy/preview`, `/legacy/exportar`, `/legacy`, `/importar/prevalidar`, `/readiness`) y envía el
+  archivo **tal cual** junto con el idioma seleccionado; se retiró el envoltorio de la ruta P-32
+  ambigua, que el portal ya no usa. (2) **Textos de conversación** gana tres bloques: «Preparación»
+  (gate real, límites efectivos y estado por idioma con las campañas bloqueadas por nombre),
+  «Empezar el contenido de este idioma» (**Crear semilla base**, **Revisar configuración anterior** y
+  **Descargar configuración anterior como JSON**, con importación de la configuración anterior
+  ofrecida solo cuando su revisión es válida) y «Cargar JSON editado» (selector con etiqueta,
+  `aria-describedby`, revisión previa sin escribir, confirmación separada y `Cancelar`). (3) La
+  descarga de una versión usa el nombre `*-editable.json` del corte 2. (4) Tras confirmar, el
+  borrador nuevo queda seleccionado y aparece una tabla de **diferencias contra la versión activa**
+  (texto anterior/nuevo por mensaje y cantidad de frases por grupo). (5) Los motivos técnicos del
+  servidor se traducen a lenguaje de administrador (`clave_desconocida` → «no se pueden inventar
+  claves», `no_coincide_con_seleccion` → «el archivo no corresponde al idioma seleccionado», etc.).
+  (6) El input se limpia tras cada intento —para reelegir el mismo archivo corregido— y el tamaño se
+  compara con el máximo configurado **antes** de leer el archivo. Se conservan edición individual,
+  guardar, activar, reactivar y rollback. Todo el texto se pinta por interpolación: no se usa
+  `innerHTML`.
+  **Verificado local (Node 24.18.0):** `ng test --watch=false` **57/57 verdes** (43 previas + 14
+  nuevas: nombre accesible, readiness que explica el idioma faltante, separación de acciones,
+  revisión sin escritura, confirmación que no activa, comparación con la activa, cancelar, errores
+  por campo, idioma distinto, reintento del mismo archivo, JSON inválido, archivo por encima del
+  máximo, edición/activación/rollback preservados y error del servidor visible); `ng build` de
+  producción y `prettier --check` limpios; backend sin cambios y verde (**817 + 103**). Sin push, sin
+  despliegue y con el gate OFF. Docs: `QAS/16`, `QAS/22`, spec `DT-P32-02` (§8 y estado), P-32,
+  AVANCES y TODO.
+  **Cómo probarlo (lenguaje simple):** abre **Textos de conversación**; arriba verás si los textos ya
+  se usan en las conversaciones y qué idioma falta. Crea la semilla base en español, descarga su JSON,
+  cambia dos mensajes y agrega una frase, y vuelve a subirlo: primero verás un resumen con el idioma,
+  los conteos y cero errores, y solo al pulsar **Importar como nuevo borrador** aparecerá una versión
+  nueva en borrador, ya seleccionada y con una tabla que muestra en qué se diferencia de la activa.
+  Prueba también con un mensaje vacío: te explicará qué corregir, no creará nada, y podrás volver a
+  elegir el mismo archivo después de arreglarlo. Sería un fallo que algo se publicara solo, que se
+  sobrescribiera una versión existente o que el selector no aceptara de nuevo el mismo archivo.
+  **Siguiente:** operativo — desplegar en ambiente aislado con autorización, `QAS/22` y luego `QAS/17`.
 - 2026-08-14 - Claude Opus 5 - **`DT-P32-02` corte 2/3 — edición masiva JSON, readiness y
   precondición de campaña bilingüe (DONE local).** Rol: Arquitecto/Tech Lead para el puerto nuevo,
   Backend senior .NET, SDET y AppSec para el lector acotado y la auditoría. Cubre `DT-P32-02

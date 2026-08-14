@@ -47,6 +47,47 @@ export interface CatalogoTextosEfectivo {
   catalogo: CatalogoTextos | null;
 }
 
+/** DT-P32-02 §3.3: revisión previa a escribir; nunca devuelve los textos revisados. */
+export interface PrevalidacionCatalogoTextos {
+  valido: boolean;
+  familiaId: string;
+  idioma: string;
+  conteos: { mensajes: number; gruposFrases: number; frases: number };
+  errores: { field: string | null; issue: string }[];
+}
+
+export interface CampaniaBloqueadaCatalogo {
+  campaniaId: string;
+  nombre: string;
+  estado: string;
+  motivo: string;
+}
+
+export interface ReadinessIdiomaCatalogo {
+  idioma: 'es' | 'en';
+  listo: boolean;
+  tieneActivo: boolean;
+  versionActiva: number | null;
+  huellaActiva: string | null;
+  activaValida: boolean;
+  problemasActiva: { field: string | null; issue: string }[];
+  tieneBorrador: boolean;
+  totalVersiones: number;
+  semillaBaseDisponible: boolean;
+  legacyValido: boolean;
+  conteosLegacy: { mensajes: number; gruposFrases: number; frases: number };
+  problemasLegacy: { field: string | null; issue: string }[];
+  campaniasBloqueadas: CampaniaBloqueadaCatalogo[];
+}
+
+/** DT-P32-02 §4.1: estado real de preparación, incluido el gate del proceso. */
+export interface ReadinessCatalogosTextos {
+  gateHabilitado: boolean;
+  limites: { maxFrasesPorGrupo: number; maxBytesImportacionJson: number };
+  listo: boolean;
+  idiomas: ReadinessIdiomaCatalogo[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly api = inject(ApiClient);
@@ -167,14 +208,48 @@ export class AdminApiService {
     return this.api.get<CatalogoTextosEfectivo>('/api/admin/catalogos-textos/efectivo', { idioma });
   }
 
-  crearSemillaCatalogoTextos(idioma: string) {
-    return this.api.post<CatalogoTextos>(`/api/admin/catalogos-textos/semillas/${idioma}`);
+  // DT-P32-02 §4: base curada compilada; no depende de la configuracion del ambiente.
+  crearSemillaBaseCatalogoTextos(idioma: string) {
+    return this.api.post<CatalogoTextos>(`/api/admin/catalogos-textos/semillas/${idioma}/base`);
   }
 
-  importarCatalogoTextos(
-    contenido: ContenidoCatalogoTextos & { familiaId: string; idioma: string },
-  ) {
-    return this.api.post<CatalogoTextos>('/api/admin/catalogos-textos/importar', contenido);
+  // DT-P32-02 §4: revisa la configuracion anterior del ambiente sin guardar nada.
+  prevalidarSemillaLegacy(idioma: string) {
+    return this.api.get<PrevalidacionCatalogoTextos>(
+      `/api/admin/catalogos-textos/semillas/${idioma}/legacy/preview`,
+    );
+  }
+
+  // DT-P32-02 §6: descarga completa de la configuracion anterior, aunque sea invalida.
+  exportarSemillaLegacy(idioma: string) {
+    return this.api.getBlob(`/api/admin/catalogos-textos/semillas/${idioma}/legacy/exportar`);
+  }
+
+  importarSemillaLegacy(idioma: string) {
+    return this.api.post<CatalogoTextos>(`/api/admin/catalogos-textos/semillas/${idioma}/legacy`);
+  }
+
+  // DT-P32-02 §3.3: mismo cuerpo y mismo validador que la importacion, sin escribir.
+  prevalidarImportacionCatalogoTextos(archivo: unknown, idioma: string) {
+    return this.api.post<PrevalidacionCatalogoTextos>(
+      '/api/admin/catalogos-textos/importar/prevalidar',
+      archivo,
+      { idioma },
+    );
+  }
+
+  /** El archivo viaja tal cual: el servidor ignora sus metadatos y numera la version nueva. */
+  importarCatalogoTextos(archivo: unknown, idioma: string) {
+    return this.api.post<CatalogoTextos>('/api/admin/catalogos-textos/importar', archivo, {
+      idioma,
+    });
+  }
+
+  readinessCatalogosTextos(idioma?: string) {
+    return this.api.get<ReadinessCatalogosTextos>(
+      '/api/admin/catalogos-textos/readiness',
+      idioma ? { idioma } : undefined,
+    );
   }
 
   exportarCatalogoTextos(catalogo: CatalogoTextos) {

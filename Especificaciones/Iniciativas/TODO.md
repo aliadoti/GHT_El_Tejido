@@ -9,7 +9,22 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 `DT-P32-02` SEMILLAS, JSON MASIVO Y READINESS — CORTES 1 Y 2 DONE LOCAL 2026-08-14 (2/3).**
+> **✅ `DT-P32-02` SEMILLAS, JSON MASIVO Y READINESS — COMPLETA LOCAL 2026-08-14 (3/3).**
+> **Corte 3 (portal):** **Textos de conversación** separa **Crear semilla base** de **Revisar
+> configuración anterior**, permite descargar esa configuración aunque su revisión falle, descargar
+> el **JSON para edición masiva** de cualquier versión y recorrer descargar → editar → revisar →
+> confirmar: el archivo se revisa contra el servidor **sin escribir**, los motivos se explican en
+> lenguaje de administrador y solo **Importar como nuevo borrador** crea la versión, que queda
+> seleccionada y comparada contra la activa. El selector se limpia tras cada intento (se puede
+> reelegir el mismo archivo corregido), valida el máximo configurado antes de leer y nunca repara
+> JSON, trunca listas ni activa. El panel **Preparación** muestra el gate real, los límites y, por
+> idioma, si hay activo/borrador y qué campañas quedan bloqueadas. Se conservan edición individual,
+> guardar, activar, reactivar y rollback. Portal **57/57** (14 nuevas), `ng build` y Prettier verdes
+> con Node 24.18.0; backend sin cambios (**817 + 103**).
+> **Siguiente (operativo, requiere autorización expresa): desplegar en ambiente aislado, ejecutar
+> `QAS/22` y luego `QAS/17` completo. Solo con ambas en green se retoma `DT-I20-02` corte 1/3.**
+>
+> **Corte 2 (histórico):**
 > **Corte 2:** `GET .../versiones/{v}/exportar` entrega la forma canónica editable
 > (`formato:catalogo-textos/v1` + `metadatos` informativos, nombre `*-editable.json`);
 > `POST /importar/prevalidar` revisa el mismo cuerpo que la importación real **sin escribir** y
@@ -85,7 +100,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > conserva el default compilado. El inicio registra en una bitácora append-only la versión aplicada,
 > default o descartada sin exponer aliases; la reversión restaura una revisión del origen de
 > configuración o vacía ambas listas. No cambió P-27, sus alias, flags, endpoint, portal ni
-> configuración remota. **Prioridad vigente desde 2026-08-14: `DT-P32-02` corte 3** (los cortes 1 y 2 quedaron DONE local).
+> configuración remota. **`DT-P32-02` quedó COMPLETA local (3/3) el 2026-08-14; lo pendiente es la corrida autorizada.**
 >
 > **✅ `P-32` CONVERSACIÓN MULTIDIOMA Y CATÁLOGO DE TEXTOS — 4/4 DONE LOCAL 2026-08-11.**
 > Verificado: `Usuario.Idioma` ya existe como campo de primer nivel, admite `es|en`, usa `es` por
@@ -564,11 +579,11 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea y **sin depender de los flags de P-27**. Kill-switch OFF + opt-out por campaña. P-33 resuelve aparte la consulta reactiva. |
 | **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
-| **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **CORTES 1/3 Y 2/3 DONE local — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido, rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`, revalidación de runtime con el límite configurado y auditoría sin contenido. Corte 2: descarga editable canónica `*-editable.json` con `metadatos` informativos, `POST /importar/prevalidar` sin escritura (`200` con `valido:false` para JSON legible), `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=` con `no_coincide_con_seleccion`, `GET /readiness` con gate real/límites/bloqueos y precondición `catalogosTextos.{idioma}: activo_requerido` al activar campaña bilingüe. Backend 817 unitarias + 103 integración, build/format/diff verdes; contrato `04` en commit aparte (`77377ec`); ruta P-32 y gate intactos, sin portal ni cambio remoto. **Siguiente: corte 3/3** (portal, QAS y handoff). Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
+| **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
 | **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **ESPECIFICADA 0/3 — EN ESPERA DE DT-P32-02 GREEN** | **Codex** | Bug real: el prompt runtime pidió secciones Markdown/estado interno y el cuerpo llegó así a WhatsApp. Corrección por campo en salidas LLM, sin sanitización global ni cambio de puntajes, versión I-19, umbrales, estados, cierres, P-27/P-32/P-33 o historial. Incluye selección runtime activa+aprobada y migración gradual mediante familia nueva. Sin código ni configuración remota. Se retoma después del despliegue autorizado y la nueva corrida P-32 green. Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
-| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **Siguiente prioridad actual: DT-P32-02 corte 3** (cortes 1 y 2 DONE local 2026-08-14). |
+| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **DT-P32-02 quedó COMPLETA local 3/3 el 2026-08-14; sigue la corrida autorizada de `QAS/22` y `QAS/17`.** |
 | DT-P27-02 | **Calibración del clasificador P-27 (cierre sobre la última idea)** | **BACKLOG post-convención** | — | Borde detectado en la E2E conversacional desplegada (E14, 2026-08-06): una variante libre no-alias sobre la **última idea de la cola** (`QUEDAN_UNIDADES_PENDIENTES=no`) se clasifica `aportar` en vez de finalizar. Degrada seguro (no corta la idea) y los alias deterministas sí funcionan → severidad baja, no bloqueante. Ajuste **solo del prompt de sistema** de `ClasificadorIntencionControl`; **no desplegar sin pasar D5** (regresión clave: no aumentar cierres falsos de ideas con contenido). Spec: `Iniciativas/DT-P27-02_Calibracion_Clasificador_Cierre_Ultima_Idea.md`. |
 
 - **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
@@ -604,7 +619,7 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 ### 6. Estándares de calidad (resumen operativo; detalle en `01 §4` y `08/10`)
 
 - **.NET:** Nullable on, warnings-as-errors, `dotnet format` limpio, async + CancellationToken, DI en el composition root, sin lógica en controladores, excepciones de dominio tipadas traducidas al modelo de error de `04 §3`.
-- **Angular 22:** standalone + signals + OnPush, TypeScript estricto, sin `any` injustificado, acceso a API por servicios tipados, marca GHT por tokens. Local con Node temporal 24.15.0 vía `npx` (ng no corre con el Node del sistema); `wwwroot` está gitignoreado (lo reconstruye el CD).
+- **Angular 22:** standalone + signals + OnPush, TypeScript estricto, sin `any` injustificado, acceso a API por servicios tipados, marca GHT por tokens. `wwwroot` está gitignoreado (lo reconstruye el CD). 💡 **Verificado 2026-08-14: `npx ng test --watch=false` y `npx ng build` corren con el Node del sistema (24.18.0) y `@esbuild/linux-x64` ya instalado**; si el runner de Vitest falla al levantar un worker (`Timeout waiting for worker`), es el sandbox del agente, no el código: reintentar sin sandbox.
 - **Pruebas:** xUnit + FluentAssertions + NSubstitute (backend); runner del CLI (frontend). Cubre caminos felices y de error/fallback. I/O externo (Cosmos/WhatsApp/LLM) mockeado en CI; integración contra emulador donde aplique. Para iniciativas con LLM: **banco de calibración / golden set** como árbitro de no-regresión (D5).
 - **Seguridad:** secretos solo en Key Vault; OTP solo hasheado; auth neutral; respuesta del usuario al LLM como **dato**; sin secretos/PII en logs ni Markdown; salvaguardas deterministas server-side ante fugas del modelo.
 - **Observabilidad:** logs estructurados + `correlationId` propagado en la cadena conversacional; anomalías del LLM en `LogSeguridad`.
@@ -625,23 +640,16 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: implementar `DT-P32-02` corte 3/3 (portal, QAS y handoff).** Los cortes 1 y 2
-   quedaron DONE local el 2026-08-14 y el backend ya expone todo lo necesario:
-   `/semillas/{idioma}/base`, `/semillas/{idioma}/legacy/{preview,exportar}`,
-   `POST /semillas/{idioma}/legacy`, `GET .../versiones/{v}/exportar` (JSON editable),
-   `POST /importar/prevalidar` y `/importar` (ambos aceptan `?idioma=` y `?familiaId=`) y
-   `GET /readiness`. Leer la spec `§6`, el plan `planes/DT-P32-02_* §4` y `QAS/22_*` (pruebas 1-8).
-   Ampliar la pantalla **Textos de conversación** de `src/ElTejido.Web` —no crear otra— con: **Crear
-   semilla base** y **Revisar/importar configuración anterior** como acciones distintas, descarga de
-   la configuración anterior aunque falle su prevalidación, **Descargar JSON para edición masiva**,
-   selector `.json` con el máximo configurado y ayuda de qué editar, prevalidación visible (idioma,
-   conteos, lista completa de errores), confirmación separada **Importar como nuevo borrador**,
-   selección automática del borrador creado y comparación con la activa, y readiness `es/en` con el
-   motivo de bloqueo. El input de archivo debe limpiarse tras cada intento para reintentar el mismo
-   archivo corregido; el portal no repara JSON, no trunca listas y no activa. Cerrar actualizando
-   `QAS/16`, `QAS/17`, `QAS/22`, `AVANCES.md` y este TODO, y correr la validación local completa
-   (backend + `ng test`/`ng build` y Prettier con Node temporal 22.22.3/24.15.0). No desplegar ni
-   cambiar configuración remota.
+1. **ARRANCA AQUÍ: no hay código pendiente de `DT-P32-02`; sigue la corrida operativa autorizada.**
+   Los tres cortes quedaron DONE local el 2026-08-14 (backend 817 + 103; portal 57/57, build y
+   Prettier verdes). Pedir **autorización expresa** para desplegar en un ambiente aislado —un push a
+   `main` dispara el CD— y entonces: crear y revisar los borradores base `es/en`, probar la descarga,
+   la revisión y la carga del JSON editado, activar explícitamente los catálogos aprobados, ejecutar
+   `QAS/22` completo y después `QAS/17` con gate ON solo en la ventana autorizada, comprobando que el
+   aporte y la idea consolidada en inglés permanezcan en inglés. Cualquier FAIL o BLOCKED mantiene el
+   gate OFF y obliga a corregir y repetir; conservar evidencia sin secretos ni participantes reales.
+   Registrar D5/UAT, Meta, costo/latencia y rollback. **Solo con `QAS/22` y `QAS/17` en green se
+   cambia el handoff a `DT-I20-02` corte 1/3.**
 
 2. **Después de los tres cortes:** obtener autorización separada para desplegar en ambiente aislado,
    ejecutar `QAS/22` y luego `QAS/17` completo. Cualquier FAIL/BLOCKED mantiene el gate OFF y obliga
