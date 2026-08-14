@@ -25,6 +25,8 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | P-32 4/4 DONE local. Guía de regresión, E2E bilingüe, lote mixto, catálogo, rollback, D5 y UAT antes de una activación. |
 | 17 | [Prompt · validación completa P-32](17_Prompt_Ejecutar_Validacion_Completa_P32.md) | Prompt listo para delegar D5, E2E bilingüe, lote mixto, catálogo, rollback, UAT y pendientes operativos de P-32. |
 | 18 | [Runbook humano · lanzar P-32](18_Runbook_Humano_Lanzar_Prueba_P32.md) | Pasos seguros para habilitar la simulación, inyectar `GHT_DIAG_KEY`, lanzar el agente y cerrar la ventana. |
+| 19 | [DT-I20-01 · Variación y no duplicación](19_DT-I20-01_Variacion_Redaccion_Como_Probar.md) | D5 para comprobar variedad de aperturas y ausencia de reconocimientos duplicados antes de desplegar. |
+| 20 | [P-33 · Consultar y ver la idea al cerrar](20_P33_Consulta_y_Cierre_Visible_Como_Probar.md) | Guía simple para comprobar idea activa/última sin menú, consulta sin aporte, cierre visible y reapertura de la misma idea cerrada ante una corrección. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)

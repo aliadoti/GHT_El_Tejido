@@ -110,6 +110,11 @@ durante la transición y quedan deprecadas tras validar el corte final.
 
 Cada versión contiene un solo idioma y la misma lista de claves permitidas:
 
+> **Extensión P-33 (2026-08-13):** el registro pasa de 24 a 29 mensajes y de 13 a 16 listas. Las
+> claves y la migración compatible están en `planes/P-32_Inventario_y_Migracion_Textos.md §3.3`.
+> Versiones históricas no se mutan y usan respaldo compilado del mismo idioma solo para las claves
+> nuevas; toda versión posterior debe estar completa.
+
 ```json
 {
   "id": "catalogo_conversacion_en_v3",

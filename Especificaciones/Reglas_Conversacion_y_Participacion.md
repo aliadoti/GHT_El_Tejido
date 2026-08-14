@@ -462,6 +462,29 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 8. Variables de entorno conservan flags, límites, timeouts, caché y mapeos Meta. Los textos/frases
    editoriales se migran al catálogo y sus claves legacy quedan deprecadas.
 
+### 2.13 Consulta y cierre visible de la idea (P-33, especificada)
+
+1. Una consulta pura como «¿cómo va mi idea?» se resuelve antes de menús, afinidades y aportes. No
+   crea respuesta, versión, evaluación ni Markdown, no consume repregunta y no cambia madurez.
+2. «Mi idea» significa la idea activa. Si no existe, el servidor elige la idea propia no rechazada con
+   trabajo más reciente dentro de campañas activas y asociaciones vigentes. No muestra menú por
+   defecto; «otra idea» o «la anterior» conserva la selección explícita de P-30.
+3. Se muestra carácter a carácter la versión vigente de I-19. El LLM solo puede proponer un puente
+   breve; nunca elige la idea, la versión ni una transición, y no resume ni traduce el contenido.
+4. Una consulta sobre una idea cerrada crea afinidad por un mensaje significativo y máximo 24 horas.
+   Una corrección o complemento claro reabre esa misma idea; «gracias», un saludo, otra consulta o una
+   intención de cambio/control consume o desvía la afinidad sin reabrir.
+5. Un mensaje mixto («muéstrame mi idea y agrega…») no se intercepta como consulta pura: se procesa
+   como aporte para no perder la corrección.
+6. Antes de los cierres normales se muestra la última versión disponible. El rechazo explícito y el
+   cierre administrativo no la muestran; participación/inactividad con varias ideas muestra solo la
+   última y reconoce que las demás quedaron guardadas.
+7. Fuera de la ventana de servicio no se fuerza texto libre ni plantilla. Usuario, asociación y
+   campaña se revalidan tanto al consultar como al reabrir.
+
+La precedencia queda: dedupe/identidad/autorización → consulta P-33 → afinidad P-33 → P-26/P-30 →
+controles P-27 → aporte normal. P-33 tiene gate propio y no depende de P-27 ni del umbral de P-31.
+
 ## 3. Parámetros configurables
 
 | Parámetro | Dónde se configura | Default | Efecto |
@@ -495,6 +518,10 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 | `promptRefs.cierre` (campaña / pregunta) | Portal admin (campaña/pregunta) | ausente | **P-29** — voz opcional del aviso de pausa; ausente, hereda la voz general del hilo (`conversacion` → `retro`) y, si tampoco existe, el texto de respaldo. |
 | `Conversacion:RetomarIdeasHabilitado` | App config / env `Conversacion__RetomarIdeasHabilitado` | `false` | **P-30** — habilita el selector histórico. OFF conserva la reapertura reciente I-19/P-26. |
 | `Conversacion:Mensajes:InstruccionSeleccionIdea` / `:SinIdeasHistoricas` | App config / env `Conversacion__Mensajes__…` | textos de respaldo | **P-30** — instrucción de número/resumen exacto y respuesta neutral cuando no hay candidatas. |
+| `Conversacion:VisibilidadIdeaParticipanteHabilitada` | App config / env `Conversacion__VisibilidadIdeaParticipanteHabilitada` | `false` | **P-33** — kill-switch de consulta bajo demanda y visibilidad al cierre; OFF conserva el flujo anterior. |
+| `configConversacional.consultaIdea` / `mostrarIdeaAlCerrar` | Portal admin (campaña) | `true` / `true` | **P-33** — opt-out independiente por campaña para consulta y cierre; solo tienen efecto con el gate global ON. |
+| `Conversacion:MaxCaracteresConsultaIdea` / catálogo `frases.consultarIdea` | App config + catálogo P-32 | `220` / lista `es|en` | **P-33** — límite y vocabulario de consulta pura; un mensaje mixto conserva la ruta de aporte. |
+| Catálogo P-32: `encabezadoConsultaIdea`, `invitacionConsultaIdea`, `encabezadoCierreIdea`, `otrasIdeasGuardadas`, `sinIdeaDisponible`; frases `consultarIdea`, `acuseConsultaIdea`, `nuevaIdea` | Portal/API, Cosmos `config` | respaldo compilado `es/en` | **P-33** — amplía el registro a 29 mensajes y 16 listas sin mutar versiones históricas. |
 | `Conversacion:MaxCaracteresIntencionContinuar` | App config / env `Conversacion__MaxCaracteresIntencionContinuar` | 40 | Largo máximo (normalizado) para que una frase contenida cuente como intención; la igualdad exacta siempre cuenta. |
 | `Conversacion:Mensajes:MensajeCalificacionAlta` | App config / env `Conversacion__Mensajes__MensajeCalificacionAlta` | "¡Excelente! Tu respuesta ya está muy completa…" | Felicitación que antecede al cierre por calificación alta. |
 | `Conversacion:Mensajes:AcuseContinuar` | App config / env `Conversacion__Mensajes__AcuseContinuar` | "¡Perfecto, sigamos!" | Acuse que antecede al cierre cuando el participante pide continuar. |

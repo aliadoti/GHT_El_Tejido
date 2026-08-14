@@ -296,6 +296,8 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
     "parafraseo": false,
     "participacionContinua": false,
     "clasificacionIntencionControl": false,
+    "consultaIdea": true,
+    "mostrarIdeaAlCerrar": true,
     "umbralCierreAnticipado": null,
     "numeroWhatsAppSaliente": null
   }
@@ -330,6 +332,11 @@ Campos de configuración conversacional (aditivos; documento viejo/campo ausente
   terminar la participación o pedir aclaración. Requiere el kill-switch global
   `Conversacion:ClasificacionIntencionControl=true`; el servidor conserva la decisión. Se admite en
   POST, se devuelve en GET, se actualiza en PUT y se copia explícitamente al duplicar.
+- `consultaIdea` / `mostrarIdeaAlCerrar` (`P-33`, default `true`): opt-outs independientes para
+  mostrar la versión vigente por demanda y antes de un cierre normal. Se admiten en POST, se devuelven
+  en GET, se actualizan en PUT y se copian explícitamente al duplicar. Solo producen efecto cuando el
+  kill-switch `Conversacion:VisibilidadIdeaParticipanteHabilitada` está ON; no amplían autorización ni
+  habilitan campañas inactivas.
 - `umbralCierreAnticipado` (`P-13`, `double?`, default `null`): override opcional de la fracción de
   cierre anticipado para esta campaña. `null` hereda `Conversacion:UmbralCierreAnticipado`; `<= 0`
   lo desactiva para la campaña. `Conversacion:CierreAnticipadoHabilitado=false` es el kill-switch

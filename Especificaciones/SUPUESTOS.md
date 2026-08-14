@@ -1102,7 +1102,7 @@
   - Kill-switch global `Conversacion:ResumenConsolidacionHabilitado` (default `false`) y opt-out por campaña `configConversacional.resumenConsolidacion`.
 - Alternativa(s) descartada(s): derivar el momento del resumen del propio umbral de madurez (una sola perilla — descartada por decisión expresa del usuario: se quieren dos perillas calibrables por separado); abrir un estado propio `esperandoDecisionResumen` (duplica una máquina de decisión existente y agrega modos de falla sin beneficio); reutilizar `esperandoConfirmacionSalida` de P-27 (acopla P-31 a flags apagados y degrada la pregunta a un menú de salida); resumir con el LLM en vez de mostrar el texto guardado (rompe la fidelidad y abre fuga); resumen periódico por tiempo o por número de turnos (el disparador acordado es el umbral).
 - Impacto / reversibilidad: aditivo en configuración, dominio y persistencia, con default que preserva el comportamiento actual. Rollback = apagar el kill-switch; los campos de idempotencia quedan como dato histórico inerte y las ideas ya resumidas no repiten el envío. Plan en 3 cortes.
-- **Decisión abierta (no incluida en P-31):** consulta **bajo demanda** del consolidado ("¿cómo va mi idea?", "muéstrame mi idea"). Hoy no existe esa ruta: `CandidatasReaperturaAsync` filtra `EstadoFlujo == Cerrada`, así que el vocabulario `FrasesRevisitarIdea` solo alcanza ideas cerradas y, sin candidatas, la petición cae al flujo normal y **se consolida como aporte dentro de la propia idea**. Pendiente de decidir con el usuario si se resuelve dentro de P-31 con su propio interruptor o como iniciativa aparte.
+- **Decisión resuelta el 2026-08-13:** la consulta **bajo demanda** del consolidado ("¿cómo va mi idea?", "muéstrame mi idea") se implementará en P-33 como intención reactiva independiente de P-31. La frase no será aporte; mostrará por defecto la idea activa o la última trabajada y tendrá gate propio.
 - Spec: `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`; requerimiento: `Client_partner/.../Nuevas iniciativas/REQ-052_Visibilidad_progreso_de_la_idea.md`.
 
 ### conversacion-multidioma-catalogo-p32 - Idioma del maestro y catálogo versionado de textos
@@ -1142,3 +1142,35 @@
   reactivar una versión anterior; no borrar snapshots ni versiones.
 - Specs: `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`,
   `planes/P-32_Inventario_y_Migracion_Textos.md`, `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`.
+
+### consulta-cierre-visible-p33 — P-33 (2026-08-13, decisión del usuario)
+
+- Contexto: un participante pidió «dime cómo va escrita mi idea hasta ahora» y recibió evaluación y
+  otra pregunta, sin poder ver la versión consolidada. I-19 ya conserva esa versión, pero la consulta
+  no tenía intención propia y podía terminar convertida en aporte. Al cerrar tampoco todos los caminos
+  mostraban cómo quedó la iniciativa.
+- Decisión:
+  - «Mi idea» refiere por defecto a la activa y, sin una activa, a la idea propia no rechazada con
+    trabajo más reciente dentro de campañas activas autorizadas. No se abre menú salvo que la persona
+    pida otra idea o la anterior; se prioriza continuidad humana sobre selección robótica.
+  - Una consulta pura es solo lectura: muestra la versión I-19 exacta, no crea artefactos, no evalúa,
+    no consume repreguntas y no cambia madurez. Un mensaje que también contiene una corrección sigue
+    la ruta de aporte para no perder contenido.
+  - Una consulta de una idea cerrada crea afinidad temporal por un mensaje significativo y máximo 24
+    horas. Por confirmación expresa del usuario, una corrección o complemento posterior reabre
+    automáticamente **esa misma idea**; un agradecimiento, saludo, consulta, cambio o control no lo hace.
+  - Los cierres normales muestran la versión antes de despedirse/avanzar. Rechazo y cierre
+    administrativo no la muestran; un cierre masivo muestra solo la última y reconoce las demás.
+  - El servidor decide usuario/campaña/pregunta/idea/versión/reapertura. El LLM solo puede redactar un
+    puente y nunca transforma la idea. Se revalida autorización al consultar y al reabrir.
+- Alternativas descartadas: mostrar siempre un menú (rompe el contexto natural); pedir confirmación
+  para elegir la idea activa (fricción innecesaria); reabrir inmediatamente al consultar (una lectura
+  no implica cambio); mantener cerrada ante toda corrección posterior (contradice el contexto recién
+  mostrado); resumir de nuevo con LLM (pierde fidelidad); agregar la consulta a P-31 (mezcla disparo
+  proactivo por umbral con una capacidad reactiva y repetible).
+- Impacto / reversibilidad: `Conversacion:VisibilidadIdeaParticipanteHabilitada=false`, más opt-outs
+  `configConversacional.consultaIdea` y `mostrarIdeaAlCerrar`. Campos y enums aditivos, sin entidad ni
+  migración nueva; las afinidades P-33 quedan inertes si se apaga el gate. No activar remotamente sin
+  D5 `es/en`, UAT, costo/latencia y prueba de ventana WhatsApp.
+- Specs: `Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`, requerimiento `REQ-054` y
+  `QAS/20_P33_Consulta_y_Cierre_Visible_Como_Probar.md`.

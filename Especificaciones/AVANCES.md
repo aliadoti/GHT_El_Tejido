@@ -4,6 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-13 (Codex, Producto/Arquitecto/Backend/SDET/AppSec): **`P-33`
+  ESPECIFICADA Y APROBADA; 0/3, lista para implementación inmediata; sin código.** Por demanda se
+  muestra la idea activa o, si no existe, la última propia no rechazada y autorizada, sin menú por
+  defecto ni convertir la consulta en aporte. Los cierres normales muestran la versión exacta I-19.
+  Consultar una idea cerrada crea afinidad de un mensaje/24 h; una corrección posterior reabre esa
+  misma idea, pero agradecimientos, saludos, consultas y controles no. Gate global OFF, opt-outs por
+  campaña, catálogo `es/en`, telemetría sin contenido y rollback documentados. Siguiente código:
+  **P-33 corte 1**, contratos/resolución pura. Spec `Iniciativas/P-33_*`; QAS `20_*`.
 - Ultima actualizacion: 2026-08-13 (Claude Opus 5, Arquitecto/Backend/SDET): **`DT-I20-01` DONE local
   (5/5 pasos de §7).** La instrucción de evaluación y la del redactor piden variedad y siguen
   permitiendo “Queda claro que...”, que deja de ser la apertura obligatoria; cuando el turno lleva
@@ -186,7 +194,7 @@
   **Pendiente operativo antes de encender:** D5 real, UAT, costo y acta de flags, mas la **decision de
   negocio del umbral** — con `umbralCierreAnticipado=0.6` el rango util es **0.40–0.55**; si GHT lo
   quiere al 70 %, hay que subir el umbral base y eso mueve la distribucion maduro/incubacion de D5.
-  **Decision abierta, fuera de alcance:** consulta bajo demanda del consolidado ("¿como va mi idea?").
+  **Decisión posteriormente resuelta en P-33 (2026-08-13):** consulta bajo demanda del consolidado.
   **Handoff: `I-08 v2`** (TODO item 22a, spec y contratos listos desde el 2026-08-07, 0 codigo).
   Orden en `I-08 §8`; el paso de **recrear el contenedor `users`** es irreversible y bloquea el resto.
   ⚠️ **P-31 ya esta desplegado:** recrear la base borrara el estado del entorno donde se valido — no
@@ -253,9 +261,8 @@
   **Ojo con la calibracion:** con `umbralCierreAnticipado=0.6`, un umbral de resumen >= 0.6 nunca
   dispara (la idea cierra por madurez primero). Rango util 0.40-0.55, o subir el umbral base si GHT
   quiere el resumen al 70 %. Es decision de negocio y afecta la distribucion maduro/incubacion de D5.
-  **Decision abierta, no incluida:** consulta bajo demanda del consolidado ("¿como va mi idea?"); hoy
-  no existe esa ruta (`CandidatasReaperturaAsync` filtra `EstadoFlujo == Cerrada`) y la peticion se
-  consolidaria como aporte dentro de la propia idea.
+  **Decisión posteriormente resuelta en P-33 (2026-08-13):** la consulta bajo demanda obtiene una
+  ruta reactiva propia y deja de tratarse como aporte.
   **`DT-P27-01` corte 2 queda en pausa y cede prioridad.** Segunda solicitud del mismo dia —soporte de
   **ingles**— pendiente de especificar. Spec:
   `Iniciativas/P-31_Resumen_Consolidacion_Por_Umbral.md`; requerimiento:
@@ -930,6 +937,11 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **ARRANCA AQUÍ — `P-33` corte 1 de 3: contratos y resolución pura.** Implementar opciones/gate
+  OFF, `consultaIdea`/`mostrarIdeaAlCerrar` con round-trip Cosmos/API/portal, ampliación P-32 29/16,
+  detector localizado de consulta pura, selector activo→última autorizada y extensión compatible de
+  `EnrutamientoAporte`. Este corte todavía no envía la idea. Pruebas: defaults, catálogo histórico,
+  mensajes mixtos, desempates, autorización y versión ausente. Spec `Iniciativas/P-33_*` §11.
 - [ ] **`DT-I20-01`: D5 con ejemplos reales anonimizados (código DONE local, sin push).** El código de
   los cinco pasos de `§7` está implementado y verde; lo que falta es la validación de calidad antes de
   desplegar: pasar un banco de ejemplos de campañas reales por el redactor y comprobar (a) que
@@ -937,8 +949,8 @@
   el mismo reconocimiento, y (c) que no aumentan los respaldos deterministas (`ajuste:` y `motivo:` en
   la telemetría de redacción). Guía humana: `QAS/19_DT-I20-01_Variacion_Redaccion_Como_Probar.md`.
   No hay flag que apagar: el rollback es revertir el commit de aplicación.
-- [ ] **Sin trabajo de código priorizado después de `DT-I20-01`.** Lo siguiente es operativo (P-32 y el
-  acta de flags); un nuevo cambio de código requiere priorización expresa del usuario.
+- [ ] **Después del corte 1, continuar P-33 cortes 2 y 3** sin activar flags ni configuración remota:
+  consulta/afinidad/reapertura; luego cierres, telemetría, E2E `es/en` y cierre documental.
 - [ ] **Validar operativamente P-32; no hay un corte de código pendiente.** Ejecutar D5 real y UAT
   bilingüe en un ambiente aislado usando `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y
   `QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md`: recorrido E2E `es/en`, lote mixto, edición,
@@ -1227,6 +1239,9 @@
 | P-28 | Despertar proactivo del coach | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 706/706, build/format/diff verdes | Saludo/inicio con flag global OFF, selección P-26 sin convertirlo en aporte, redacción/fallback, telemetría sin texto, Cosmos, E2E y QAS. Siguiente: P-29 corte 1. |
 | P-29 | Cierre conversacional por tiempo | DONE local 2/2; D5/UAT/costo pendiente | `09d4d84` + cambios locales corte 2 | backend 723/723 (651+72), build/format/diff verdes | Kill-switch `CierrePorTiempoHabilitado` OFF, `promptRefs.cierre`/acto `Pausar`, aviso único redactado por I-20 con respaldo determinista, telemetría `cierrePorInactividad` sin texto y E2E simulada. Reutiliza el cierre por inactividad de I-17/I-19 sin temporizador, umbral, estado ni motivo nuevos. |
 | P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
+| P-31 | Resumen consolidado por umbral | DONE 3/3 y desplegado; flags OFF | `6ba6ce0`, `32794fb`, `6d02492` | backend 664 unitarias + 77 integración al cierre | Resumen proactivo e idempotente por umbral propio. La consulta bajo demanda quedó resuelta separadamente en P-33. |
+| P-32 | Conversación multidioma y catálogo | DONE local 4/4; D5/UAT/Meta/costo pendientes | cambios locales | backend 858 no-Calibración tras correcciones; portal 43/43 previo | Runtime `es/en`, catálogo Cosmos/portal, localizaciones, envío mixto y rollback; gate OFF. P-33 extiende de forma compatible el registro 24/13 a 29/16. |
+| P-33 | Consulta y cierre visible de la idea | ESPECIFICADA Y APROBADA 0/3; implementación inmediata | sin código | documentación y QAS revisados | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: corte 1. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
@@ -1265,6 +1280,11 @@
 - **Aceptacion:** unit tests del cliente con `HttpMessageHandler` fake para la forma Anthropic (auth header correcto, ruta `/v1/messages`, parseo de `content[0].text`); el evaluador valida JSON. Build/test/format verde.
 
 ## Decisiones tomadas (con porque)
+- 2026-08-13 - Producto/Arquitectura (usuario + Codex) - **P-33 conserva el contexto humano por
+  defecto.** «Mi idea» refiere a la activa o última trabajada, sin menú. Tras consultar una idea
+  cerrada, una corrección sustantiva reabre automáticamente esa misma idea; un acuse no. La consulta
+  sigue siendo solo lectura y el servidor conserva toda transición. Ref:
+  `SUPUESTOS.md#consulta-cierre-visible-p33`.
 - 2026-06-23 - Backend/Orquestador conversacional (usuario + Claude Code) - **Salidas anticipadas de revision (Opcion C: ambas).** El participante quedaba obligado a agotar las revisiones (`MaxRepreguntas`) para avanzar; se decide darle dos salidas que conviven con el cupo: (1) el **sistema** cierra y avanza si la calificacion supera un umbral (`Conversacion:UmbralCierreAnticipado`, fraccion de escala, default off) felicitando; (2) el **participante** puede pedir continuar con una frase conversacional ("asi esta bien", "sigamos"...) estando en `EsperandoRepregunta`, que se registra sin evaluar y cierra con un acuse calido. Para la deteccion se eligio **hibrido determinista** (frases + gate de largo) sobre LLM, por costo/predictibilidad y para no re-evaluar un "ya termine"; el umbral se eligio determinista (fraccion de escala) sobre honrar la binaria del LLM, por auditabilidad. Alcance **global en config `Conversacion:*`** (no en `Pregunta`/`Campania`) para no tocar contratos `03`/`04` ni el portal; granularidad por pregunta queda como futuro. IMPLEMENTADO el 2026-06-23 (orquestador + `DetectorIntencionContinuar` + opciones + 17 unit nuevas + specs). Supuesto: `SUPUESTOS.md#orquestador-conversacional`. Ref: `05 §4.4`, REQ 9/21/26, ARQ 4.2/6.
 - 2026-06-22 - Frontend/UX (usuario + Claude Code) - **Detalle de campania con pestanias reales + nombres legibles + revisiones en preview.** El detalle de campania apilaba 4 formularios (Configuracion/Mensajes/Preguntas/Participantes) en una grilla de 3 columnas (`.tabs-layout`), quedando apretado y dificil de usar. Se decide convertirlo en **pestanias** (una seccion a la vez, ancho completo) en vez de grilla 2-col o apilado 1-col, por mejor UX con formularios anchos. Ademas: las pantallas de Campanias (Asociados) y Envios mostraban el `usuarioId` tecnico (no identificable por un humano); se mapea `usuarioId`->nombre(+area) via `/usuarios` con fallback al id (mismo patron ya usado en Resultados, sin cambiar contrato). Y el preview de preguntas no indicaba cuantas revisiones se hacen por pregunta; ahora muestra `Revisiones: N` (`maxRepreguntas`). Todo frontend-only. IMPLEMENTADO el 2026-06-22 (lint/test 9/build produccion verde). Ref: REQ 11/26.2, ARQ 6.
 - 2026-06-22 - Producto/Arquitecto (usuario + Claude Code) - **Editar rubricas y prompts: hibrido por estado.** El portal solo permitia crear; se decide que "editar" sea **in-place** (misma version) cuando la config esta en `borrador` (no comprometida) y **nueva version** cuando ya esta activa/aprobada, para no corromper los snapshots de evaluaciones pasadas. Se descarto "siempre nueva version" (infla historial) y "PUT siempre in-place" (rompe snapshots). Implico agregar `EstadoRubrica.Borrador` (aditivo). IMPLEMENTADO el 2026-06-22 (backend + portal + 4 unit + specs). Supuesto: `SUPUESTOS.md#edicion-config-hibrida`. Ref: `04 §5.5-5.6`, `07 §3-4`, `03 §3.11`.
@@ -1300,6 +1320,10 @@
 - 2026-06-14 - Frontend/AppSec/SDET (Codex) - Fase 8: Portal Angular (`11`) construido como SPA standalone con login OTP, `AuthService` con CSRF en memoria, interceptor `withCredentials` + `X-CSRF-Token`, guards de sesion/admin/login, shell autenticado con marca GHT, servicios tipados por feature contra `04`, pantallas de dashboard, usuarios/tags, campanias/participantes, envios/jobs, rubricas, prompts, config-llm y resultados/Markdown. `ng build --configuration production` publica en `src/ElTejido.Api/wwwroot`; `proxy.conf.json` apunta `/api` y `/webhook` a `https://localhost:5001` en dev. Ref: `11`, `04`, `10`, `13`.
 
 ## Contratos: cambios respecto a las specs
+- 2026-08-13 - P-33: `03 §3.3` y `04 §5.3` agregan los bool aditivos
+  `configConversacional.consultaIdea` y `mostrarIdeaAlCerrar` (default `true`, gobernados por gate
+  global OFF); `EnrutamientoAporte` admite `modo=consultarIdea`; P-32 amplía su registro a 29 mensajes
+  y 16 listas. No hay endpoint, contenedor, índice ni migración nuevos.
 - 2026-07-21 - P-13: `03 §3.3` y `04 §5.3` ganan el campo aditivo nullable `configConversacional.umbralCierreAnticipado`; `null` hereda el default numérico global y `<=0` apaga solo la campaña. Se separa el kill-switch global `Conversacion:CierreAnticipadoHabilitado` (default `true`), que prevalece sobre defaults y overrides. Contratos/documentos en commit `a59fb79`; ver `SUPUESTOS.md#umbral-cierre-por-campania-p13`.
 - 2026-06-15 - `04 §5.7` (Config LLM): se **eliminó el campo `apiKey`** del request POST/PUT. La app ya no escribe la key; solo recibe `apiKeyRef` (nombre de un secreto que debe existir en Key Vault) y lo valida. Spec `04 §5.7` actualizada en el mismo cambio. Motivo: mínimo privilegio (la identidad solo necesita lectura de Key Vault). Ver `SUPUESTOS.md#configllm-apikeyref-solo-lectura`.
 - 2026-06-15 - `02`/`03`/`08` (Config LLM): `proveedor=Anthropic` queda documentado como valor nativo, separado de `Anthropic-via-OpenRouter`; usa endpoint Anthropic `/v1/messages`, `x-api-key` y `anthropic-version`. Ver `SUPUESTOS.md#fase10-configuracion-llm-usable`.
@@ -1357,6 +1381,15 @@
 - El checklist de release real (`13` secciones 5 y 7) requiere recursos Azure, Key Vault/Blob/Cosmos reales, app WhatsApp de prueba y plantillas aprobadas por Meta. El desarrollo/CI queda cubierto con mocks segun `13` seccion 1.
 
 ## Log cronologico (append-only)
+
+- 2026-08-13 - Codex - **P-33 consulta y cierre visible de la idea — ESPECIFICADA Y APROBADA, sin
+  código.** Rol: Producto/Arquitecto/Backend/SDET/AppSec. Se verificó el routing existente y se cerró
+  con el usuario el único borde material: una corrección después de consultar una idea cerrada reabre
+  automáticamente esa misma idea. Se definieron consulta pura, selección activo→última sin menú,
+  versión exacta I-19, cierres, afinidad, precedencia P-26/P-27/P-30/P-31, aislamiento por identidad,
+  ventana WhatsApp, gates/rollback, catálogo `es/en`, telemetría sin contenido, tres cortes y QAS
+  simple. Se sincronizaron spec, REQ-053, contratos 03/04/05/10/11/13, Reglas, SUPUESTOS, índice,
+  TODO, prompt de arranque y QAS. Siguiente: corte 1. Sin build/test porque no cambió código.
 
 - 2026-08-13 - Claude Opus 5 - **DT-I20-01 implementada (DONE local 5/5, sin push).** Rol:
   Arquitecto/Backend/SDET. I-20, `Iniciativas/DT-I20-01_*` §4/§6/§7 y

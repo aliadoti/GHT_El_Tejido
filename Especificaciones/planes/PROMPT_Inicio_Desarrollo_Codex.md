@@ -6,6 +6,16 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
+> **HANDOFF DE DESARROLLO 2026-08-13 — ARRANCA P-33 CORTE 1/3.** `P-33` está especificada y
+> aprobada, sin código. Leer primero `AVANCES.md`, `Iniciativas/TODO.md` y
+> `Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`. Implementar únicamente el corte 1:
+> gate global OFF; campos `consultaIdea`/`mostrarIdeaAlCerrar` con round-trip campaña; extensión del
+> catálogo P-32 a 29 mensajes/16 listas compatible con versiones históricas; detector localizado de
+> consulta pura; selector determinista idea activa→última propia autorizada; y
+> `EnrutamientoAporte.modo=consultarIdea`. Este corte **no envía todavía la versión ni activa flags**.
+> Una corrección después de consultar una cerrada reabrirá esa misma idea en el corte 2; la decisión
+> ya está cerrada. Pruebas y DoD en §11 de la spec y `QAS/20_*`.
+>
 > **HANDOFF DE DESARROLLO 2026-08-11:** `P-32` (conversación español/inglés y catálogo versionado de
 > textos) tiene los **cortes 1 a 4 DONE local**. `Usuario.Idioma` ya existe (`es|en`, default `es`); no
 > volver a crearlo. Leer `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md`,

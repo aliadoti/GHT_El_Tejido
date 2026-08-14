@@ -1,7 +1,18 @@
-# Estado de requerimientos — El Tejido (corte 2026-08-04, addendum 2026-08-06)
+# Estado de requerimientos — El Tejido (corte 2026-08-04, addendum 2026-08-13)
 
 > **Atendido / DONE local** = codificado y probado en local; interruptores apagados, pendiente de
 > activación operativa (UAT/D5/costo). Nomenclatura unificada REQ; entre paréntesis el código de spec.
+
+## 🆕 Addendum 2026-08-13
+
+- **REQ-053 (P-32) — Soporte español/inglés y catálogo editable.** DONE local 4/4; gate OFF.
+  Pendientes operativos: D5/UAT bilingüe, traducciones, plantillas Meta inglesas y costo antes de activar.
+- **REQ-054 (P-33) — Consulta y cierre visible de la idea.** Especificada y aprobada, 0/3; siguiente
+  implementación inmediata. «Mi idea» muestra la activa o última trabajada sin menú, los cierres
+  normales muestran la versión vigente y una corrección después de consultar una cerrada reabre esa
+  misma idea. Gate OFF. Spec `Especificaciones/Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`.
+- La decisión bajo demanda antes abierta en REQ-052 quedó resuelta por REQ-054; P-31 conserva el
+  resumen proactivo por umbral.
 
 ## ✅ Atendidos (entregados)
 

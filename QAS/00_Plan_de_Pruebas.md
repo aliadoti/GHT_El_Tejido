@@ -2,7 +2,8 @@
 
 > **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 12-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
 > **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
-> **Última revisión del estado real:** 2026-07-23.
+> **Última revisión del estado real:** 2026-08-13. P-33 está especificada 0/3; sus casos se ejecutan
+> durante la implementación y antes de activar su gate.
 
 ---
 
@@ -33,6 +34,7 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 | P-13 override umbral por campaña | **DONE local**; override nullable + kill-switch global | Confirmar herencia pregunta→campaña→global y que el kill-switch global apaga todos los cierres. |
 | I-01 cierre por umbral | Umbral global 0.6; **`CierreAnticipadoHabilitado=false`** por defecto; activación humana en Pruebas | Probar solo si el acta enciende el kill-switch y el valor elegido. |
 | I-12 seed thoughts | **BLOCKED** (insumo vencido) | No bloquea el Hito conversacional; validar solo "campaña sin seeds = comportamiento base". |
+| P-33 consulta/cierre visible | **ESPECIFICADA 0/3; gate OFF** | Usar `QAS/20`: probar consulta pura sin aporte, activo→última sin menú, versión exacta, cierres, afinidad/reapertura, aislamiento y rollback `es/en`. |
 
 > **Regla de ambigüedad:** ante duda sobre el estado real, asumir el **comportamiento documentado** en `Reglas_Conversacion_y_Participacion.md` y `AVANCES.md`, y **marcar el caso como "Verificar build"**.
 
@@ -56,6 +58,7 @@ Priorización por riesgo × impacto de go-live. Cada área tiene un peso que det
 | **R10** | **Ventana 24h / expiración / multi-pregunta** | Hilos colgados, mensajes perdidos | Ext/CORE — ROB-07..10 |
 | **R11** | Multi-idea (I-06), tejido (I-09), parafraseo (I-05) bajo flag | Costo/latencia y regresión al encender | Ext — FLG-* |
 | **R12** | Carga masiva sucia (I-08) | Lista real del freeze mal cargada | CORE — ADM-08 |
+| **R13** | Consulta muestra/modifica la idea equivocada (P-33) | Mezcla historial, pierde correcciones o reabre por un simple acuse | CORE al activar P-33 — QAS/20 |
 
 **Definición de CORE (go/no-go):** conjunto mínimo que **debe pasar** para autorizar el envío del 12-ago. Está marcado caso por caso en `02_Casos_de_Prueba_E2E.md` y consolidado en `03_Smoke_y_Checklist_Dia_D.md`. Todo lo demás es suite extendida (mejora la confianza; su falla se gestiona por severidad, no bloquea automáticamente).
 

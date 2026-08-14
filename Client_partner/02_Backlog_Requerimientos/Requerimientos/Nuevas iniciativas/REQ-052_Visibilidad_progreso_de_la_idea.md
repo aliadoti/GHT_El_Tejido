@@ -24,8 +24,8 @@ madurándola.
   interruptor de encendido/apagado y overrides por campaña y por pregunta.
 - No incluye: cambiar el umbral de madurez ni la forma en que se clasifican las ideas maduras;
   mostrar puntajes, criterios o porcentajes de rúbrica al participante; resúmenes periódicos por
-  tiempo o por número de turnos; consulta bajo demanda ("muéstrame cómo va mi idea"), que queda como
-  decisión abierta; traducción o localización del mensaje.
+  tiempo o por número de turnos; consulta bajo demanda ("muéstrame cómo va mi idea"), resuelta por
+  separado en REQ-054/P-33; traducción o localización del mensaje.
 
 ## Criterios de aceptación
 - [ ] Al alcanzar el umbral definido, el participante recibe la consolidación de su idea tal como el

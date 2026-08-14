@@ -232,7 +232,7 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   "promptRefs": { "evaluar": "pr_eval", "retro": "pr_retro", "repregunta": "pr_repreg", "conversacion": "pr_conversar", "cierre": "pr_cierre", "compilar": "pr_md" },
   "configLLMRef": "llm_default",
   "configMarkdown": { "tipoArtefacto": "respuesta" },
-  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "mensajesCierrePorIdioma": { "es": "Gracias. Tu aporte quedó registrado correctamente.", "en": "Thank you. Your contribution has been recorded." }, "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "clasificacionIntencionControl": false, "numeroWhatsAppSaliente": null },
+  "configConversacional": { "maxRepreguntas": 1, "mensajeCierre": "Gracias. Tu aporte quedó registrado correctamente.", "mensajesCierrePorIdioma": { "es": "Gracias. Tu aporte quedó registrado correctamente.", "en": "Thank you. Your contribution has been recorded." }, "segmentacionIdeas": false, "coachingSecuencialIdeas": false, "minutosCoachingPorIdea": null, "tejidoColectivo": false, "parafraseo": false, "participacionContinua": false, "clasificacionIntencionControl": false, "consultaIdea": true, "mostrarIdeaAlCerrar": true, "numeroWhatsAppSaliente": null },
   "configSeguridad": { "maxCaracteresMensaje": 1500, "maxMensajesPorUsuario": 10, "maxLlamadasLlmPorUsuario": 2, "presupuestoTokensCampania": 0 },
   "usuariosHabilitados": ["u_8f3c...", "u_1a2b..."],
   "creadoEn": "2026-06-10T12:00:00Z",
@@ -273,6 +273,11 @@ Mensajes iniciales y preguntas van **embebidos** (`ARQ §8.3`).
   por el detector determinista. Requiere además
   `Conversacion:ClasificacionIntencionControl=true`. El modelo solo propone una intención enumerada;
   el servidor valida y ejecuta la transición. Campo ausente conserva el flujo sin llamada flexible.
+- `configConversacional.consultaIdea` y `configConversacional.mostrarIdeaAlCerrar` (**P-33**,
+  **aditivos**, default `true`): permiten a una campaña excluirse de la consulta bajo demanda o de la
+  visualización de la versión al cerrar, respectivamente. Solo tienen efecto cuando
+  `Conversacion:VisibilidadIdeaParticipanteHabilitada=true`; con el gate global OFF el comportamiento
+  observable sigue intacto. No habilitan lectura de campañas inactivas ni saltan autorización.
 - `configConversacional.umbralCierreAnticipado` (P-13 + **I-17**, **aditivo**, default **ausente/null**): **override por campaña** del **umbral único compartido** que gobierna tanto el cierre anticipado por calificación alta (`05 §4.4`) como la **clasificación de madurez** de guardado (I-17: `maduro`/`incubacion`) y el disparo de paráfrasis (I-05). Fracción de la escala de la rúbrica en `[0,1]`, `<= 0` desactiva el cierre para esa campaña. Ausente/null = la campaña **hereda** el default numérico global `Conversacion:UmbralCierreAnticipado` (**I-17: default `0.6`**). **I-17 añade un nivel más de override, por pregunta** (`pregunta.umbralCierreAnticipado`), con precedencia **pregunta → campaña → global**. El kill-switch operativo independiente `Conversacion:CierreAnticipadoHabilitado` (**I-17: default `false`** para no encender el cierre al subir el default global a 0.6; la clasificación de madurez no depende de este kill-switch) prevalece sobre el **cierre**: `false` apaga el cierre anticipado para todas las campañas sin afectar la clasificación. Documento viejo sin el campo = usa el global. Ver `Iniciativas/P-13_Umbral_Cierre_Por_Campania.md`, `Iniciativas/I-17_BD_Dos_Niveles_Madurez.md` y `SUPUESTOS.md#bd-dos-niveles-madurez-i17`.
 - `configConversacional.minutosInactividadSesion` (**I-17 §7**, **aditivo**, default **ausente/null**): **override por campaña** de la ventana de **cierre por inactividad de sesión** en minutos (granularidad sub-hora que el flujo del 20-jul pide; hoy la expiración es por horas). Ausente/null = hereda el default global `Conversacion:MinutosInactividadSesion`; `<= 0` desactiva el cierre por inactividad para esa campaña. No se parametriza por pregunta. Documento viejo sin el campo = usa el global.
 - `configConversacional.numeroWhatsAppSaliente` (**P-21**, **aditivo**, default **ausente/null**): alias lógico del número que inicia los envíos de la campaña. Ausente/null usa el número predeterminado de `WhatsApp:Numeros`; nunca almacena un id de Meta. Documento viejo sin el campo conserva el envío por el número único/predeterminado.
@@ -457,7 +462,8 @@ aporte a una campaña real.
 
 - `estado` ∈
   `seleccionCampania|seleccionPregunta|seleccionIdea|listo|enIdea|completado|expirado|cancelado`.
-- `modo` (**P-30**, aditivo; ausente = `aporte`) ∈ `aporte|entradaProactiva|retomarIdea`.
+- `modo` (**P-30/P-33**, aditivo; ausente = `aporte`) ∈
+  `aporte|entradaProactiva|retomarIdea|consultarIdea`.
 - `idioma` y `catalogoTextosVersion` (**P-32**, aditivos; ausentes = `es`/legacy) fijan los menús y
   ayudas previos a crear la conversación; no cambian durante una selección pendiente.
 - `id` es determinístico por usuario + `whatsappMessageId`; un reintento no crea otro enrutamiento.
@@ -478,6 +484,10 @@ aporte a una campaña real.
   resumen acotado, estado neutral y orden de la lista histórica. La ruta `retomarIdea` pasa por
   `seleccionIdea → listo → enIdea`; `enIdea` mantiene afinidad con el ciclo histórico reabierto hasta
   que vuelva a cerrar. El texto/resumen nunca se copia a telemetría.
+- `modo=consultarIdea` (**P-33**, aditivo) reutiliza `ideaSeleccionadaId`, `conversacionId`, `idioma`,
+  `catalogoTextosVersion`, `venceEn` y `estado=enIdea` para recordar una idea cerrada ya mostrada. No
+  la reabre al consultar: el primer mensaje sustantivo posterior puede reabrirla tras revalidar todo el
+  alcance. La afinidad termina en `completado|expirado|cancelado`; documentos anteriores no cambian.
 
 ### 3.7 `Mensaje` (contenedor `conversations`) — `REQ §28.3`
 
@@ -801,6 +811,10 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   activar/inactivar mediante lote transaccional y ETag.
 - Las claves permitidas/obligatorias son contrato del servidor; valores y listas son contenido
   administrable. Una versión inválida nunca reemplaza parcialmente la activa.
+- **P-33** amplía el registro cerrado a 29 mensajes y 16 listas: mensajes
+  `encabezadoConsultaIdea|invitacionConsultaIdea|encabezadoCierreIdea|otrasIdeasGuardadas|sinIdeaDisponible`
+  y frases `consultarIdea|acuseConsultaIdea|nuevaIdea`. Versiones históricas activas se leen mediante
+  respaldo compatible durante la migración; una versión nueva debe incluir las claves completas.
 - `huella` identifica el contenido efectivo sin copiar mensajes/frases a logs. Ver P-32 §4 y §9.
 
 ### 3.14 `CodigoAuthAdmin` (contenedor `security`) — `REQ §10.3`, `§28.3`
@@ -863,6 +877,9 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   `avisoEnviado|fallbackUsado|avisoOmitidoSinVentana`, `campaniaId` interno y detalle con
   conversación, pregunta, ciclo y resultado del envío). **Nunca** incluye el texto del aviso ni el del
   participante. Ver `10 §6.2`.
+- `visibilidadIdeaParticipante` (P-33, **aditivo** al final del enum): consulta, visualización al
+  cierre, afinidad y reapertura contextual. Conserva acción, ids internos, estado/origen y resultado
+  de envío; nunca la consulta, versión, puente, corrección, nombre o número. Ver `10 §6.4`.
 - **Sin** códigos, secretos ni PII innecesaria.
 
 ### 3.16 `WebhookDedupe` (contenedor `leases`) — idempotencia

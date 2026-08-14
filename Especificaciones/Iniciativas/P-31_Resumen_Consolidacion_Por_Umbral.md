@@ -71,6 +71,8 @@ respuestas posibles ya tienen ruta (mejora, "así está bien" de 05 §4.4, alias
 - Resumir varias ideas a la vez, o ideas de otra pregunta/campaña.
 - Cambiar la reapertura (I-19 §4.7 / P-30) o el menú de salida (P-27).
 - Traducir o localizar el resumen (queda para la iniciativa de idioma, en análisis).
+- La consulta bajo demanda y la visualización garantizada al cierre pertenecen a P-33; no cambian el
+  disparo proactivo ni la idempotencia de P-31.
 
 ---
 
@@ -306,6 +308,9 @@ calibrando. Ambos valores se fijan en el acta de flags del día D.
 > sobre umbral, resumen y mejora posterior sin repeticion; la guia humana esta en
 > `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. Los flags permanecen apagados: D5/UAT/costo
 > siguen siendo pasos operativos fuera de este cambio local.
+>
+> Actualización 2026-08-13: la decisión antes abierta de consulta bajo demanda quedó aprobada como
+> iniciativa separada `P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`. P-31 permanece intacta.
 
 - **2026-08-07 — corte 2 en curso:** el acto `ResumirAvance` compone el texto de la versión vigente
   en el servidor, persiste su marca de idempotencia y registra `ResumenConsolidacion` sin texto de la

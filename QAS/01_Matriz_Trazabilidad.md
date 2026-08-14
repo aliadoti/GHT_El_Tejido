@@ -44,6 +44,7 @@
 | **Consulta de resultados/filtros** (REQ §33.1.8; spec 11) | Filtra por campaña/usuario/área/tag/pregunta/calificación | ADM-12 | Ext | Listo | |
 | **CRUD campañas/usuarios/rúbricas/prompts/config** (REQ §33.1) | Alta/edición; aprobar prompt; versionado | ADM-01..07 | CORE/Ext | Listo | |
 | **Envíos** (REQ §33.1.5) | Enviar inicial, reenviar a no respondió, reintentar fallidos | ADM-06 | CORE | Listo | REAL |
+| **P-33 consulta y cierre visible** (REQ-054; Reglas §2.13) | Consulta pura muestra activa/última sin menú ni aporte; cierre muestra versión exacta; corrección tras consultar cerrada reabre la misma; aislamiento, `es/en` y rollback | `QAS/20` casos 1–7 | CORE si gate ON | **ESPECIFICADA 0/3** | Pendiente implementación |
 
 \* CORE condicional: es CORE **si** el acta de flags decide activar el umbral I-01 para el día-D; si queda OFF, pasa a Ext (verificar solo que off = comportamiento base).
 

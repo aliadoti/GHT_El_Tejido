@@ -103,7 +103,7 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
 - `ILogger` con logs estructurados (propiedades, no interpolación). Niveles: `Information` para hitos de negocio, `Warning` para guardrails disparados, `Error` para fallos. Nunca `Information` con secretos.
 
 ### 6.4 Eventos de seguridad a registrar (`LogSeguridad`)
-`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27), `despertarProactivo` (P-28), `cierrePorInactividad` (P-29). Cada uno con resultado, número normalizado (cuando aplique) y timestamp; sin datos sensibles.
+`solicitudOtp`, `loginExitoso`, `loginFallido`, `rechazoParticipacion`, `rateLimit`, `anomaliaLlm`, `promptInjectionSospechoso`, `errorEnvio`, `accionAdministrativa` (P-03), `cierreUmbralAnticipado` (I-01), `segmentacionIdeas` (I-06), `coachingSecuencialIdeas` (I-18), `consolidacionProgresivaIdeas` (I-19), `redaccionConversacional` (I-20), `enrutamientoParticipacion` (P-26), `clasificacionIntencionControl` (P-27), `despertarProactivo` (P-28), `cierrePorInactividad` (P-29), `visibilidadIdeaParticipante` (P-33). Cada uno con resultado, identificadores internos necesarios y timestamp; sin datos sensibles.
 
 - **`catalogoTextosConversacion` (P-32):** acciones `crearBorrador|editarBorrador|importar|activar|
   rollback|rechazarValidacion|fallbackRuntime`, con actor interno cuando aplique, familia, idioma,
@@ -172,6 +172,13 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
   enrutamiento/campaña/pregunta/idea/conversación y `correlationId`. Nunca registra el resumen/título,
   el texto de intención ni el texto de selección. La propiedad y el alcance se revalidan al ofrecer,
   seleccionar y reabrir.
+
+- **`visibilidadIdeaParticipante` (P-33):** acciones
+  `consultaEnviada|consultaSinIdea|cierreEnviado|cierreOmitido|afinidadCreada|reaperturaAplicada|
+  afinidadCompletada|anomaliaMultiplesActivas`, con ids internos de campaña, conversación, pregunta e
+  idea, estado/origen y resultado de envío. Nunca registra la consulta, la versión mostrada, el puente,
+  la corrección, nombres o número. Una reapertura revalida usuario, asociación, campaña, pregunta,
+  conversación e idea; una afinidad persistida no constituye autorización.
 
 ---
 

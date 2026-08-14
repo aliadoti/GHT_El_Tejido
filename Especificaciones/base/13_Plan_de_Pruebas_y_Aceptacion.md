@@ -53,6 +53,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 14. **P-32:** el idioma del maestro (`es|en`) gobierna saludo, pregunta, menús, coaching, cierres,
     errores y reingreso. Un hilo abierto no cambia de idioma; el siguiente ciclo sí usa una
     modificación del maestro. No hay traducción automática ni fallback silencioso entre idiomas.
+15. **P-33:** puede preguntar cómo va o cómo quedó su idea. Se muestra la activa o la última trabajada
+    sin menú, aporte, evaluación o cambio de madurez; al cerrar también ve la versión. Una corrección
+    posterior a consultar una cerrada retoma esa misma idea, mientras un agradecimiento no la reabre.
 
 ## 4. Criterios de aceptación — Sistema y Seguridad (`REQ §33.3`, `§36.6`)
 1. Guarda historial, mensajes iniciales enviados, estado de envío, aportes, ideas consolidadas,
@@ -73,6 +76,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 12. P-32 mantiene catálogo válido/versionado por idioma; importación solo a borrador, activación
     atómica y rollback sin build; ETag evita pérdida concurrente. Falla de Cosmos usa última versión
     válida/respaldo del mismo idioma y la auditoría no contiene textos ni frases.
+13. P-33 revalida propiedad y alcance al consultar y reabrir; una afinidad no autoriza por sí sola.
+    Campañas/asociaciones inactivas y teléfonos reasignados no exponen historial. Telemetría no contiene
+    consulta, versión ni corrección.
 
 ---
 
@@ -113,6 +119,11 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
     mismo `ideaId`. Repetir con el flag apagado y confirmar que solo queda la reapertura reciente.
 23. **P-32 (cuando se implemente):** repetir el recorrido con participantes `es` y `en`, enviar un
     lote mixto, activar/revertir un texto y comprobar el rechazo de una campaña inglesa incompleta.
+24. **P-33:** preguntar «cómo va mi idea» con idea abierta y cerrada; comprobar última idea sin menú,
+    consulta repetible, corrección que reabre la misma, «gracias» que no reabre y cierre que muestra
+    la versión.
+25. Probar P-33 con varias ideas/campañas, idea rechazada, menú pendiente, inactividad dentro/fuera de
+    ventana, mensaje mixto y gate OFF; nunca perder contenido ni exponer una idea no autorizada.
 
 ---
 
@@ -142,6 +153,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §32 Marca GHT | 11 §5 | Revisión visual |
 | §31.8 Mantenibilidad/separación | 01 §2, 02 §3 | Revisión de arquitectura + §4.9 |
 | Conversación multidioma y textos editables P-32 | P-32, 03 §3.13.1, 04 §5.7.1, 05 §4.5.1 | Unit/integration + E2E bilingüe §5.23 + `QAS/16` |
+| Consulta y cierre visible REQ-054 / P-33 | P-33, 03 §3.6.1/§3.13.1/§3.15, 05 §4.4.6, 10 §6 | Unit (detector/selector/afinidad) + integración/E2E §5.24–25 + `QAS/20` |
 
 ---
 

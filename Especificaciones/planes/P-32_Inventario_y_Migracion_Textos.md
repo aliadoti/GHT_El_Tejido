@@ -76,6 +76,17 @@ La normalización y los límites actuales se conservan. Duplicados después de q
 espacios y diferencias de mayúsculas invalidan la lista completa; el catálogo activo anterior sigue
 vigente.
 
+### 3.3 Extensión compatible P-33 (2026-08-13)
+
+P-33 agrega cinco mensajes (`encabezadoConsultaIdea`, `invitacionConsultaIdea`,
+`encabezadoCierreIdea`, `otrasIdeasGuardadas`, `sinIdeaDisponible`) y tres listas de frases
+(`consultarIdea`, `acuseConsultaIdea`, `nuevaIdea`). El registro cerrado pasa de **24 a 29 mensajes**
+y de **13 a 16 listas**.
+
+Las versiones históricas activas no se mutan: durante el corte 1 de P-33 resuelven estas claves desde
+el respaldo compilado del mismo idioma. Toda versión nueva creada después de ampliar el registro debe
+traer las 29/16 claves y queda sujeta a la validación atómica normal de P-32.
+
 ## 4. Hardcodes a revisar en código
 
 | Componente | Riesgo | Acción del corte 2/4 |

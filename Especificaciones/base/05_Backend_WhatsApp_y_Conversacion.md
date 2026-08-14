@@ -356,6 +356,32 @@ La intención y la opción elegida nunca se guardan como aportes. El LLM no list
 ideas. Con el flag apagado se conserva sin cambios la reapertura reciente de I-19/P-26. Ver
 `Iniciativas/P-30_Retomar_Ideas_Del_Pasado.md`.
 
+### 4.4.6 Consulta y cierre visible de la idea (P-33)
+
+Con `Conversacion:VisibilidadIdeaParticipanteHabilitada=true`, una consulta pura como «¿cómo va mi
+idea?» se resuelve antes de selecciones pendientes, afinidad, P-30, P-27 y aporte:
+
+1. se revalidan usuario, asociación y campaña activa;
+2. se elige la idea activa o, si no existe, la idea propia no rechazada con trabajo más reciente;
+3. se lee `VersionPropuestaRef ?? VersionConfirmadaRef` para una abierta y
+   `VersionConfirmadaRef ?? VersionPropuestaRef` para una cerrada;
+4. el servidor inserta el texto íntegro entre un puente I-20/fallback y una invitación localizada;
+5. la consulta no crea aporte, versión, evaluación o Markdown, no consume repregunta ni cambia
+   madurez/curaduría/estado;
+6. si la idea estaba cerrada, `EnrutamientoAporte(modo=consultarIdea)` conserva por hasta 24 h una
+   afinidad de un solo mensaje con esa idea.
+
+Después de mostrar una cerrada, el primer mensaje sustantivo —tras descartar agradecimiento, saludo,
+consulta, nueva/otra idea, cambio de campaña y controles— reabre el mismo `ideaId` y se procesa como
+corrección I-19. «Gracias» completa la afinidad sin reabrir; «otra idea» entrega a P-30. Un mensaje que
+mezcla consulta e información nueva no se intercepta como consulta pura, para no perder contenido.
+
+Al cerrar normalmente por umbral, participante, tope o fallback se antepone la versión vigente al
+cierre/transición. Rechazo explícito y cierre administrativo no la muestran. En finalización masiva o
+inactividad se muestra solo la última trabajada y se reconoce que las demás quedaron guardadas. Fuera
+de la ventana de servicio no se fuerza texto libre ni plantilla. P-33 es independiente del umbral y
+de la idempotencia de P-31. Ver `Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`.
+
 ### 4.5 Reglas de la retroalimentación (`REQ §21`)
 La retroalimentacion que se envia es la `retroalimentacionEnviada` que produjo el LLM (`08`), validada para ser breve. El orquestador **no** reescribe el contenido; solo decide cuando enviarla, si ademas envia cierre, y que textos operativos de sistema agregar desde `Conversacion:Mensajes:*`. En el flujo legacy, I-05 puede anteponer `parafraseoDevuelto` al mensaje de repregunta o cierre solo si `Campania.configConversacional.parafraseo=true`, el kill-switch `Conversacion:Parafraseo` está activo **y (I-17) la respuesta quedó clasificada como `maduro`**. Con I-19, la paráfrasis acumulada para confirmación es obligatoria y reemplaza esa salida opcional para no enviar dos resúmenes; no depende del flag I-05. Prohibido (lo garantiza el prompt en `08`, pero el orquestador no lo viola): prometer implementar, ofrecer ejecutar acciones, textos largos, mas de una repregunta (`REQ §21.3`).
 
