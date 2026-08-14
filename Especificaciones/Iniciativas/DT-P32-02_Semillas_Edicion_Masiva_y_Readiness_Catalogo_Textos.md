@@ -1,8 +1,9 @@
 # DT-P32-02 — Semillas seguras, edición masiva y readiness del catálogo de textos
 
-> **Estado:** EN CURSO — 1/3 — corte 1/3 DONE local 2026-08-14 (semilla base separada del legacy,
-> límites operativos con techo, prevalidación pura y rutas de semilla). Sin portal, sin despliegue y
-> sin cambios de configuración remota. **Siguiente: corte 2/3.**
+> **Estado:** EN CURSO — 2/3 — cortes 1 y 2 DONE local 2026-08-14 (semilla base separada del legacy,
+> límites operativos con techo, prevalidación pura, rutas de semilla, JSON masivo, readiness y
+> precondición de campaña bilingüe). Sin portal, sin despliegue y sin cambios de configuración
+> remota. **Siguiente: corte 3/3 (portal, QAS y handoff).**
 > **Prioridad:** inmediata; debe implementarse y validarse antes de retomar `DT-I20-02`.
 > **Origen:** `QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md`, donde la semilla `es`
 > fue rechazada porque `FrasesDespertarProactivo` heredó más de 30 elementos.
@@ -266,14 +267,20 @@ archivo corregido. El portal no intenta reparar JSON, truncar listas ni activar 
 - pruebas unitarias de semilla `es/en`, legacy con más de 30 frases y ausencia de truncamiento. ✅
   15 unitarias y 7 de integración nuevas (804 + 94 en verde).
 
-### Corte 2/3 — JSON masivo, readiness y campañas
+### Corte 2/3 — JSON masivo, readiness y campañas — ✅ DONE local 2026-08-14
 
-- formalizar `formato:catalogo-textos/v1` y descarga editable;
-- agregar prevalidación sin escritura e importación como nueva versión borrador;
-- agregar readiness administrativo;
-- exigir catálogos activos al activar campaña bilingüe;
-- conservar asociación/enrutamiento defensivos;
-- pruebas API, ETag, auditoría sin contenido y regresión gate OFF.
+- formalizar `formato:catalogo-textos/v1` y descarga editable; ✅ `/exportar` entrega la forma
+  canónica con `metadatos` informativos y nombre `*-editable.json`;
+- agregar prevalidación sin escritura e importación como nueva versión borrador; ✅
+  `POST /importar/prevalidar` (200 con `valido:false` para JSON legible) e `/importar` reescrito
+  sobre el mismo validador, con tamaño verificado antes de deserializar;
+- agregar readiness administrativo; ✅ `GET /readiness` con gate real, límites efectivos, estado por
+  idioma, semilla base, problemas legacy y campañas bloqueadas;
+- exigir catálogos activos al activar campaña bilingüe; ✅ puerto `IDisponibilidadCatalogoTextos` y
+  `catalogosTextos.{idioma}: activo_requerido`;
+- conservar asociación/enrutamiento defensivos; ✅ sin cambios en `AsociarParticipantesAsync`;
+- pruebas API, ETag, auditoría sin contenido y regresión gate OFF. ✅ 13 unitarias y 9 de
+  integración nuevas (817 + 103 en verde).
 
 ### Corte 3/3 — Portal, QAS y handoff
 

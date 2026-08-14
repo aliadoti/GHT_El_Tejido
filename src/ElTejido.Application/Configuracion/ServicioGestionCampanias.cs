@@ -20,19 +20,22 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
     private readonly IRepositorioParticipantes _participantes;
     private readonly TimeProvider _tiempo;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
+    private readonly IDisponibilidadCatalogoTextos? _catalogosTextos;
 
     public ServicioGestionCampanias(
         IRepositorioCampanias campanias,
         IRepositorioUsuarios usuarios,
         IRepositorioParticipantes participantes,
         TimeProvider tiempo,
-        OpcionesCatalogoTextos? opcionesCatalogoTextos = null)
+        OpcionesCatalogoTextos? opcionesCatalogoTextos = null,
+        IDisponibilidadCatalogoTextos? catalogosTextos = null)
     {
         _campanias = campanias;
         _usuarios = usuarios;
         _participantes = participantes;
         _tiempo = tiempo;
         _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
+        _catalogosTextos = catalogosTextos;
     }
 
     public Task<IReadOnlyCollection<Campania>> BuscarCampaniasAsync(
@@ -124,6 +127,11 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             {
                 throw new ErrorValidacion("La campaña no tiene localizaciones completas para activarse.", errores);
             }
+
+            // DT-P32-02 §5: además de las localizaciones propias, cada idioma habilitado necesita una
+            // versión global activa y válida. Aplica aunque el gate esté OFF; una campaña monolingüe
+            // española legacy no entra por esta rama y conserva su compatibilidad.
+            await RequerirCatalogosActivosAsync(existente, cancellationToken);
         }
 
         var actualizado = CopiarCampania(existente, estado: estado);
@@ -488,6 +496,31 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
 
     private static bool EsBilingue(Campania campania)
         => campania.IdiomasHabilitados.Any(idioma => !string.Equals(idioma, "es", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// DT-P32-02 §5: bloquea la activación bilingüe con `catalogosTextos.{idioma}: activo_requerido`
+    /// cuando falta el catálogo global de algún idioma habilitado, en vez de dejar que el runtime
+    /// caiga de inglés a español.
+    /// </summary>
+    private async Task RequerirCatalogosActivosAsync(Campania campania, CancellationToken cancellationToken)
+    {
+        if (_catalogosTextos is null)
+        {
+            return;
+        }
+
+        var faltantes = await _catalogosTextos.ObtenerIdiomasSinCatalogoActivoAsync(
+            campania.IdiomasHabilitados,
+            cancellationToken);
+        if (faltantes.Count == 0)
+        {
+            return;
+        }
+
+        throw new ErrorValidacion(
+            "La campaña bilingüe necesita un catálogo de textos activo por idioma.",
+            faltantes.Select(idioma => new DetalleError($"catalogosTextos.{idioma}", "activo_requerido")).ToArray());
+    }
 
     private static string RequerirId(string id)
     {

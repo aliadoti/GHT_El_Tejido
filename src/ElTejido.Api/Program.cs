@@ -54,6 +54,9 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
     builder.Services.AddScoped<IServicioGestionCatalogosTextos, ServicioGestionCatalogosTextos>();
+    // DT-P32-02: disponibilidad por idioma para la activacion de campanias y readiness administrativo.
+    builder.Services.AddScoped<IDisponibilidadCatalogoTextos, DisponibilidadCatalogoTextos>();
+    builder.Services.AddScoped<IServicioReadinessCatalogosTextos, ServicioReadinessCatalogosTextos>();
     builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
     builder.Services.AddScoped<IServicioPurgaCampanias, ServicioPurgaCampanias>();
     // I-08 v2: carga masiva con la plantilla oficial de GHT. El .xlsx es el formato primario (es el

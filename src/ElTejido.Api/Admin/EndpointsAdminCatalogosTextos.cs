@@ -17,6 +17,10 @@ internal static class EndpointsAdminCatalogosTextos
         grupo.MapGet("", BuscarAsync);
         grupo.MapPost("", CrearAsync);
         grupo.MapPost("/importar", ImportarAsync);
+        // DT-P32-02 §4: revisar el archivo completo antes de escribir, y estado real de preparacion.
+        grupo.MapPost("/importar/prevalidar", PrevalidarImportacionAsync)
+            .WithMetadata(new LecturaSinEfectosAdmin());
+        grupo.MapGet("/readiness", ObtenerReadinessAsync);
         grupo.MapPost("/semillas/{idioma}", CrearDesdeSemillaAsync);
         // DT-P32-02 §4: la base curada y la fotografia legacy dejan de compartir una sola ruta.
         grupo.MapPost("/semillas/{idioma}/base", CrearSemillaBaseAsync);
@@ -70,23 +74,79 @@ internal static class EndpointsAdminCatalogosTextos
             Mapear(creado));
     }
 
-    private static async Task<IResult> ImportarAsync(
-        GuardarCatalogoRequest request,
+    /// <summary>
+    /// DT-P32-02 §3.1: importa el JSON editado como version nueva en borrador. Nunca activa ni
+    /// sobrescribe; un contenido invalido devuelve `400` con todos los detalles y cero escrituras.
+    /// </summary>
+    private static async Task<IResult> ImportarAsync(HttpContext context, CancellationToken cancellationToken)
+    {
+        var solicitud = await LeerEdicionMasivaAsync(context, cancellationToken);
+        var creado = await Servicio(context).ImportarMasivoAsync(solicitud, Actor(context), cancellationToken);
+        context.Response.Headers.ETag = creado.Etag;
+        return Creado(creado);
+    }
+
+    /// <summary>
+    /// DT-P32-02 §3.3: misma validacion que la importacion real, sin escribir. Un JSON legible con
+    /// contenido invalido responde `200` con `valido:false`; malformado o sobre el limite, `400`.
+    /// </summary>
+    private static async Task<IResult> PrevalidarImportacionAsync(
         HttpContext context,
         CancellationToken cancellationToken)
     {
-        var creado = await Servicio(context).ImportarAsync(
-            new SolicitudGuardarCatalogoTextos(
-                request.FamiliaId ?? string.Empty,
-                request.Idioma ?? string.Empty,
-                request.Mensajes ?? new Dictionary<string, string>(),
-                request.Frases ?? new Dictionary<string, IReadOnlyCollection<string>>()),
+        var solicitud = await LeerEdicionMasivaAsync(context, cancellationToken);
+        var resultado = await Servicio(context).PrevalidarImportacionAsync(
+            solicitud,
             Actor(context),
             cancellationToken);
-        context.Response.Headers.ETag = creado.Etag;
-        return Results.Created(
-            $"/api/admin/catalogos-textos/{creado.Catalogo.FamiliaId}/{creado.Catalogo.Idioma}/versiones/{creado.Catalogo.Version}",
-            Mapear(creado));
+        return Results.Ok(MapearPrevalidacion(resultado));
+    }
+
+    private static async Task<IResult> ObtenerReadinessAsync(
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var readiness = await context.RequestServices
+            .GetRequiredService<IServicioReadinessCatalogosTextos>()
+            .ObtenerAsync(context.Request.Query["idioma"].ToString(), cancellationToken);
+        return Results.Ok(new
+        {
+            gateHabilitado = readiness.GateHabilitado,
+            limites = new
+            {
+                maxFrasesPorGrupo = readiness.MaxFrasesPorGrupo,
+                maxBytesImportacionJson = readiness.MaxBytesImportacionJson,
+            },
+            listo = readiness.Idiomas.All(x => x.Listo),
+            idiomas = readiness.Idiomas.Select(x => new
+            {
+                idioma = x.Idioma,
+                listo = x.Listo,
+                tieneActivo = x.TieneActivo,
+                versionActiva = x.VersionActiva,
+                huellaActiva = x.HuellaActiva,
+                activaValida = x.ActivaValida,
+                problemasActiva = MapearErrores(x.ProblemasActiva),
+                tieneBorrador = x.TieneBorrador,
+                totalVersiones = x.TotalVersiones,
+                semillaBaseDisponible = x.SemillaBaseDisponible,
+                legacyValido = x.LegacyValido,
+                conteosLegacy = new
+                {
+                    mensajes = x.ConteosLegacy.Mensajes,
+                    gruposFrases = x.ConteosLegacy.GruposFrases,
+                    frases = x.ConteosLegacy.Frases,
+                },
+                problemasLegacy = MapearErrores(x.ProblemasLegacy),
+                campaniasBloqueadas = x.CampaniasBloqueadas.Select(campania => new
+                {
+                    campaniaId = campania.CampaniaId,
+                    nombre = campania.Nombre,
+                    estado = campania.Estado,
+                    motivo = campania.Motivo,
+                }).ToArray(),
+            }).ToArray(),
+        });
     }
 
     private static async Task<IResult> CrearVersionAsync(
@@ -234,21 +294,7 @@ internal static class EndpointsAdminCatalogosTextos
             OrigenSemillaCatalogoTextos.Legacy,
             Actor(context),
             cancellationToken);
-        return Results.Ok(new
-        {
-            valido = resultado.Valido,
-            familiaId = resultado.FamiliaId,
-            idioma = resultado.Idioma,
-            conteos = new
-            {
-                mensajes = resultado.Conteos.Mensajes,
-                gruposFrases = resultado.Conteos.GruposFrases,
-                frases = resultado.Conteos.Frases,
-            },
-            errores = resultado.Errores
-                .Select(error => new { field = error.Campo, issue = error.Problema })
-                .ToArray(),
-        });
+        return Results.Ok(MapearPrevalidacion(resultado));
     }
 
     /// <summary>
@@ -278,6 +324,212 @@ internal static class EndpointsAdminCatalogosTextos
         return Creado(creado);
     }
 
+    /// <summary>
+    /// DT-P32-02 §7: valida `Content-Type` y **tamano antes de deserializar**, limita la profundidad a
+    /// la forma contractual y traduce el archivo a la solicitud tipada. Los defectos estructurales se
+    /// acumulan para que la prevalidacion los devuelva junto con los de contenido.
+    /// </summary>
+    private static async Task<SolicitudEdicionMasivaCatalogoTextos> LeerEdicionMasivaAsync(
+        HttpContext context,
+        CancellationToken cancellationToken)
+    {
+        var limites = context.RequestServices.GetRequiredService<OpcionesCatalogoTextos>().Limites;
+        var cuerpo = await LeerCuerpoAcotadoAsync(context, limites.MaxBytesImportacionJson, cancellationToken);
+        var errores = new List<DetalleError>();
+        var mensajes = new Dictionary<string, string>(StringComparer.Ordinal);
+        var frases = new Dictionary<string, IReadOnlyCollection<string>>(StringComparer.Ordinal);
+        string familiaId;
+        string idioma;
+
+        try
+        {
+            using var documento = JsonDocument.Parse(cuerpo, new JsonDocumentOptions { MaxDepth = 8 });
+            var raiz = documento.RootElement;
+            if (raiz.ValueKind != JsonValueKind.Object)
+            {
+                throw new ErrorValidacion(
+                    "El cuerpo debe ser un objeto JSON.",
+                    new[] { new DetalleError("body", "json_invalido") });
+            }
+
+            var formato = Texto(raiz, "formato") ?? FormatoCatalogoTextos.V1;
+            if (!string.Equals(formato, FormatoCatalogoTextos.V1, StringComparison.Ordinal))
+            {
+                errores.Add(new DetalleError("formato", "no_soportado"));
+            }
+
+            familiaId = Texto(raiz, "familiaId") ?? string.Empty;
+            idioma = Texto(raiz, "idioma") ?? string.Empty;
+            LeerMensajes(raiz, mensajes, errores);
+            LeerFrases(raiz, frases, errores);
+        }
+        catch (JsonException)
+        {
+            throw new ErrorValidacion(
+                "El archivo no es un JSON valido en UTF-8.",
+                new[] { new DetalleError("body", "json_invalido") });
+        }
+
+        return new SolicitudEdicionMasivaCatalogoTextos(
+            new SolicitudGuardarCatalogoTextos(familiaId, idioma, mensajes, frases),
+            errores,
+            cuerpo.Length,
+            Seleccion(context, "familiaId"),
+            Seleccion(context, "idioma"));
+    }
+
+    private static async Task<byte[]> LeerCuerpoAcotadoAsync(
+        HttpContext context,
+        int maxBytes,
+        CancellationToken cancellationToken)
+    {
+        var contentType = context.Request.ContentType ?? string.Empty;
+        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ErrorValidacion(
+                "El contenido debe enviarse como application/json.",
+                new[] { new DetalleError("Content-Type", "debe_ser_application_json") });
+        }
+
+        if (context.Request.ContentLength is long declarado && declarado > maxBytes)
+        {
+            throw ErrorTamano(maxBytes);
+        }
+
+        using var acumulado = new MemoryStream();
+        var buffer = new byte[8192];
+        int leido;
+        while ((leido = await context.Request.Body.ReadAsync(buffer, cancellationToken)) > 0)
+        {
+            // Tambien acota los envios sin Content-Length (chunked): nunca se materializa mas del techo.
+            if (acumulado.Length + leido > maxBytes)
+            {
+                throw ErrorTamano(maxBytes);
+            }
+
+            acumulado.Write(buffer, 0, leido);
+        }
+
+        if (acumulado.Length == 0)
+        {
+            throw new ErrorValidacion(
+                "El cuerpo es obligatorio.",
+                new[] { new DetalleError("body", "obligatorio") });
+        }
+
+        return acumulado.ToArray();
+    }
+
+    private static ErrorValidacion ErrorTamano(int maxBytes)
+        => new(
+            "El archivo excede el tamano permitido.",
+            new[] { new DetalleError("body", $"excede_{maxBytes}_bytes") });
+
+    private static void LeerMensajes(
+        JsonElement raiz,
+        IDictionary<string, string> mensajes,
+        ICollection<DetalleError> errores)
+    {
+        if (!raiz.TryGetProperty("mensajes", out var nodo))
+        {
+            errores.Add(new DetalleError("mensajes", "obligatorio"));
+            return;
+        }
+
+        if (nodo.ValueKind != JsonValueKind.Object)
+        {
+            errores.Add(new DetalleError("mensajes", "tipo_invalido"));
+            return;
+        }
+
+        foreach (var propiedad in nodo.EnumerateObject())
+        {
+            if (propiedad.Value.ValueKind == JsonValueKind.String)
+            {
+                mensajes[propiedad.Name] = propiedad.Value.GetString() ?? string.Empty;
+                continue;
+            }
+
+            errores.Add(new DetalleError($"mensajes.{propiedad.Name}", "tipo_invalido"));
+        }
+    }
+
+    private static void LeerFrases(
+        JsonElement raiz,
+        IDictionary<string, IReadOnlyCollection<string>> frases,
+        ICollection<DetalleError> errores)
+    {
+        if (!raiz.TryGetProperty("frases", out var nodo))
+        {
+            errores.Add(new DetalleError("frases", "obligatorio"));
+            return;
+        }
+
+        if (nodo.ValueKind != JsonValueKind.Object)
+        {
+            errores.Add(new DetalleError("frases", "tipo_invalido"));
+            return;
+        }
+
+        foreach (var propiedad in nodo.EnumerateObject())
+        {
+            if (propiedad.Value.ValueKind != JsonValueKind.Array)
+            {
+                errores.Add(new DetalleError($"frases.{propiedad.Name}", "tipo_invalido"));
+                continue;
+            }
+
+            var valores = new List<string>();
+            var invalido = false;
+            foreach (var elemento in propiedad.Value.EnumerateArray())
+            {
+                if (elemento.ValueKind != JsonValueKind.String)
+                {
+                    invalido = true;
+                    continue;
+                }
+
+                valores.Add(elemento.GetString() ?? string.Empty);
+            }
+
+            if (invalido)
+            {
+                errores.Add(new DetalleError($"frases.{propiedad.Name}", "elemento_no_texto"));
+            }
+
+            frases[propiedad.Name] = valores;
+        }
+    }
+
+    private static string? Texto(JsonElement raiz, string propiedad)
+        => raiz.TryGetProperty(propiedad, out var valor) && valor.ValueKind == JsonValueKind.String
+            ? valor.GetString()
+            : null;
+
+    private static string? Seleccion(HttpContext context, string nombre)
+    {
+        var valor = context.Request.Query[nombre].ToString();
+        return string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+    }
+
+    private static object MapearPrevalidacion(ResultadoPrevalidacionCatalogoTextos resultado)
+        => new
+        {
+            valido = resultado.Valido,
+            familiaId = resultado.FamiliaId,
+            idioma = resultado.Idioma,
+            conteos = new
+            {
+                mensajes = resultado.Conteos.Mensajes,
+                gruposFrases = resultado.Conteos.GruposFrases,
+                frases = resultado.Conteos.Frases,
+            },
+            errores = MapearErrores(resultado.Errores),
+        };
+
+    private static object[] MapearErrores(IReadOnlyList<DetalleError> errores)
+        => errores.Select(error => new { field = error.Campo, issue = error.Problema }).ToArray();
+
     private static SolicitudGuardarCatalogoTextos SemillaBase(string idioma)
         => ConstruirSemilla(() => CatalogosTextosSemilla.CrearBase(idioma), idioma);
 
@@ -304,7 +556,10 @@ internal static class EndpointsAdminCatalogosTextos
         }
     }
 
-    private static IResult ArchivoEditable(SolicitudGuardarCatalogoTextos solicitud, string nombreArchivo)
+    private static IResult ArchivoEditable(
+        SolicitudGuardarCatalogoTextos solicitud,
+        string nombreArchivo,
+        object? metadatos = null)
     {
         var json = JsonSerializer.Serialize(
             new
@@ -314,6 +569,7 @@ internal static class EndpointsAdminCatalogosTextos
                 idioma = solicitud.Idioma,
                 mensajes = solicitud.Mensajes,
                 frases = solicitud.Frases,
+                metadatos,
             },
             new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
         return Results.File(Encoding.UTF8.GetBytes(json), "application/json; charset=utf-8", nombreArchivo);
@@ -332,14 +588,24 @@ internal static class EndpointsAdminCatalogosTextos
         CancellationToken cancellationToken)
     {
         var catalogo = await Servicio(context).ObtenerAsync(familiaId, idioma, version, cancellationToken);
-        var json = JsonSerializer.Serialize(Mapear(catalogo), new JsonSerializerOptions(JsonSerializerDefaults.Web)
-        {
-            WriteIndented = true,
-        });
-        return Results.File(
-            Encoding.UTF8.GetBytes(json),
-            "application/json; charset=utf-8",
-            $"catalogo-{familiaId}-{idioma}-v{version}.json");
+        // DT-P32-02 §3.2: la descarga es la forma canonica editable. Los metadatos son informativos y
+        // el importador los ignora: la version nueva siempre la numera el servidor.
+        return ArchivoEditable(
+            new SolicitudGuardarCatalogoTextos(
+                catalogo.Catalogo.FamiliaId,
+                catalogo.Catalogo.Idioma,
+                catalogo.Catalogo.Mensajes,
+                catalogo.Catalogo.Frases),
+            $"catalogo-{familiaId}-{idioma}-v{version}-editable.json",
+            new
+            {
+                version = catalogo.Catalogo.Version,
+                estado = catalogo.Catalogo.Estado.ToString().ToLowerInvariant(),
+                huella = catalogo.Catalogo.Huella,
+                creadoEn = catalogo.Catalogo.CreadoEn,
+                actualizadoEn = catalogo.Catalogo.ActualizadoEn,
+                activadoEn = catalogo.Catalogo.ActivadoEn,
+            });
     }
 
     private static object Mapear(VersionCatalogoTextos version)

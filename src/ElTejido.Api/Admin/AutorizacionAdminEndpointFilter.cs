@@ -6,6 +6,13 @@ using ElTejido.Domain.Usuarios;
 namespace ElTejido.Api.Admin;
 
 /// <summary>
+/// Marca un endpoint que, pese a no ser <c>GET</c>, no produce ningun efecto persistente (por
+/// ejemplo la prevalidacion de un JSON que necesita cuerpo). DT-P32-02 §4: admite <c>admin|visor</c>
+/// como cualquier lectura, pero conserva la exigencia de CSRF por tratarse de un POST del navegador.
+/// </summary>
+internal sealed record LecturaSinEfectosAdmin;
+
+/// <summary>
 /// Autoriza rutas <c>/api/admin/*</c> segun 04 §1/§5 y 06 §4.4: GET admite
 /// <c>admin</c>/<c>visor</c>; mutaciones exigen <c>admin</c> y header CSRF.
 /// </summary>
@@ -32,10 +39,16 @@ internal sealed class AutorizacionAdminEndpointFilter : IEndpointFilter
 
         httpContext.Items[PrincipalItemKey] = principal;
 
-        var esLectura = HttpMethods.IsGet(httpContext.Request.Method);
-        if (esLectura)
+        if (HttpMethods.IsGet(httpContext.Request.Method))
         {
             ValidarRolLectura(principal);
+            return await next(context);
+        }
+
+        if (EsLecturaSinEfectos(httpContext))
+        {
+            ValidarRolLectura(principal);
+            ValidarCsrf(httpContext, principal);
             return await next(context);
         }
 
@@ -49,6 +62,9 @@ internal sealed class AutorizacionAdminEndpointFilter : IEndpointFilter
         => context.Items.TryGetValue(PrincipalItemKey, out var value) && value is PrincipalSesion principal
             ? principal
             : throw new ErrorNoAutenticado("No hay una sesion administrativa validada.");
+
+    private static bool EsLecturaSinEfectos(HttpContext httpContext)
+        => httpContext.GetEndpoint()?.Metadata.GetMetadata<LecturaSinEfectosAdmin>() is not null;
 
     private static void ValidarRolLectura(PrincipalSesion principal)
     {

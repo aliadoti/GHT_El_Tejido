@@ -1,3 +1,4 @@
+using ElTejido.Application.Common;
 using ElTejido.Domain.Configuracion;
 
 namespace ElTejido.Application.Configuracion;
@@ -54,6 +55,26 @@ public interface IServicioGestionCatalogosTextos
     Task<ResultadoPrevalidacionCatalogoTextos> PrevalidarSemillaAsync(
         SolicitudGuardarCatalogoTextos solicitud,
         OrigenSemillaCatalogoTextos origen,
+        string actorId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// DT-P32-02 §3.3: prevalida el mismo cuerpo que recibe la importacion masiva. No escribe, no
+    /// invalida cache y no devuelve textos; incluye los defectos de formato ya detectados.
+    /// </summary>
+    Task<ResultadoPrevalidacionCatalogoTextos> PrevalidarImportacionAsync(
+        SolicitudEdicionMasivaCatalogoTextos solicitud,
+        string actorId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// DT-P32-02 §2.3/§3.1: importa el JSON editado como una <b>version nueva en borrador</b>. Ejecuta
+    /// exactamente la misma prevalidacion: si algo falla lanza <see cref="ErrorValidacion"/> con todos
+    /// los detalles y no escribe nada. Nunca activa ni sobrescribe la version activa o el borrador
+    /// seleccionado, y los metadatos del archivo (version, estado, huella, ETag) se ignoran.
+    /// </summary>
+    Task<VersionCatalogoTextos> ImportarMasivoAsync(
+        SolicitudEdicionMasivaCatalogoTextos solicitud,
         string actorId,
         CancellationToken cancellationToken);
 

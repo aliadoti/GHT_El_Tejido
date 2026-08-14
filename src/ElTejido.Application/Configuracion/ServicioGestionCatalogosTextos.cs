@@ -186,6 +186,101 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         return resultado;
     }
 
+    public async Task<ResultadoPrevalidacionCatalogoTextos> PrevalidarImportacionAsync(
+        SolicitudEdicionMasivaCatalogoTextos solicitud,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        var resultado = RevisarEdicionMasiva(solicitud);
+        await AuditarPrevalidacionAsync(
+            "prevalidarImportacion",
+            resultado,
+            actorId,
+            cancellationToken,
+            solicitud.TamanoBytes);
+        return resultado;
+    }
+
+    public async Task<VersionCatalogoTextos> ImportarMasivoAsync(
+        SolicitudEdicionMasivaCatalogoTextos solicitud,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        // Mismo validador que la prevalidacion: un archivo que prevalida bien no puede fallar aqui.
+        var revisado = RevisarEdicionMasiva(solicitud);
+        if (!revisado.Valido)
+        {
+            throw new ErrorValidacion("El catalogo de textos no es valido.", revisado.Errores);
+        }
+
+        var familiaId = Requerir(solicitud.Contenido.FamiliaId, "familiaId");
+        var idioma = ValidarIdioma(solicitud.Contenido.Idioma);
+        var versiones = await _repositorio.ListarVersionesAsync(familiaId, idioma, cancellationToken);
+        var version = versiones.Count == 0 ? 1 : versiones.Max(x => x.Catalogo.Version) + 1;
+
+        // Los metadatos del archivo (version, estado, huella, ETag, auditoria) no son instrucciones:
+        // la version nueva siempre nace borrador y numerada por el servidor.
+        var catalogo = CrearCatalogo(
+            familiaId,
+            idioma,
+            version,
+            solicitud.Contenido.Mensajes,
+            solicitud.Contenido.Frases,
+            actorId,
+            _tiempo.GetUtcNow());
+        var creado = await _repositorio.CrearAsync(catalogo, cancellationToken);
+        await AuditarAsync("importarMasivo", creado.Catalogo, actorId, cancellationToken, solicitud.TamanoBytes);
+        return creado;
+    }
+
+    /// <summary>
+    /// Une los defectos de formato del lector, la discrepancia con la seleccion del portal y la
+    /// validacion de contenido, para devolver todos los errores detectables en una sola pasada.
+    /// </summary>
+    private ResultadoPrevalidacionCatalogoTextos RevisarEdicionMasiva(
+        SolicitudEdicionMasivaCatalogoTextos solicitud)
+    {
+        var contenido = solicitud.Contenido;
+        var errores = new List<DetalleError>(solicitud.ErroresFormato);
+
+        if (string.IsNullOrWhiteSpace(contenido.FamiliaId))
+        {
+            errores.Add(new DetalleError("familiaId", "obligatorio"));
+        }
+        else if (!string.IsNullOrWhiteSpace(solicitud.FamiliaIdEsperada)
+            && !string.Equals(contenido.FamiliaId.Trim(), solicitud.FamiliaIdEsperada.Trim(), StringComparison.Ordinal))
+        {
+            errores.Add(new DetalleError("familiaId", "no_coincide_con_seleccion"));
+        }
+
+        var idioma = contenido.Idioma.Trim().ToLowerInvariant();
+        if (idioma is not ("es" or "en"))
+        {
+            errores.Add(new DetalleError("idioma", "valor_invalido"));
+        }
+        else if (!string.IsNullOrWhiteSpace(solicitud.IdiomaEsperado)
+            && !string.Equals(idioma, solicitud.IdiomaEsperado.Trim().ToLowerInvariant(), StringComparison.Ordinal))
+        {
+            // No se corrige en silencio: cargar un archivo `en` sobre la seleccion `es` es un error.
+            errores.Add(new DetalleError("idioma", "no_coincide_con_seleccion"));
+        }
+
+        var contenidoRevisado = ValidadorCatalogoTextosConversacion.Prevalidar(
+            contenido.FamiliaId,
+            idioma,
+            contenido.Mensajes,
+            contenido.Frases,
+            _limites);
+        errores.AddRange(contenidoRevisado.Errores);
+
+        return new ResultadoPrevalidacionCatalogoTextos(
+            errores.Count == 0,
+            contenido.FamiliaId,
+            idioma,
+            contenidoRevisado.Conteos,
+            errores);
+    }
+
     public async Task<VersionCatalogoTextos> ActualizarBorradorAsync(
         string familiaId,
         string idioma,
@@ -281,10 +376,16 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         string accion,
         CatalogoTextosConversacion catalogo,
         string actorId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? tamanoBytes = null)
     {
         var detalle = $"accion={accion};familia={catalogo.FamiliaId};idioma={catalogo.Idioma};" +
             $"version={catalogo.Version};huella={catalogo.Huella}";
+        if (tamanoBytes is not null)
+        {
+            detalle += $";bytes={tamanoBytes.Value}";
+        }
+
         return RegistrarAsync(detalle, "ok", actorId, cancellationToken);
     }
 
@@ -296,12 +397,18 @@ public sealed class ServicioGestionCatalogosTextos : IServicioGestionCatalogosTe
         string accion,
         ResultadoPrevalidacionCatalogoTextos resultado,
         string actorId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? tamanoBytes = null)
     {
         var detalle = $"accion={accion};familia={resultado.FamiliaId};idioma={resultado.Idioma};" +
             $"mensajes={resultado.Conteos.Mensajes};gruposFrases={resultado.Conteos.GruposFrases};" +
             $"frases={resultado.Conteos.Frases};errores={resultado.Errores.Count};" +
             $"maxFrasesPorGrupo={_limites.MaxFrasesPorGrupo}";
+        if (tamanoBytes is not null)
+        {
+            detalle += $";bytes={tamanoBytes.Value}";
+        }
+
         return RegistrarAsync(detalle, resultado.Valido ? "valido" : "invalido", actorId, cancellationToken);
     }
 

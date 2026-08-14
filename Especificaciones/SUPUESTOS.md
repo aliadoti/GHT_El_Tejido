@@ -1147,6 +1147,28 @@
   ni configuración remota que tocar.
 - Spec: `Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`; plan
   `planes/DT-P32-02_Plan_Implementacion_Semillas_y_JSON.md`; QAS `22_*`.
+- Decisiones adicionales del **corte 2/3** (2026-08-14):
+  - **La selección del portal viaja como query, no como constante compilada.** `§3.3` pide que el
+    idioma del archivo coincida con «el seleccionado en portal»; `/importar` y
+    `/importar/prevalidar` reciben `?idioma=` y `?familiaId=` opcionales y responden
+    `no_coincide_con_seleccion`. No se hardcodeó `familiaId=catalogo_conversacion` porque el portal
+    P-32 aún crea catálogos con `conversacion-global` y un ambiente desplegado puede tener versiones
+    bajo esa familia: fijar la constante habría dejado ese contenido inimportable.
+  - **Claves de primer nivel desconocidas se ignoran**, no se rechazan: `§3.2` obliga a aceptar
+    exportaciones P-32 anteriores con `version`, `estado`, `huella`, `etag` y auditoría. Lo que sí se
+    rechaza es una clave desconocida **dentro** de `mensajes`/`frases` (`clave_desconocida`), que es
+    donde una clave inventada sí intentaría configurar el runtime.
+  - **`/importar/prevalidar` es POST pero cuenta como lectura.** `§4` y `§9` piden que el visor pueda
+    prevalidar, y el filtro admin trata todo no-`GET` como mutación. Se añadió la marca
+    `LecturaSinEfectosAdmin`: rol `admin|visor` como en un `GET`, pero **conservando CSRF** por ser un
+    POST de navegador. Sin la marca, ningún endpoint cambia de comportamiento.
+  - **Un catálogo activo cuya huella o contenido ya no valida cuenta como ausente** para readiness y
+    para la precondición de campaña. Reportarlo como listo dejaría activar una campaña bilingüe que el
+    runtime degradaría a emergencia.
+  - **La precondición de campaña se inyecta por puerto opcional** (`IDisponibilidadCatalogoTextos`):
+    con el puerto ausente —solo en pruebas que no lo ejercitan— la regla no corre; en el composition
+    root siempre está cableado. Se aplica únicamente a campañas con un idioma distinto de `es`, para
+    no romper la compatibilidad de las campañas monolingües legacy.
 
 ### resumen-consolidacion-p31 - Umbral de resumen propio, independiente del umbral de madurez
 - Fecha: 2026-08-06 - Agente/Rol: Arquitecto/Analista - Commit: n/a (solo especificación)

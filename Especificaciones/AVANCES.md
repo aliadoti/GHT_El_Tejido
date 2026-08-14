@@ -5,6 +5,22 @@
 
 ## Estado global
 - Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-02`
+  corte 2/3 DONE local — edición masiva JSON, readiness y precondición de campaña bilingüe.**
+  `/exportar` entrega la forma canónica editable (`formato:catalogo-textos/v1`, `metadatos`
+  informativos, nombre `*-editable.json`); `POST /importar/prevalidar` revisa el mismo cuerpo que la
+  importación real sin escribir y responde `200` con `valido:false` cuando el JSON es legible pero
+  incumple reglas; `/importar` se reescribió sobre ese mismo validador, verifica `Content-Type` y
+  **tamaño antes de deserializar**, acota la profundidad, ignora los metadatos del archivo y crea
+  siempre `v+1` en borrador. `GET /readiness` informa el gate **real** del proceso, los límites
+  efectivos y, por idioma, activo/válida/borrador/semilla base/problemas legacy y las campañas que
+  quedarían bloqueadas. Activar una campaña bilingüe exige catálogo global activo y válido por idioma
+  (`catalogosTextos.{idioma}: activo_requerido`) con el gate ON u OFF; las monolingües españolas
+  legacy no cambian. `/importar/prevalidar` admite `admin|visor` mediante la marca nueva
+  `LecturaSinEfectosAdmin` conservando CSRF. Backend **920** (817 unitarias + 103 integración), build
+  Release `-warnaserror`, `dotnet format` y `git diff --check` verdes. Sin portal, sin push, sin
+  despliegue y con el gate intacto en OFF. Contrato en commit aparte (`77377ec`).
+  **Siguiente código: corte 3/3 de `DT-P32-02`** (portal, QAS y cierre documental).
+- Actualizacion anterior: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-02`
   corte 1/3 DONE local — semilla base separada del legacy, límites operativos y prevalidación.**
   `CatalogosTextosSemilla.CrearBase(idioma)` ya no lee App Settings, así que una lista heredada
   inválida (las 31 frases de `FrasesDespertarProactivo` que rompieron la corrida del 2026-08-13) no
@@ -973,16 +989,25 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Implementar `DT-P32-02` corte 2/3.** Leer `Iniciativas/DT-P32-02_*` §3/§4/§5 y el plan
-  `planes/DT-P32-02_*` §3. Formalizar la descarga editable `formato:catalogo-textos/v1` para
-  cualquier versión (el corte 1 ya la usa en la exportación legacy y la constante vive en
-  `FormatoCatalogoTextos.V1`), agregar `POST /importar/prevalidar` reutilizando
-  `ValidadorCatalogoTextosConversacion.Prevalidar` y `OpcionesCatalogoTextos.MaxBytesImportacionJson`
-  (validar tamaño **antes** de deserializar), hacer que la importación válida cree `v+1` borrador
-  ignorando los metadatos del archivo, agregar `GET /readiness` y exigir catálogo global activo por
-  idioma al activar una campaña bilingüe (`catalogosTextos.{idioma}: activo_requerido`). Auditar
-  `prevalidarImportacion`/`importarMasivo` sin contenido. No activar, desplegar ni tocar
-  configuración remota.
+- [ ] **Implementar `DT-P32-02` corte 3/3 (portal, QAS y handoff).** Leer `Iniciativas/DT-P32-02_*`
+  §6 y el plan `planes/DT-P32-02_*` §4. En **Textos de conversación** (`src/ElTejido.Web`, ampliar la
+  pantalla existente, no crear otra): separar **Crear semilla base** de **Revisar/importar
+  configuración anterior**, permitir **Descargar configuración anterior como JSON** aunque falle la
+  prevalidación, **Descargar JSON para edición masiva** de cualquier versión, selector `.json` con el
+  máximo configurado, prevalidación visible (idioma, conteos 29/16, lista completa de errores),
+  confirmación separada **Importar como nuevo borrador**, selección automática del borrador creado y
+  comparación con la activa, y tarjeta de readiness `es/en` con el motivo de bloqueo. El input de
+  archivo debe limpiarse tras cada intento para poder reintentar el **mismo** archivo corregido; el
+  portal no repara JSON, no trunca listas y no activa. Backend ya expone todo: `/semillas/{idioma}/base`,
+  `/legacy/preview`, `/legacy/exportar`, `/legacy`, `/importar/prevalidar` (acepta `?idioma=` y
+  `?familiaId=`), `/importar` y `/readiness`. Cerrar actualizando `QAS/16`, `QAS/17`, `QAS/22`,
+  AVANCES y TODO, y correr la validación local completa (backend + Node `22.22.3`/`24.15.0` para
+  `ng test`/`ng build` y Prettier). No desplegar ni tocar configuración remota.
+- [x] **(HECHO 2026-08-14, Claude Opus 5 — backend 920: 817 unitarias + 103 integración; build
+  Release `-warnaserror`, format y diff verdes) `DT-P32-02` corte 2/3.** Descarga editable canónica,
+  `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño
+  verificado antes de deserializar y `v+1` en borrador, `GET /readiness` con gate real y bloqueos, y
+  catálogo activo obligatorio por idioma al activar campaña bilingüe. Contrato `04` en commit aparte.
 - [x] **(HECHO 2026-08-14, Claude Opus 5 — backend 898: 804 unitarias + 94 integración; build
   Release `-warnaserror`, format y diff verdes) `DT-P32-02` corte 1/3.** Semilla base `es/en`
   independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con
@@ -1297,7 +1322,7 @@
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
-| DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | Corte 1/3 DONE local; siguiente corte 2/3 | pendiente | build Release `-warnaserror`, 804 unitarias + 94 integración, format y `git diff --check` verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Gate OFF, sin portal ni configuración remota. **Cómo probarlo:** en un ambiente sin catálogos, crear la semilla base `es` y `en` y ver que nacen en borrador aunque la configuración anterior tenga una lista larga; revisar la configuración anterior y comprobar que el aviso nombra el grupo con exceso y que no aparece ninguna versión nueva (`QAS/22`, pruebas 1 y 2). Falta corte 2 (JSON masivo, readiness, campañas) y corte 3 (portal). |
+| DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | Cortes 1/3 y 2/3 DONE local; siguiente corte 3/3 | `77377ec` (contrato 04) + pendiente | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Gate OFF, sin portal ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador sin tocar la anterior ni la activa (`QAS/22`, pruebas 1 a 5). Falta corte 3 (portal, QAS y handoff). |
 | DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; en espera de DT-P32-02 green | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Se retoma después de la nueva corrida P-32 green; QAS `21_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
@@ -1437,6 +1462,45 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-14 - Claude Opus 5 - **`DT-P32-02` corte 2/3 — edición masiva JSON, readiness y
+  precondición de campaña bilingüe (DONE local).** Rol: Arquitecto/Tech Lead para el puerto nuevo,
+  Backend senior .NET, SDET y AppSec para el lector acotado y la auditoría. Cubre `DT-P32-02
+  §2.3/§3/§4/§4.1/§5/§7/§8` (corte 2), `04 §5.7.1` y `07 §5.3`.
+  **Qué cambió:** (1) `GET .../versiones/{version}/exportar` devuelve la forma canónica editable
+  (`formato:catalogo-textos/v1`, `familiaId`, `idioma`, `mensajes`, `frases`) con los metadatos
+  informativos agrupados bajo `metadatos` —sin actores ni ETag— y el nombre `*-editable.json`.
+  (2) Nuevo `POST /importar/prevalidar` y `/importar` reescrito **sobre el mismo camino**: un lector
+  propio valida `Content-Type`, corta por `MaxBytesImportacionJson` **antes de deserializar** (también
+  sin `Content-Length`), acota la profundidad a la forma contractual, acumula los defectos
+  estructurales y los entrega junto con los de contenido; un JSON legible pero inválido responde `200`
+  con `valido:false` en prevalidación y `400` con todos los `details` y cero escrituras en la
+  importación. Los metadatos del archivo se ignoran: la versión nueva la numera el servidor y siempre
+  nace borrador. (3) La selección del portal viaja como `?idioma=`/`?familiaId=`: una discrepancia
+  devuelve `no_coincide_con_seleccion` y nunca se corrige en silencio. (4) `GET /readiness` compone
+  gate real del proceso, límites efectivos y, por idioma, activo/válida/huella/borrador/total,
+  disponibilidad de la semilla base, problemas tipificados del legacy y campañas activas o borrador
+  que quedarían bloqueadas; un activo cuya huella o contenido ya no valida cuenta como ausente.
+  (5) `ServicioGestionCampanias` recibe el puerto `IDisponibilidadCatalogoTextos` y bloquea la
+  activación bilingüe con `catalogosTextos.{idioma}: activo_requerido`, con el gate ON u OFF; las
+  campañas monolingües españolas legacy no entran en la regla y la asociación/enrutamiento no cambian.
+  (6) Auditoría `prevalidarImportacion`/`importarMasivo` con acción, idioma, conteos, errores, límite
+  y bytes; nunca JSON ni textos. (7) Marca nueva `LecturaSinEfectosAdmin` para que el visor pueda
+  prevalidar (§4/§9) conservando CSRF; sin la marca ningún endpoint cambia.
+  **Decisiones registradas** en `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02` (selección por
+  query en vez de familia compilada, claves de primer nivel desconocidas ignoradas, prevalidar como
+  lectura con CSRF, activo inválido = ausente, puerto opcional en campañas).
+  **Verificado local (SDK 8.0.412):** `dotnet build -c Release -warnaserror` 0/0;
+  `dotnet test -c Release --no-build --filter "Category!=Calibracion"` **920 verdes (817 unitarias +
+  103 de integración; +13 y +9)**; `dotnet format --verify-no-changes` y `git diff --check` limpios.
+  Contrato `04` actualizado en commit aparte. Sin portal (corte 3), sin push, sin despliegue y sin
+  tocar el gate. **Cómo probarlo (lenguaje simple):** entra a Textos de conversación, crea la semilla
+  base en español y descarga el archivo de esa versión; ábrelo en un editor, cambia dos mensajes y
+  agrega una frase a un grupo; vuelve a subirlo: primero debe mostrarte un resumen con el idioma, los
+  conteos y cero errores, y solo al confirmar debe aparecer una **versión nueva en borrador** con tus
+  cambios, sin tocar la anterior ni la activa. Prueba también a subir un archivo con un mensaje vacío
+  y comprueba que te lista todos los problemas y **no** crea nada. Sería un fallo que el archivo se
+  publicara solo, que sobrescribiera una versión existente o que aceptara un archivo en inglés cuando
+  tenías español seleccionado. **Siguiente:** corte 3/3 (portal, QAS y handoff).
 - 2026-08-14 - Claude Opus 5 - **`DT-P32-02` corte 1/3 — semilla base separada del legacy, límites
   operativos y prevalidación reutilizable (DONE local).** Rol: Arquitecto/Tech Lead para la frontera,
   Backend senior .NET para la implementación, SDET para las pruebas y AppSec para la auditoría.

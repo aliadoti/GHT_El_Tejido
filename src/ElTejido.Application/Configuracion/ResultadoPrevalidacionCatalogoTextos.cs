@@ -21,3 +21,17 @@ public static class FormatoCatalogoTextos
 {
     public const string V1 = "catalogo-textos/v1";
 }
+
+/// <summary>
+/// DT-P32-02 §3: cuerpo de la edicion masiva ya leido del JSON. <paramref name="ErroresFormato"/>
+/// trae los defectos estructurales que detecto el lector (tipos, `formato` desconocido) para que la
+/// prevalidacion pueda devolver <b>todos</b> los errores en una sola respuesta.
+/// <paramref name="FamiliaIdEsperada"/>/<paramref name="IdiomaEsperado"/> son la seleccion del portal:
+/// una discrepancia se reporta, nunca se corrige en silencio.
+/// </summary>
+public sealed record SolicitudEdicionMasivaCatalogoTextos(
+    SolicitudGuardarCatalogoTextos Contenido,
+    IReadOnlyList<DetalleError> ErroresFormato,
+    int TamanoBytes,
+    string? FamiliaIdEsperada = null,
+    string? IdiomaEsperado = null);
