@@ -169,6 +169,7 @@ describe('paneles de campanias', () => {
       'Conversacion',
       'Participacion continua',
       'Intenciones de control',
+      'Visibilidad de la idea',
     ]);
     expect(
       host.querySelector('[name="editarUmbralCierreAnticipado"]')?.getAttribute('aria-describedby'),
