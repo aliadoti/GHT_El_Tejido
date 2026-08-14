@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md",
+                "file": "QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "18_Runbook_Humano_Lanzar_Prueba_P32"
+              "title": "Resultados_P32_Multidioma_2026-08-13"
             }
           }
         ]
@@ -187,6 +187,12 @@
   },
   "active": "9b6a542bf4acce9c",
   "lastOpenFiles": [
+    "QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md",
+    "Especificaciones/planes/DT-P32-02_Plan_Implementacion_Semillas_y_JSON.md",
+    "Especificaciones/Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md",
+    "QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md",
+    "QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md",
+    "QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md.tmp.35732.359f02e491d1",
     "src/ElTejido.Web/src/app/features/campanias/campanias.panels.spec.ts.tmp.1028.cb535c60d411",
     "Especificaciones/planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md",
     "QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md",
@@ -200,10 +206,7 @@
     "src/ElTejido.Api/wwwroot/chunk-D9fl_Atc.js",
     "src/ElTejido.Api/wwwroot/chunk-DyCQwG9C.js",
     "src/ElTejido.Api/wwwroot/chunk-WxmG5G9b.js",
-    "QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md",
     "src/ElTejido.Api/wwwroot/chunk-C-hnIzR2.js",
-    "src/ElTejido.Api/wwwroot/chunk-DZKvg6kY.js",
-    "src/ElTejido.Api/wwwroot/chunk-DLZsp7Ub.js",
     "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/REQ-054_Consulta_y_cierre_visible_de_la_idea.md",
     "QAS/20_P33_Consulta_y_Cierre_Visible_Como_Probar.md",
     "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/REQ-053_Consulta_y_cierre_visible_de_la_idea.md",
@@ -220,9 +223,6 @@
     "Especificaciones/base/02_Arquitectura_y_Stack.md",
     "Especificaciones/base/01_Convenciones_para_Agentes.md",
     "Especificaciones/Iniciativas/I-05_Parafraseo_Transparencia.md",
-    "Client_partner/Guia_Rapida_Palancas_Conversacion_Admin.md",
-    "QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md",
-    "Especificaciones/planes/P-32_Inventario_y_Migracion_Textos.md",
     "Client_partner/flujo_participante_tejido.png",
     "QAS/resultados/2026-08-06/portal_login.png",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",

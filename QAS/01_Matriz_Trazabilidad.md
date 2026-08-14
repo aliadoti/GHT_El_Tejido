@@ -45,7 +45,8 @@
 | **CRUD campañas/usuarios/rúbricas/prompts/config** (REQ §33.1) | Alta/edición; aprobar prompt; versionado | ADM-01..07 | CORE/Ext | Listo | |
 | **Envíos** (REQ §33.1.5) | Enviar inicial, reenviar a no respondió, reintentar fallidos | ADM-06 | CORE | Listo | REAL |
 | **P-33 consulta y cierre visible** (REQ-054; Reglas §2.13) | Consulta pura muestra activa/última sin menú ni aporte; cierre muestra versión exacta; corrección tras consultar cerrada reabre la misma; aislamiento, `es/en` y rollback | `QAS/20` casos 1–7 | CORE si gate ON | **DONE local 3/3; gate OFF** | Pendiente D5/UAT y acta de flags |
-| **DT-I20-02 texto plano visible** (I-18/I-19/I-20; P-27/P-32/P-33) | Fragmentos LLM sin Markdown ni etiquetas internas; fallback por campo conserva puntajes, versión, decisión server-side, una pregunta e idioma; rollback de prompt seguro | `QAS/21` pruebas 1–8 + regresiones automáticas de la spec | CORE | **ESPECIFICADA 0/3** | Pendiente implementación |
+| **DT-P32-02 semillas/JSON/readiness** (P-32; 03 §3.13.1; 04 §5.7.1) | Base `es/en` independiente de legacy; descarga/prevalidación/importación masiva siempre a borrador; límites, permisos, readiness y campaña bilingüe protegida | `QAS/22` pruebas 1–9 + `QAS/17` completo | CORE antes de gate ON | **ESPECIFICADA 0/3** | Siguiente implementación |
+| **DT-I20-02 texto plano visible** (I-18/I-19/I-20; P-27/P-32/P-33) | Fragmentos LLM sin Markdown ni etiquetas internas; fallback por campo conserva puntajes, versión, decisión server-side, una pregunta e idioma; rollback de prompt seguro | `QAS/21` pruebas 1–8 + regresiones automáticas de la spec | CORE | **ESPECIFICADA 0/3; espera P-32 green** | Después de DT-P32-02 |
 
 \* CORE condicional: es CORE **si** el acta de flags decide activar el umbral I-01 para el día-D; si queda OFF, pasa a Ext (verificar solo que off = comportamiento base).
 

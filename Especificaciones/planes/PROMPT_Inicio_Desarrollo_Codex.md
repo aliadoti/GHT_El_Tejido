@@ -6,7 +6,17 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF DE DESARROLLO 2026-08-13 — ARRANCA `DT-I20-02` CORTE 1/3.** `P-33` ya está DONE local
+> **HANDOFF DE DESARROLLO 2026-08-14 — ARRANCA `DT-P32-02` CORTE 1/3.** El reporte P-32 del
+> 2026-08-13 confirmó que la semilla `es` quedó bloqueada al fotografiar una lista legacy con más de
+> 30 frases. La decisión del usuario es terminar primero semillas seguras, edición masiva por JSON,
+> readiness y el bloqueo de campañas bilingües sin catálogo activo; desplegar y repetir P-32 hasta
+> green; **solo después retomar `DT-I20-02`**. Leer `AVANCES.md`, `Iniciativas/TODO.md`,
+> `Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`, P-32, el plan
+> `planes/DT-P32-02_*` y `QAS/22_*`. Corte 1: separar semilla base `es/en` de fotografía legacy,
+> parametrizar límites con techo seguro y agregar prevalidación sin escritura. No truncar, activar,
+> desplegar, cambiar App Settings ni tocar datos remotos.
+>
+> **HANDOFF PREPARADO 2026-08-13 — `DT-I20-02` POSPUESTO HASTA GREEN P-32.** `P-33` ya está DONE local
 > 3/3. El siguiente cambio es corregir la exposición de encabezados Markdown e instrucciones internas
 > en respuestas de WhatsApp. Leer primero `AVANCES.md`, `Iniciativas/TODO.md`,
 > `Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md`, `I-19`, `I-20`,

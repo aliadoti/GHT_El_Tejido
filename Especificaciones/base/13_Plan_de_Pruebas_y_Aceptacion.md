@@ -76,6 +76,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 12. P-32 mantiene catálogo válido/versionado por idioma; importación solo a borrador, activación
     atómica y rollback sin build; ETag evita pérdida concurrente. Falla de Cosmos usa última versión
     válida/respaldo del mismo idioma y la auditoría no contiene textos ni frases.
+    **DT-P32-02:** una base `es/en` se crea aunque legacy sea inválido; edición masiva JSON se
+    prevalida y crea versión nueva en borrador; readiness y activación de campaña exigen catálogo
+    activo por idioma.
 13. P-33 revalida propiedad y alcance al consultar y reabrir; una afinidad no autoriza por sí sola.
     Campañas/asociaciones inactivas y teléfonos reasignados no exponen historial. Telemetría no contiene
     consulta, versión ni corrección.
@@ -117,8 +120,9 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 22. Con P-30 encendida, sembrar ideas maduras, pendientes y rechazadas en ciclos distintos; pedir
     retomar, elegir por número y por resumen exacto, aportar una mejora y comprobar que se re-evalúa el
     mismo `ideaId`. Repetir con el flag apagado y confirmar que solo queda la reapertura reciente.
-23. **P-32 (cuando se implemente):** repetir el recorrido con participantes `es` y `en`, enviar un
-    lote mixto, activar/revertir un texto y comprobar el rechazo de una campaña inglesa incompleta.
+23. **P-32/DT-P32-02:** crear bases `es/en`, descargar/editar/prevalidar/reimportar JSON completo,
+    comprobar cero activación/escritura inválida y readiness; después repetir el recorrido con
+    participantes `es` y `en`, lote mixto, activación/rollback y campaña incompleta.
 24. **P-33:** preguntar «cómo va mi idea» con idea abierta y cerrada; comprobar última idea sin menú,
     consulta repetible, corrección que reabre la misma, «gracias» que no reabre y cierre que muestra
     la versión.
@@ -152,7 +156,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §27 Portal | 11, 04 §5 | Frontend + §2, §3 |
 | §32 Marca GHT | 11 §5 | Revisión visual |
 | §31.8 Mantenibilidad/separación | 01 §2, 02 §3 | Revisión de arquitectura + §4.9 |
-| Conversación multidioma y textos editables P-32 | P-32, 03 §3.13.1, 04 §5.7.1, 05 §4.5.1 | Unit/integration + E2E bilingüe §5.23 + `QAS/16` |
+| Conversación multidioma y textos editables P-32/DT-P32-02 | P-32, DT-P32-02, 03 §3.13.1, 04 §5.7.1, 05 §4.5.1 | Unit/integration + JSON/readiness `QAS/22` + E2E bilingüe §5.23/`QAS/16`/`QAS/17` |
 | Consulta y cierre visible REQ-054 / P-33 | P-33, 03 §3.6.1/§3.13.1/§3.15, 05 §4.4.6, 10 §6 | Unit (detector/selector/afinidad) + integración/E2E §5.24–25 + `QAS/20` |
 
 ---

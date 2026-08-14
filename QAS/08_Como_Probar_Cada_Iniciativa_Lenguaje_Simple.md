@@ -485,12 +485,12 @@ deja de iniciar.
 ## D. Validaciones operativas pendientes
 
 - 🚧 **P-32 — Conversación en español/inglés y textos editables:** **4/4 DONE local; falta validación
-  operativa.** El recorrido completo ya usa el idioma del participante, campañas localizadas, envío
-  mixto y catálogo editable. Antes de aprobarlo, usar
-  `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y el prompt `QAS/17_*`: dos participantes
-  `es/en`, lote mixto, cambio y rollback de texto, campaña incompleta, D5 real y UAT de GHT. **No dar
-  por aprobado ni activar en producción** hasta tener plantillas Meta inglesas, costo/latencia, UAT y
-  acta de cambio; fuera de la ventana autorizada la palanca sigue apagada.
+  operativa y `DT-P32-02`.** Primero debe quedar disponible este recorrido simple: crear una semilla
+  base, descargar el JSON completo, cambiar varios mensajes/frases, cargarlo, revisar errores y
+  confirmarlo como borrador nuevo. La carga nunca publica. Usar `QAS/22`; después ejecutar `QAS/16`
+  y el prompt `QAS/17_*`: dos participantes `es/en`, lote mixto, activación/rollback, campaña
+  incompleta, D5 y UAT. **No aprobar ni activar en producción** hasta que todo esté green y existan
+  plantillas Meta inglesas, costo/latencia, UAT y acta; fuera de la ventana la palanca sigue apagada.
 
 - ✅ **P-28 — Volver a saludar antes de una idea nueva:** **implementada localmente (3/3); viene
   apagada.** Pide al equipo que la active solo en una prueba. Con una persona que ya terminó sus

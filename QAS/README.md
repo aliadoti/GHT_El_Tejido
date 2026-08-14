@@ -28,6 +28,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 19 | [DT-I20-01 · Variación y no duplicación](19_DT-I20-01_Variacion_Redaccion_Como_Probar.md) | D5 para comprobar variedad de aperturas y ausencia de reconocimientos duplicados antes de desplegar. |
 | 20 | [P-33 · Consultar y ver la idea al cerrar](20_P33_Consulta_y_Cierre_Visible_Como_Probar.md) | Guía simple para comprobar idea activa/última sin menú, consulta sin aporte, cierre visible y reapertura de la misma idea cerrada ante una corrección. |
 | 21 | [DT-I20-02 · Texto plano y prompt seguro](21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md) | Comprueba que WhatsApp no exponga encabezados ni etiquetas internas y que la corrección preserve evaluación, versión, estados, idioma y una sola pregunta. |
+| 22 | [DT-P32-02 · Semillas, JSON masivo y readiness](22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md) | Comprueba base `es/en`, descarga/prevalidación/reimportación masiva como borrador, límites, permisos, readiness y bloqueo de campañas sin catálogo activo. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)
@@ -62,6 +63,10 @@ D5/UAT. Validación local: 858 pruebas backend verdes.
 **Nueva deuda 2026-08-13:** `DT-I20-02` está especificada, todavía sin código. La guía **21** cubre el
 reporte de encabezados Markdown/estado interno en WhatsApp y exige demostrar que el arreglo no cambie
 puntajes, versión de idea, estados, cierres, repreguntas, idioma ni el texto exacto de P-33.
+
+**Prioridad 2026-08-14:** `DT-P32-02` está especificada 0/3 y se implementa antes de `DT-I20-02`.
+La guía **22** cubre semillas base independientes de legacy y el flujo masivo descargar/editar/cargar
+JSON. Después se ejecuta nuevamente **17** completo; `DT-I20-02` solo se retoma con P-32 green.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

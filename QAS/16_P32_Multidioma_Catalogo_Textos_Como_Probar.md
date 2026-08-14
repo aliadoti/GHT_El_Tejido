@@ -2,9 +2,10 @@
 
 **Estado:** cortes 1 a 4 DONE local. La API, semillas, caché/LKG, emergencia, snapshot de idioma,
 mensajes globales, enrutamiento, detectores, localizaciones de campaña, envío inicial mixto y los
-contextos LLM están implementados. El gate sigue OFF. Esta guía deja lista la validación operativa
-pendiente; la activación productiva requiere una prueba controlada de ambos idiomas, plantillas Meta
-aprobadas, D5, UAT, revisión de costo/latencia y acta de cambio.
+contextos LLM están implementados. `DT-P32-02` está especificada 0/3 para corregir la semilla `es`,
+formalizar edición masiva JSON/readiness y proteger la activación bilingüe. El gate sigue OFF. Esta
+guía se ejecuta después de implementar y pasar `QAS/22`; la activación productiva requiere además una
+prueba controlada de ambos idiomas, plantillas Meta aprobadas, D5, UAT, costo/latencia y acta.
 
 ## Qué se quiere comprobar
 
@@ -27,6 +28,11 @@ cambiar un texto, publicarlo y revertirlo sin pedir una compilación o un despli
    `GHT_DIAG_KEY`. El agente solo la usa como header `X-Diag-Key`; nunca debe verla en texto, buscarla
    en Key Vault ni registrarla. Al terminar, el operador apaga la simulación y elimina la variable de
    la sesión. El procedimiento humano completo está en `QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md`.
+8. Ejecuta primero `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`. Deben existir
+   borradores base válidos y readiness debe explicar cualquier idioma faltante.
+9. La simulación entrante observada el 2026-08-13 no desactiva por sí sola el emisor WhatsApp. Confirma
+   ambiente aislado o números de prueba autorizados antes de conversar. Sin esa garantía, marca los
+   pasos conversacionales `BLOCKED`; no envíes a participantes reales.
 
 ## Orden de ejecución completo
 
@@ -117,19 +123,20 @@ plantilla detiene también al otro participante.
 **Deberías ver:** al encender la palanca en pruebas, cada participante recibe la plantilla de su
 idioma. Si falta contenido o mapeo inglés, solo ese envío queda en error; los demás continúan.
 
-## Prueba 3 — cambiar un texto sin desplegar
+## Prueba 3 — edición masiva JSON y cambio sin desplegar
 
-1. Abre **Textos de conversación**, elige el idioma inglés y crea una versión borrador desde la
-   semilla si aún no existe una versión; si existe, selecciona el borrador de la lista.
-2. Cambia un saludo visible, guarda y usa la vista previa.
-3. Comprueba que el borrador todavía no afecta la conversación.
-4. Activa la versión y abre un hilo nuevo en inglés.
+1. Abre **Textos de conversación**, elige inglés y crea una **semilla base** borrador si hace falta.
+2. Descarga el JSON para edición masiva.
+3. Cambia un saludo y al menos una frase, conserva las claves y carga de nuevo el archivo.
+4. Prevalida conteos/errores y confirma **Importar como nuevo borrador**.
+5. Comprueba que el borrador de origen y la versión activa no cambiaron.
+6. Activa explícitamente el borrador nuevo y abre un hilo nuevo en inglés.
 
 **Deberías ver:** el borrador no cambia nada; después de activarlo, el hilo nuevo muestra el texto
 editado sin compilación ni despliegue.
 
-**Algo va mal si:** guardar el borrador lo publica, hace falta reiniciar/desplegar o cambia también el
-texto español.
+**Algo va mal si:** cargar publica, sobrescribe la versión de origen, no permite corregir/reseleccionar
+el mismo archivo, hace falta reiniciar/desplegar o cambia también el texto español.
 
 ## Prueba 4 — validación y rollback
 
@@ -226,6 +233,8 @@ editorial aplica a hilos nuevos y el rollback restaura el texto anterior.
 - resultado del lote mixto;
 - captura del rechazo de contenido inválido;
 - prueba de activación y rollback; y
+- JSON masivo prevalidado, conteos y versión borrador creada, sin secretos;
+- readiness `es/en` antes de activar campañas;
 - reporte D5 real con comparación `es/en`, costo y latencia;
 - visto bueno o hallazgos UAT de GHT; y
 - confirmación de que no hubo build, despliegue ni cambio de secretos fuera de la ventana autorizada.

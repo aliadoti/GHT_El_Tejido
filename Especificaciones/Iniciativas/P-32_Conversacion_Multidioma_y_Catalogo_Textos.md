@@ -1,8 +1,10 @@
 # P-32 — Conversación multidioma y catálogo versionado de textos
 
 **Estado:** **DONE local 2026-08-11 (4/4)**. Catálogo/API, caché/LKG, emergencia `es/en`,
-localizaciones, envío inicial mixto, contextos LLM, portal operativo y gate OFF listos. Falta solo la
-activación controlada fuera del repositorio.
+localizaciones, envío inicial mixto, contextos LLM, portal operativo y gate OFF listos. La corrida del
+2026-08-13 abrió `DT-P32-02` (0/3): semilla base independiente de legacy, JSON masivo prevalidado,
+readiness y catálogo activo obligatorio para campaña bilingüe. Debe cerrar green antes de la
+activación controlada y antes de retomar `DT-I20-02`.
 **Solicitud:** conversación en español e inglés según el idioma del maestro de usuarios y edición de
 textos sin recompilar.
 **Áreas afectadas:** maestro de usuarios, campañas, envío inicial, enrutamiento, orquestador,
@@ -279,6 +281,11 @@ ventana en verse, salvo que la activación invalide la caché local de inmediato
 - `POST /api/admin/catalogos-textos/semillas/{idioma}` — fotografía `es` desde la configuración
   efectiva o usa la traducción curada `en`; crea una nueva versión en borrador y nunca activa.
 
+**Extensión DT-P32-02:** separa rutas explícitas para semilla base y fotografía legacy, agrega
+prevalidación sin escritura y readiness. La exportación/importación JSON pasa a ser un flujo masivo
+de primera clase: descargar catálogo completo, editar valores/listas, prevalidar y confirmar una
+versión nueva en borrador. Ver `DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`.
+
 GET: `admin|visor`. Mutaciones: `admin` + CSRF. Conflicto ETag o activación concurrente ⇒ `409`.
 
 ### 8.2 Portal
@@ -348,6 +355,10 @@ entra a una conversación que pueda degradar silenciosamente a español.
 | 3 | **DONE local 2026-08-11.** Localizaciones embebidas, validación de completitud, portal de campaña y envío inicial mixto con plantilla por participante. Gate OFF conserva el flujo histórico; con ON el fallo localizado se registra por participante y el lote sigue. | Campaña legacy `es`; campaña bilingüe; faltante `en` bloquea; lote mixto usa dos plantillas; fallo de una no detiene las demás; snapshots de envío. |
 | 4 | **DONE local 2026-08-11; corrección P-32 local 2026-08-13.** Evaluación, segmentación, consolidación y redacción reciben idioma y contenido localizado; el redactor ya no impone español. También se localizan saludo/pregunta inicial y la siguiente pregunta. Portal administrativo: semilla, importación/exportación JSON, borrador, edición, activación y reactivación explícita con ETag. La reactivación de una versión inactiva ahora es un rollback real auditado; campañas bilingües incompletas se bloquean en activación, asociación y enrutamiento. QAS y deprecación documentada. | Backend 771 unitarias + 87 integración verdes; portal 43/43 previo, build Angular y Prettier verdes con Node temporal `22.22.3`; regresiones de rollback y campaña bilingüe incompleta. |
 
+**Extensión posterior:** `DT-P32-02` se ejecuta en tres cortes antes de la siguiente corrida
+operativa: (1) base segura/prevalidación legacy, (2) JSON masivo/readiness/guardia de campaña y (3)
+portal/QAS. No reabre los cuatro cortes funcionales de idioma ni activa el gate.
+
 El inventario de migración define qué clave sale de cada origen actual. Cada corte mantiene el gate
 apagado y no cambia configuración remota. Activar requiere UAT bilingüe, plantillas Meta aprobadas y
 acta de cambio.
@@ -374,6 +385,10 @@ acta de cambio.
     idioma, versión, origen, resultado y huella.
 13. Importar JSON solo crea borrador; activar exige acción explícita de un admin.
 14. Con el gate apagado, las pruebas actuales no cambian de resultado.
+15. Una configuración legacy inválida no impide crear semillas base válidas `es/en`.
+16. Descargar, editar y reimportar el JSON completo crea una versión nueva en borrador, nunca
+    sobrescribe ni activa.
+17. Una campaña bilingüe exige un catálogo global activo y válido para cada idioma habilitado.
 
 ---
 

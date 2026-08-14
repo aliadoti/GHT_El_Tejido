@@ -5,13 +5,17 @@ ejecuta las pruebas; el humano controla el acceso temporal y los secretos.
 
 ## Antes de iniciar
 
-1. Confirma que usarás un **ambiente aislado de pruebas**, nunca producción.
+1. Confirma que usarás un **ambiente aislado de pruebas**, nunca producción. Verifica además el canal
+   saliente: la simulación entrante no reemplaza el `WhatsAppGateway` real. Debe existir aislamiento
+   del emisor o todos los números deben ser de prueba y estar autorizados.
 2. Ten la URL del ambiente y permiso administrativo para el portal y para cambiar su configuración.
 3. Confirma que existen y están activos, sin modificarlos: rúbrica **`rúbrica OpenBrain v3.4`**,
    prompt **`Evaluación con rubrica OpenBrain Thought-Scoring`** y configuración LLM
    **`OpenRouter-Terra`**. El agente los reutiliza; no necesita ni debe recibir la key de OpenRouter.
 4. Si se probará envío real, confirma que las plantillas Meta en inglés están aprobadas. Si no lo están,
-   la prueba de envío real quedará `BLOCKED`, pero las simulaciones pueden continuar.
+   la prueba de envío real queda `BLOCKED`. Las simulaciones conversacionales solo continúan si el
+   emisor está aislado o usa números de prueba autorizados; `Simulacion__Habilitada=true` por sí sola
+   **no evita llamadas salientes reales a Meta**.
 
 ## Preparar la simulación
 
@@ -64,6 +68,8 @@ reporte. No pegues la clave en el mensaje al agente.
   misma sesión que inició el agente.
 4. D5 real, UAT y envío WhatsApp real solo se ejecutan si sus autorizaciones externas existen. Un
   bloqueo externo es resultado válido; no se debe forzar con claves o datos no autorizados.
+5. Si el agente detecta un `wamid` o cualquier llamada a Meta no prevista, detén la corrida, conserva
+   evidencia y marca los recorridos restantes `BLOCKED`; no cambies secretos para continuar.
 
 ## Cierre obligatorio
 

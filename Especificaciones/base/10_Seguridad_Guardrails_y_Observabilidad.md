@@ -110,6 +110,10 @@ Vive en Cosmos/Blob. Cada interacción registra (`REQ §30.1`): usuario, número
   versión, resultado, motivo técnico, huella y `correlationId`. **Nunca** incluye mensajes, frases,
   placeholders renderizados ni diferencias de contenido. La importación registra metadatos y tamaño,
   no el JSON.
+- **DT-P32-02:** suma `crearSemillaBase|prevalidarLegacy|importarLegacy|prevalidarImportacion|
+  importarMasivo`. Validar tamaño antes de deserializar y limitar profundidad, claves, grupos,
+  entradas y longitudes. Registrar solo tamaño/conteos/resultado; nunca el JSON. La prevalidación no
+  escribe, no invalida caché y no acepta `version`, `estado`, ETag o auditoría como instrucciones.
 
 - **`cierreUmbralAnticipado` (I-01):** telemetría de **calibración**, no una amenaza. Se emite cada vez que el cierre anticipado por umbral de rúbrica dispara (`Conversacion:UmbralCierreAnticipado > 0` y la calificación alcanza el corte), con `detalle=umbral:<fracc>;score:<total>;valor:<corte>;escala:<min>-<max>`. Permite dimensionar el umbral en staging (cuántos cierres tempranos y a qué calificación) y alimentar la decisión de activación. Ver `Runbook_I-01_Umbral_Cierre_Anticipado.md` y `SUPUESTOS.md#activacion-umbral-i01`.
 - **`segmentacionIdeas` (I-06):** telemetría de operación por intento, emitida incluso ante fallback. Registra solo conteos, flags de fallback/truncamiento, motivo y tokens de segmentación; no persiste texto del participante. Permite dimensionar el consumo `1 + N` antes de activar la campaña.

@@ -14,6 +14,24 @@
 - Impacto / reversibilidad: <a que afecta, si cierra o no fronteras post-MVP>
 ```
 
+### semillas-json-readiness-dt-p32-02 - Base segura separada de legacy y carga masiva siempre borrador
+- Fecha: 2026-08-14 - Agente/Rol: Codex - Arquitecto/Backend/Frontend/SDET/AppSec - Decisión expresa
+  del usuario: priorizar esta deuda y una nueva corrida P-32 green antes de `DT-I20-02`.
+- Contexto: la semilla española de P-32 fotografió una lista legacy con más de 30 frases y el
+  validador rechazó el catálogo completo. El portal ya tenía export/import JSON, pero faltaba fijarlo
+  como flujo masivo simple, prevalidado y no publicante.
+- Decisión: conservar un único `CatalogoTextosConversacion` global por idioma; separar base curada
+  `es/en` de fotografía legacy; permitir descargar, editar y reimportar el JSON completo; prevalidar
+  antes de escribir y crear siempre una versión nueva en borrador. Los límites son operativos dentro
+  de un techo compilado; las claves semánticas siguen cerradas en código. Una campaña bilingüe exige
+  catálogo global activo por idioma.
+- Alternativas descartadas: duplicar el diccionario por campaña (fragmenta contenido y rollback),
+  truncar listas legacy (pierde intención sin aviso), activar semillas/importaciones automáticamente
+  (omite aprobación), o permitir claves arbitrarias (el runtime no sabría consumirlas).
+- Impacto / reversibilidad: contratos API aditivos y cambios locales en Application/portal; Cosmos
+  sigue siendo fuente de verdad y no requiere contenedor nuevo. Gate OFF y reversión por commits o
+  reactivación editorial previa. No autoriza despliegue ni cambio remoto.
+
 ### contrato-visible-llm-dt-i20-02 - La presentación inválida no cambia la evaluación
 - Fecha: 2026-08-13 - Agente/Rol: Codex - Arquitecto/Backend/SDET/AppSec - Decisión del usuario: corregir el defecto sin romper ninguna regla de negocio existente.
 - Contexto: una respuesta real mostró encabezados Markdown y etiquetas de proceso porque el prompt de evaluación runtime los pidió dentro de campos visibles. El gateway no leyó un `.md`; transportó el cuerpo compuesto. Las campañas activas inspeccionadas compartían la familia de evaluación `1`.

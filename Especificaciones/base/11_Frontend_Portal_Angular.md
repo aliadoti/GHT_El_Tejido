@@ -111,6 +111,12 @@ importar/exportar JSON. `visor` solo lee; `admin` muta. Campañas añade pestañ
 campaña, mensajes, preguntas y cierre, con indicador de completitud antes de activar. El portal
 administrativo como tal permanece en español.
 
+**DT-P32-02:** separar **Crear semilla base** de **Revisar configuración anterior**. La edición masiva
+usa un recorrido simple: descargar JSON editable → escoger archivo corregido → prevalidar idioma,
+conteos y errores → confirmar **Importar como nuevo borrador**. Cargar nunca activa. Debe permitir
+reseleccionar el mismo archivo corregido, anunciar resultados/errores de forma accesible, comparar el
+nuevo borrador con la activa y mostrar readiness `es/en` con el motivo que bloquea una campaña.
+
 ---
 
 ## 7. Accesibilidad y UX

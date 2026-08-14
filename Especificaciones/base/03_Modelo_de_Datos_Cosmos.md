@@ -816,6 +816,12 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   y frases `consultarIdea|acuseConsultaIdea|nuevaIdea`. Versiones históricas activas se leen mediante
   respaldo compatible durante la migración; una versión nueva debe incluir las claves completas.
 - `huella` identifica el contenido efectivo sin copiar mensajes/frases a logs. Ver P-32 §4 y §9.
+- **DT-P32-02:** semilla base, fotografía legacy e importación JSON siguen creando este mismo tipo de
+  documento. El archivo masivo es transporte, no entidad: `formato`, metadatos de versión/estado,
+  ETag y auditoría exportados no se persisten desde la carga ni controlan la versión nueva. Toda
+  importación válida crea un documento nuevo en `borrador`; una inválida no escribe.
+- Los valores de `mensajes` y las entradas de grupos existentes en `frases` son editables sin
+  compilar. Las claves/grupos siguen siendo contrato cerrado del servidor.
 
 ### 3.14 `CodigoAuthAdmin` (contenedor `security`) — `REQ §10.3`, `§28.3`
 

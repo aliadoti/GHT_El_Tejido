@@ -41,7 +41,9 @@ completo y el agente debe detenerse con `BLOCKED` si no puede cumplir una precon
 Actúa como SDET/QA senior para El Tejido. Ejecuta y documenta la **validación completa de P-32:
 conversación español/inglés y catálogo de textos** en el ambiente de pruebas autorizado.
 
-Primero lee `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`,
+Primero lee `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`,
+`QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`,
+`Especificaciones/Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`,
 `Especificaciones/Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md` §§10, 12, 14 y 15,
 `tests/Calibracion/README.md` y `QAS/06_Criterios_Aceptacion_LLM.md`.
 
@@ -62,6 +64,9 @@ Reglas obligatorias:
 4. Ejecuta primero la regresión con `Conversacion:CatalogoTextosHabilitado=false`. Luego, solo si la
    ventana ya fue preparada por un humano autorizado, valida con el gate temporalmente ON. Al terminar,
    confirma que quedó OFF, salvo que exista una aprobación formal de activación productiva.
+   Antes de cualquier conversación confirma que el ambiente saliente está aislado o que todos los
+   números son de prueba autorizados: la simulación entrante no desactiva automáticamente el emisor
+   real. Sin esa garantía, marca el recorrido `BLOCKED` y no envíes mensajes.
 5. Prepara una corrida nueva antes de puntuar. Conserva los datos para auditoría; no borres campañas,
    usuarios ni evidencia al terminar.
 
@@ -80,9 +85,10 @@ Reglas obligatorias:
       más de uno con el mismo nombre, detén las pruebas que dependan del LLM como BLOCKED y reporta el
       identificador encontrado; jamás solicites ni manipules la key de OpenRouter.
 
-   d. Comprueba que existe un catálogo global activo y válido para `es` y `en`. Si falta, crea desde
-      **Textos de conversación** una semilla del idioma faltante como borrador, revísala, actívala con
-      ETag y anota versión/huella. No sobrescribas una versión activa existente.
+   d. Ejecuta primero las Pruebas 1 a 8 de `QAS/22`. Comprueba que existe un catálogo global activo y
+      válido para `es` y `en`. Si falta, crea una **semilla base** del idioma como borrador, descarga
+      y reimporta el JSON editado después de prevalidarlo, revísalo y actívalo explícitamente con ETag.
+      Anota versión/huella. No uses una fotografía legacy inválida ni sobrescribas una activa.
 
    e. Crea una campaña nueva llamada `CAMP-<identificador>-COMPLETA`, con esos tres recursos, una
       pregunta activa, un mensaje inicial y textos/localizaciones completos para `es` y `en` (nombre,
@@ -111,6 +117,7 @@ Al finalizar crea `QAS/resultados/Resultados_P32_Multidioma_<AAAA-MM-DD>.md` con
 - confirmación de que reutilizaste, sin editar, `rúbrica OpenBrain v3.4`, `Evaluación con rubrica
   OpenBrain Thought-Scoring` y `OpenRouter-Terra`, o el bloqueo concreto si alguno no estaba disponible;
 - versiones/huellas de catálogo y plantillas Meta usadas, sin secretos;
+- resultado de semilla base, edición masiva JSON, prevalidación y readiness de `QAS/22`;
 - tabla `Prueba | es | en | Estado | Evidencia | Observación`;
 - resultado del lote mixto, activación/rollback y campaña incompleta;
 - reporte D5, costo/tokens/latencia observados y comparación de equivalencia;

@@ -4,6 +4,13 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-14 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec): **`DT-P32-02`
+  ESPECIFICADA, 0/3; sin código ni configuración remota.** El usuario priorizó cerrar primero la
+  preparación del catálogo P-32: semilla base `es/en` independiente de legacy, migración anterior
+  prevalidada, edición masiva descargar/editar/cargar JSON como nueva versión borrador, límites
+  operativos con techo seguro, readiness y bloqueo de campañas bilingües sin catálogo activo. Plan en
+  tres cortes y guía `QAS/22`. Después de desplegar con autorización se ejecutan `QAS/22` y `QAS/17`;
+  solo con P-32 green se retoma `DT-I20-02`. **Siguiente código: corte 1/3 de `DT-P32-02`.**
 - Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-I20-02`
   ESPECIFICADA, 0/3; sin código ni configuración remota.** El reporte se trazó al prompt de
   evaluación de runtime, que pidió secciones Markdown y estado interno dentro de campos visibles;
@@ -11,8 +18,9 @@
   campo el texto inválido, conservando puntajes, recomendación, idea/versionId, umbrales, madurez,
   estados, cierres, presupuesto I-18, P-27, idioma P-32, versión exacta P-33 e historial. No permite
   sanitización global. También define selección runtime de la versión activa/aprobada más nueva y
-  migración mediante familia nueva/campaña aislada. **Siguiente código: corte 1/3.** Spec
-  `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`.
+  migración mediante familia nueva/campaña aislada. Spec
+  `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. **Queda en espera de
+  `DT-P32-02` y la nueva corrida P-32 green por decisión del usuario del 2026-08-14.**
 - Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec): **`P-33`
   DONE LOCAL, 3/3.** La consulta pura se resuelve antes de menús y afinidades, conserva primero la
   idea activa y luego la última propia no rechazada, e inserta la versión I-19 sin reevaluarla. Una
@@ -947,10 +955,15 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **Implementar `DT-I20-02` corte 1/3 sin cambiar reglas de negocio.** Leer la spec, I-19, I-20,
-  `DT-I20-01`, bases `05`/`08`, reglas y `QAS/21_*`. Agregar la regresión exacta del reporte, el
-  validador puro de fragmentos y los reemplazos seguros por campo en evaluador/I-20. Conservar
-  puntajes, versión, estados y repreguntas; no sanitizar el cuerpo final ni modificar Cosmos.
+- [ ] **Implementar `DT-P32-02` corte 1/3.** Leer `Iniciativas/DT-P32-02_*`, P-32, el plan
+  `planes/DT-P32-02_*`, contratos base `03`/`04`/`07`/`10`/`11` y `QAS/22_*`. Separar semilla base
+  `es/en` de fotografía legacy, parametrizar límites con techo seguro y agregar prevalidación sin
+  escritura. No truncar, activar, desplegar ni modificar configuración remota.
+- [ ] **Al cerrar los tres cortes, desplegar solo con autorización y repetir P-32.** Ejecutar primero
+  `QAS/22` y luego `QAS/17` completo en ambiente aislado. Corregir/repetir cualquier FAIL; mantener
+  el gate OFF ante FAIL/BLOCKED. Solo con resultado green cambiar el handoff a `DT-I20-02` corte 1/3.
+- [ ] **`DT-I20-02` queda especificada y en espera.** No iniciar sus cambios de evaluador/prompts
+  antes del cierre green de `DT-P32-02`; su spec, `QAS/21` y runbook permanecen vigentes.
 - [ ] **Validar operativamente `P-33` antes de activarlo.** En un ambiente aislado, seguir
   `QAS/20_*` en español e inglés, comprobar consulta, corrección de idea cerrada, acuse y cierre;
   revisar costo/latencia y firmar el acta de flags. El gate global permanece OFF y no se cambia
@@ -962,7 +975,7 @@
   el mismo reconocimiento, y (c) que no aumentan los respaldos deterministas (`ajuste:` y `motivo:` en
   la telemetría de redacción). Guía humana: `QAS/19_DT-I20-01_Variacion_Redaccion_Como_Probar.md`.
   No hay flag que apagar: el rollback es revertir el commit de aplicación.
-- [ ] **Validar operativamente P-32; no hay un corte de código pendiente.** Ejecutar D5 real y UAT
+- [ ] **Validar operativamente P-32 después de implementar `DT-P32-02`.** Ejecutar D5 real y UAT
   bilingüe en un ambiente aislado usando `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y
   `QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md`: recorrido E2E `es/en`, lote mixto, edición,
   activación y rollback del catálogo. Antes de una activación productiva se requieren traducciones
@@ -1255,7 +1268,8 @@
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
-| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; sin código | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Siguiente: corte 1 y regresión exacta del reporte; QAS `21_*`. |
+| DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | ESPECIFICADA 0/3; siguiente código | — | enlaces y `git diff --check` verdes; sin build por ser solo docs | Base `es/en` independiente de legacy; descargar/prevalidar/importar JSON como nuevo borrador; límites seguros, readiness y catálogo activo obligatorio para campaña bilingüe. Plan `planes/DT-P32-02_*`; QAS `22_*`. |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; en espera de DT-P32-02 green | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Se retoma después de la nueva corrida P-32 green; QAS `21_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -1402,6 +1416,13 @@
   ventana WhatsApp, gates/rollback, catálogo `es/en`, telemetría sin contenido, tres cortes y QAS
   simple. Se sincronizaron spec, REQ-053, contratos 03/04/05/10/11/13, Reglas, SUPUESTOS, índice,
   TODO, prompt de arranque y QAS. Siguiente: corte 1. Sin build/test porque no cambió código.
+
+- 2026-08-14 - Codex - **DT-P32-02 especificada; sin código ni cambio remoto.** Rol:
+  Arquitecto/Backend/Frontend/SDET/AppSec. Se convirtió el hallazgo de la semilla `es` en una deuda
+  ejecutable de tres cortes: base segura independiente de legacy, prevalidación, límites operativos
+  con techo, edición masiva descargar/editar/cargar JSON como nuevo borrador, readiness y bloqueo de
+  campañas bilingües sin catálogo activo. Se agregaron spec, plan, QAS 22 y contratos/documentación
+  de continuidad. Decisión del usuario: desplegar y repetir P-32 hasta green antes de `DT-I20-02`.
 
 - 2026-08-13 - Codex - **DT-I20-02 especificada; sin código ni cambio remoto.** Rol:
   Arquitecto/Backend/SDET/AppSec. La evidencia de solo lectura trazó el formato visible al prompt

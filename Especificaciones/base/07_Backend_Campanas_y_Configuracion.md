@@ -137,6 +137,12 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
   valores/listas, no inventa claves.
 - App Settings conserva solo configuración operacional (gate, cache TTL, flags/límites y mapeos Meta).
   Los textos y frases editoriales legacy se migran y después quedan deprecados.
+- **DT-P32-02:** la base curada `es/en` no lee App Settings; la fotografía legacy es una operación
+  separada y prevalidada. Descargar/reimportar JSON permite edición masiva de valores y listas, pero
+  siempre crea una versión nueva en borrador. `MaxFrasesPorGrupo` y `MaxBytesImportacionJson` son
+  límites operativos con techo compilado, no contenido editorial.
+- Activar una campaña bilingüe exige una versión global activa y válida por cada idioma además de
+  localizaciones completas. Readiness expone el bloqueo antes de intentar la transición.
 
 ---
 
@@ -154,6 +160,8 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 - Duplicar una campaña produce una plantilla reutilizable.
 - P-32: un admin puede editar/versionar textos `es/en` y revertirlos sin build; una campaña bilingüe
   incompleta no se activa y una campaña legacy española sigue funcionando.
+- DT-P32-02: un admin descarga, edita, prevalida e importa el catálogo completo como nuevo borrador;
+  una configuración legacy inválida no impide crear las semillas base `es/en`.
 - Crear/editar/duplicar preserva `participacionContinua`; un documento histórico ausente se devuelve
   como `false`.
 - Crear/editar/duplicar preserva `clasificacionIntencionControl`; ausente se devuelve como `false` y

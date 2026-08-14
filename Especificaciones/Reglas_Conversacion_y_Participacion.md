@@ -461,6 +461,9 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
    formato de importación/exportación de borradores; no es la fuente primaria del repositorio.
 8. Variables de entorno conservan flags, límites, timeouts, caché y mapeos Meta. Los textos/frases
    editoriales se migran al catálogo y sus claves legacy quedan deprecadas.
+9. **DT-P32-02:** una base curada `es/en` no depende de legacy. El administrador puede descargar,
+   editar y reimportar el JSON completo; primero se prevalida y luego crea una versión nueva en
+   borrador. Nunca sobrescribe o activa. Una campaña bilingüe exige catálogo activo por idioma.
 
 ### 2.13 Consulta y cierre visible de la idea (P-33, especificada)
 
@@ -494,6 +497,8 @@ controles P-27 → aporte normal. P-33 tiene gate propio y no depende de P-27 ni
 | `Campania.idiomasHabilitados` + `localizaciones` | Portal admin (campaña/mensajes/preguntas) | `["es"]` / campos legacy españoles | **P-32:** contenido propio por idioma bajo los mismos ids; inglés incompleto no se activa. |
 | `Conversacion:CatalogoTextosHabilitado` | App config / env | `false` | **P-32:** gate de migración. OFF conserva exacto el camino actual; ON usa catálogo/caché/respaldo del mismo idioma. |
 | `Conversacion:CatalogoTextos:CacheSegundos` | App config / env | `60` recomendado | **P-32:** expiración de caché; valor operativo, no contenido editorial. |
+| `Conversacion:CatalogoTextos:MaxFrasesPorGrupo` | App config / env | `100` (techo 500) | **DT-P32-02:** permite ampliar listas existentes sin compilar; exceso se rechaza, nunca se trunca. |
+| `Conversacion:CatalogoTextos:MaxBytesImportacionJson` | App config / env | `262144` (techo 1 MiB) | **DT-P32-02:** límite previo a deserializar edición masiva; no contiene contenido en logs. |
 | `MaxRepreguntas` (pregunta / campaña) | Portal admin (campaña/pregunta) | 1 | Techo técnico de preguntas socráticas por idea (0 = ninguna). Puede configurarse alto para acompañar hasta madurez; no es la salida normal de una idea. |
 | `Conversacion:UmbralCierreAnticipado` | App config / env `Conversacion__UmbralCierreAnticipado` | 0 (**desactivado**) | Default numérico heredable para campañas sin override; fracción de la escala `[0,1]`. |
 | `configConversacional.umbralCierreAnticipado` | Portal admin (campaña) | `null` (**hereda global**) | Override opcional por campaña; `<= 0` apaga solo esa campaña. |
@@ -607,3 +612,5 @@ controles P-27 → aporte normal. P-33 tiene gate propio y no depende de P-27 ni
 - `AVANCES.md` (tablero por fases, estado real).
 - `Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md` y
   `planes/P-32_Inventario_y_Migracion_Textos.md`.
+- `Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`,
+  `planes/DT-P32-02_Plan_Implementacion_Semillas_y_JSON.md` y `QAS/22_*`.

@@ -1,6 +1,8 @@
 # P-32 — Inventario y migración de textos conversacionales
 
-**Estado:** cortes 1, 2 y 3 DONE local 2026-08-11. El corte 2a fija `idioma` en el
+**Estado:** P-32 4/4 DONE local. `DT-P32-02` está especificada 0/3 desde 2026-08-14 para separar
+semilla base de fotografía legacy, formalizar edición masiva JSON y readiness antes de repetir la
+validación operativa. El corte 2a fija `idioma` en el
 hilo/ciclo; el 2b1 conecta al adaptador los mensajes globales registrados y las variantes que emite
 `OrquestadorConversacion`, sin activar el catálogo. El 2b2 completa menús/frases de enrutamiento, detectores
 del orquestador y aclaraciones P-27 por snapshot de idioma. El corte 3 agrega localizaciones embebidas,
@@ -25,9 +27,11 @@ orden para que ningún mensaje visible permanezca accidentalmente en español du
 
 ## 3. Inventario global inicial
 
-La semilla `es` debe tomar los **valores efectivos del ambiente objetivo**, no asumir que
-`appsettings.json` coincide con Azure. `POST /api/admin/catalogos-textos/semillas/es` fotografía las
-opciones efectivas cargadas por la aplicación y crea un borrador revisable; no activa contenido.
+P-32 originalmente hizo que la semilla `es` tomara los valores efectivos del ambiente objetivo. La
+corrida del 2026-08-13 demostró que una lista legacy inválida puede bloquear todo el borrador.
+`DT-P32-02` separa dos rutas: **semilla base** curada `es/en`, siempre válida e independiente del
+ambiente, y **fotografía legacy** prevalidada. Ambas crean borrador y nunca activan contenido. La ruta
+P-32 original se conserva por compatibilidad, pero el portal usa las rutas explícitas.
 
 ### 3.1 Mensajes de `OpcionesMensajesConversacion`
 
@@ -126,16 +130,20 @@ funcionando. No se crean copias `_en` porque dividirían participantes, resultad
 
 ## 6. Secuencia segura de migración
 
-1. **Fotografiar:** exportar valores efectivos de Azure/App Settings sin secretos y generar la semilla
-   española. No escribir los valores en logs.
-2. **Traducir y aprobar:** producir la versión inglesa con revisión humana; no usar traducción
+1. **Crear base:** generar borradores base `es/en`, completos y válidos, sin depender de App Settings.
+2. **Prevalidar legacy:** revisar los valores efectivos sin escribir. Corregir excesos/duplicados en
+   un JSON de trabajo o conservar la base; nunca truncar ni mezclar silenciosamente.
+3. **Edición masiva:** descargar JSON editable, ajustar `mensajes`/`frases`, prevalidar y confirmar
+   una nueva versión borrador.
+4. **Traducir y aprobar:** producir la versión inglesa con revisión humana; no usar traducción
    automática como contenido final.
-3. **Guardar borradores:** importar `es` y `en` en Cosmos; validar claves, frases y placeholders.
-4. **Probar con gate OFF:** verificar que la presencia del catálogo no cambia el flujo legacy.
-5. **Activar catálogo en prueba:** gate ON solo en ambiente de prueba, con caché corta y dos usuarios.
-6. **Migrar campañas:** agregar localizaciones completas y plantillas Meta; ejecutar lote mixto.
-7. **UAT y rollback:** editar un texto, activar versión, comprobar propagación y reactivar la previa.
-8. **Deprecar:** cuando la regresión sea verde, dejar de editar `Conversacion:Mensajes:*` y
+5. **Guardar borradores:** importar `es` y `en` en Cosmos; validar claves, frases y placeholders.
+6. **Revisar readiness:** exigir versión activa por idioma y campañas/localizaciones completas.
+7. **Probar con gate OFF:** verificar que la presencia del catálogo no cambia el flujo legacy.
+8. **Activar catálogo en prueba:** gate ON solo en ambiente de prueba, con caché corta y dos usuarios.
+9. **Migrar campañas:** agregar localizaciones completas y plantillas Meta; ejecutar lote mixto.
+10. **UAT y rollback:** editar un texto, activar versión, comprobar propagación y reactivar la previa.
+11. **Deprecar:** cuando la regresión sea verde, dejar de editar `Conversacion:Mensajes:*` y
    `Conversacion:Frases*`; documentar fecha de retiro antes de eliminarlas en una iniciativa posterior.
 
 ### 6.1 Mapeo operativo de plantillas (corte 3)
@@ -157,4 +165,7 @@ Componentes` sigue siendo el respaldo exacto mientras el gate está apagado.
 - [ ] Los prompts reciben idioma y los guardrails reconocen fugas en `es/en`.
 - [ ] Logs y auditoría no contienen contenido ni aportes.
 - [ ] Edición, activación, caché y rollback funcionan sin build/deploy.
+- [ ] Semillas base `es/en` se crean aunque la fotografía legacy sea inválida.
+- [ ] Descargar/prevalidar/importar JSON completo crea un borrador nuevo y nunca activa.
+- [ ] Readiness exige catálogo activo por idioma antes de activar campaña bilingüe.
 - [ ] Variables editoriales legacy quedan marcadas como deprecadas y sin doble fuente silenciosa.

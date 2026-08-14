@@ -461,11 +461,33 @@ Crear/editar (la app **referencia** un secreto, no lo recibe ni lo escribe):
 | GET | `/api/admin/catalogos-textos/{familiaId}/{idioma}/versiones/{version}/exportar` | Descarga JSON UTF-8 sin datos de auditoría sensibles. |
 | POST | `/api/admin/catalogos-textos/importar` | Valida JSON e importa **siempre como borrador**; nunca activa. |
 | POST | `/api/admin/catalogos-textos/semillas/{idioma}` | Crea un borrador `es` con valores efectivos del ambiente o `en` con la base curada; nunca activa. |
+| POST | `/api/admin/catalogos-textos/semillas/{idioma}/base` | **DT-P32-02:** crea un borrador desde la base curada `es/en`, independiente de App Settings. |
+| GET | `/api/admin/catalogos-textos/semillas/{idioma}/legacy/preview` | Prevalida los valores efectivos legacy; no persiste. |
+| GET | `/api/admin/catalogos-textos/semillas/{idioma}/legacy/exportar` | Descarga todos los valores legacy como JSON editable aunque sean inválidos; no persiste ni trunca. |
+| POST | `/api/admin/catalogos-textos/semillas/{idioma}/legacy` | Fotografía legacy completa como borrador solo si es válida. |
+| POST | `/api/admin/catalogos-textos/importar/prevalidar` | Valida el mismo JSON de importación, devuelve conteos/errores y no escribe. |
+| GET | `/api/admin/catalogos-textos/readiness` | Estado del gate, catálogo activo/borradores por idioma y bloqueos de campañas, sin contenido. |
 
 GET exige `admin|visor`; mutaciones exigen `admin` + CSRF. Estado/idioma/clave/placeholder/límite
 inválido ⇒ `400 VALIDATION_ERROR`; versión comprometida o ETag/activación concurrente ⇒ `409
 CONFLICT`. El cuerpo sigue `03 §3.13.1`; los valores completos se devuelven porque son contenido de
 negocio administrado, no secretos. `LogSeguridad` no los duplica.
+
+**Edición masiva DT-P32-02:** la exportación descargable usa `formato:catalogo-textos/v1`,
+`familiaId`, `idioma`, `mensajes` y `frases`; puede incluir metadatos informativos de una exportación
+P-32 anterior. El importador ignora `version`, `estado`, `huella`, ETag y auditoría del archivo. El
+admin primero puede enviar el body a `/importar/prevalidar`; si confirma `/importar`, el servidor
+crea una versión nueva en `borrador`. Nunca actualiza o activa una existente. Un formato desconocido,
+idioma incompatible, exceso de tamaño/límite, clave desconocida o contenido inválido devuelve `400`
+con todos los `details` detectables y cero escrituras.
+
+Excepción de UX: `/importar/prevalidar` devuelve `200` con `valido:false` para un JSON legible cuyo
+contenido incumple reglas; JSON malformado o por encima del tamaño máximo devuelve `400`. `/importar`
+continúa devolviendo `400` ante cualquier contenido inválido.
+
+La base curada y la fotografía legacy son operaciones distintas. La ruta P-32 original se conserva
+por compatibilidad, pero el portal usa las rutas explícitas. `readiness` informa
+`gateHabilitado` real; `/efectivo` continúa siendo preview y no prueba el gate de runtime.
 
 ### 5.8 Consultas de resultados — `REQ §27.3`
 | Método | Ruta | Descripción |
