@@ -176,6 +176,25 @@ public sealed class ProcesadorWebhookEntrante
                     cancellationToken);
                 return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
 
+            case ResultadoEnrutamiento.ConsultarIdea consulta:
+                var participanteConsulta = new ParticipanteResuelto(
+                    autorizado.Usuario,
+                    consulta.Candidato.Campania,
+                    consulta.Candidato.Participante,
+                    consulta.Candidato.PreguntaVigente);
+                await _orquestador.MostrarIdeaConsultadaAsync(
+                    participanteConsulta, consulta.Mensaje, consulta.Contexto, cancellationToken);
+                if (consulta.Contexto.IdeaCerrada
+                    && consulta.Contexto.IdeaId is not null
+                    && consulta.Contexto.ConversacionId is not null)
+                {
+                    await _enrutamiento.ConfirmarConsultaIdeaAsync(
+                        autorizado.Usuario.Id, consulta.Mensaje.WhatsappMessageId,
+                        consulta.Contexto.IdeaId, consulta.Contexto.ConversacionId, cancellationToken);
+                }
+
+                return new ResultadoEntrante(ResultadoProcesoEntrante.Procesado);
+
             case ResultadoEnrutamiento.ContinuarConversacion continuar:
                 var candidato = continuar.Candidato;
                 var participante = new ParticipanteResuelto(

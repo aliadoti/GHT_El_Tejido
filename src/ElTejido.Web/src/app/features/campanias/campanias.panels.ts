@@ -44,6 +44,8 @@ export interface CampaniaEdicionForm extends CampaniaCrearForm {
   numeroWhatsAppSaliente: string;
   participacionContinua: boolean;
   clasificacionIntencionControl: boolean;
+  consultaIdea: boolean;
+  mostrarIdeaAlCerrar: boolean;
 }
 export type TabCampania = 'config' | 'mensajes' | 'preguntas' | 'localizaciones' | 'participantes';
 export interface MensajeInicialForm {
@@ -137,6 +139,8 @@ export function formularioDesdeCampania(campania: Campania): CampaniaEdicionForm
     participacionContinua: campania.configConversacional?.participacionContinua ?? false,
     clasificacionIntencionControl:
       campania.configConversacional?.clasificacionIntencionControl ?? false,
+    consultaIdea: campania.configConversacional?.consultaIdea ?? true,
+    mostrarIdeaAlCerrar: campania.configConversacional?.mostrarIdeaAlCerrar ?? true,
   };
 }
 
@@ -454,6 +458,19 @@ export class CampaniaCreacionPanel implements OnChanges {
             la idea activa.
           </p>
         }
+      </fieldset>
+      <fieldset class="form-fieldset">
+        <legend>Visibilidad de la idea</legend>
+        <label class="checkbox-label"
+          ><input type="checkbox" name="editarConsultaIdea" [(ngModel)]="formulario.consultaIdea" />
+          Permitir que la persona consulte su última idea</label
+        ><small class="muted"
+          >Solo funciona cuando el interruptor global está habilitado y nunca muestra ideas de otra persona.</small
+        >
+        <label class="checkbox-label"
+          ><input type="checkbox" name="editarMostrarIdeaAlCerrar" [(ngModel)]="formulario.mostrarIdeaAlCerrar" />
+          Mostrar la versión final al cerrar</label
+        ><small class="muted">No se muestra una idea rechazada.</small>
       </fieldset>
       <div class="actions-row">
         <button class="primary-button" type="submit" [disabled]="!esAdmin()">

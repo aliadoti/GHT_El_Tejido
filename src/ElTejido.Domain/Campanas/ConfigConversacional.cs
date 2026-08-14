@@ -18,7 +18,9 @@ public sealed class ConfigConversacional
         bool participacionContinua,
         bool clasificacionIntencionControl,
         double? umbralResumenConsolidacion,
-        bool resumenConsolidacion)
+        bool resumenConsolidacion,
+        bool consultaIdea,
+        bool mostrarIdeaAlCerrar)
     {
         MaxRepreguntas = maxRepreguntas;
         MensajeCierre = mensajeCierre;
@@ -34,6 +36,8 @@ public sealed class ConfigConversacional
         ClasificacionIntencionControl = clasificacionIntencionControl;
         UmbralResumenConsolidacion = umbralResumenConsolidacion;
         ResumenConsolidacion = resumenConsolidacion;
+        ConsultaIdea = consultaIdea;
+        MostrarIdeaAlCerrar = mostrarIdeaAlCerrar;
     }
 
     public int MaxRepreguntas { get; }
@@ -106,6 +110,12 @@ public sealed class ConfigConversacional
     public double? UmbralResumenConsolidacion { get; }
     public bool ResumenConsolidacion { get; }
 
+    /// <summary>P-33: permite consultar la última idea propia de esta campaña. Ausente = habilitado.</summary>
+    public bool ConsultaIdea { get; }
+
+    /// <summary>P-33: muestra la versión oficial al cerrar una idea. Ausente = habilitado.</summary>
+    public bool MostrarIdeaAlCerrar { get; }
+
     public static ConfigConversacional Crear(
         int maxRepreguntas,
         string mensajeCierre,
@@ -120,7 +130,9 @@ public sealed class ConfigConversacional
         bool participacionContinua = false,
         bool clasificacionIntencionControl = false,
         double? umbralResumenConsolidacion = null,
-        bool resumenConsolidacion = true)
+        bool resumenConsolidacion = true,
+        bool consultaIdea = true,
+        bool mostrarIdeaAlCerrar = true)
     {
         if (maxRepreguntas < 0)
         {
@@ -152,6 +164,7 @@ public sealed class ConfigConversacional
             coachingSecuencialIdeas,
             minutosCoachingPorIdea,
             participacionContinua,
-            clasificacionIntencionControl, umbralResumenConsolidacion, resumenConsolidacion);
+            clasificacionIntencionControl, umbralResumenConsolidacion, resumenConsolidacion,
+            consultaIdea, mostrarIdeaAlCerrar);
     }
 }

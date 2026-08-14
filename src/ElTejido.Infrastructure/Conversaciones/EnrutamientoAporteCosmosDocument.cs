@@ -202,6 +202,7 @@ internal sealed class EnrutamientoAporteCosmosDocument
         {
             ModoEnrutamientoAporte.EntradaProactiva => "entradaProactiva",
             ModoEnrutamientoAporte.RetomarIdea => "retomarIdea",
+            ModoEnrutamientoAporte.ConsultarIdea => "consultarIdea",
             _ => "aporte",
         };
 
@@ -210,6 +211,7 @@ internal sealed class EnrutamientoAporteCosmosDocument
         {
             "entradaProactiva" => ModoEnrutamientoAporte.EntradaProactiva,
             "retomarIdea" => ModoEnrutamientoAporte.RetomarIdea,
+            "consultarIdea" => ModoEnrutamientoAporte.ConsultarIdea,
             _ when esEntradaProactiva => ModoEnrutamientoAporte.EntradaProactiva,
             _ => ModoEnrutamientoAporte.Aporte,
         };

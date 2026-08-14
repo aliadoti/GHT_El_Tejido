@@ -50,6 +50,14 @@ public interface IServicioEnrutamientoParticipacion
         string whatsappMessageIdOriginal,
         bool completada,
         CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>P-33: deja la afinidad de una consulta cerrada lista para una corrección posterior.</summary>
+    Task ConfirmarConsultaIdeaAsync(
+        string usuarioId,
+        string whatsappMessageIdOriginal,
+        string ideaId,
+        string conversacionId,
+        CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>Desenlace de la resolucion P-26; jerarquia cerrada para forzar el manejo de todos los casos.</summary>
@@ -97,6 +105,12 @@ public abstract record ResultadoEnrutamiento
         MensajeEntrante Mensaje,
         ContextoRetomarIdea Contexto) : ResultadoEnrutamiento;
 
+    /// <summary>P-33: mostrar la versión oficial no es un aporte ni modifica el hilo.</summary>
+    public sealed record ConsultarIdea(
+        CandidatoCampania Candidato,
+        MensajeEntrante Mensaje,
+        ContextoConsultaIdea Contexto) : ResultadoEnrutamiento;
+
     /// <summary>Ninguna campania elegible: rechazo neutral vigente (silencio, comportamiento actual).</summary>
     public sealed record SinElegibles() : ResultadoEnrutamiento;
 }
@@ -117,6 +131,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     private readonly DetectorEntradaProactiva _entradaProactiva;
     private readonly bool _despertarProactivoHabilitado;
     private readonly bool _retomarIdeasHabilitado;
+    private readonly bool _visibilidadIdeaParticipanteHabilitada;
+    private readonly int _maxCaracteresConsultaIdea;
+    private readonly DetectorConsultaIdea _consultaIdea;
     private readonly int _maxCaracteresIntencionContinuar;
     private readonly int _maxCaracteresDespertarProactivo;
     private readonly DetectorIntencionContinuar _retomarIdea;
@@ -153,6 +170,13 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             opciones.MaxCaracteresDespertarProactivo);
         _despertarProactivoHabilitado = opciones.DespertarProactivoHabilitado;
         _retomarIdeasHabilitado = opciones.RetomarIdeasHabilitado;
+        _visibilidadIdeaParticipanteHabilitada = opciones.VisibilidadIdeaParticipanteHabilitada;
+        _maxCaracteresConsultaIdea = opciones.MaxCaracteresConsultaIdea;
+        _consultaIdea = new DetectorConsultaIdea(
+            opciones.FrasesConsultarIdea is { Count: > 0 }
+                ? opciones.FrasesConsultarIdea
+                : DetectorConsultaIdea.FrasesPorDefecto,
+            opciones.MaxCaracteresConsultaIdea);
         _maxCaracteresIntencionContinuar = opciones.MaxCaracteresIntencionContinuar;
         _maxCaracteresDespertarProactivo = opciones.MaxCaracteresDespertarProactivo;
         _retomarIdea = new DetectorIntencionContinuar(
@@ -180,6 +204,20 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             await _enrutamientos.GuardarAsync(pendiente.Expirar(ahora), cancellationToken);
             await RegistrarAsync(usuario, "expirado", Detalle(pendiente), ahora, cancellationToken);
             pendiente = null;
+        }
+
+        // P-33: petición pura antes de cualquier menú o afinidad; no consume ni reinterpreta el aporte.
+        if (_visibilidadIdeaParticipanteHabilitada
+            && _respuestas is not null
+            && await CoincideConsultaIdeaAsync(usuario.Idioma, mensaje.Texto, cancellationToken))
+        {
+            if (pendiente is not null)
+            {
+                await _enrutamientos.GuardarAsync(pendiente.Cancelar(ahora), cancellationToken);
+                await RegistrarAsync(usuario, "consultaCancelaSeleccion", Detalle(pendiente), ahora, cancellationToken);
+            }
+
+            return await ResolverConsultaIdeaAsync(usuario, candidatos, mensaje, ahora, cancellationToken);
         }
 
         if (pendiente is not null)
@@ -215,6 +253,20 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             if (await CoincideCambioCampaniaAsync(afinidad.Enrutamiento.Idioma, mensaje.Texto, cancellationToken))
             {
                 return await SuspenderAfinidadYReofrecerAsync(usuario, candidatos, afinidad, mensaje, ahora, cancellationToken);
+            }
+
+            if (afinidad.Enrutamiento.EsConsultarIdea && afinidad.Conversacion?.Estado == EstadoConversacion.Cerrada)
+            {
+                if (await EsAcuseConsultaIdeaAsync(afinidad.Enrutamiento.Idioma, mensaje.Texto, cancellationToken))
+                {
+                    return new ResultadoEnrutamiento.SinElegibles();
+                }
+
+                return new ResultadoEnrutamiento.ContinuarConversacion(
+                    afinidad.Candidato, mensaje, null,
+                    new ContextoAporteEnrutado(
+                        afinidad.Conversacion.PreguntaId, null, afinidad.Conversacion.Id,
+                        afinidad.Enrutamiento.IdeaSeleccionadaId));
             }
 
             if (afinidad.Conversacion is not null)
@@ -293,6 +345,23 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             $"{Detalle(enrutamiento)};latenciaMs={latenciaMs}",
             ahora,
             cancellationToken);
+    }
+
+    public async Task ConfirmarConsultaIdeaAsync(
+        string usuarioId,
+        string whatsappMessageIdOriginal,
+        string ideaId,
+        string conversacionId,
+        CancellationToken cancellationToken)
+    {
+        var ruta = await _enrutamientos.ObtenerPorMensajeAsync(usuarioId, whatsappMessageIdOriginal, cancellationToken);
+        if (ruta is null || ruta.Estado != EstadoEnrutamientoAporte.Listo || !ruta.EsConsultarIdea)
+        {
+            return;
+        }
+
+        await _enrutamientos.GuardarAsync(
+            ruta.CompletarConsultaIdea(ideaId, conversacionId, _tiempo.GetUtcNow()), cancellationToken);
     }
 
     public async Task ConfirmarRetomadaAsync(
@@ -584,6 +653,72 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         await EnviarMenuPreguntasAsync(
             usuario, enrutamiento.Idioma, enrutamiento.PreguntasOfrecidas, mensaje.PhoneNumberIdDestino, false, cancellationToken);
         return new ResultadoEnrutamiento.SeleccionPendiente(enrutamiento.Id);
+    }
+
+    private async Task<ResultadoEnrutamiento> ResolverConsultaIdeaAsync(
+        Usuario usuario,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        MensajeEntrante mensaje,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var candidatas = new List<(CandidatoCampania Candidato, ElTejido.Domain.Respuestas.IdeaConsolidada Idea)>();
+        foreach (var candidato in candidatos.Where(c => c.Campania.ConfigConversacional.ConsultaIdea))
+        {
+            var idea = (await _respuestas!.ListarIdeasConsolidadasAsync(candidato.Campania.Id, cancellationToken))
+                .Where(x => x.UsuarioId == usuario.Id
+                    && x.EstadoResultado != ElTejido.Domain.Respuestas.EstadoResultadoIdeaConsolidada.Rechazada
+                    && (!string.IsNullOrWhiteSpace(x.VersionConfirmadaRef) || !string.IsNullOrWhiteSpace(x.VersionPropuestaRef)))
+                .OrderByDescending(x => x.ActualizadaEn)
+                .FirstOrDefault();
+            if (idea is not null)
+            {
+                candidatas.Add((candidato, idea));
+            }
+        }
+
+        // Un coach conserva primero el hilo todavía abierto; solo sin uno elige la última idea propia.
+        var activas = candidatas
+            .Where(x => x.Idea.EstadoFlujo != ElTejido.Domain.Respuestas.EstadoFlujoIdeaConsolidada.Cerrada)
+            .ToArray();
+        var elegida = (activas.Length > 0 ? activas : candidatas.ToArray())
+            .OrderByDescending(x => x.Idea.ActualizadaEn)
+            .ThenByDescending(x => x.Idea.IdeaIndice)
+            .ThenBy(x => x.Idea.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (elegida.Candidato is null)
+        {
+            var respaldo = candidatos.FirstOrDefault(c => c.Campania.ConfigConversacional.ConsultaIdea);
+            return respaldo is null
+                ? new ResultadoEnrutamiento.SinElegibles()
+                : new ResultadoEnrutamiento.ConsultarIdea(
+                    respaldo, mensaje, new ContextoConsultaIdea(null, null, null, null, false));
+        }
+
+        var conversacion = await _conversaciones.ObtenerConversacionAsync(
+            elegida.Candidato.Campania.Id, elegida.Idea.ConversacionId, cancellationToken);
+        string? rutaId = null;
+        var cerrada = conversacion?.Estado == EstadoConversacion.Cerrada;
+        if (cerrada)
+        {
+            var ruta = EnrutamientoAporte.Crear(
+                usuario.Id, mensaje.WhatsappMessageId, mensaje.Texto, EstadoEnrutamientoAporte.Listo, ahora,
+                phoneNumberIdDestino: mensaje.PhoneNumberIdDestino,
+                campaniaSeleccionadaId: elegida.Candidato.Campania.Id,
+                preguntaSeleccionadaId: elegida.Idea.PreguntaId,
+                conversacionId: elegida.Idea.ConversacionId,
+                modo: ModoEnrutamientoAporte.ConsultarIdea,
+                ideaSeleccionadaId: elegida.Idea.Id,
+                idioma: usuario.Idioma);
+            await _enrutamientos.GuardarAsync(ruta, cancellationToken);
+            rutaId = ruta.Id;
+        }
+
+        await RegistrarAsync(usuario, "consulta", $"idea:{elegida.Idea.Id};cerrada:{cerrada}", ahora, cancellationToken);
+        return new ResultadoEnrutamiento.ConsultarIdea(
+            elegida.Candidato,
+            mensaje,
+            new ContextoConsultaIdea(elegida.Idea.PreguntaId, elegida.Idea.Id, elegida.Idea.ConversacionId, rutaId, cerrada));
     }
 
     private async Task<ResultadoEnrutamiento> ResolverIdeasTrasPreguntaAsync(
@@ -910,6 +1045,11 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
 
         if (conversacion.Estado == EstadoConversacion.Cerrada)
         {
+            if (enIdea.EsConsultarIdea && ahora < enIdea.ActualizadoEn + VigenciaAfinidad)
+            {
+                return new AfinidadVigente(enIdea, candidato, conversacion);
+            }
+
             // §5.6: cuando la idea termina, el enrutamiento se marca completado y el siguiente aporte
             // vuelve a resolver campania/pregunta.
             await _enrutamientos.GuardarAsync(enIdea.Completar(ahora), cancellationToken);
@@ -1315,6 +1455,34 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 cancellationToken))
             .Coincide(texto);
 
+    private async Task<bool> CoincideConsultaIdeaAsync(
+        string idioma,
+        string texto,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return _consultaIdea.Coincide(texto);
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return new DetectorConsultaIdea(textos.Frases["consultarIdea"], _maxCaracteresConsultaIdea).Coincide(texto);
+    }
+
+    private async Task<bool> EsAcuseConsultaIdeaAsync(
+        string idioma,
+        string texto,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return DetectorConsultaIdea.EsAcuse(texto, DetectorConsultaIdea.FrasesAcusePorDefecto);
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return DetectorConsultaIdea.EsAcuse(texto, textos.Frases["acuseConsultaIdea"]);
+    }
+
     private async Task<bool> CoincideRetomarIdeaAsync(
         string idioma,
         string texto,
@@ -1502,3 +1670,11 @@ public sealed record ContextoRetomarIdea(
     string ConversacionId,
     string EnrutamientoAporteId,
     string WhatsappMessageIdOriginal);
+
+/// <summary>P-33: alcance revalidable de una consulta de la idea propia; no contiene texto.</summary>
+public sealed record ContextoConsultaIdea(
+    string? PreguntaId,
+    string? IdeaId,
+    string? ConversacionId,
+    string? EnrutamientoAporteId,
+    bool IdeaCerrada);

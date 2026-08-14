@@ -86,6 +86,15 @@ public sealed class OpcionesConversacion
     /// </summary>
     public bool RetomarIdeasHabilitado { get; set; }
 
+    /// <summary>P-33: kill-switch global para consultar y mostrar la idea propia. Nace apagado.</summary>
+    public bool VisibilidadIdeaParticipanteHabilitada { get; set; }
+
+    /// <summary>P-33: límite de una consulta pura de la idea; 0 o negativo desactiva su reconocimiento.</summary>
+    public int MaxCaracteresConsultaIdea { get; set; } = 220;
+
+    /// <summary>P-33: frases legacy para consultar la idea; vacío usa el catálogo o el respaldo compilado.</summary>
+    public IList<string> FrasesConsultarIdea { get; set; } = new List<string>();
+
     /// <summary>
     /// P-28: vocabulario breve de saludo/inicio. Vacío usa
     /// <see cref="DetectorEntradaProactiva.FrasesPorDefecto"/>.
@@ -283,6 +292,11 @@ public sealed class OpcionesConversacion
 
 public sealed class OpcionesMensajesConversacion
 {
+    public const string EncabezadoConsultaIdeaDefault = "Así quedó escrita tu idea hasta ahora:";
+    public const string InvitacionConsultaIdeaDefault = "Si quieres ajustarla, dime qué cambiarías.";
+    public const string EncabezadoCierreIdeaDefault = "Así queda registrada tu idea:";
+    public const string OtrasIdeasGuardadasDefault = "También conservamos otras ideas tuyas en este tema.";
+    public const string SinIdeaDisponibleDefault = "Aún no encuentro una idea guardada para mostrarte.";
     public const string EncabezadoResumenAvanceDefault = "Asi va tu idea hasta ahora:";
     public const string PreguntaContinuarMadurandoDefault = "¿Quieres seguir puliendola o prefieres dejarla asi?";
     public const string SaludoPrimerContactoDefault =
@@ -356,6 +370,16 @@ public sealed class OpcionesMensajesConversacion
     };
 
     public string SaludoPrimerContacto { get; set; } = SaludoPrimerContactoDefault;
+
+    public string EncabezadoConsultaIdea { get; set; } = EncabezadoConsultaIdeaDefault;
+
+    public string InvitacionConsultaIdea { get; set; } = InvitacionConsultaIdeaDefault;
+
+    public string EncabezadoCierreIdea { get; set; } = EncabezadoCierreIdeaDefault;
+
+    public string OtrasIdeasGuardadas { get; set; } = OtrasIdeasGuardadasDefault;
+
+    public string SinIdeaDisponible { get; set; } = SinIdeaDisponibleDefault;
 
     public string EncabezadoResumenAvance { get; set; } = EncabezadoResumenAvanceDefault;
 

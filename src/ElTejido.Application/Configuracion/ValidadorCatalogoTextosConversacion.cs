@@ -10,6 +10,11 @@ public static partial class ValidadorCatalogoTextosConversacion
 {
     public static readonly IReadOnlySet<string> ClavesMensajes = new HashSet<string>(StringComparer.Ordinal)
     {
+        "encabezadoConsultaIdea",
+        "invitacionConsultaIdea",
+        "encabezadoCierreIdea",
+        "otrasIdeasGuardadas",
+        "sinIdeaDisponible",
         "encabezadoResumenAvance",
         "preguntaContinuarMadurando",
         "saludoPrimerContacto",
@@ -51,6 +56,9 @@ public static partial class ValidadorCatalogoTextosConversacion
         "revisitarIdea",
         "cambiarCampania",
         "despertarProactivo",
+        "consultarIdea",
+        "acuseConsultaIdea",
+        "nuevaIdea",
     };
 
     private static readonly IReadOnlySet<string> PlaceholdersPermitidos = new HashSet<string>(StringComparer.Ordinal)

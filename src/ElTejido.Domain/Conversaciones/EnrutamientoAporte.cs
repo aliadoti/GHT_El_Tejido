@@ -119,6 +119,9 @@ public sealed class EnrutamientoAporte
 
     public bool EsRetomarIdea => Modo == ModoEnrutamientoAporte.RetomarIdea;
 
+    /// <summary>P-33: afinidad corta generada al consultar una idea ya cerrada.</summary>
+    public bool EsConsultarIdea => Modo == ModoEnrutamientoAporte.ConsultarIdea;
+
     /// <summary>Particion interna reservada del contenedor <c>conversations</c> para este usuario.</summary>
     public string ParticionRouting => ParticionRoutingDe(UsuarioId);
 
@@ -271,6 +274,23 @@ public sealed class EnrutamientoAporte
         return With(estado: EstadoEnrutamientoAporte.EnIdea, actualizadoEn: ahora);
     }
 
+    /// <summary>P-33: fija la afinidad hacia una idea consultada ya cerrada.</summary>
+    public EnrutamientoAporte CompletarConsultaIdea(string ideaId, string conversacionId, DateTimeOffset ahora)
+    {
+        ExigirEstado(EstadoEnrutamientoAporte.Listo, "completar la consulta de idea");
+        if (!EsConsultarIdea)
+        {
+            throw new DomainValidationException("ENRUTAMIENTO_CONSULTA_INVALIDO", "El enrutamiento no corresponde a una consulta de idea.");
+        }
+
+        return With(
+            estado: EstadoEnrutamientoAporte.EnIdea,
+            ideaSeleccionadaId: DomainGuards.Required(ideaId, nameof(ideaId)),
+            conversacionId: DomainGuards.Required(conversacionId, nameof(conversacionId)),
+            reemplazarConversacion: true,
+            actualizadoEn: ahora);
+    }
+
     /// <summary>
     /// El aporte original quedo persistido en la conversacion resuelta: solo una ejecucion puede pasar
     /// de <c>listo</c> a <c>enIdea</c> y fijar <c>procesadoEn</c> (03 §3.6.1).
@@ -405,6 +425,7 @@ public enum ModoEnrutamientoAporte
     Aporte,
     EntradaProactiva,
     RetomarIdea,
+    ConsultarIdea,
 }
 
 /// <summary>Intento de seleccion auditado: solo ids, tipo (campania|pregunta), resultado y fecha.</summary>

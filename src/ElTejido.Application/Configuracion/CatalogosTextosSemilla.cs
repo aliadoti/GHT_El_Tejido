@@ -53,6 +53,11 @@ public static class CatalogosTextosSemilla
     private static IReadOnlyDictionary<string, string> MensajesEs(OpcionesMensajesConversacion? mensajes)
         => new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["encabezadoConsultaIdea"] = Texto(mensajes?.EncabezadoConsultaIdea, OpcionesMensajesConversacion.EncabezadoConsultaIdeaDefault),
+            ["invitacionConsultaIdea"] = Texto(mensajes?.InvitacionConsultaIdea, OpcionesMensajesConversacion.InvitacionConsultaIdeaDefault),
+            ["encabezadoCierreIdea"] = Texto(mensajes?.EncabezadoCierreIdea, OpcionesMensajesConversacion.EncabezadoCierreIdeaDefault),
+            ["otrasIdeasGuardadas"] = Texto(mensajes?.OtrasIdeasGuardadas, OpcionesMensajesConversacion.OtrasIdeasGuardadasDefault),
+            ["sinIdeaDisponible"] = Texto(mensajes?.SinIdeaDisponible, OpcionesMensajesConversacion.SinIdeaDisponibleDefault),
             ["encabezadoResumenAvance"] = Texto(mensajes?.EncabezadoResumenAvance, OpcionesMensajesConversacion.EncabezadoResumenAvanceDefault),
             ["preguntaContinuarMadurando"] = Texto(mensajes?.PreguntaContinuarMadurando, OpcionesMensajesConversacion.PreguntaContinuarMadurandoDefault),
             ["saludoPrimerContacto"] = Texto(mensajes?.SaludoPrimerContacto, OpcionesMensajesConversacion.SaludoPrimerContactoDefault),
@@ -107,6 +112,9 @@ public static class CatalogosTextosSemilla
             ["revisitarIdea"] = Lista(opciones?.FrasesRevisitarIdea, DetectorIntencionContinuar.FrasesRevisitarIdeaPorDefecto),
             ["cambiarCampania"] = Lista(opciones?.FrasesCambiarCampania, DetectorIntencionContinuar.FrasesCambiarCampaniaPorDefecto),
             ["despertarProactivo"] = Lista(opciones?.FrasesDespertarProactivo, DetectorEntradaProactiva.FrasesPorDefecto),
+            ["consultarIdea"] = Lista(opciones?.FrasesConsultarIdea, DetectorConsultaIdea.FrasesPorDefecto),
+            ["acuseConsultaIdea"] = DetectorConsultaIdea.FrasesAcusePorDefecto,
+            ["nuevaIdea"] = DetectorConsultaIdea.FrasesNuevaIdeaPorDefecto,
         };
     }
 
@@ -149,6 +157,11 @@ public static class CatalogosTextosSemilla
     private static IReadOnlyDictionary<string, string> MensajesEn()
         => new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["encabezadoConsultaIdea"] = "Here is how your idea is written so far:",
+            ["invitacionConsultaIdea"] = "If you want to refine it, tell me what you would change.",
+            ["encabezadoCierreIdea"] = "This is how your idea is recorded:",
+            ["otrasIdeasGuardadas"] = "We have also kept other ideas from you in this topic.",
+            ["sinIdeaDisponible"] = "I have not found a saved idea to show you yet.",
             ["encabezadoResumenAvance"] = "Here is how your idea is shaping up:",
             ["preguntaContinuarMadurando"] = "Would you like to keep refining it, or leave it as it is?",
             ["saludoPrimerContacto"] = "Hello! Thank you for reaching out. To participate, answer this question:",
@@ -239,5 +252,8 @@ public static class CatalogosTextosSemilla
                 "hello", "hi", "good morning", "good afternoon", "good evening", "I want to participate",
                 "I want to start", "I want to begin", "I want to continue", "how do I participate",
             },
+            ["consultarIdea"] = new[] { "show me my idea", "how is my idea written", "how is my idea so far", "show my idea" },
+            ["acuseConsultaIdea"] = new[] { "thanks", "thank you", "got it" },
+            ["nuevaIdea"] = new[] { "new idea", "another idea", "I have a new idea" },
         };
 }

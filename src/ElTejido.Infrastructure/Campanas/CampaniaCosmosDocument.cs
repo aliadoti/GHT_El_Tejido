@@ -515,6 +515,12 @@ internal sealed class CampaniaCosmosDocument
         [JsonProperty("resumenConsolidacion")]
         public bool ResumenConsolidacion { get; init; } = true;
 
+        [JsonProperty("consultaIdea")]
+        public bool ConsultaIdea { get; init; } = true;
+
+        [JsonProperty("mostrarIdeaAlCerrar")]
+        public bool MostrarIdeaAlCerrar { get; init; } = true;
+
         public static ConfigConversacionalDocument FromDomain(ConfigConversacional config)
         {
             return new ConfigConversacionalDocument
@@ -533,6 +539,8 @@ internal sealed class CampaniaCosmosDocument
                 ClasificacionIntencionControl = config.ClasificacionIntencionControl,
                 UmbralResumenConsolidacion = config.UmbralResumenConsolidacion,
                 ResumenConsolidacion = config.ResumenConsolidacion,
+                ConsultaIdea = config.ConsultaIdea,
+                MostrarIdeaAlCerrar = config.MostrarIdeaAlCerrar,
             };
         }
 
@@ -541,7 +549,8 @@ internal sealed class CampaniaCosmosDocument
             return ElTejido.Domain.Campanas.ConfigConversacional.Crear(
                 MaxRepreguntas, MensajeCierre, SegmentacionIdeas, TejidoColectivo, Parafraseo, UmbralCierreAnticipado,
                 MinutosInactividadSesion, NumeroWhatsAppSaliente, CoachingSecuencialIdeas, MinutosCoachingPorIdea,
-                ParticipacionContinua, ClasificacionIntencionControl, UmbralResumenConsolidacion, ResumenConsolidacion);
+                ParticipacionContinua, ClasificacionIntencionControl, UmbralResumenConsolidacion, ResumenConsolidacion,
+                ConsultaIdea, MostrarIdeaAlCerrar);
         }
     }
 

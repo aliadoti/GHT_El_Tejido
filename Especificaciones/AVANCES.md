@@ -4,14 +4,15 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-13 (Codex, Producto/Arquitecto/Backend/SDET/AppSec): **`P-33`
-  ESPECIFICADA Y APROBADA; 0/3, lista para implementación inmediata; sin código.** Por demanda se
-  muestra la idea activa o, si no existe, la última propia no rechazada y autorizada, sin menú por
-  defecto ni convertir la consulta en aporte. Los cierres normales muestran la versión exacta I-19.
-  Consultar una idea cerrada crea afinidad de un mensaje/24 h; una corrección posterior reabre esa
-  misma idea, pero agradecimientos, saludos, consultas y controles no. Gate global OFF, opt-outs por
-  campaña, catálogo `es/en`, telemetría sin contenido y rollback documentados. Siguiente código:
-  **P-33 corte 1**, contratos/resolución pura. Spec `Iniciativas/P-33_*`; QAS `20_*`.
+- Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec): **`P-33`
+  DONE LOCAL, 3/3.** La consulta pura se resuelve antes de menús y afinidades, conserva primero la
+  idea activa y luego la última propia no rechazada, e inserta la versión I-19 sin reevaluarla. Una
+  consulta de idea cerrada crea afinidad de 24 h; una corrección reabre el mismo `ideaId`, mientras
+  un acuse queda neutral. Se añadieron gate global OFF, opt-outs por campaña, catálogo `es/en`,
+  round-trip Cosmos/API, portal, telemetría sin contenido y visualización al cierre normal.
+  Validación: build Release `-warnaserror`, **789 unitarias + 87 integración**. Sin push, despliegue,
+  activación ni configuración remota. **Siguiente: D5/UAT en ambiente aislado, revisar costo/latencia
+  y firmar el acta de flags antes de activar.** Spec `Iniciativas/P-33_*`; QAS `20_*`.
 - Ultima actualizacion: 2026-08-13 (Claude Opus 5, Arquitecto/Backend/SDET): **`DT-I20-01` DONE local
   (5/5 pasos de §7).** La instrucción de evaluación y la del redactor piden variedad y siguen
   permitiendo “Queda claro que...”, que deja de ser la apertura obligatoria; cuando el turno lleva
@@ -937,11 +938,10 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **ARRANCA AQUÍ — `P-33` corte 1 de 3: contratos y resolución pura.** Implementar opciones/gate
-  OFF, `consultaIdea`/`mostrarIdeaAlCerrar` con round-trip Cosmos/API/portal, ampliación P-32 29/16,
-  detector localizado de consulta pura, selector activo→última autorizada y extensión compatible de
-  `EnrutamientoAporte`. Este corte todavía no envía la idea. Pruebas: defaults, catálogo histórico,
-  mensajes mixtos, desempates, autorización y versión ausente. Spec `Iniciativas/P-33_*` §11.
+- [ ] **Validar operativamente `P-33` antes de activarlo.** En un ambiente aislado, seguir
+  `QAS/20_*` en español e inglés, comprobar consulta, corrección de idea cerrada, acuse y cierre;
+  revisar costo/latencia y firmar el acta de flags. El gate global permanece OFF y no se cambia
+  configuración remota sin autorización.
 - [ ] **`DT-I20-01`: D5 con ejemplos reales anonimizados (código DONE local, sin push).** El código de
   los cinco pasos de `§7` está implementado y verde; lo que falta es la validación de calidad antes de
   desplegar: pasar un banco de ejemplos de campañas reales por el redactor y comprobar (a) que
@@ -949,8 +949,6 @@
   el mismo reconocimiento, y (c) que no aumentan los respaldos deterministas (`ajuste:` y `motivo:` en
   la telemetría de redacción). Guía humana: `QAS/19_DT-I20-01_Variacion_Redaccion_Como_Probar.md`.
   No hay flag que apagar: el rollback es revertir el commit de aplicación.
-- [ ] **Después del corte 1, continuar P-33 cortes 2 y 3** sin activar flags ni configuración remota:
-  consulta/afinidad/reapertura; luego cierres, telemetría, E2E `es/en` y cierre documental.
 - [ ] **Validar operativamente P-32; no hay un corte de código pendiente.** Ejecutar D5 real y UAT
   bilingüe en un ambiente aislado usando `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md` y
   `QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md`: recorrido E2E `es/en`, lote mixto, edición,
@@ -1241,7 +1239,7 @@
 | P-30 | Retomar ideas del pasado | DONE local 3/3; D5/UAT/costo pendiente | cambios locales | backend 729/729 (657+72), build/format/diff verdes | Selector histórico determinista sin filtro de estado/ciclo, número o título/resumen exacto, mismo `ideaId` y conversación, curaduría suspendida, afinidad explícita, Cosmos, telemetría sin texto, E2E y QAS. Flag global OFF; sin siguiente requisito de código priorizado. |
 | P-31 | Resumen consolidado por umbral | DONE 3/3 y desplegado; flags OFF | `6ba6ce0`, `32794fb`, `6d02492` | backend 664 unitarias + 77 integración al cierre | Resumen proactivo e idempotente por umbral propio. La consulta bajo demanda quedó resuelta separadamente en P-33. |
 | P-32 | Conversación multidioma y catálogo | DONE local 4/4; D5/UAT/Meta/costo pendientes | cambios locales | backend 858 no-Calibración tras correcciones; portal 43/43 previo | Runtime `es/en`, catálogo Cosmos/portal, localizaciones, envío mixto y rollback; gate OFF. P-33 extiende de forma compatible el registro 24/13 a 29/16. |
-| P-33 | Consulta y cierre visible de la idea | ESPECIFICADA Y APROBADA 0/3; implementación inmediata | sin código | documentación y QAS revisados | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: corte 1. |
+| P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
@@ -1390,6 +1388,15 @@
   ventana WhatsApp, gates/rollback, catálogo `es/en`, telemetría sin contenido, tres cortes y QAS
   simple. Se sincronizaron spec, REQ-053, contratos 03/04/05/10/11/13, Reglas, SUPUESTOS, índice,
   TODO, prompt de arranque y QAS. Siguiente: corte 1. Sin build/test porque no cambió código.
+
+- 2026-08-13 - Codex - **P-33 consulta y cierre visible de la idea — DONE LOCAL 3/3, sin push.**
+  Rol: Arquitecto/Backend/Frontend/SDET/AppSec. Se implementaron el gate global OFF, opt-outs de
+  campaña, API/Cosmos/portal, catálogo `es/en`, detector puro, selección activa→última propia,
+  versión I-19 exacta, afinidad `consultarIdea`, reapertura de la misma idea ante corrección y cierre
+  visible normal sin presentar rechazos. Telemetría nueva no guarda texto. Se añadieron pruebas del
+  detector y se verificó build Release `-warnaserror` y **789 unitarias + 87 integración**. Sin
+  despliegue, activación ni configuración remota. Siguiente: D5/UAT en ambiente aislado, costo/latencia
+  y acta de flags; QAS `20_*`.
 
 - 2026-08-13 - Claude Opus 5 - **DT-I20-01 implementada (DONE local 5/5, sin push).** Rol:
   Arquitecto/Backend/SDET. I-20, `Iniciativas/DT-I20-01_*` §4/§6/§7 y

@@ -73,6 +73,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly int _presupuestoTokensTejido;
     private readonly bool _parafraseoHabilitado;
     private readonly bool _consolidacionProgresivaHabilitada;
+    private readonly bool _visibilidadIdeaParticipanteHabilitada;
     private readonly bool _confirmacionExplicitaIdeasHabilitada;
     private readonly int _maxCaracteresIdeaConsolidada;
     private readonly int _maxCaracteresParafraseo;
@@ -144,6 +145,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _presupuestoTokensTejido = opciones.PresupuestoTokensTejido;
         _parafraseoHabilitado = opciones.Parafraseo;
         _consolidacionProgresivaHabilitada = opciones.ConsolidacionProgresivaHabilitada;
+        _visibilidadIdeaParticipanteHabilitada = opciones.VisibilidadIdeaParticipanteHabilitada;
         _confirmacionExplicitaIdeasHabilitada = opciones.ConfirmacionExplicitaIdeasHabilitada;
         _redaccion = new PoliticaRedaccionConversacional(
             opciones.RedaccionConversacionalFluidaHabilitada, opciones.MaxCaracteresRedaccionTurno);
@@ -416,7 +418,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             : conversaciones.FirstOrDefault(c => c.Id == contexto.ConversacionIdAfinidad
                 && c.UsuarioId == usuario.Id
                 && c.PreguntaId == pregunta.Id
-                && c.Estado != EstadoConversacion.Cerrada);
+                && (c.Estado != EstadoConversacion.Cerrada || contexto.IdeaIdReabrir is not null));
         var reciente = afinidadExplicita ?? conversaciones
             .Where(c => c.UsuarioId == usuario.Id && c.PreguntaId == pregunta.Id)
             .OrderByDescending(c => c.FechaInicio)
@@ -431,13 +433,28 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             hilo = new HiloTrabajo(pregunta, reciente.Id, reciente);
         }
-        else if (await PideReaperturaEnHiloCerradoAsync(reciente, campania, mensaje.Texto, cancellationToken))
+        else if (contexto.IdeaIdReabrir is not null
+            || await PideReaperturaEnHiloCerradoAsync(reciente, campania, mensaje.Texto, cancellationToken))
         {
             // P-26 §5.8: una petición explícita de complementar/revisitar NO crea idea ni ciclo nuevo.
             // Se reabre el hilo que contiene la idea y la ruta I-19 §4.7 hace el resto conservando el
             // mismo `ideaId` (lista numerada si hay varias candidatas y curaduría suspendida).
             var reabierta = reciente.Reabrir(ahora);
             await _conversaciones.GuardarConversacionAsync(reabierta, cancellationToken);
+            if (contexto.IdeaIdReabrir is not null)
+            {
+                var ideaConsultada = await _respuestas.ObtenerIdeaConsolidadaAsync(
+                    campania.Id, contexto.IdeaIdReabrir, cancellationToken);
+                if (ideaConsultada is null
+                    || ideaConsultada.UsuarioId != usuario.Id
+                    || ideaConsultada.ConversacionId != reabierta.Id
+                    || ideaConsultada.PreguntaId != pregunta.Id)
+                {
+                    return;
+                }
+
+                await _respuestas.GuardarIdeaConsolidadaAsync(ideaConsultada.Reabrir(ahora), cancellationToken);
+            }
             await RegistrarEnrutamientoAsync(
                 usuario,
                 "reapertura",
@@ -594,6 +611,64 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 resultado.Error),
             cancellationToken);
         await RegistrarDespertarProactivoAsync(usuario, resultado.Exito ? "reactivacion" : "errorEnvio", ahora, cancellationToken);
+    }
+
+    public async Task MostrarIdeaConsultadaAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ContextoConsultaIdea contexto,
+        CancellationToken cancellationToken)
+    {
+        var usuario = participante.Usuario;
+        var campania = participante.Campania;
+        var ahora = _tiempo.GetUtcNow();
+        var respaldoSinIdea = await TextoGlobalParaIdiomaAsync(
+            usuario.Idioma, "sinIdeaDisponible",
+            TextoConfigurado(_mensajes.SinIdeaDisponible, OpcionesMensajesConversacion.SinIdeaDisponibleDefault), cancellationToken);
+        var texto = respaldoSinIdea;
+        var visible = false;
+
+        if (_visibilidadIdeaParticipanteHabilitada
+            && _consolidacionProgresivaHabilitada
+            && campania.Estado == EstadoCampania.Activa
+            && campania.ConfigConversacional.ConsultaIdea
+            && contexto.IdeaId is not null
+            && contexto.PreguntaId is not null
+            && contexto.ConversacionId is not null)
+        {
+            var idea = await _respuestas.ObtenerIdeaConsolidadaAsync(campania.Id, contexto.IdeaId, cancellationToken);
+            var conversacion = await _conversaciones.ObtenerConversacionAsync(campania.Id, contexto.ConversacionId, cancellationToken);
+            if (idea is not null && conversacion is not null
+                && idea.UsuarioId == usuario.Id && idea.PreguntaId == contexto.PreguntaId
+                && idea.ConversacionId == conversacion.Id && conversacion.UsuarioId == usuario.Id
+                && idea.EstadoResultado != EstadoResultadoIdeaConsolidada.Rechazada)
+            {
+                var versionId = idea.VersionConfirmadaRef ?? idea.VersionPropuestaRef;
+                var version = string.IsNullOrWhiteSpace(versionId)
+                    ? null
+                    : await _respuestas.ObtenerVersionIdeaAsync(campania.Id, versionId, cancellationToken);
+                if (version is not null)
+                {
+                    var encabezado = await TextoGlobalParaIdiomaAsync(
+                        usuario.Idioma, "encabezadoConsultaIdea",
+                        TextoConfigurado(_mensajes.EncabezadoConsultaIdea, OpcionesMensajesConversacion.EncabezadoConsultaIdeaDefault), cancellationToken);
+                    var invitacion = await TextoGlobalParaIdiomaAsync(
+                        usuario.Idioma, "invitacionConsultaIdea",
+                        TextoConfigurado(_mensajes.InvitacionConsultaIdea, OpcionesMensajesConversacion.InvitacionConsultaIdeaDefault), cancellationToken);
+                    texto = Combinar(Combinar(encabezado, version.Texto), invitacion);
+                    visible = true;
+                }
+            }
+        }
+
+        var resultado = await _gateway.EnviarTextoAsync(
+            usuario.WhatsappNormalizado.Valor, texto, TipoEnvioMensaje.Repregunta, cancellationToken, mensaje.PhoneNumberIdDestino);
+        await _logSeguridad.RegistrarAsync(LogSeguridad.Crear(
+            "log_" + Guid.NewGuid().ToString("N"), TipoEventoSeguridad.VisibilidadIdeaParticipante,
+            usuario.Id, usuario.WhatsappNormalizado.Valor,
+            visible ? "consultaMostrada" : "consultaSinIdea",
+            $"campania={campania.Id};idea={contexto.IdeaId ?? "ninguna"};envio={(resultado.Exito ? "ok" : "error")}",
+            _correlacion.CorrelationIdActual, ahora, campaniaId: campania.Id), cancellationToken);
     }
 
     private async Task ProcesarEnHiloAsync(
@@ -4166,10 +4241,47 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var texto = string.IsNullOrWhiteSpace(acusePrevio)
             ? campania.ConfigConversacional.MensajeCierre
             : Combinar(acusePrevio, campania.ConfigConversacional.MensajeCierre);
+        texto = await AgregarIdeaVisibleAlCierreAsync(conversacion, campania, texto, cancellationToken);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);
         await _conversaciones.GuardarConversacionAsync(cerrada, cancellationToken);
+    }
+
+    private async Task<string> AgregarIdeaVisibleAlCierreAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        string cierre,
+        CancellationToken cancellationToken)
+    {
+        if (!_visibilidadIdeaParticipanteHabilitada
+            || !_consolidacionProgresivaHabilitada
+            || !campania.ConfigConversacional.MostrarIdeaAlCerrar)
+        {
+            return cierre;
+        }
+
+        var idea = (await _respuestas.ListarIdeasConsolidadasAsync(campania.Id, cancellationToken))
+            .Where(x => x.ConversacionId == conversacion.Id
+                && x.EstadoResultado != EstadoResultadoIdeaConsolidada.Rechazada)
+            .OrderByDescending(x => x.ActualizadaEn)
+            .FirstOrDefault();
+        var versionId = idea?.VersionConfirmadaRef ?? idea?.VersionPropuestaRef;
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            return cierre;
+        }
+
+        var version = await _respuestas.ObtenerVersionIdeaAsync(campania.Id, versionId, cancellationToken);
+        if (version is null)
+        {
+            return cierre;
+        }
+
+        var encabezado = await TextoGlobalAsync(
+            conversacion, "encabezadoCierreIdea",
+            TextoConfigurado(_mensajes.EncabezadoCierreIdea, OpcionesMensajesConversacion.EncabezadoCierreIdeaDefault), cancellationToken);
+        return Combinar(Combinar(encabezado, version.Texto), cierre);
     }
 
     // P-15 (CAL-001): la resolución del umbral (base/cierre/origen), la clasificación de madurez, el

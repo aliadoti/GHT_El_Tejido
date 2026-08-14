@@ -349,3 +349,18 @@ La llamada opcional de redacción conserva además la contabilidad I-20/P-10 exi
 4. No hay migración ni reparación de ideas/versiones.
 5. Antes de activar: D5 de frases `es/en`, UAT con casos §10, costo/latencia del puente I-20, prueba de
    ventana WhatsApp y acta de flags. No activar remotamente durante la implementación local.
+
+---
+
+## 13. Estado de implementación local — 2026-08-13
+
+**Completada (3/3), sin push, despliegue ni cambio remoto.** Se implementaron contratos y round-trip
+de campaña, catálogo `es/en`, detector de consulta pura, consulta previa a menú/afinidad, selección
+activa→última propia no rechazada, versión I-19 exacta, afinidad `consultarIdea`, reapertura de la misma
+idea ante corrección, cierre visible normal, telemetría sin contenido y controles del portal. El gate
+`Conversacion:VisibilidadIdeaParticipanteHabilitada` queda en `false` en la configuración local.
+
+Verificado localmente con `dotnet build -c Release -warnaserror`, 789 pruebas unitarias, 87 de
+integración, `dotnet format --verify-no-changes`, `git diff --check` y build de producción Angular. La
+prueba Angular sin vigilancia agotó dos minutos sin diagnóstico; queda por repetirla en el ambiente de
+validación junto con D5/UAT antes de una activación.

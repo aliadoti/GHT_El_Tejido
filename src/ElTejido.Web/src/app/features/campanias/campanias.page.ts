@@ -220,6 +220,8 @@ export class CampaniasPage {
           // P-26: una campania nueva nace sin participacion continua (default seguro).
           participacionContinua: false,
           clasificacionIntencionControl: false,
+          consultaIdea: true,
+          mostrarIdeaAlCerrar: true,
         },
         configSeguridad: {
           maxCaracteresMensaje: 1500,
@@ -273,6 +275,8 @@ export class CampaniasPage {
           numeroWhatsAppSaliente: formulario.numeroWhatsAppSaliente.trim() || null,
           participacionContinua: Boolean(formulario.participacionContinua),
           clasificacionIntencionControl: Boolean(formulario.clasificacionIntencionControl),
+          consultaIdea: Boolean(formulario.consultaIdea),
+          mostrarIdeaAlCerrar: Boolean(formulario.mostrarIdeaAlCerrar),
         },
         configSeguridad: {
           maxCaracteresMensaje: actual?.configSeguridad?.maxCaracteresMensaje ?? 1500,

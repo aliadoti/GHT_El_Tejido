@@ -55,6 +55,9 @@ public enum ActoConversacional
     /// </summary>
     Pausar,
     ResumirAvance,
+
+    /// <summary>P-33: mostrar una versión propia sin modificar el hilo.</summary>
+    ConsultarIdea,
 }
 
 /// <summary>

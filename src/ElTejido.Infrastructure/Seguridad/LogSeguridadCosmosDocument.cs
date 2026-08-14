@@ -104,6 +104,7 @@ internal sealed class LogSeguridadCosmosDocument
             TipoEventoSeguridad.ResumenConsolidacion => "resumenConsolidacion",
             TipoEventoSeguridad.ConfiguracionFrasesFinalizacion => "configuracionFrasesFinalizacion",
             TipoEventoSeguridad.CatalogoTextosConversacion => "catalogoTextosConversacion",
+            TipoEventoSeguridad.VisibilidadIdeaParticipante => "visibilidadIdeaParticipante",
             _ => throw new InvalidOperationException($"Tipo de evento de seguridad no soportado: {tipo}."),
         };
     }

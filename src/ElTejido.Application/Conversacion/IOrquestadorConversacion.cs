@@ -53,6 +53,13 @@ public interface IOrquestadorConversacion
         ContextoRetomarIdea contexto,
         CancellationToken cancellationToken) => Task.FromResult(false);
 
+    /// <summary>P-33: muestra una versión propia ya validada sin alterar el estado de la conversación.</summary>
+    Task MostrarIdeaConsultadaAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ContextoConsultaIdea contexto,
+        CancellationToken cancellationToken) => Task.CompletedTask;
+
     /// <summary>
     /// P-29 §5.2: avisa la pausa del hilo que el barrido de inactividad (I-17 §7) <b>ya cerro</b>. No
     /// decide el cierre, no toca estados ni <c>motivoCierre</c> y envia un unico mensaje; fuera de la
@@ -80,4 +87,5 @@ public interface IOrquestadorConversacion
 public sealed record ContextoAporteEnrutado(
     string PreguntaId,
     string? EnrutamientoAporteId,
-    string? ConversacionIdAfinidad = null);
+    string? ConversacionIdAfinidad = null,
+    string? IdeaIdReabrir = null);

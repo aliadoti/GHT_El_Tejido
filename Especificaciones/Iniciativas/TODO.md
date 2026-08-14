@@ -9,15 +9,14 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **▶ `P-33` CONSULTA Y CIERRE VISIBLE DE LA IDEA — ESPECIFICADA/APROBADA 2026-08-13, 0/3;
-> IMPLEMENTACIÓN INMEDIATA.** «Mi idea» muestra la activa o, si no existe, la última propia no
-> rechazada dentro del alcance autorizado; no abre menú ni se consolida como aporte. Los cierres
-> normales muestran la versión exacta I-19. Una consulta de idea cerrada fija afinidad de un
-> mensaje/24 h y una corrección posterior reabre esa misma idea; agradecimientos/controles no.
-> Gate global OFF, opt-outs por campaña, catálogo `es/en`, telemetría segura y rollback definidos.
-> **ARRANCA por corte 1:** opciones/contratos, round-trip campaña, registro P-32, detector puro,
-> selector determinista y `EnrutamientoAporte`; todavía sin salida visible. Spec `Iniciativas/P-33_*`,
-> REQ-054 y `QAS/20_*`.
+> **✅ `P-33` CONSULTA Y CIERRE VISIBLE DE LA IDEA — DONE LOCAL 2026-08-13 (3/3).** Consulta pura
+> previa a menús/afinidades, selección activa→última propia no rechazada, versión I-19 exacta,
+> afinidad de 24 h y reapertura de la misma idea ante una corrección. Incluye gate global OFF,
+> opt-outs de campaña, catálogo `es/en`, persistencia/API/portal, telemetría sin contenido y cierre
+> visible normal. Validado: build Release `-warnaserror`, **789 unitarias + 87 integración**. Sin
+> push, despliegue, activación ni configuración remota. **Siguiente: D5/UAT y acta explícita de
+> activación de flags**, empezando por un ambiente aislado. Spec `Iniciativas/P-33_*`, REQ-054 y
+> `QAS/20_*`.
 >
 > **✅ `DT-I20-01` VARIACIÓN Y NO DUPLICACIÓN EN LA REDACCIÓN — DONE LOCAL 2026-08-13 (5/5 de `§7`).**
 > `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria: las instrucciones de
@@ -379,7 +378,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 >
 > **HISTÓRICO — re-priorización reunión GHT 20-jul-2026:** **I-10 (y su dependencia I-09) fueron DIFERIDAS a "Capa 3" post-convención**. Los puntos de diseño de I-17 ya fueron confirmados y la iniciativa quedó completa; el estado vigente es el bloque inicial de este archivo (`I-14` BLOCKED por catálogo GHT).
 
-**Iniciativa de código objetivo: P-33, corte 1 de 3.** `DT-QA-02`, `DT-P27-01` y `DT-I20-01` ya
+**Iniciativa P-33 cerrada localmente (3/3).** `DT-QA-02`, `DT-P27-01` y `DT-I20-01` ya
 cerraron localmente. El trabajo operativo de D5/validación P-32 continúa sin bloquear la
 implementación documentalmente aprobada de P-33.
 
@@ -516,7 +515,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | 36 | **`P-30` retomar ideas del pasado** | **DONE local 2026-08-04 (3/3)** | **Codex** | Selector histórico determinista por participante, campaña y pregunta, sin filtro por estado/ciclo; selección por número o título/resumen exacto, misma idea y conversación reabiertas, curaduría suspendida, kill-switch OFF, Cosmos, telemetría sin texto, E2E y QAS. Backend 729/729, build/format/diff verdes. |
 | **37** | **`P-31` resumen de la consolidación al alcanzar un umbral propio** | 2026-08-06/07 | Codex/Claude | **DONE 3/3 y DESPLEGADO (2026-08-07).** Commits `6ba6ce0` · `32794fb` · `6d02492`. Build Release, **664 unitarias + 77 integración**, formato y `git diff --check` verdes. E2E simulada: inicio → aporte sobre umbral → resumen → mejora sin repetirlo. Guía: `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. **Flags OFF**; encenderlos exige D5 real + UAT + acta de flags, y elegir el umbral. La consulta bajo demanda se resolvió en P-33. Detalle original ↓ |
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea y **sin depender de los flags de P-27**. Kill-switch OFF + opt-out por campaña. P-33 resuelve aparte la consulta reactiva. |
-| **38** | **`P-33` consulta y cierre visible de la idea** | **INMEDIATA — 0/3** | **Codex** | **ESPECIFICADA Y APROBADA 2026-08-13; sin código.** Activa→última sin menú, consulta pura sin artefactos, versión exacta I-19 por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección, gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. **Siguiente: corte 1 de contratos/resolución pura.** |
+| **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
@@ -577,10 +576,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: P-33 corte 1 de 3.** Implementar configuración/gate OFF, campos de campaña con
-   round-trip, extensión P-32 29/16, detector de consulta pura, selector activo→última autorizada y
-   `EnrutamientoAporte.modo=consultarIdea`. Todavía no enviar la versión. Ejecutar las pruebas de
-   contrato, compatibilidad, mensajes mixtos, desempate, aislamiento y versión ausente de la spec §11.
+1. **ARRANCA AQUÍ: validar P-33 localmente terminada.** Ejecutar `QAS/20_*` en un ambiente aislado,
+   en español e inglés, y registrar D5/UAT, costo/latencia y el acta de flags. El gate global sigue
+   OFF; no desplegar ni cambiar configuración remota sin autorización expresa.
 
 2. **En paralelo, D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local y
    verde. Usar ejemplos anonimizados y `QAS/19_*`; no hay flag, el rollback es revertir su commit.

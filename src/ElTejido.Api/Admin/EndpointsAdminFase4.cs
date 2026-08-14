@@ -520,7 +520,9 @@ internal static class EndpointsAdminFase4
             request?.ParticipacionContinua ?? false,
             request?.ClasificacionIntencionControl ?? false,
             request?.UmbralResumenConsolidacion,
-            request?.ResumenConsolidacion ?? true);
+            request?.ResumenConsolidacion ?? true,
+            request?.ConsultaIdea ?? true,
+            request?.MostrarIdeaAlCerrar ?? true);
 
     private static LimitesSeguridad ToLimitesCampania(LimitesSeguridadRequest? request)
         => LimitesSeguridad.Crear(
@@ -897,7 +899,9 @@ internal static class EndpointsAdminFase4
         bool? ParticipacionContinua,
         bool? ClasificacionIntencionControl,
         double? UmbralResumenConsolidacion,
-        bool? ResumenConsolidacion);
+        bool? ResumenConsolidacion,
+        bool? ConsultaIdea,
+        bool? MostrarIdeaAlCerrar);
     private sealed record LimitesSeguridadRequest(int? MaxCaracteresMensaje, int? MaxMensajesPorUsuario, int? MaxLlamadasLlmPorUsuario, int? PresupuestoTokensCampania);
     private sealed record LimitesSeguridadPreguntaRequest(int? MaxCaracteresMensaje, int? MaxLlamadasLlm);
     private sealed record PlantillaWhatsAppRequest(string? Nombre, string? Idioma, IReadOnlyCollection<string>? Componentes);

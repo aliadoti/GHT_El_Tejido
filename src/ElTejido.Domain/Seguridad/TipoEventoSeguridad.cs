@@ -88,4 +88,7 @@ public enum TipoEventoSeguridad
 
     // P-32: ciclo editorial del catalogo multidioma. Solo ids, idioma, version y huella; nunca copia.
     CatalogoTextosConversacion,
+
+    // P-33: consulta, visibilidad al cierre, afinidad y reapertura; sin texto ni PII adicional.
+    VisibilidadIdeaParticipante,
 }

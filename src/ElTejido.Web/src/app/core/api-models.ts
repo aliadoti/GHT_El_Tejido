@@ -137,6 +137,8 @@ export interface ConfigConversacional {
   participacionContinua?: boolean;
   // P-27: opt-in por campaña del clasificador flexible; el kill-switch global sigue siendo OFF.
   clasificacionIntencionControl?: boolean;
+  consultaIdea?: boolean;
+  mostrarIdeaAlCerrar?: boolean;
 }
 
 // P-10: cupos y presupuesto de la campaña (0 = desactivado en cada palanca).
