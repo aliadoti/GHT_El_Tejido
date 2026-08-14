@@ -481,6 +481,17 @@ crea una versión nueva en `borrador`. Nunca actualiza o activa una existente. U
 idioma incompatible, exceso de tamaño/límite, clave desconocida o contenido inválido devuelve `400`
 con todos los `details` detectables y cero escrituras.
 
+`/exportar` entrega esa forma canónica con el nombre
+`catalogo-{familiaId}-{idioma}-v{version}-editable.json` y agrupa los metadatos informativos
+(`version`, `estado`, `huella`, fechas) bajo `metadatos`; no incluye actores ni ETag. `/importar` y
+`/importar/prevalidar` aceptan la selección del portal como query opcional `idioma` y `familiaId`:
+si el archivo no coincide se devuelve `idioma`/`familiaId: no_coincide_con_seleccion` y **no** se
+corrige en silencio. Ambos exigen `Content-Type: application/json`, validan el tamaño **antes** de
+deserializar (`Conversacion:CatalogoTextos:MaxBytesImportacionJson`) y acotan la profundidad a la
+forma contractual; las claves de primer nivel que no pertenecen al contrato se ignoran y nunca se
+interpretan como configuración del servidor. `/importar/prevalidar` **no escribe**: admite
+`admin|visor` como una lectura y conserva la exigencia de CSRF por ser `POST`.
+
 Excepción de UX: `/importar/prevalidar` devuelve `200` con `valido:false` para un JSON legible cuyo
 contenido incumple reglas; JSON malformado o por encima del tamaño máximo devuelve `400`. `/importar`
 continúa devolviendo `400` ante cualquier contenido inválido.
@@ -488,6 +499,18 @@ continúa devolviendo `400` ante cualquier contenido inválido.
 La base curada y la fotografía legacy son operaciones distintas. La ruta P-32 original se conserva
 por compatibilidad, pero el portal usa las rutas explícitas. `readiness` informa
 `gateHabilitado` real; `/efectivo` continúa siendo preview y no prueba el gate de runtime.
+
+`GET /readiness` devuelve `gateHabilitado`, `limites` (`maxFrasesPorGrupo`,
+`maxBytesImportacionJson` efectivos), `listo` global y un elemento por idioma con `listo`,
+`tieneActivo`, `versionActiva`, `huellaActiva`, `activaValida`, `problemasActiva`, `tieneBorrador`,
+`totalVersiones`, `semillaBaseDisponible`, `legacyValido`, `conteosLegacy`, `problemasLegacy` y
+`campaniasBloqueadas` (`campaniaId`, `nombre`, `estado`, `motivo`). Nunca incluye mensajes ni frases.
+Un catálogo activo cuyo contenido o huella ya no valida cuenta como **ausente**, no como listo.
+
+**Precondición de campaña (DT-P32-02 §5):** pasar a `activa` una campaña con más de un idioma
+habilitado exige, además de las localizaciones completas, una versión global activa y válida por cada
+idioma; si falta, `400 VALIDATION_ERROR` con `catalogosTextos.{idioma}: activo_requerido`. Aplica con
+el gate encendido o apagado; una campaña monolingüe española legacy no entra en esta regla.
 
 ### 5.8 Consultas de resultados — `REQ §27.3`
 | Método | Ruta | Descripción |
