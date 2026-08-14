@@ -14,6 +14,16 @@
 - Impacto / reversibilidad: <a que afecta, si cierra o no fronteras post-MVP>
 ```
 
+### contrato-visible-llm-dt-i20-02 - La presentación inválida no cambia la evaluación
+- Fecha: 2026-08-13 - Agente/Rol: Codex - Arquitecto/Backend/SDET/AppSec - Decisión del usuario: corregir el defecto sin romper ninguna regla de negocio existente.
+- Contexto: una respuesta real mostró encabezados Markdown y etiquetas de proceso porque el prompt de evaluación runtime los pidió dentro de campos visibles. El gateway no leyó un `.md`; transportó el cuerpo compuesto. Las campañas activas inspeccionadas compartían la familia de evaluación `1`.
+- Decisión: validar solo los fragmentos creados por el LLM. Una infracción de presentación sustituye únicamente `retroalimentacion_usuario` o `repregunta_sugerida` por su respaldo existente y conserva puntajes válidos, recomendación y arbitraje server-side. Los fragmentos I-20 inválidos usan el fallback I-20 antes del filtro `DT-I20-01`.
+- Límites: no sanitizar el mensaje final, `VersionIdeaConsolidada`, contenido del participante, catálogo P-32, textos de campaña, plantillas Meta ni artefactos administrativos. No bloquear caracteres aislados como `#`; detectar estructura al inicio de línea. No reescribir historial.
+- Gobierno del prompt: runtime debe seleccionar la versión activa y aprobada más nueva. La corrección editorial se prueba en una familia nueva y campaña aislada; rollback restaurando `promptRef`, no inactivando a ciegas la versión más reciente. La corrida de desarrollo no modifica Cosmos.
+- Reglas preservadas: misma idea/versionId I-19, puntajes/umbrales/madurez, estados y cierres, presupuesto I-18, control P-27, idioma P-32, texto exacto P-33 y no duplicación DT-I20-01.
+- Alternativas descartadas: limpiar Markdown en el gateway (altera contenido legítimo); invalidar toda la evaluación por un defecto cosmético (cambia decisiones válidas); lista de empresas/palabras prohibidas (falsos positivos); actualizar directamente la familia `1` compartida (radio de impacto y rollback inseguros).
+- Spec: `Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. Estado 0/3, sin código.
+
 ### variacion-no-duplicacion-redaccion-dt-i20-01 - Regla global para mensajes nuevos
 - Fecha: 2026-08-13 - Agente/Rol: Codex - Arquitecto/Backend/SDET - Decisión del usuario: aplicar la corrección a todas las campañas de ahora en adelante, sin importar las conversaciones pasadas.
 - Decisión: `Queda claro que...`, `Se entiende que...`, `Es evidente que...` y equivalentes son expresiones válidas; el problema es su uso sistemático, no su existencia. I-20 debe pedir variación natural y el servidor debe omitir un puente que duplique una oración, prefijo o primera oración equivalente del cuerpo que insertará.

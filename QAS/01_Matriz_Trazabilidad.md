@@ -2,7 +2,7 @@
 
 > Traza cada iniciativa/requisito comprometido a los casos de `02_Casos_de_Prueba_E2E.md`.
 > **Prioridad:** CORE = must-pass (bloquea go-live) · Ext = extendido.
-> **Estado build:** de `AVANCES.md`/índice al 2026-07-23. **Estado prueba:** lo llena el tester (Pendiente/OK/Falla/Bloqueado).
+> **Estado build:** de `AVANCES.md`/índice al 2026-08-13. **Estado prueba:** lo llena el tester (Pendiente/OK/Falla/Bloqueado).
 
 ## 1. Por iniciativa
 
@@ -44,7 +44,8 @@
 | **Consulta de resultados/filtros** (REQ §33.1.8; spec 11) | Filtra por campaña/usuario/área/tag/pregunta/calificación | ADM-12 | Ext | Listo | |
 | **CRUD campañas/usuarios/rúbricas/prompts/config** (REQ §33.1) | Alta/edición; aprobar prompt; versionado | ADM-01..07 | CORE/Ext | Listo | |
 | **Envíos** (REQ §33.1.5) | Enviar inicial, reenviar a no respondió, reintentar fallidos | ADM-06 | CORE | Listo | REAL |
-| **P-33 consulta y cierre visible** (REQ-054; Reglas §2.13) | Consulta pura muestra activa/última sin menú ni aporte; cierre muestra versión exacta; corrección tras consultar cerrada reabre la misma; aislamiento, `es/en` y rollback | `QAS/20` casos 1–7 | CORE si gate ON | **ESPECIFICADA 0/3** | Pendiente implementación |
+| **P-33 consulta y cierre visible** (REQ-054; Reglas §2.13) | Consulta pura muestra activa/última sin menú ni aporte; cierre muestra versión exacta; corrección tras consultar cerrada reabre la misma; aislamiento, `es/en` y rollback | `QAS/20` casos 1–7 | CORE si gate ON | **DONE local 3/3; gate OFF** | Pendiente D5/UAT y acta de flags |
+| **DT-I20-02 texto plano visible** (I-18/I-19/I-20; P-27/P-32/P-33) | Fragmentos LLM sin Markdown ni etiquetas internas; fallback por campo conserva puntajes, versión, decisión server-side, una pregunta e idioma; rollback de prompt seguro | `QAS/21` pruebas 1–8 + regresiones automáticas de la spec | CORE | **ESPECIFICADA 0/3** | Pendiente implementación |
 
 \* CORE condicional: es CORE **si** el acta de flags decide activar el umbral I-01 para el día-D; si queda OFF, pasa a Ext (verificar solo que off = comportamiento base).
 

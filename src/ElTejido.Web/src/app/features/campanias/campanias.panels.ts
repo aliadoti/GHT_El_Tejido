@@ -465,10 +465,15 @@ export class CampaniaCreacionPanel implements OnChanges {
           ><input type="checkbox" name="editarConsultaIdea" [(ngModel)]="formulario.consultaIdea" />
           Permitir que la persona consulte su última idea</label
         ><small class="muted"
-          >Solo funciona cuando el interruptor global está habilitado y nunca muestra ideas de otra persona.</small
+          >Solo funciona cuando el interruptor global está habilitado y nunca muestra ideas de otra
+          persona.</small
         >
         <label class="checkbox-label"
-          ><input type="checkbox" name="editarMostrarIdeaAlCerrar" [(ngModel)]="formulario.mostrarIdeaAlCerrar" />
+          ><input
+            type="checkbox"
+            name="editarMostrarIdeaAlCerrar"
+            [(ngModel)]="formulario.mostrarIdeaAlCerrar"
+          />
           Mostrar la versión final al cerrar</label
         ><small class="muted">No se muestra una idea rechazada.</small>
       </fieldset>

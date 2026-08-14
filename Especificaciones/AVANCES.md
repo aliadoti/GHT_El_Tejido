@@ -4,6 +4,15 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-I20-02`
+  ESPECIFICADA, 0/3; sin código ni configuración remota.** El reporte se trazó al prompt de
+  evaluación de runtime, que pidió secciones Markdown y estado interno dentro de campos visibles;
+  WhatsApp solo transportó el cuerpo. El diseño valida únicamente fragmentos LLM y reemplaza por
+  campo el texto inválido, conservando puntajes, recomendación, idea/versionId, umbrales, madurez,
+  estados, cierres, presupuesto I-18, P-27, idioma P-32, versión exacta P-33 e historial. No permite
+  sanitización global. También define selección runtime de la versión activa/aprobada más nueva y
+  migración mediante familia nueva/campaña aislada. **Siguiente código: corte 1/3.** Spec
+  `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`.
 - Ultima actualizacion: 2026-08-13 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec): **`P-33`
   DONE LOCAL, 3/3.** La consulta pura se resuelve antes de menús y afinidades, conserva primero la
   idea activa y luego la última propia no rechazada, e inserta la versión I-19 sin reevaluarla. Una
@@ -938,6 +947,10 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **Implementar `DT-I20-02` corte 1/3 sin cambiar reglas de negocio.** Leer la spec, I-19, I-20,
+  `DT-I20-01`, bases `05`/`08`, reglas y `QAS/21_*`. Agregar la regresión exacta del reporte, el
+  validador puro de fragmentos y los reemplazos seguros por campo en evaluador/I-20. Conservar
+  puntajes, versión, estados y repreguntas; no sanitizar el cuerpo final ni modificar Cosmos.
 - [ ] **Validar operativamente `P-33` antes de activarlo.** En un ambiente aislado, seguir
   `QAS/20_*` en español e inglés, comprobar consulta, corrección de idea cerrada, acuse y cierre;
   revisar costo/latencia y firmar el acta de flags. El gate global permanece OFF y no se cambia
@@ -1242,6 +1255,7 @@
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; sin código | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Siguiente: corte 1 y regresión exacta del reporte; QAS `21_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -1388,6 +1402,13 @@
   ventana WhatsApp, gates/rollback, catálogo `es/en`, telemetría sin contenido, tres cortes y QAS
   simple. Se sincronizaron spec, REQ-053, contratos 03/04/05/10/11/13, Reglas, SUPUESTOS, índice,
   TODO, prompt de arranque y QAS. Siguiente: corte 1. Sin build/test porque no cambió código.
+
+- 2026-08-13 - Codex - **DT-I20-02 especificada; sin código ni cambio remoto.** Rol:
+  Arquitecto/Backend/SDET/AppSec. La evidencia de solo lectura trazó el formato visible al prompt
+  runtime y descartó lectura accidental de un `.md`. Se fijó una corrección por campo que conserva
+  evaluación y reglas de negocio, una guardia separada para I-20, selección runtime activa+aprobada,
+  QAS humano y migración por familia nueva/campaña aislada. No se tocó código, Cosmos, despliegue ni
+  configuración. Siguiente: corte 1/3 de `Iniciativas/DT-I20-02_*`.
 
 - 2026-08-13 - Codex - **P-33 consulta y cierre visible de la idea — DONE LOCAL 3/3, sin push.**
   Rol: Arquitecto/Backend/Frontend/SDET/AppSec. Se implementaron el gate global OFF, opt-outs de

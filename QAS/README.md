@@ -27,6 +27,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 18 | [Runbook humano · lanzar P-32](18_Runbook_Humano_Lanzar_Prueba_P32.md) | Pasos seguros para habilitar la simulación, inyectar `GHT_DIAG_KEY`, lanzar el agente y cerrar la ventana. |
 | 19 | [DT-I20-01 · Variación y no duplicación](19_DT-I20-01_Variacion_Redaccion_Como_Probar.md) | D5 para comprobar variedad de aperturas y ausencia de reconocimientos duplicados antes de desplegar. |
 | 20 | [P-33 · Consultar y ver la idea al cerrar](20_P33_Consulta_y_Cierre_Visible_Como_Probar.md) | Guía simple para comprobar idea activa/última sin menú, consulta sin aporte, cierre visible y reapertura de la misma idea cerrada ante una corrección. |
+| 21 | [DT-I20-02 · Texto plano y prompt seguro](21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md) | Comprueba que WhatsApp no exponga encabezados ni etiquetas internas y que la corrección preserve evaluación, versión, estados, idioma y una sola pregunta. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)
@@ -57,6 +58,10 @@ revisión de costo/latencia y acta de cambio.
 **Corrección 2026-08-13:** se corrigieron localmente el rollback editorial y la protección de campañas
 bilingües incompletas; se deben repetir las Pruebas 4 y 6 de la guía **16** antes de continuar con
 D5/UAT. Validación local: 858 pruebas backend verdes.
+
+**Nueva deuda 2026-08-13:** `DT-I20-02` está especificada, todavía sin código. La guía **21** cubre el
+reporte de encabezados Markdown/estado interno en WhatsApp y exige demostrar que el arreglo no cambie
+puntajes, versión de idea, estados, cierres, repreguntas, idioma ni el texto exacto de P-33.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

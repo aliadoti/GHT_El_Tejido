@@ -9,6 +9,17 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **🟡 `DT-I20-02` CONTRATO VISIBLE EN TEXTO PLANO — ESPECIFICADA 2026-08-13 (0/3, SIN CÓDIGO).**
+> El reporte real no proviene de leer un `.md`: el prompt de evaluación de runtime pidió encabezados
+> Markdown y estado interno, la evaluación los persistió y WhatsApp transportó el cuerpo resultante.
+> La solución aprobada valida únicamente fragmentos generados por el LLM y reemplaza por campo la
+> retroalimentación o repregunta inválida, sin descartar puntajes válidos ni cambiar idea/versionId,
+> umbrales, madurez, estados, cierres o presupuesto de repreguntas. Prohíbe sanitización global para
+> conservar P-33 e ideas legítimas como `caja #3`; mantiene P-27, P-32 y `DT-I20-01`. Incluye selección
+> runtime de la versión activa/aprobada más nueva y migración por familia nueva/campaña aislada, sin
+> tocar Cosmos durante desarrollo. **Siguiente cambio de código: corte 1/3 de `DT-I20-02`.** Spec:
+> `Iniciativas/DT-I20-02_*`; QAS: `QAS/21_*`; runbook: `planes/DT-I20-02_*`.
+>
 > **✅ `P-33` CONSULTA Y CIERRE VISIBLE DE LA IDEA — DONE LOCAL 2026-08-13 (3/3).** Consulta pura
 > previa a menús/afinidades, selección activa→última propia no rechazada, versión I-19 exacta,
 > afinidad de 24 h y reapertura de la misma idea ante una corrección. Incluye gate global OFF,
@@ -38,7 +49,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > conserva el default compilado. El inicio registra en una bitácora append-only la versión aplicada,
 > default o descartada sin exponer aliases; la reversión restaura una revisión del origen de
 > configuración o vacía ambas listas. No cambió P-27, sus alias, flags, endpoint, portal ni
-> configuración remota. **`DT-I20-01` ya cerró 5/5; el siguiente cambio de código es P-33 corte 1.**
+> configuración remota. **La siguiente prioridad de código es `DT-I20-02` corte 1.**
 >
 > **✅ `P-32` CONVERSACIÓN MULTIDIOMA Y CATÁLOGO DE TEXTOS — 4/4 DONE LOCAL 2026-08-11.**
 > Verificado: `Usuario.Idioma` ya existe como campo de primer nivel, admite `es|en`, usa `es` por
@@ -517,9 +528,10 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea y **sin depender de los flags de P-27**. Kill-switch OFF + opt-out por campaña. P-33 resuelve aparte la consulta reactiva. |
 | **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
+| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **ESPECIFICADA 0/3 — 2026-08-13** | **Codex** | Bug real: el prompt runtime pidió secciones Markdown/estado interno y el cuerpo llegó así a WhatsApp. Corrección por campo en salidas LLM, sin sanitización global ni cambio de puntajes, versión I-19, umbrales, estados, cierres, P-27/P-32/P-33 o historial. Incluye selección runtime activa+aprobada y migración gradual mediante familia nueva. Sin código ni configuración remota. **Siguiente: corte 1/3.** Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
-| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **Siguiente prioridad actual: P-33 corte 1.** |
+| **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **Siguiente prioridad actual: DT-I20-02 corte 1.** |
 | DT-P27-02 | **Calibración del clasificador P-27 (cierre sobre la última idea)** | **BACKLOG post-convención** | — | Borde detectado en la E2E conversacional desplegada (E14, 2026-08-06): una variante libre no-alias sobre la **última idea de la cola** (`QUEDAN_UNIDADES_PENDIENTES=no`) se clasifica `aportar` en vez de finalizar. Degrada seguro (no corta la idea) y los alias deterministas sí funcionan → severidad baja, no bloqueante. Ajuste **solo del prompt de sistema** de `ClasificadorIntencionControl`; **no desplegar sin pasar D5** (regresión clave: no aumentar cierres falsos de ideas con contenido). Spec: `Iniciativas/DT-P27-02_Calibracion_Clasificador_Cierre_Ultima_Idea.md`. |
 
 - **HITO (12-ago):** envío escalonado por lotes con monitoreo; ante síntoma se apaga el flag según runbook, nunca hotfix en caliente.
@@ -576,34 +588,39 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: validar P-33 localmente terminada.** Ejecutar `QAS/20_*` en un ambiente aislado,
+1. **ARRANCA AQUÍ: implementar `DT-I20-02` corte 1/3.** Leer la spec, `I-19`, `I-20`,
+   `DT-I20-01`, bases `05`/`08`, reglas y `QAS/21_*`. Crear la guardia pura de fragmentos visibles,
+   la regresión exacta del reporte y los reemplazos seguros por campo en evaluador/I-20. No limpiar
+   el cuerpo final, no modificar la versión I-19, no cambiar decisiones de negocio y no tocar Cosmos.
+
+2. **Después: validar P-33 localmente terminada.** Ejecutar `QAS/20_*` en un ambiente aislado,
    en español e inglés, y registrar D5/UAT, costo/latencia y el acta de flags. El gate global sigue
    OFF; no desplegar ni cambiar configuración remota sin autorización expresa.
 
-2. **En paralelo, D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local y
+3. **En paralelo, D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local y
    verde. Usar ejemplos anonimizados y `QAS/19_*`; no hay flag, el rollback es revertir su commit.
 
-3. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
+4. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`). `I-08 v2` ya está desplegada y
    validada contra Azure (2026-08-08, 13 casos PASS).
 
-4. **Ejecutar la validación operativa de P-32.** Usar `QAS/16` y el prompt
+5. **Ejecutar la validación operativa de P-32.** Usar `QAS/16` y el prompt
    `QAS/17` en un ambiente aislado: D5 real, recorrido E2E `es/en`, lote mixto, edición/rollback y
    UAT. Mantener el gate OFF fuera de esa ventana; no activar, desplegar ni cambiar configuración
    remota sin acta y autorización expresa.
 
-5. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
+6. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por
    defecto; no desplegar ni modificar configuración remota sin orden.
-6. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
-7. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-8. **La aprobación expresa de P-26, P-27 y P-33 ya existe.** Implementa cada iniciativa en el orden y cortes
+7. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
+8. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
+9. **La aprobación expresa de P-26, P-27, P-33 y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
    de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
    resuelta por esas specs o sus anclas en `SUPUESTOS.md`.
-9. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
-9b. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
-10. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
-11. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
+10. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
+10b. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
+11. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
+12. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
 
 Declara brevemente, antes de cada acción significativa, **desde qué rol** decides y **qué REQ §/ARQ § + ID-iniciativa** cubres. Mantén el rigor de un equipo de 25+ años: simple, correcto, probado y documentado.

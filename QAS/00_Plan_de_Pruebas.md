@@ -2,8 +2,8 @@
 
 > **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 12-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
 > **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
-> **Última revisión del estado real:** 2026-08-13. P-33 está especificada 0/3; sus casos se ejecutan
-> durante la implementación y antes de activar su gate.
+> **Última revisión del estado real:** 2026-08-13. P-33 está DONE local 3/3 y pendiente de D5/UAT.
+> DT-I20-02 está especificada 0/3; su regresión se implementa antes de migrar el prompt de evaluación.
 
 ---
 
@@ -18,7 +18,7 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 
 > **Nota de seguridad sobre el tejido diferido:** aunque I-09 sale del alcance funcional, si por error quedara con flag ON, sus casos de seguridad (SEC-06..08 anonimización, SEC-12 injection transitiva) siguen siendo **CORE**. Verificar en el smoke que `tejidoColectivo` está OFF en todas las campañas del Hito.
 
-### 1.3 Estado real relevante (de `AVANCES.md` / índice, al 2026-07-23)
+### 1.3 Estado real relevante (de `AVANCES.md` / índice, al 2026-08-13)
 | Función | Estado | Implicación para QA |
 |---|---|---|
 | I-03 follow-up eje débil + `FiltroSalidaRubrica` | **DONE local**; filtro **siempre-on** | Probar sí o sí (seguridad). D5 real vs staging pendiente. |
@@ -34,7 +34,8 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 | P-13 override umbral por campaña | **DONE local**; override nullable + kill-switch global | Confirmar herencia pregunta→campaña→global y que el kill-switch global apaga todos los cierres. |
 | I-01 cierre por umbral | Umbral global 0.6; **`CierreAnticipadoHabilitado=false`** por defecto; activación humana en Pruebas | Probar solo si el acta enciende el kill-switch y el valor elegido. |
 | I-12 seed thoughts | **BLOCKED** (insumo vencido) | No bloquea el Hito conversacional; validar solo "campaña sin seeds = comportamiento base". |
-| P-33 consulta/cierre visible | **ESPECIFICADA 0/3; gate OFF** | Usar `QAS/20`: probar consulta pura sin aporte, activo→última sin menú, versión exacta, cierres, afinidad/reapertura, aislamiento y rollback `es/en`. |
+| P-33 consulta/cierre visible | **DONE local 3/3; gate OFF** | Usar `QAS/20`: probar consulta pura sin aporte, activo→última sin menú, versión exacta, cierres, afinidad/reapertura, aislamiento y rollback `es/en`. Pendiente D5/UAT y acta de flags. |
+| DT-I20-02 texto plano visible | **ESPECIFICADA 0/3; sin código** | Usar `QAS/21`: probar que los fragmentos LLM no muestran Markdown/estado interno y que la corrección no cambia idea/versionId, puntajes, madurez, estados, cierres, repreguntas, idioma ni texto P-33. |
 
 > **Regla de ambigüedad:** ante duda sobre el estado real, asumir el **comportamiento documentado** en `Reglas_Conversacion_y_Participacion.md` y `AVANCES.md`, y **marcar el caso como "Verificar build"**.
 

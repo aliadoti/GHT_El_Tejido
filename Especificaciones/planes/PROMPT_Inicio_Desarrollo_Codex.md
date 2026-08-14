@@ -6,15 +6,16 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF DE DESARROLLO 2026-08-13 — ARRANCA P-33 CORTE 1/3.** `P-33` está especificada y
-> aprobada, sin código. Leer primero `AVANCES.md`, `Iniciativas/TODO.md` y
-> `Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`. Implementar únicamente el corte 1:
-> gate global OFF; campos `consultaIdea`/`mostrarIdeaAlCerrar` con round-trip campaña; extensión del
-> catálogo P-32 a 29 mensajes/16 listas compatible con versiones históricas; detector localizado de
-> consulta pura; selector determinista idea activa→última propia autorizada; y
-> `EnrutamientoAporte.modo=consultarIdea`. Este corte **no envía todavía la versión ni activa flags**.
-> Una corrección después de consultar una cerrada reabrirá esa misma idea en el corte 2; la decisión
-> ya está cerrada. Pruebas y DoD en §11 de la spec y `QAS/20_*`.
+> **HANDOFF DE DESARROLLO 2026-08-13 — ARRANCA `DT-I20-02` CORTE 1/3.** `P-33` ya está DONE local
+> 3/3. El siguiente cambio es corregir la exposición de encabezados Markdown e instrucciones internas
+> en respuestas de WhatsApp. Leer primero `AVANCES.md`, `Iniciativas/TODO.md`,
+> `Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md`, `I-19`, `I-20`,
+> `DT-I20-01`, bases `05`/`08`, reglas y `QAS/21_*`. En el corte 1, crear la regresión exacta del
+> reporte y validar solo fragmentos generados por el LLM, sustituyendo por campo la retroalimentación
+> o repregunta inválida. **No invalidar puntajes correctos, no cambiar idea/versionId, umbrales,
+> madurez, estados, cierre, presupuesto de repreguntas, idioma ni texto exacto P-33.** No sanitizar el
+> mensaje final y no modificar Cosmos. La migración posterior del prompt usa familia nueva y campaña
+> aislada según `planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.
 >
 > **HANDOFF DE DESARROLLO 2026-08-11:** `P-32` (conversación español/inglés y catálogo versionado de
 > textos) tiene los **cortes 1 a 4 DONE local**. `Usuario.Idioma` ya existe (`es|en`, default `es`); no
