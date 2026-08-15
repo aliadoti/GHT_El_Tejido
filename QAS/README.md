@@ -29,7 +29,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 20 | [P-33 · Consultar y ver la idea al cerrar](20_P33_Consulta_y_Cierre_Visible_Como_Probar.md) | Guía simple para comprobar idea activa/última sin menú, consulta sin aporte, cierre visible y reapertura de la misma idea cerrada ante una corrección. |
 | 21 | [DT-I20-02 · Texto plano y prompt seguro](21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md) | Comprueba que WhatsApp no exponga encabezados ni etiquetas internas y que la corrección preserve evaluación, versión, estados, idioma y una sola pregunta. |
 | 22 | [DT-P32-02 · Semillas, JSON masivo y readiness](22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md) | Comprueba base `es/en`, descarga/prevalidación/reimportación masiva como borrador, límites, permisos, readiness y bloqueo de campañas sin catálogo activo. |
-| 23 | [DT-P32-03 · Cierre localizado y readiness Meta](23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md) | Comprueba todas las rutas de cierre por idioma, ausencia de fallback cruzado y mapeos Meta requeridos antes del gate ON. |
+| 23 | [DT-P32-03/03-01 · Cierre y readiness Meta](23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md) | Comprueba cierres por idioma, mapeos de campañas activas frente a borradores y la guarda de activación con gate ON. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)
@@ -68,6 +68,12 @@ puntajes, versión de idea, estados, cierres, repreguntas, idioma ni el texto ex
 **Prioridad 2026-08-14:** `DT-P32-02` está especificada 0/3 y se implementa antes de `DT-I20-02`.
 La guía **22** cubre semillas base independientes de legacy y el flujo masivo descargar/editar/cargar
 JSON. Después se ejecuta nuevamente **17** completo; `DT-I20-02` solo se retoma con P-32 green.
+
+**Microajuste 2026-08-15:** el smoke de DT-P32-03 cerró el defecto bilingüe, pero un borrador
+incompleto dejó bloqueado el readiness global. `DT-P32-03-01` está **implementada 1/1 en local**: los
+borradores siguen visibles sin bloquear y la activación con gate ON valida los mapeos propios. Falta el
+despliegue autorizado; después se repiten QAS/23 pruebas 4–6 (la 6 incluye ahora la guarda de
+activación y necesita ventana ON controlada). Si quedan green, sigue DT-I20-02 corte 1/3.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

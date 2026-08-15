@@ -44,6 +44,7 @@ describe('CatalogosTextosPage', () => {
         configurado: true,
         nombreConfigurado: true,
         idiomaMetaConfigurado: true,
+        bloqueaGateOn: false,
         componentes: ['nombre'],
         problemas: [],
         campanias: [
@@ -61,6 +62,7 @@ describe('CatalogosTextosPage', () => {
         configurado: false,
         nombreConfigurado: false,
         idiomaMetaConfigurado: false,
+        bloqueaGateOn: false,
         componentes: [],
         problemas: ['nombre_faltante', 'idioma_meta_faltante'],
         campanias: [
@@ -212,6 +214,53 @@ describe('CatalogosTextosPage', () => {
     expect(texto).toContain('con los datos: nombre');
     // No puede prometer aprobación en Meta: eso se verifica a mano.
     expect(texto).toContain('solo comprueba que la plantilla esté configurada en el servidor');
+  });
+
+  /** DT-P32-03-01 §7.8: el portal separa el bloqueo de hoy del pendiente de un borrador. */
+  it('distingue la plantilla que bloquea de la que solo hay que completar antes de activar', () => {
+    const api = crearApi({
+      readinessCatalogosTextos: vi.fn(() =>
+        of({
+          ...readiness,
+          mapeosMeta: [
+            {
+              ...readiness.mapeosMeta[1],
+              plantillaRef: 'inicio_activa',
+              bloqueaGateOn: true,
+              campanias: [
+                {
+                  campaniaId: 'c_2',
+                  nombre: 'Convención activa',
+                  estado: 'activa',
+                  mensajeInicialId: 'mi_1',
+                },
+              ],
+            },
+            readiness.mapeosMeta[1],
+          ],
+        }),
+      ),
+    });
+
+    const texto = textoVisible(configurar(api));
+
+    expect(texto).toContain('Bloquea el uso de estos textos');
+    expect(texto).toContain('antes de activar la campaña en borrador');
+    // El borrador incompleto sigue visible con su problema: no se oculta ni se da por listo.
+    expect(texto).toContain('falta el nombre de la plantilla aprobada en Meta');
+  });
+
+  it('avisa de los pendientes de borrador aunque ya se pueda empezar a usar los textos', () => {
+    const api = crearApi({
+      readinessCatalogosTextos: vi.fn(() =>
+        of({ ...readiness, listo: true, listoParaGateOn: true }),
+      ),
+    });
+
+    const texto = textoVisible(configurar(api));
+
+    expect(texto).toContain('está listo para empezar a usar estos textos');
+    expect(texto).toContain('antes de activar');
   });
 
   it('no declara listo para empezar cuando los textos están listos pero falta una plantilla', () => {

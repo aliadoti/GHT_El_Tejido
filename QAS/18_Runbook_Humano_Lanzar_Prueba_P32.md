@@ -118,7 +118,8 @@ UAT, costo/latencia, plantillas Meta aplicables y acta de cambio puede dejarse e
    prueba antes de cerrar la terminal.
 2. Cierra el agente. El bloque PowerShell elimina `GHT_DIAG_KEY` al salir; si interrumpes la sesión,
    ejecuta manualmente `Remove-Item Env:\GHT_DIAG_KEY` en esa misma terminal.
-3. En Azure Portal vuelve `Simulacion__Habilitada` a `false`, guarda y espera el reinicio.
+3. En Azure Portal vuelve `Simulacion__Habilitada` a `false`, guarda y espera el reinicio. Este cierre
+   es obligatorio también después del smoke acotado DT-P32-03-01.
 4. Confirma que el reporte no contiene claves, teléfonos completos ni contenido confidencial.
 5. No actives P-32 en producción: solo puede decidirse después de PASS en las pruebas aplicables, D5,
    UAT, plantillas Meta, revisión de costo/latencia y acta de cambio.

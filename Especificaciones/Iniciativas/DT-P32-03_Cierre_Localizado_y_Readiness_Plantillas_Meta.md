@@ -3,9 +3,9 @@
 > **Estado:** **IMPLEMENTADA Y DESPLEGADA 2026-08-15 (2/2)** — corte 1/2 (cierre localizado único,
 > `50fee37`) y corte 2/2 (readiness Meta y portal, `a9f4a6f`). `main` y `origin/main` apuntan a
 > `a9f4a6f`; el push disparó CI y Deploy, que terminaron en success. **El despliegue no activa nada:**
-> `Conversacion:CatalogoTextosHabilitado` no tiene override en Azure y conserva el default OFF, así
-> que el cierre localizado y la ruta de readiness quedan disponibles pero el gate sigue apagado. Queda
-> pendiente lo operativo: `QAS/23` pruebas 1 a 7 y después `QAS/17` completo.
+> el despliegue no activó el gate. El smoke posterior confirmó que quedó OFF al terminar. Queda
+> El smoke ya ejecutó QAS/23: pruebas 1–4 y 6 PASS, prueba 5 BLOCKED. El pendiente actual es el
+> microajuste DT-P32-03-01 y la repetición acotada de pruebas 4–6.
 > **Origen:** regresión P-32 del 2026-08-14, §§8.1 y 9.2.
 > **Prioridad:** bloqueante para repetir P-32 con el gate ON.
 >
@@ -36,6 +36,12 @@
 > orquestador y una prueba arquitectónica lo impide en el futuro. Backend **841 unitarias + 103 de
 > integración**, build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes.
 > Decisión registrada en `SUPUESTOS.md#cierre-localizado-dt-p32-03`.
+>
+> **Smoke 2026-08-15:** pruebas 1–4 y 6 PASS; prueba 5 BLOCKED. El cierre bilingüe quedó
+> demostrado. El bloqueo restante no modifica estos dos cortes: reveló que borradores incompletos
+> participan indebidamente en la señal global. El microajuste de un corte se especifica en
+> `DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md`. Hasta implementarlo y repetir QAS/23 4–6,
+> P-32 smoke permanece NO GREEN.
 
 ## 1. Problema confirmado
 
@@ -52,7 +58,8 @@ los catálogos como listos aunque el lote inicial vaya a fallar para todos los p
 
 1. Resolver el cierre visible una sola vez, con la misma política de idioma en todas las rutas.
 2. Impedir cualquier respaldo cruzado `en → es` con el gate ON.
-3. Mostrar en readiness todos los mapeos Meta requeridos por campañas activas o borrador.
+3. Mostrar en readiness todos los mapeos Meta requeridos por campañas activas o borrador. La
+   semántica corregida de cuáles bloquean el gate se define en DT-P32-03-01.
 4. Distinguir configuración local completa de aprobación/verificación real en Meta.
 
 ## 3. Alcance de código
@@ -184,4 +191,5 @@ integración externa; esa comprobación queda identificada como manual en QAS/23
 1. **Corte 1/2:** regresión roja, resolutor único, migración de todas las rutas y pruebas.
 2. **Corte 2/2:** contrato/readiness Meta, portal Preparación, pruebas y QAS/23.
 
-No comenzar DT-I20-02 hasta que QAS/23 y la nueva corrida P-32 estén en green.
+No comenzar DT-I20-02 hasta implementar DT-P32-03-01 y obtener green al repetir QAS/23 pruebas 4–6.
+Las pruebas 1–3 ya cerraron el defecto bilingüe en el smoke del 2026-08-15.

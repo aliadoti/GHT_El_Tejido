@@ -5,6 +5,33 @@
 
 ## Estado global
 - Ultima actualizacion: 2026-08-15 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET/AppSec):
+  **`DT-P32-03-01` COMPLETA LOCAL 1/1 — readiness del gate limitado a campañas activas.**
+  `mapeosMeta[]` conserva las campañas `activa|borrador` y sus problemas, pero agrega
+  `bloqueaGateOn` (`true` solo si alguna campaña **activa** exige el par) y `listoParaGateOn` se
+  calcula únicamente con esos pares: un borrador incompleto —estado normal de trabajo y sin
+  transición a `archivada`— ya no mantiene la señal apagada para siempre. Para que la señal no se
+  vuelva mentira, la transición `borrador → activa` valida **con gate ON** y **solo sobre la campaña
+  objetivo** los pares que exigen sus mensajes iniciales activos, con la misma política del envío;
+  falla con `400 VALIDATION_ERROR`, detalle `mapeosMeta.{mensajeInicialId}.{idioma}` y el estado queda
+  en `borrador`. Con gate OFF la activación no cambia. El panel **Preparación** distingue el bloqueo
+  de hoy del pendiente antes de activar un borrador. Sin Graph API, nombres físicos, secretos ni
+  escritura de App Settings. Backend **863 unitarias + 109 de integración**, portal **62**; build
+  Release `-warnaserror`, `dotnet format`, `ng test`, `ng build`, Prettier y `git diff --check`
+  verdes. **Sin push, despliegue ni configuración remota; el gate sigue OFF.** **Siguiente:**
+  desplegar con autorización y repetir **solo** `QAS/23` pruebas 4–6; con green iniciar `DT-I20-02`
+  corte 1/3.
+- Ultima actualizacion: 2026-08-15 (Codex, Arquitecto/Backend/Frontend/SDET/AppSec):
+  **`DT-P32-03-01` ESPECIFICADA 0/1; sin código ni cambio remoto.** El smoke desplegado de
+  DT-P32-03 dejó pruebas 1–4 y 6 PASS y la 5 BLOCKED. El defecto bilingüe está cerrado; el bloqueo
+  restante es semántico: campañas borrador incompletas, que son trabajo normal y no pueden
+  archivarse, mantienen `listoParaGateOn=false`. El microajuste conserva activas/borradores visibles,
+  agrega `mapeosMeta[].bloqueaGateOn`, calcula la señal solo con pares consumidos por campañas activas
+  y, con gate ON, valida los mapeos propios antes de permitir `borrador → activa`. No amplía readiness
+  para exponer nombres físicos ni consulta Meta: nombre, código, componentes y aprobación se aceptan
+  como evidencia humana. Plan de un corte, contratos y QAS/23 actualizados. **Siguiente código:
+  implementar DT-P32-03-01 1/1; luego desplegar con autorización, repetir QAS/23 4–6 y, si queda
+  green, iniciar DT-I20-02 corte 1/3. DT-P32-04 permanece post-green y no bloqueante.**
+- Ultima actualizacion: 2026-08-15 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET/AppSec):
   **`DT-P32-03` COMPLETA Y DESPLEGADA (2/2) — readiness de plantillas Meta y Preparación con dos
   comprobaciones separadas.** `GET
   /api/admin/catalogos-textos/readiness` agrega, de forma aditiva, `listoParaGateOn` y `mapeosMeta[]`:
@@ -1064,14 +1091,18 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`DT-P32-03` corte 2/2 — readiness de mapeos Meta y portal Preparación.** Actualizar primero el
-  contrato aditivo de `GET /catalogos-textos/readiness` (ya redactado en `04 §5.9`), extraer una
-  validación estructural única del mapeo que reutilice `OpcionesPlantillaEnvioInicial.TryResolver` —la
-  misma que usa `ServicioEnvios`, sin una segunda interpretación de "configurado"—, enumerar los pares
-  `plantillaRef + idioma` requeridos por campañas `activa|borrador` con mensajes iniciales activos y
-  agregar `listoParaGateOn` y `mapeosMeta[]` sin cambiar `idiomas[].listo`. El portal debe mostrar
-  catálogos y plantillas como comprobaciones separadas. Sumar unitarias del agregado, integración de la
-  ruta, pruebas del portal y ejecutar `QAS/23`. Sin Graph API, sin secretos y con el gate OFF.
+- [ ] **Desplegar `DT-P32-03-01` (autorización expresa) y repetir `QAS/23` pruebas 4–6.** El código ya
+  está completo y verde en local; el despliegue no enciende nada
+  (`Conversacion:CatalogoTextosHabilitado` sigue sin override en Azure). La prueba 6 incluye ahora la
+  guarda de activación y necesita una ventana ON controlada con retorno a OFF. Con las tres en PASS y
+  la evidencia humana de Meta aceptada, iniciar `DT-I20-02` corte 1/3.
+- [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 863 unitarias + 109 integración; portal 62; build
+  Release `-warnaserror`, format, `ng test`, `ng build`, Prettier y diff verdes) `DT-P32-03-01` corte
+  único 1/1.** `bloqueaGateOn` en `mapeosMeta[]`, agregado limitado a pares de campañas activas,
+  guarda de mapeos propios en `borrador → activa` con gate ON y panel **Preparación** que separa el
+  bloqueo actual del pendiente de borrador. Sin Graph API, nombres físicos, Azure ni Meta.
+- [x] **`DT-P32-03` corte 2/2 desplegado y smoke ejecutado.** QAS/23 pruebas 1–4 y 6 PASS; la 5
+  descubrió la semántica corregida por DT-P32-03-01. No reabrir el resolutor de cierre.
 - [x] **(HECHO 2026-08-14, Claude Opus 5 — backend 944: 841 unitarias + 103 integración; build Release
   `-warnaserror`, format y diff verdes) `DT-P32-03` corte 1/2.** Resolutor único de cierre en
   Application, migración de las seis rutas de cierre del orquestador, fallo tipificado
@@ -1412,7 +1443,8 @@
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **DESPLEGADA 2/2 (`a9f4a6f`, 2026-08-15)** | `QAS/23` 1–7 pendiente | build Release `-warnaserror`, 854 unitarias + 105 integración, portal 60, format, `ng build` y `git diff --check` verdes | Corte 1: `IResolutorMensajeCierreCampania` concentra la política del cierre visible —gate OFF conserva el campo legacy exacto; gate ON usa `localizaciones.{idioma}.mensajeCierre` (`es` mantiene su respaldo histórico) y una localización ausente devuelve `LOCALIZACION_CAMPANIA_INCOMPLETA`—. Las seis rutas de cierre del orquestador resuelven antes de componer o mutar el hilo, el fallo cierra con el mensaje de configuración no disponible del idioma del hilo y deja auditoría sin texto; ninguna ruta lee ya `ConfigConversacional.MensajeCierre` y una prueba arquitectónica lo impide. Sin contratos, portal, flags ni configuración remota; gate OFF. **Cómo probarlo:** con la conversación en inglés y el catálogo encendido, terminar una idea y comprobar que la despedida llega en inglés; si a esa campaña le falta la despedida en inglés, debe salir el aviso de "configuración no disponible" y nunca la despedida en español (`QAS/23`, pruebas 1 a 3). Corte 2: `ValidadorMapeosPlantillaMeta` enumera los pares `plantillaRef + idioma` requeridos por campañas `activa|borrador`, reutiliza `OpcionesPlantillaEnvioInicial.TryResolver` para decidir "configurado" y reporta los problemas estructurales; `GET /readiness` agrega `listoParaGateOn` y `mapeosMeta[]` sin cambiar `idiomas[].listo`, y **Preparación** muestra catálogos y plantillas como comprobaciones separadas. No consulta Graph API: la aprobación en Meta sigue siendo verificación manual. **Cómo probarlo:** en Preparación debe verse una línea por plantilla requerida con su estado y las campañas que la piden; con el mapeo inglés ausente los textos pueden estar listos pero el panel debe decir que todavía no se puede empezar (`QAS/23`, pruebas 4 a 7). Desplegada el 2026-08-15 con CI y Deploy en success; el gate `Conversacion:CatalogoTextosHabilitado` sigue sin override en Azure y por tanto OFF. **Pendiente: solo lo operativo** (`QAS/23` 1-7 y `QAS/17`). |
-| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; en espera de DT-P32-02 green | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Se retoma después de la nueva corrida P-32 green; QAS `21_*`. |
+| DT-P32-03-01 | Readiness solo con campañas activas | **COMPLETA local 1/1 (2026-08-15)**; falta despliegue autorizado | pendiente (`QAS/23` 4–6) | build Release `-warnaserror`, 863 unitarias + 109 integración, portal 62, format, `ng build`, Prettier y `git diff --check` verdes | `mapeosMeta[].bloqueaGateOn` distingue el par que exige alguna campaña **activa** del que solo piden borradores; `listoParaGateOn` se calcula únicamente con los primeros, sin ocultar ni dar por listo un borrador incompleto (un borrador no tiene transición a `archivada`, así que ese bloqueo era permanente). Para que la señal no mienta, activar una campaña con el gate ON exige sus **propios** mapeos estructuralmente configurados —misma política que el envío real—: `400 VALIDATION_ERROR` con `mapeosMeta.{mensajeInicialId}.{idioma}` y el estado permanece en `borrador`; con gate OFF nada cambia y ningún otro borrador bloquea la transición. No consulta Graph API ni expone nombres físicos. **Cómo probarlo:** deja una campaña activa con sus plantillas configuradas y otra en borrador a medio hacer; **Preparación** debe decir que ya se puede empezar y, aparte, que quedan plantillas por configurar antes de activar ese borrador; con el catálogo encendido, intentar activar el borrador incompleto debe fallar sin cambiar su estado (`QAS/23`, pruebas 4 a 6). |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; espera micro-smoke green | — | revisión documental + `git diff --check` | Se inicia después de DT-P32-03-01 y QAS/23 4–6 green; alcance ya aprobado sin cambios. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -1588,7 +1620,8 @@
   configuración de Azure: `Conversacion:CatalogoTextosHabilitado` sigue sin override y por tanto OFF,
   de modo que el cierre localizado no cambia el comportamiento vigente y `mapeosMeta[]` solo agrega
   diagnóstico de solo lectura.
-  **Pendiente:** ejecutar `QAS/23` pruebas 1 a 7 y después `QAS/17` completo.
+  **Smoke ejecutado:** pruebas 1–4 y 6 PASS; prueba 5 BLOCKED por borradores incluidos en el agregado.
+  **Pendiente:** implementar DT-P32-03-01 y repetir QAS/23 pruebas 4–6.
   **Cómo probarlo (lenguaje humano):** (1) entra al portal, abre **Textos de conversación** y mira el
   bloque **Preparación**; (2) además del estado por idioma debe aparecer «Plantillas de WhatsApp» con
   una línea por plantilla que las campañas necesiten, diciendo si está configurada y qué campaña la
@@ -2159,3 +2192,18 @@
   seguridad, migración en 4 cortes y QAS. Variables de entorno quedan para operación; los textos y
   frases editoriales migran al catálogo. Solo documentación; sin código, configuración remota,
   despliegue ni push. Handoff: implementación solo tras priorización expresa.
+- 2026-08-15 - Codex - **DT-P32-03-01 readiness solo con campañas activas — ESPECIFICADA 0/1.** El
+  smoke de DT-P32-03 cerró el defecto bilingüe y aisló una semántica incorrecta del agregado: los
+  borradores incompletos bloqueaban el gate para siempre. Se actualizaron iniciativa, plan, contratos,
+  QAS, guía operativa, índices y handoff. Borradores seguirán visibles sin bloquear; con gate ON la
+  activación validará los mapeos propios. Solo documentación; sin código, Azure, Meta, despliegue ni
+  push. Handoff: implementar el corte, repetir QAS/23 4–6 y después iniciar DT-I20-02.
+- 2026-08-15 - Claude Opus 5 - **DT-P32-03-01 corte único 1/1 — COMPLETA local.** `bloqueaGateOn`
+  derivado de la presencia de una campaña requirente `activa`, `listoParaGateOn` calculado solo con
+  esos pares y guarda de mapeos propios en `borrador → activa` cuando el gate está ON, reutilizando
+  `ValidadorMapeosPlantillaMeta` (y por tanto `OpcionesPlantillaEnvioInicial.TryResolver`) para no
+  crear una segunda interpretación de "configurado". Panel **Preparación** con bloqueo actual y
+  pendiente de borrador separados. Backend 863 unitarias + 109 de integración (9 + 4 nuevas), portal
+  62 (2 nuevas); build Release `-warnaserror`, `dotnet format`, `ng test`, `ng build`, Prettier y
+  `git diff --check` verdes. Sin push, despliegue, configuración remota ni consultas a Meta; gate OFF.
+  Handoff: desplegar con autorización, repetir QAS/23 4–6 y con green iniciar DT-I20-02 corte 1/3.

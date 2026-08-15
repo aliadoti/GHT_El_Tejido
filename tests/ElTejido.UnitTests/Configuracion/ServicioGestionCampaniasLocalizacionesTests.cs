@@ -3,6 +3,7 @@ using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Usuarios;
+using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
@@ -160,6 +161,72 @@ public sealed class ServicioGestionCampaniasLocalizacionesTests
             Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
+    // --- DT-P32-03-01 §4: con el gate ON, activar exige los mapeos Meta de la propia campania ---
+
+    [Fact]
+    public async Task Activar_ConGateOnYSinMapeoPropio_DevuelveValidacionYNoCambiaElEstado()
+    {
+        // Criterio de aceptacion 5: con el gate ON el envio inicial resuelve por `plantillaRef +
+        // idioma`; activar sin mapeo dejaria el lote inicial fallando para todos los participantes.
+        var servicio = ConstruirServicioConPlantillas(new OpcionesPlantillaEnvioInicial());
+        var (campania, mensajeId) = await CrearInglesaConAliasAsync(servicio, "inicio_campania");
+
+        var accion = () => servicio.CambiarEstadoCampaniaAsync(campania.Id, EstadoCampania.Activa, CancellationToken.None);
+
+        var error = (await accion.Should().ThrowAsync<ErrorValidacion>()).Which;
+        error.Detalles.Select(x => x.Campo).Should().AllBe($"mapeosMeta.{mensajeId}.en");
+        error.Detalles.Select(x => x.Problema).Should().BeEquivalentTo(
+            ValidadorMapeosPlantillaMeta.NombreFaltante, ValidadorMapeosPlantillaMeta.IdiomaMetaFaltante);
+        var actual = await servicio.ObtenerCampaniaAsync(campania.Id, CancellationToken.None);
+        actual.Estado.Should().Be(EstadoCampania.Borrador);
+    }
+
+    [Fact]
+    public async Task Activar_ConGateOnYMapeoPropioCompleto_ActivaLaCampania()
+    {
+        // Criterio de aceptacion 6: la guarda mira solo la campania objetivo; ningun otro borrador
+        // incompleto participa en esta decision.
+        var servicio = ConstruirServicioConPlantillas(PlantillasIngles("inicio_campania"));
+        var (campania, _) = await CrearInglesaConAliasAsync(servicio, "inicio_campania");
+
+        var activada = await servicio.CambiarEstadoCampaniaAsync(
+            campania.Id, EstadoCampania.Activa, CancellationToken.None);
+
+        activada.Estado.Should().Be(EstadoCampania.Activa);
+    }
+
+    /// <summary>
+    /// Una campania espanola legacy no pasa por el validador de localizaciones, pero con el gate ON
+    /// su envio inicial tambien resuelve por alias: sin `plantillaRef` no puede activarse.
+    /// </summary>
+    [Fact]
+    public async Task Activar_ConGateOnYCampaniaEspanolaSinAlias_DevuelvePlantillaRefFaltante()
+    {
+        var servicio = ConstruirServicioConPlantillas(new OpcionesPlantillaEnvioInicial());
+        var campania = await CrearCampaniaAsync(servicio);
+        var mensaje = await servicio.AgregarMensajeInicialAsync(campania.Id, Mensaje(), CancellationToken.None);
+
+        var accion = () => servicio.CambiarEstadoCampaniaAsync(campania.Id, EstadoCampania.Activa, CancellationToken.None);
+
+        var error = (await accion.Should().ThrowAsync<ErrorValidacion>()).Which;
+        error.Detalles.Should().ContainSingle().Which.Should().Be(
+            new DetalleError($"mapeosMeta.{mensaje.Id}.es", ValidadorMapeosPlantillaMeta.PlantillaRefFaltante));
+    }
+
+    [Fact]
+    public async Task Activar_ConGateOffYSinMapeo_ConservaLaConductaPrevia()
+    {
+        // Criterio de aceptacion 7: con el gate OFF el envio usa la plantilla legacy del mensaje.
+        var servicio = ConstruirServicioConPlantillas(new OpcionesPlantillaEnvioInicial(), gate: false);
+        var campania = await CrearCampaniaAsync(servicio);
+        await servicio.AgregarMensajeInicialAsync(campania.Id, Mensaje(), CancellationToken.None);
+
+        var activada = await servicio.CambiarEstadoCampaniaAsync(
+            campania.Id, EstadoCampania.Activa, CancellationToken.None);
+
+        activada.Estado.Should().Be(EstadoCampania.Activa);
+    }
+
     private ServicioGestionCampanias ConstruirServicio(
         IDisponibilidadCatalogoTextos disponibilidad,
         bool gate = true)
@@ -170,6 +237,66 @@ public sealed class ServicioGestionCampaniasLocalizacionesTests
             TimeProvider.System,
             new OpcionesCatalogoTextos { Habilitado = gate },
             disponibilidad);
+
+    private ServicioGestionCampanias ConstruirServicioConPlantillas(
+        OpcionesPlantillaEnvioInicial plantillas,
+        bool gate = true)
+    {
+        var disponibilidad = Substitute.For<IDisponibilidadCatalogoTextos>();
+        disponibilidad
+            .ObtenerIdiomasSinCatalogoActivoAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<string>());
+        return new ServicioGestionCampanias(
+            new RepositorioCampaniasMemoria(),
+            _usuarios,
+            _participantes,
+            TimeProvider.System,
+            new OpcionesCatalogoTextos { Habilitado = gate },
+            disponibilidad,
+            plantillas);
+    }
+
+    private static OpcionesPlantillaEnvioInicial PlantillasIngles(string plantillaRef)
+        => new()
+        {
+            Mapeos =
+            {
+                [plantillaRef] = new Dictionary<string, PlantillaEnvioInicialConfigurada>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["en"] = new() { Nombre = "el_tejido_inicio", Idioma = "en_US", Componentes = ["nombre"] },
+                },
+            },
+        };
+
+    /// <summary>Campania inglesa completa salvo por el mapeo Meta del alias indicado.</summary>
+    private static async Task<(Campania Campania, string MensajeId)> CrearInglesaConAliasAsync(
+        ServicioGestionCampanias servicio,
+        string plantillaRef)
+    {
+        var campania = await CrearCampaniaAsync(servicio);
+        var mensaje = await servicio.AgregarMensajeInicialAsync(campania.Id, Mensaje(), CancellationToken.None);
+        await servicio.ActualizarLocalizacionesAsync(
+            campania.Id,
+            new SolicitudActualizarLocalizacionesCampania(
+                ["en"],
+                new Dictionary<string, LocalizacionCampania>
+                {
+                    ["en"] = LocalizacionCampania.Crear(
+                        "en",
+                        "Campaign",
+                        "Description",
+                        "Goal",
+                        "Thanks.",
+                        new Dictionary<string, LocalizacionMensajeInicial>(StringComparer.Ordinal)
+                        {
+                            [mensaje.Id] = new("Hi {{nombre}}.", plantillaRef),
+                        },
+                        null),
+                }),
+            CancellationToken.None);
+        return (campania, mensaje.Id);
+    }
 
     /// <summary>Campania `es/en` con localizaciones completas: lo unico que puede faltar es el catalogo.</summary>
     private static async Task<Campania> CrearBilingueCompletaAsync(ServicioGestionCampanias servicio)

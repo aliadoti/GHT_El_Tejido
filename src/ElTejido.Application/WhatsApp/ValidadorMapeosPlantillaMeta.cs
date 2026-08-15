@@ -21,6 +21,9 @@ public static class ValidadorMapeosPlantillaMeta
     public const string ComponenteVacio = "componente_vacio";
     public const string ComponenteDuplicado = "componente_duplicado";
 
+    /// <summary>Etiqueta con la que viaja <see cref="EstadoCampania.Activa"/> en el diagnóstico.</summary>
+    internal static readonly string EstadoActiva = EstadoCampania.Activa.ToString().ToLowerInvariant();
+
     /// <summary>
     /// Enumera los pares requeridos por las campañas dadas (se esperan `activa|borrador`) para los
     /// idiomas en alcance, deduplicados por alias + idioma y con las campañas que los exigen.
@@ -155,6 +158,15 @@ public sealed record MapeoPlantillaMetaEvaluado(
 {
     /// <summary>Estructuralmente listo; no implica aprobación ni verificación en Meta.</summary>
     public bool Listo => Configurado && Problemas.Count == 0;
+
+    /// <summary>
+    /// DT-P32-03-01 §2: el par solo condiciona el gate global si al menos una campaña **activa** lo
+    /// exige. Un borrador a medio construir es un estado normal de trabajo —y sin transición a
+    /// `archivada`— así que se sigue enumerando como pendiente pero no mantiene la señal en `false`
+    /// de forma indefinida para las campañas que ya están operando.
+    /// </summary>
+    public bool BloqueaGateOn => Campanias.Any(campania =>
+        string.Equals(campania.Estado, ValidadorMapeosPlantillaMeta.EstadoActiva, StringComparison.Ordinal));
 }
 
 /// <summary>Campaña y mensaje inicial que exigen el par. Sin teléfonos ni contenido del participante.</summary>

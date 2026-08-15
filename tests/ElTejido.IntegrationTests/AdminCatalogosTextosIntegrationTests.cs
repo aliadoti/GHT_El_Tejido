@@ -444,6 +444,94 @@ public sealed class AdminCatalogosTextosIntegrationTests
             .AsArray().Select(x => x!.GetValue<string>()).Should().Equal("nombre");
     }
 
+    /// <summary>
+    /// DT-P32-03-01 §7.2 y §7.4: un borrador a medio construir se sigue enumerando con sus problemas,
+    /// pero no puede mantener apagada la senal de las campanias que ya operan. `borrador` no tiene
+    /// transicion a `archivada`, asi que ese bloqueo seria permanente.
+    /// </summary>
+    [Fact]
+    public async Task Readiness_ConBorradorIncompleto_LoMuestraSinBloquearElGate()
+    {
+        using var fabrica = ConstruirFabrica(mapeos: MapeosMeta(("es", "es_CO"), ("en", "en_US")));
+        using var client = ClienteAdmin(fabrica);
+        await SembrarCampaniaBilingueAsync(fabrica, "inicio_campania");
+        await SembrarCampaniaBilingueAsync(
+            fabrica, "inicio_sin_mapeo", id: "c_borrador", estado: EstadoCampania.Borrador);
+        await ActivarSemillaBaseAsync(client, "es");
+        await ActivarSemillaBaseAsync(client, "en");
+
+        using var respuesta = await client.GetAsync("/api/admin/catalogos-textos/readiness");
+        var cuerpo = JsonNode.Parse(await respuesta.Content.ReadAsStringAsync())!.AsObject();
+
+        cuerpo["listoParaGateOn"]!.GetValue<bool>().Should().BeTrue();
+        var mapeos = cuerpo["mapeosMeta"]!.AsArray();
+        mapeos.Should().HaveCount(4);
+        var pendientes = mapeos
+            .Where(x => x!["plantillaRef"]!.GetValue<string>() == "inicio_sin_mapeo")
+            .Select(x => x!.AsObject())
+            .ToArray();
+        pendientes.Should().HaveCount(2);
+        pendientes.Should().OnlyContain(x => !x["bloqueaGateOn"]!.GetValue<bool>());
+        // El diagnostico no desaparece: el administrador debe verlo antes de activar el borrador.
+        pendientes.Should().OnlyContain(x => x["problemas"]!.AsArray().Count > 0);
+        mapeos.Where(x => x!["plantillaRef"]!.GetValue<string>() == "inicio_campania")
+            .Should().OnlyContain(x => x!["bloqueaGateOn"]!.GetValue<bool>());
+    }
+
+    /// <summary>
+    /// DT-P32-03-01 §7.5: con el gate ON el envio inicial resuelve por `plantillaRef + idioma`; una
+    /// campania sin ese mapeo no puede activarse. La guarda es local: no consulta Meta.
+    /// </summary>
+    [Fact]
+    public async Task ActivarCampania_ConGateOnYSinMapeoPropio_Responde400YConservaElBorrador()
+    {
+        using var fabrica = ConstruirFabrica(mapeos: MapeosMeta(("es", "es_CO")), gateActivo: true);
+        using var client = ClienteAdmin(fabrica);
+        await SembrarCampaniaEspanolaAsync(fabrica, "c_sin_mapeo", "otro_alias");
+
+        using var respuesta = await CambiarEstadoAsync(client, "c_sin_mapeo", "activa");
+        var cuerpo = await respuesta.Content.ReadFromJsonAsync<CuerpoErrorTest>();
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        cuerpo!.Error.Code.Should().Be("VALIDATION_ERROR");
+        cuerpo.Error.Details!.Select(x => x.Field).Should().AllBe("mapeosMeta.mi_1.es");
+        cuerpo.Error.Details!.Select(x => x.Issue).Should().BeEquivalentTo(
+            "nombre_faltante", "idioma_meta_faltante");
+        var campania = await ObtenerCampaniaAsync(fabrica, "c_sin_mapeo");
+        campania.Estado.Should().Be(EstadoCampania.Borrador);
+    }
+
+    /// <summary>
+    /// DT-P32-03-01 §7.6: los mapeos propios completos alcanzan; otro borrador incompleto no bloquea.
+    /// </summary>
+    [Fact]
+    public async Task ActivarCampania_ConGateOnYMapeoPropio_ActivaAunqueHayaOtroBorradorIncompleto()
+    {
+        using var fabrica = ConstruirFabrica(mapeos: MapeosMeta(("es", "es_CO")), gateActivo: true);
+        using var client = ClienteAdmin(fabrica);
+        await SembrarCampaniaEspanolaAsync(fabrica, "c_lista", "inicio_campania");
+        await SembrarCampaniaEspanolaAsync(fabrica, "c_incompleta", "otro_alias");
+
+        using var respuesta = await CambiarEstadoAsync(client, "c_lista", "activa");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ObtenerCampaniaAsync(fabrica, "c_lista")).Estado.Should().Be(EstadoCampania.Activa);
+        (await ObtenerCampaniaAsync(fabrica, "c_incompleta")).Estado.Should().Be(EstadoCampania.Borrador);
+    }
+
+    [Fact]
+    public async Task ActivarCampania_ConGateOffYSinMapeo_ConservaLaConductaPrevia()
+    {
+        using var fabrica = ConstruirFabrica();
+        using var client = ClienteAdmin(fabrica);
+        await SembrarCampaniaEspanolaAsync(fabrica, "c_legacy", "otro_alias");
+
+        using var respuesta = await CambiarEstadoAsync(client, "c_legacy", "activa");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ObtenerCampaniaAsync(fabrica, "c_legacy")).Estado.Should().Be(EstadoCampania.Activa);
+    }
+
     [Fact]
     public async Task EdicionMasiva_VisorPrevalidaYConsultaReadinessPeroNoImporta()
     {
@@ -544,9 +632,84 @@ public sealed class AdminCatalogosTextosIntegrationTests
     /// Campania activa `es`/`en` cuyo unico mensaje inicial activo exige el alias en ambos idiomas.
     /// El repositorio en memoria es singleton, asi que sembrarlo aqui alimenta el readiness real.
     /// </summary>
+    private static async Task<HttpResponseMessage> CambiarEstadoAsync(
+        HttpClient client,
+        string campaniaId,
+        string estado)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"/api/admin/campanias/{campaniaId}/estado")
+        {
+            Content = JsonContent.Create(new { estado }),
+        };
+        request.Headers.Add("X-CSRF-Token", "csrf-admin");
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<Campania> ObtenerCampaniaAsync(WebApplicationFactory<Program> fabrica, string id)
+    {
+        var campania = await fabrica.Services
+            .GetRequiredService<IRepositorioCampanias>()
+            .ObtenerCampaniaPorIdAsync(id, CancellationToken.None);
+        return campania.Should().NotBeNull().And.Subject.As<Campania>();
+    }
+
+    /// <summary>Campania espanola en borrador cuya localizacion `es` declara el alias indicado.</summary>
+    private static async Task SembrarCampaniaEspanolaAsync(
+        WebApplicationFactory<Program> fabrica,
+        string id,
+        string plantillaRef)
+    {
+        var mensaje = MensajeInicial.Crear(
+            "mi_1",
+            "saludo",
+            "Hola {{nombre}}.",
+            1,
+            ["nombre"],
+            EstadoRegistro.Activo,
+            PlantillaWhatsApp.Crear("legacy_saludo", "es", ["nombre"]));
+        var campania = Campania.Crear(
+            id,
+            "Campania",
+            "Descripcion",
+            "Objetivo",
+            EstadoCampania.Borrador,
+            [mensaje],
+            null,
+            "rub_1",
+            null,
+            "llm_1",
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            ConfigConversacional.Crear(1, "Gracias."),
+            LimitesSeguridad.Crear(1500, 10, 2),
+            null,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            idiomasHabilitados: ["es"],
+            localizaciones: new Dictionary<string, LocalizacionCampania>(StringComparer.Ordinal)
+            {
+                ["es"] = LocalizacionCampania.Crear(
+                    "es",
+                    "Campania",
+                    "Descripcion",
+                    "Objetivo",
+                    "Gracias.",
+                    new Dictionary<string, LocalizacionMensajeInicial>(StringComparer.Ordinal)
+                    {
+                        ["mi_1"] = new("Hola {{nombre}}.", plantillaRef),
+                    },
+                    null),
+            });
+
+        await fabrica.Services
+            .GetRequiredService<IRepositorioCampanias>()
+            .GuardarCampaniaAsync(campania, CancellationToken.None);
+    }
+
     private static async Task SembrarCampaniaBilingueAsync(
         WebApplicationFactory<Program> fabrica,
-        string plantillaRef)
+        string plantillaRef,
+        string id = "c_bilingue",
+        EstadoCampania estado = EstadoCampania.Activa)
     {
         var mensaje = MensajeInicial.Crear(
             "mi_1",
@@ -572,11 +735,11 @@ public sealed class AdminCatalogosTextosIntegrationTests
             StringComparer.Ordinal);
 
         var campania = Campania.Crear(
-            "c_bilingue",
+            id,
             "Campania",
             "Descripcion",
             "Objetivo",
-            EstadoCampania.Activa,
+            estado,
             [mensaje],
             null,
             "rub_1",
@@ -623,11 +786,18 @@ public sealed class AdminCatalogosTextosIntegrationTests
         int? maxFrasesPorGrupo = null,
         bool conLegacyExcedido = false,
         int? maxBytesImportacionJson = null,
-        IReadOnlyDictionary<string, string>? mapeos = null)
+        IReadOnlyDictionary<string, string>? mapeos = null,
+        bool gateActivo = false)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.UseSetting("Persistencia:Modo", "Memoria");
+            if (gateActivo)
+            {
+                // Solo para probar la guarda de activacion: el gate real nace y sigue apagado.
+                builder.UseSetting("Conversacion:CatalogoTextosHabilitado", "true");
+            }
+
             foreach (var ajuste in mapeos ?? new Dictionary<string, string>(StringComparer.Ordinal))
             {
                 builder.UseSetting(ajuste.Key, ajuste.Value);

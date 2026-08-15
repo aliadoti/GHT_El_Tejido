@@ -44,6 +44,7 @@ conversación español/inglés y catálogo de textos** en el ambiente de pruebas
 Primero lee `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`,
 `QAS/23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md`,
 `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`,
+`Especificaciones/Iniciativas/DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md`,
 `Especificaciones/Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`,
 `Especificaciones/Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md` §§10, 12, 14 y 15,
 `tests/Calibracion/README.md` y `QAS/06_Criterios_Aceptacion_LLM.md`.
@@ -104,6 +105,10 @@ Reglas obligatorias:
       agente no crea ni modifica App Settings: si el operador ya configuró plantillas aprobadas y
       existe autorización explícita, verifica `Nombre`, `Idioma`, orden de `Componentes` y ejecuta
       el lote mixto real; de lo contrario márcalo BLOCKED.
+      Los pares requeridos solo por campañas borrador deben seguir visibles, pero con
+      `bloqueaGateOn=false`; no deben impedir `listoParaGateOn=true` si catálogos y campañas activas
+      están listos. Con el gate ON, comprueba que un borrador no pueda activarse sin sus propios
+      mapeos.
 
    f. Crea una segunda campaña nueva llamada `CAMP-<identificador>-INCOMPLETA`, habilita `es/en` y
       deja deliberadamente vacío el contenido `en`. No la completes ni intentes eludir sus controles:
@@ -117,6 +122,10 @@ Reglas obligatorias:
 7. No marques PASS sin evidencia. Si una precondición falta, usa BLOCKED; si el resultado observado
    contradice el esperado, usa FAIL, describe qué ocurrió y conserva identificadores/capturas/reportes.
    No intentes corregir el sistema durante la ejecución.
+
+   Para repetir un mismo texto de control en el webhook simulado durante el mismo día UTC, envía un
+   `whatsappMessageId` explícito y único. La combinación repetida de número, texto y fecha puede ser
+   deduplicada con respuesta 200 y no constituye evidencia de una interacción nueva.
 
 Al finalizar crea `QAS/resultados/Resultados_P32_Multidioma_<AAAA-MM-DD>.md` con:
 

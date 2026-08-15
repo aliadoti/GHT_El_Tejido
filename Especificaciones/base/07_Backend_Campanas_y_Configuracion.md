@@ -143,6 +143,10 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
   límites operativos con techo compilado, no contenido editorial.
 - Activar una campaña bilingüe exige una versión global activa y válida por cada idioma además de
   localizaciones completas. Readiness expone el bloqueo antes de intentar la transición.
+- **DT-P32-03-01:** readiness conserva visibles los mapeos que necesitan campañas activas y borrador,
+  pero solo los requeridos por al menos una campaña activa bloquean `listoParaGateOn`. Si el gate está
+  ON, activar un borrador valida los mapeos estructurales de esa campaña con la misma política del
+  envío; falla sin cambiar estado si falta alguno. Con gate OFF no cambia la activación vigente.
 
 ---
 
@@ -162,6 +166,8 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
   incompleta no se activa y una campaña legacy española sigue funcionando.
 - DT-P32-02: un admin descarga, edita, prevalida e importa el catálogo completo como nuevo borrador;
   una configuración legacy inválida no impide crear las semillas base `es/en`.
+- DT-P32-03-01: un borrador incompleto permanece visible en Preparación sin bloquear campañas activas,
+  y no puede pasar a activa con el gate ON hasta completar sus propios mapeos Meta.
 - Crear/editar/duplicar preserva `participacionContinua`; un documento histórico ausente se devuelve
   como `false`.
 - Crear/editar/duplicar preserva `clasificacionIntencionControl`; ausente se devuelve como `false` y

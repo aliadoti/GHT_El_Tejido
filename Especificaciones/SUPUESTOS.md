@@ -1308,3 +1308,26 @@
   D5 `es/en`, UAT, costo/latencia y prueba de ventana WhatsApp.
 - Specs: `Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md`, requerimiento `REQ-054` y
   `QAS/20_P33_Consulta_y_Cierre_Visible_Como_Probar.md`.
+
+### readiness-solo-campanias-activas-dt-p32-03-01 — Preparación no equivale a bloqueo
+
+- Fecha: 2026-08-15 - Agente/Rol: Codex, Arquitecto/Backend/Frontend/SDET/AppSec.
+- Contexto: el smoke de DT-P32-03 demostró el cierre bilingüe, pero `listoParaGateOn` no pudo quedar
+  `true` porque dos campañas borrador deliberadamente incompletas también participan en el agregado.
+  Un borrador a medio construir es estado normal y no tiene transición a archivada.
+- Decisión:
+  - readiness sigue enumerando campañas activas y borrador para conservar diagnóstico temprano;
+  - solo un par requerido por al menos una campaña activa tiene `bloqueaGateOn=true` y participa en
+    `listoParaGateOn`;
+  - con gate ON, la transición `borrador → activa` valida los mapeos de la campaña objetivo con la
+    misma política del envío, evitando introducir una consumidora activa incompleta;
+  - el endpoint no expone nombres físicos ni consulta Graph API. La coincidencia exacta de nombre,
+    código, componentes y aprobación se prueba mediante evidencia humana o envío autorizado.
+- Alternativas descartadas: ocultar borradores (pierde preparación temprana); exigir que todo
+  borrador esté completo (impide el flujo normal de edición); agregar `borrador → archivada` solo para
+  limpiar el smoke (cambia el dominio para resolver un síntoma); consultar Meta desde readiness
+  (credenciales, latencia y disponibilidad externas innecesarias para una guarda estructural).
+- Impacto/reversibilidad: contrato aditivo `bloqueaGateOn`, cambio localizado del agregado, guarda de
+  activación condicionada al gate y portal. Rollback: revertir el corte y mantener el gate OFF.
+- Spec: `Iniciativas/DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md`; plan:
+  `planes/DT-P32-03-01_Plan_Readiness_Gate_Solo_Activas.md`; QAS: `QAS/23_*` pruebas 4–6.

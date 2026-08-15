@@ -514,10 +514,24 @@ de disponibilidad editorial del catálogo; `listoParaGateOn` agrega catálogo + 
 Esta ruta no consulta Graph API y por tanto no certifica aprobación ni correspondencia de variables
 en Meta. No devuelve secretos ni contenido de participantes.
 
+**Microajuste DT-P32-03-01:** cada elemento de `mapeosMeta[]` agrega el booleano
+`bloqueaGateOn`. Las campañas `activa|borrador` continúan visibles, pero el valor es `true` únicamente
+cuando al menos una de las campañas que requiere el par está `activa`. `listoParaGateOn` considera
+solo mapeos con `bloqueaGateOn=true`; un borrador incompleto se diagnostica sin bloquear el uso de las
+campañas activas. Un par compartido por activa y borrador sí bloquea.
+
 **Precondición de campaña (DT-P32-02 §5):** pasar a `activa` una campaña con más de un idioma
 habilitado exige, además de las localizaciones completas, una versión global activa y válida por cada
 idioma; si falta, `400 VALIDATION_ERROR` con `catalogosTextos.{idioma}: activo_requerido`. Aplica con
 el gate encendido o apagado; una campaña monolingüe española legacy no entra en esta regla.
+
+Con `Conversacion:CatalogoTextosHabilitado=true`, DT-P32-03-01 agrega otra precondición a la
+transición `borrador → activa`: todos los pares `plantillaRef + idioma` requeridos por los mensajes
+iniciales activos de **esa campaña** deben estar estructuralmente configurados mediante la misma
+política del envío. Si no, responde `400 VALIDATION_ERROR`, detalla
+`mapeosMeta.{mensajeInicialId}.{idioma}` y no cambia el estado. No usa el readiness global, no consulta
+Meta y no permite que otros borradores bloqueen la transición. Con el gate OFF conserva la conducta
+anterior.
 
 ### 5.8 Consultas de resultados — `REQ §27.3`
 | Método | Ruta | Descripción |

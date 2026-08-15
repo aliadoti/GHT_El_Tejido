@@ -157,7 +157,7 @@ Las llamadas reales a WhatsApp y al LLM se **mockean** en CI; las pruebas E2E re
 | §32 Marca GHT | 11 §5 | Revisión visual |
 | §31.8 Mantenibilidad/separación | 01 §2, 02 §3 | Revisión de arquitectura + §4.9 |
 | Conversación multidioma y textos editables P-32/DT-P32-02 | P-32, DT-P32-02, 03 §3.13.1, 04 §5.7.1, 05 §4.5.1 | Unit/integration + JSON/readiness `QAS/22` + E2E bilingüe §5.23/`QAS/16`/`QAS/17` |
-| Cierre localizado y readiness Meta DT-P32-03 | DT-P32-03, 04 §5.7.1, 05 §§2.6/4.5 | Matriz automatizada de todas las rutas de cierre + readiness API/portal + `QAS/23` antes de repetir `QAS/17` |
+| Cierre localizado y readiness Meta DT-P32-03/03-01 | DT-P32-03, DT-P32-03-01, 04 §5.7.1, 05 §§2.6/4.5 | Matriz de cierres + readiness activa/borrador + guarda de activación + `QAS/23`; tras el microajuste repetir 4–6 antes de DT-I20-02 |
 | Consulta y cierre visible REQ-054 / P-33 | P-33, 03 §3.6.1/§3.13.1/§3.15, 05 §4.4.6, 10 §6 | Unit (detector/selector/afinidad) + integración/E2E §5.24–25 + `QAS/20` |
 
 ---

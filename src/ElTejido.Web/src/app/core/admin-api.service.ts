@@ -97,6 +97,8 @@ export interface MapeoPlantillaMeta {
   configurado: boolean;
   nombreConfigurado: boolean;
   idiomaMetaConfigurado: boolean;
+  /** DT-P32-03-01: solo los pares que exige alguna campaña activa condicionan el gate. */
+  bloqueaGateOn: boolean;
   componentes: string[];
   problemas: string[];
   campanias: CampaniaRequierePlantillaMeta[];

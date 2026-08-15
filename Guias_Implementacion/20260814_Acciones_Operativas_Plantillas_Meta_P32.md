@@ -36,8 +36,11 @@ coincidir exactamente con Meta; no basta con que existan los mismos nombres.
 
 1. Guardar la configuración y esperar el reinicio de la API.
 2. Con el gate OFF, abrir **Textos de conversación → Preparación**.
-3. Tras implementar DT-P32-03, comprobar `listoParaGateOn=true` y ambos pares del alias.
-4. Comparar manualmente los componentes mostrados con Meta; readiness no verifica la aprobación.
+3. Tras implementar DT-P32-03-01, comprobar `listoParaGateOn=true` para las campañas activas. Los
+   pares requeridos solo por borradores pueden seguir pendientes, visibles con `bloqueaGateOn=false`.
+4. Comparar manualmente en Azure/Meta el nombre físico, código y componentes; readiness solo expone
+   presencia estructural y no verifica la aprobación. Esta evidencia humana es suficiente para cerrar
+   QAS/23 prueba 5; no se necesita ampliar la API.
 5. Solo entonces abrir la ventana gate ON y ejecutar QAS/23 + QAS/17.
 6. Al terminar, volver el gate a OFF salvo acta formal; apagar simulación y retirar la clave diagnóstica.
 
@@ -48,3 +51,6 @@ coincidir exactamente con Meta; no basta con que existan los mismos nombres.
 - orden contractual de variables del body;
 - autorización de tráfico real, D5, UAT, presupuesto/costo y acta de activación;
 - limpieza o conservación de campañas y datos de prueba.
+
+Un valor de cierre localizado con mojibake es un problema del dato y debe corregirse editorialmente
+antes de la corrida P-32 completa; no forma parte de DT-P32-03-01.

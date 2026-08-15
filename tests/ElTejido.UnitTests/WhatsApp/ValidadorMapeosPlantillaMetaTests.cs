@@ -183,6 +183,50 @@ public sealed class ValidadorMapeosPlantillaMetaTests
         mapeos.Single(x => x.Idioma == "en").Listo.Should().BeFalse();
     }
 
+    // --- DT-P32-03-01 §2: quién bloquea el gate y quién solo queda pendiente ---
+
+    [Fact]
+    public void Evaluar_ParFaltanteDeCampaniaActiva_BloqueaElGate()
+    {
+        var mapeos = ValidadorMapeosPlantillaMeta.Evaluar(
+            [CampaniaCon(("en", "inicio_campania"))],
+            Idiomas,
+            new OpcionesPlantillaEnvioInicial());
+
+        var mapeo = mapeos.Should().ContainSingle().Subject;
+        mapeo.Listo.Should().BeFalse();
+        mapeo.BloqueaGateOn.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Evaluar_ParFaltanteSoloDeBorrador_SeEnumeraPeroNoBloquea()
+    {
+        // Criterio de aceptación 2: un borrador a medio construir es trabajo normal; se diagnostica
+        // igual, pero no puede mantener el gate apagado para las campañas que ya operan.
+        var borrador = CampaniaCon([("en", "inicio_campania")], estado: EstadoCampania.Borrador);
+
+        var mapeos = ValidadorMapeosPlantillaMeta.Evaluar([borrador], Idiomas, new OpcionesPlantillaEnvioInicial());
+
+        var mapeo = mapeos.Should().ContainSingle().Subject;
+        mapeo.Listo.Should().BeFalse();
+        mapeo.Problemas.Should().NotBeEmpty();
+        mapeo.BloqueaGateOn.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Evaluar_ParCompartidoPorActivaYBorrador_BloqueaUnaSolaVezYConservaAmbas()
+    {
+        // Criterio de aceptación 3: basta una consumidora activa para que el par frene el gate.
+        var activa = CampaniaCon([("en", "inicio_campania")], id: "c_1");
+        var borrador = CampaniaCon([("en", "inicio_campania")], id: "c_2", estado: EstadoCampania.Borrador);
+
+        var mapeos = ValidadorMapeosPlantillaMeta.Evaluar([borrador, activa], ["en"], new OpcionesPlantillaEnvioInicial());
+
+        var mapeo = mapeos.Should().ContainSingle().Subject;
+        mapeo.BloqueaGateOn.Should().BeTrue();
+        mapeo.Campanias.Select(x => x.CampaniaId).Should().Equal("c_2", "c_1");
+    }
+
     private static OpcionesPlantillaEnvioInicial Opciones(
         params (string PlantillaRef, string Idioma, string Nombre, string IdiomaMeta, string[] Componentes)[] mapeos)
     {

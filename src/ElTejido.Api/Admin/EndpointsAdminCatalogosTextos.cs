@@ -126,6 +126,9 @@ internal static class EndpointsAdminCatalogosTextos
                 plantillaRef = mapeo.PlantillaRef,
                 idioma = mapeo.Idioma,
                 configurado = mapeo.Configurado,
+                // DT-P32-03-01 §3: distingue el par que frena el gate hoy del que solo hay que
+                // completar antes de activar el borrador que lo pide.
+                bloqueaGateOn = mapeo.BloqueaGateOn,
                 nombreConfigurado = mapeo.NombreConfigurado,
                 idiomaMetaConfigurado = mapeo.IdiomaMetaConfigurado,
                 componentes = mapeo.Componentes,

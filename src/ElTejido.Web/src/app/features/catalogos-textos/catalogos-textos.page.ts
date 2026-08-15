@@ -125,8 +125,12 @@ interface DiferenciaGrupo {
                         : ' sin datos variables'
                     }}.
                   } @else {
-                    <span class="form-error">
-                      {{ describirMapeo(mapeo) }}
+                    <!--
+                      DT-P32-03-01 §3: un pendiente de borrador se muestra igual, pero no es un
+                      bloqueo de hoy. Nunca se oculta ni se presenta como listo.
+                    -->
+                    <span [class]="mapeo.bloqueaGateOn ? 'form-error' : 'subhead'">
+                      {{ describirMapeo(mapeo) }} {{ etiquetaBloqueo(mapeo) }}
                     </span>
                   }
                   <span class="subhead"> La piden: {{ nombresRequirentes(mapeo) }}. </span>
@@ -138,9 +142,13 @@ interface DiferenciaGrupo {
           <p [class]="estado.listoParaGateOn ? 'subhead' : 'form-error'" role="status">
             @if (estado.listoParaGateOn) {
               Todo lo que se revisa aquí está listo para empezar a usar estos textos.
+              @if (pendientesDeBorrador(estado) > 0) {
+                Quedan {{ pendientesDeBorrador(estado) }} plantillas por configurar antes de activar
+                las campañas en borrador que las piden.
+              }
             } @else if (estado.listo) {
-              Los textos están listos, pero todavía falta configurar plantillas: no empieces a
-              usarlos aún.
+              Los textos están listos, pero todavía falta configurar plantillas de campañas activas:
+              no empieces a usarlos aún.
             } @else {
               Todavía falta preparación: no empieces a usar estos textos.
             }
@@ -494,6 +502,23 @@ export class CatalogosTextosPage {
       return problema;
     });
     return `${partes.join('; ')}.`;
+  }
+
+  /**
+   * DT-P32-03-01 §3: separa el bloqueo de hoy del pendiente de preparación. Un borrador incompleto
+   * nunca se presenta como listo, pero tampoco como algo que impida usar los textos.
+   */
+  protected etiquetaBloqueo(mapeo: MapeoPlantillaMeta): string {
+    return mapeo.bloqueaGateOn
+      ? 'Bloquea el uso de estos textos: la piden campañas activas.'
+      : 'No bloquea hoy: hay que configurarla antes de activar la campaña en borrador que la pide.';
+  }
+
+  /** Plantillas pendientes que solo piden borradores; se informan sin frenar la señal global. */
+  protected pendientesDeBorrador(readiness: ReadinessCatalogosTextos): number {
+    return readiness.mapeosMeta.filter(
+      (mapeo) => !mapeo.bloqueaGateOn && mapeo.problemas.length > 0,
+    ).length;
   }
 
   /** Traduce el motivo técnico del servidor a algo que un administrador pueda accionar. */

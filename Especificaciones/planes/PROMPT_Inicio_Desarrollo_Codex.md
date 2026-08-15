@@ -6,18 +6,27 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2); NO QUEDA CÓDIGO EN ELLA.** La corrida P-32
+> **HANDOFF 2026-08-15 — `DT-P32-03-01` COMPLETA LOCAL (1/1); SIGUE LO OPERATIVO.** El corte único
+> está implementado y verde: `mapeosMeta[].bloqueaGateOn`, `listoParaGateOn` calculado solo con
+> campañas activas, guarda de mapeos propios en `borrador → activa` con el gate ON
+> (`400 VALIDATION_ERROR` con `mapeosMeta.{mensajeInicialId}.{idioma}`, sin cambiar el estado) y panel
+> **Preparación** que separa el bloqueo actual del pendiente de borrador. Backend 863 + 109, portal 62,
+> build/format/`ng test`/`ng build`/Prettier/diff verdes; sin push, despliegue ni cambio remoto y con
+> el gate OFF. **Siguiente:** con autorización expresa, desplegar y repetir **solo** QAS/23 pruebas
+> 4–6 (la 6 exige una ventana ON controlada y retorno a OFF). Si quedan green, el siguiente cambio de
+> código es DT-I20-02 corte 1/3; DT-P32-04 no bloquea. No cambiar Azure, gate, simulación ni datos
+> remotos sin autorización.
+
+> **HANDOFF HISTÓRICO 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2).** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para
 > readiness. El corte 1 dejó un resolutor único de cierre sin fallback entre idiomas y el corte 2
 > agregó `listoParaGateOn` y `mapeosMeta[]` a `GET /catalogos-textos/readiness` más el panel
 > **Preparación** con catálogos y plantillas separados. Backend 854 + 105, portal 60, build/format/
 > `ng build`/diff verdes. `origin/main` en `a9f4a6f`, CI y Deploy en success; el gate
-> `Conversacion:CatalogoTextosHabilitado` sigue sin override en Azure y por tanto OFF, así que el
-> despliegue no activó nada. **Lo siguiente es operativo:**
-> ejecutar `QAS/23` (1–7) y después `QAS/17` completo; recordar que readiness no consulta Graph API,
-> así que la aprobación de las plantillas en Meta se verifica a mano. `DT-P32-04` queda como backlog
-> post-green y no debe desplazar DT-I20-02 sin repriorización humana. No cambiar Azure, desplegar ni
-> activar flags sin autorización.
+> despliegue no activó el gate. El smoke posterior cerró el defecto bilingüe y abrió únicamente
+> DT-P32-03-01 por la semántica de borradores. Readiness no consulta Graph API, así que la aprobación
+> de las plantillas en Meta se verifica a mano. `DT-P32-04` queda como backlog post-green y no debe
+> desplazar DT-I20-02. No cambiar Azure, desplegar ni activar flags sin autorización.
 
 > **HANDOFF OPERATIVO 2026-08-14 — `DT-P32-02` 3/3 IMPLEMENTADA Y DESPLEGADA.** `4d0f35c` pasó CI
 > #110 y Deploy #95. No hay código pendiente: sigue la validación controlada. Leer `AVANCES.md`,

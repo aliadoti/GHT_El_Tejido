@@ -21,11 +21,19 @@ public sealed record ReadinessCatalogosTextos(
     IReadOnlyList<MapeoPlantillaMetaEvaluado> MapeosMeta)
 {
     /// <summary>
-    /// DT-P32-03 §3.2: señal operativa agregada. Exige catálogos válidos por idioma **y** todos los
+    /// DT-P32-03 §3.2: señal operativa agregada. Exige catálogos válidos por idioma **y** los
     /// mapeos Meta requeridos estructuralmente configurados. No certifica la aprobación en Meta:
     /// esa comprobación es manual (`QAS/23`).
+    /// <para>
+    /// DT-P32-03-01 §3: solo participan los pares que exige al menos una campaña **activa**. Los
+    /// pares que hoy piden únicamente borradores se siguen enumerando con sus problemas —el
+    /// administrador necesita verlos antes de activar— pero no impiden encender el gate para lo que
+    /// ya está operando. La guarda de `borrador → activa` es la que evita activar una campaña
+    /// incompleta con el gate ON.
+    /// </para>
     /// </summary>
-    public bool ListoParaGateOn => Idiomas.All(idioma => idioma.Listo) && MapeosMeta.All(mapeo => mapeo.Listo);
+    public bool ListoParaGateOn => Idiomas.All(idioma => idioma.Listo)
+        && MapeosMeta.Where(mapeo => mapeo.BloqueaGateOn).All(mapeo => mapeo.Listo);
 }
 
 public sealed record ReadinessIdiomaCatalogoTextos(

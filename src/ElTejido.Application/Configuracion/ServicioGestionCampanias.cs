@@ -2,6 +2,7 @@ using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Participantes;
 using ElTejido.Application.Usuarios;
+using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Participantes;
@@ -21,6 +22,7 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
     private readonly TimeProvider _tiempo;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
     private readonly IDisponibilidadCatalogoTextos? _catalogosTextos;
+    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
 
     public ServicioGestionCampanias(
         IRepositorioCampanias campanias,
@@ -28,7 +30,8 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         IRepositorioParticipantes participantes,
         TimeProvider tiempo,
         OpcionesCatalogoTextos? opcionesCatalogoTextos = null,
-        IDisponibilidadCatalogoTextos? catalogosTextos = null)
+        IDisponibilidadCatalogoTextos? catalogosTextos = null,
+        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
     {
         _campanias = campanias;
         _usuarios = usuarios;
@@ -36,6 +39,7 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         _tiempo = tiempo;
         _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
         _catalogosTextos = catalogosTextos;
+        _plantillaEnvioInicial = plantillaEnvioInicial ?? new OpcionesPlantillaEnvioInicial();
     }
 
     public Task<IReadOnlyCollection<Campania>> BuscarCampaniasAsync(
@@ -132,6 +136,11 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             // versión global activa y válida. Aplica aunque el gate esté OFF; una campaña monolingüe
             // española legacy no entra por esta rama y conserva su compatibilidad.
             await RequerirCatalogosActivosAsync(existente, cancellationToken);
+        }
+
+        if (estado == EstadoCampania.Activa)
+        {
+            RequerirMapeosMetaPropios(existente);
         }
 
         var actualizado = CopiarCampania(existente, estado: estado);
@@ -520,6 +529,39 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         throw new ErrorValidacion(
             "La campaña bilingüe necesita un catálogo de textos activo por idioma.",
             faltantes.Select(idioma => new DetalleError($"catalogosTextos.{idioma}", "activo_requerido")).ToArray());
+    }
+
+    /// <summary>
+    /// DT-P32-03-01 §4: con el gate ON el envío inicial resuelve la plantilla por
+    /// `plantillaRef + idioma` (`ServicioEnvios`), así que activar una campaña sin ese mapeo dejaría
+    /// el lote inicial fallando para todos sus participantes. Se revisa **solo** la campaña objetivo
+    /// —ningún otro borrador la bloquea— con la misma política estructural que readiness. Es local y
+    /// determinista: no consulta Graph API, no envía nada y no verifica la aprobación en Meta.
+    /// </summary>
+    private void RequerirMapeosMetaPropios(Campania campania)
+    {
+        if (!_opcionesCatalogoTextos.Habilitado)
+        {
+            return;
+        }
+
+        var idiomas = campania.IdiomasHabilitados
+            .Select(idioma => idioma.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var errores = ValidadorMapeosPlantillaMeta.Evaluar([campania], idiomas, _plantillaEnvioInicial)
+            .Where(mapeo => !mapeo.Listo)
+            .SelectMany(mapeo => mapeo.Campanias.SelectMany(requirente => mapeo.Problemas.Select(
+                problema => new DetalleError($"mapeosMeta.{requirente.MensajeInicialId}.{mapeo.Idioma}", problema))))
+            .ToArray();
+        if (errores.Length == 0)
+        {
+            return;
+        }
+
+        throw new ErrorValidacion(
+            "La campaña necesita una plantilla de WhatsApp configurada por mensaje inicial e idioma.",
+            errores);
     }
 
     private static string RequerirId(string id)

@@ -193,7 +193,56 @@ public sealed class CatalogosTextosEdicionMasivaTests
         mapeo.PlantillaRef.Should().Be("inicio_campania");
         mapeo.Idioma.Should().Be("en");
         mapeo.Configurado.Should().BeFalse();
+        // DT-P32-03-01 §7.1: lo pide una campania activa, asi que frena el gate.
+        mapeo.BloqueaGateOn.Should().BeTrue();
         mapeo.Campanias.Should().ContainSingle().Which.CampaniaId.Should().Be("c_plantilla");
+    }
+
+    /// <summary>
+    /// DT-P32-03-01 §7.2 y §7.4: un borrador a medio construir se sigue diagnosticando, pero no puede
+    /// mantener `listoParaGateOn` en `false` para las campanias que ya estan activas.
+    /// </summary>
+    [Fact]
+    public async Task Readiness_ConMapeoFaltanteSoloEnBorrador_QuedaListoParaGateOn()
+    {
+        var campanias = new RepositorioCampaniasMemoria();
+        await campanias.GuardarCampaniaAsync(
+            CampaniaConPlantilla("inicio_borrador", id: "c_borrador", estado: EstadoCampania.Borrador),
+            CancellationToken.None);
+        await ActivarCatalogoIngles();
+
+        var resultado = await Readiness(campanias, gate: true, new OpcionesPlantillaEnvioInicial())
+            .ObtenerAsync("en", CancellationToken.None);
+
+        resultado.ListoParaGateOn.Should().BeTrue();
+        var mapeo = resultado.MapeosMeta.Should().ContainSingle().Subject;
+        mapeo.Listo.Should().BeFalse();
+        mapeo.BloqueaGateOn.Should().BeFalse();
+        mapeo.Problemas.Should().NotBeEmpty();
+        mapeo.Campanias.Should().ContainSingle().Which.Estado.Should().Be("borrador");
+    }
+
+    /// <summary>
+    /// DT-P32-03-01 §7.4: con los pares de las campanias activas configurados, un borrador incompleto
+    /// aparte no cambia la senal agregada.
+    /// </summary>
+    [Fact]
+    public async Task Readiness_ConActivaCompletaYBorradorIncompleto_ConservaLaSenalEnVerde()
+    {
+        var campanias = new RepositorioCampaniasMemoria();
+        await campanias.GuardarCampaniaAsync(CampaniaConPlantilla("inicio_campania"), CancellationToken.None);
+        await campanias.GuardarCampaniaAsync(
+            CampaniaConPlantilla("inicio_borrador", id: "c_borrador", estado: EstadoCampania.Borrador),
+            CancellationToken.None);
+        await ActivarCatalogoIngles();
+
+        var resultado = await Readiness(campanias, gate: true, PlantillasIngles("inicio_campania"))
+            .ObtenerAsync("en", CancellationToken.None);
+
+        resultado.ListoParaGateOn.Should().BeTrue();
+        resultado.MapeosMeta.Should().HaveCount(2);
+        resultado.MapeosMeta.Single(x => x.PlantillaRef == "inicio_campania").BloqueaGateOn.Should().BeTrue();
+        resultado.MapeosMeta.Single(x => x.PlantillaRef == "inicio_borrador").BloqueaGateOn.Should().BeFalse();
     }
 
     [Fact]
@@ -343,14 +392,31 @@ public sealed class CatalogosTextosEdicionMasivaTests
             DateTimeOffset.UnixEpoch,
             idiomasHabilitados: ["es", "en"]);
 
+    /// <summary>Mapeo Meta completo en ingles para el alias dado.</summary>
+    private static OpcionesPlantillaEnvioInicial PlantillasIngles(string plantillaRef)
+        => new()
+        {
+            Mapeos =
+            {
+                [plantillaRef] = new Dictionary<string, PlantillaEnvioInicialConfigurada>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["en"] = new() { Nombre = "el_tejido_inicio", Idioma = "en_US", Componentes = ["nombre"] },
+                },
+            },
+        };
+
     /// <summary>Campania inglesa con un mensaje inicial activo que exige (o no) un alias Meta.</summary>
-    private static Campania CampaniaConPlantilla(string? plantillaRef)
+    private static Campania CampaniaConPlantilla(
+        string? plantillaRef,
+        string id = "c_plantilla",
+        EstadoCampania estado = EstadoCampania.Activa)
         => Campania.Crear(
-            "c_plantilla",
+            id,
             "Campania",
             "Descripcion",
             "Objetivo",
-            EstadoCampania.Activa,
+            estado,
             [
                 MensajeInicial.Crear(
                     "mi_1",
