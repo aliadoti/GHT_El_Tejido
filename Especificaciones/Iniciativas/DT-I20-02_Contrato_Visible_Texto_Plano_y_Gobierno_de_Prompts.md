@@ -1,8 +1,8 @@
 # DT-I20-02 — Contrato visible en texto plano y gobierno seguro de prompts
 
-> **Estado:** ESPECIFICADA — 2026-08-13 — 0/3, sin código ni cambios de configuración remota;
-> pospuesta el 2026-08-14 hasta cerrar `DT-P32-02` y una nueva corrida P-32 green.
-> **Prioridad al retomar:** inmediata por defecto visible a participantes.
+> **Estado:** **ESPECIFICADA 0/3 — SIGUIENTE CÓDIGO**. El P-32 smoke requerido quedó green el
+> 2026-08-15 (`DT-P32-03-01`, `60b520d`, QAS/23 1–6 PASS); se levanta la espera documental.
+> **Prioridad:** inmediata por defecto visible a participantes. Empezar estrictamente por corte 1/3.
 > **Origen:** reporte real de WhatsApp con encabezados Markdown e instrucciones internas de presentación.  
 > **Alcance:** salida visible del evaluador, fragmentos de I-20 y selección segura del prompt de evaluación en runtime.  
 > **No cambia:** contratos API/Cosmos, puntajes, umbrales, estados, cierres, versión I-19, P-27, P-32, P-33 ni mensajes históricos.

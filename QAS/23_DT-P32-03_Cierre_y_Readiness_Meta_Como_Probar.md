@@ -1,11 +1,11 @@
 # QAS 23 — DT-P32-03/03-01: cierre localizado y readiness Meta
 
-> **Estado (2026-08-15):** los dos cortes de DT-P32-03 están **desplegados** (`a9f4a6f`; CI y Deploy
-> en success). El smoke registró PASS en pruebas 1–4 y 6, y BLOCKED en la 5: el defecto de cierre está
-> cerrado, pero los borradores incompletos bloquean indebidamente `listoParaGateOn`. El microajuste
-> DT-P32-03-01 está **implementado 1/1 en local (2026-08-15) y pendiente de despliegue autorizado**;
-> apenas se despliegue se repiten únicamente las pruebas 4–6. Hasta entonces, el smoke permanece
-> NO GREEN.
+> **Estado final (2026-08-15): P-32 SMOKE GREEN.** DT-P32-03 y DT-P32-03-01 están desplegadas
+> (`a9f4a6f` y `60b520d`). Las pruebas 1–3 conservan PASS del primer smoke y la revalidación Azure
+> dejó 4–6 PASS, incluida la guarda con ventana ON y retorno verificado a OFF. La evidencia humana de
+> nombre, idioma y componentes Meta fue aceptada. Reporte:
+> `resultados/Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. Este green habilita DT-I20-02; no
+> cierra P-32, cuya QAS/17 completa y prueba 7 siguen para después de DT-I20-02.
 >
 > El reporte confirmó el gate OFF al terminar. Las pruebas 1 a 3 exigían encenderlo solo en el
 > ambiente autorizado y ya pasaron; no deben repetirse para este microajuste. Readiness de pruebas 4
@@ -13,8 +13,8 @@
 > controlada y retorno a OFF. Las pruebas 1 a 3 tienen su
 > equivalente automatizado en la suite backend (matriz por ruta con gate OFF/ON, hilo `es`/`en` y
 > localización ausente, más una prueba que impide nuevas lecturas directas del cierre). Las pruebas 4
-> a 7 tienen el agregado de mapeos, `listoParaGateOn` y el panel **Preparación**
-> existen, con unitarias del validador, integración de `GET /catalogos-textos/readiness` y pruebas del
+> a 7 cuentan con el agregado de mapeos, `listoParaGateOn` y el panel **Preparación**, además de
+> unitarias del validador, integración de `GET /catalogos-textos/readiness` y pruebas del
 > portal. La ejecución manual sigue siendo obligatoria porque readiness **no** consulta Graph API: que
 > un par aparezca como configurado no prueba que Meta haya aprobado la plantilla ni que sus variables
 > coincidan; eso se verifica a mano en el administrador de WhatsApp.
@@ -92,6 +92,10 @@ esté aceptada. La corrida P-32 completa de QAS/17 se ejecutará después de DT-
 acordado; la prueba 7 puede quedar BLOCKED únicamente por una restricción externa explícita aceptada.
 
 ## Revalidación acotada de DT-P32-03-01
+
+> **Ejecutada 2026-08-15:** pruebas 4, 5 y 6 PASS. Gate final OFF, simulación apagada posteriormente
+> por el operador y clave diagnóstica retirada. No repetir salvo una nueva regresión o cambio de estos
+> contratos.
 
 Después de desplegar el microajuste con autorización:
 

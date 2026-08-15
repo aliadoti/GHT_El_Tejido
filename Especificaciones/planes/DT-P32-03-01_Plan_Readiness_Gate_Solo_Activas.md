@@ -1,5 +1,8 @@
 # Plan de implementación — DT-P32-03-01
 
+> **Cerrado 2026-08-15:** corte 1/1 implementado y desplegado en `60b520d`; QAS/23 pruebas 4–6 PASS
+> en Azure. Siguiente iniciativa: DT-I20-02 corte 1/3.
+
 > **Estado 2026-08-15:** pasos 1 a 6 ejecutados (código, portal y pruebas). Falta solo el paso 7:
 > desplegar con autorización y repetir `QAS/23` pruebas 4–6.
 >

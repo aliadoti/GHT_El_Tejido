@@ -6,24 +6,23 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-15 — `DT-P32-03-01` COMPLETA LOCAL (1/1); SIGUE LO OPERATIVO.** El corte único
-> está implementado y verde: `mapeosMeta[].bloqueaGateOn`, `listoParaGateOn` calculado solo con
-> campañas activas, guarda de mapeos propios en `borrador → activa` con el gate ON
-> (`400 VALIDATION_ERROR` con `mapeosMeta.{mensajeInicialId}.{idioma}`, sin cambiar el estado) y panel
-> **Preparación** que separa el bloqueo actual del pendiente de borrador. Backend 863 + 109, portal 62,
-> build/format/`ng test`/`ng build`/Prettier/diff verdes; sin push, despliegue ni cambio remoto y con
-> el gate OFF. **Siguiente:** con autorización expresa, desplegar y repetir **solo** QAS/23 pruebas
-> 4–6 (la 6 exige una ventana ON controlada y retorno a OFF). Si quedan green, el siguiente cambio de
-> código es DT-I20-02 corte 1/3; DT-P32-04 no bloquea. No cambiar Azure, gate, simulación ni datos
-> remotos sin autorización.
+> **HANDOFF 2026-08-15 — SIGUIENTE CÓDIGO `DT-I20-02` CORTE 1/3.** DT-P32-03-01 está cerrada:
+> `60b520d` en `main/origin`, desplegada, QAS/23 1–6 PASS y evidencia Meta aceptada. Gate y simulación
+> OFF; `GHT_DIAG_KEY` retirada. P-32 smoke green habilita este corte, pero QAS/17 completa y el lote
+> real quedan para después de DT-I20-02. Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa
+> DT-I20-02, I-19, I-20, DT-I20-01, bases `05`/`08`, reglas y QAS/21. Crear primero la regresión exacta
+> del encabezado Markdown; implementar un validador puro de fragmentos LLM y fallback por campo en el
+> evaluador e I-20 antes del filtro DT-I20-01. **No sanitizar el mensaje final, no modificar Cosmos,
+> API ni configuración remota y no alterar puntajes, idea/versionId, umbrales, madurez, estados,
+> cierre, repreguntas, idioma o texto P-33.** No adelantar corte 2 ni DT-P32-04.
 
 > **HANDOFF HISTÓRICO 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2).** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para
 > readiness. El corte 1 dejó un resolutor único de cierre sin fallback entre idiomas y el corte 2
 > agregó `listoParaGateOn` y `mapeosMeta[]` a `GET /catalogos-textos/readiness` más el panel
 > **Preparación** con catálogos y plantillas separados. Backend 854 + 105, portal 60, build/format/
-> `ng build`/diff verdes. `origin/main` en `a9f4a6f`, CI y Deploy en success; el gate
-> despliegue no activó el gate. El smoke posterior cerró el defecto bilingüe y abrió únicamente
+> `ng build`/diff verdes. `origin/main` en `a9f4a6f`, CI y Deploy en success; ese despliegue no activó
+> el gate. El smoke posterior cerró el defecto bilingüe y abrió únicamente
 > DT-P32-03-01 por la semántica de borradores. Readiness no consulta Graph API, así que la aprobación
 > de las plantillas en Meta se verifica a mano. `DT-P32-04` queda como backlog post-green y no debe
 > desplazar DT-I20-02. No cambiar Azure, desplegar ni activar flags sin autorización.

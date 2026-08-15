@@ -65,15 +65,14 @@ D5/UAT. Validación local: 858 pruebas backend verdes.
 reporte de encabezados Markdown/estado interno en WhatsApp y exige demostrar que el arreglo no cambie
 puntajes, versión de idea, estados, cierres, repreguntas, idioma ni el texto exacto de P-33.
 
-**Prioridad 2026-08-14:** `DT-P32-02` está especificada 0/3 y se implementa antes de `DT-I20-02`.
+**Histórico 2026-08-14:** `DT-P32-02` se priorizó antes de `DT-I20-02`.
 La guía **22** cubre semillas base independientes de legacy y el flujo masivo descargar/editar/cargar
 JSON. Después se ejecuta nuevamente **17** completo; `DT-I20-02` solo se retoma con P-32 green.
 
-**Microajuste 2026-08-15:** el smoke de DT-P32-03 cerró el defecto bilingüe, pero un borrador
-incompleto dejó bloqueado el readiness global. `DT-P32-03-01` está **implementada 1/1 en local**: los
-borradores siguen visibles sin bloquear y la activación con gate ON valida los mapeos propios. Falta el
-despliegue autorizado; después se repiten QAS/23 pruebas 4–6 (la 6 incluye ahora la guarda de
-activación y necesita ventana ON controlada). Si quedan green, sigue DT-I20-02 corte 1/3.
+**Cierre 2026-08-15:** `DT-P32-03-01` está desplegada (`60b520d`) y QAS/23 pruebas 1–6 están PASS;
+la evidencia Meta fue aceptada y el cierre operativo dejó gate/simulación OFF. **P-32 SMOKE GREEN**
+habilita DT-I20-02 corte 1/3. P-32 continúa abierta para QAS/17 completa y la prueba 7 del lote mixto
+real después de DT-I20-02.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

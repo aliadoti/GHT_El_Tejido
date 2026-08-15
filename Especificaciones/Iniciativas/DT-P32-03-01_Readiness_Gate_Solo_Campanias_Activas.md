@@ -1,9 +1,12 @@
 # DT-P32-03-01 — Readiness del gate limitado a campañas activas
 
-> **Estado:** IMPLEMENTADA local (1/1) el 2026-08-15 por Claude Opus 5; sin push, despliegue ni
-> cambio remoto. Backend **863 unitarias + 109 de integración**, portal **62**; build Release
-> `-warnaserror`, `dotnet format`, `ng test`, `ng build`, Prettier y `git diff --check` verdes.
-> Pendiente: despliegue autorizado y repetición de `QAS/23` pruebas 4–6.
+> **Estado:** **CERRADA — IMPLEMENTADA, DESPLEGADA Y SMOKE GREEN (1/1)** el 2026-08-15. Commit
+> `60b520d` en `main/origin`; backend **863 unitarias + 109 de integración**, portal **62**; build
+> Release `-warnaserror`, `dotnet format`, `ng test`, `ng build`, Prettier y `git diff --check`
+> verdes. La revalidación Azure dejó QAS/23 pruebas 4–6 PASS; sumadas a 1–3 conservadas, las seis
+> están en PASS y la evidencia humana Meta fue aceptada. Gate y simulación quedaron OFF tras el
+> cierre operativo; `GHT_DIAG_KEY` fue retirada de la sesión. Resultado:
+> `QAS/resultados/Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`.
 > **Origen:** `QAS/resultados/Resultados_P32_Smoke_DT-P32-03_2026-08-15.md`, prueba 5.
 > **Prioridad:** microajuste bloqueante para cerrar P-32 y retomar DT-I20-02.
 
@@ -135,6 +138,7 @@ aprobación de Meta.
 
 ## 8. Cierre
 
-Es un único corte. Tras desplegarlo, repetir únicamente QAS/23 pruebas 4–6. Si pasan y se acepta la
-evidencia humana de Meta, P-32 smoke queda green y el siguiente cambio de código es DT-I20-02 corte
-1/3. DT-P32-04 permanece como refactor posterior, no bloqueante.
+El corte único fue desplegado y QAS/23 pruebas 4–6 pasaron. **P-32 SMOKE GREEN** habilita el siguiente
+cambio de código: DT-I20-02 corte 1/3. P-32 no está cerrada: QAS/17 completa y la prueba 7 de lote
+mixto real se ejecutan después de DT-I20-02. DT-P32-04 permanece como refactor posterior, no
+bloqueante.

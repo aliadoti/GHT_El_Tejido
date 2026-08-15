@@ -2,10 +2,9 @@
 
 > **Estado:** **IMPLEMENTADA Y DESPLEGADA 2026-08-15 (2/2)** — corte 1/2 (cierre localizado único,
 > `50fee37`) y corte 2/2 (readiness Meta y portal, `a9f4a6f`). `main` y `origin/main` apuntan a
-> `a9f4a6f`; el push disparó CI y Deploy, que terminaron en success. **El despliegue no activa nada:**
-> el despliegue no activó el gate. El smoke posterior confirmó que quedó OFF al terminar. Queda
-> El smoke ya ejecutó QAS/23: pruebas 1–4 y 6 PASS, prueba 5 BLOCKED. El pendiente actual es el
-> microajuste DT-P32-03-01 y la repetición acotada de pruebas 4–6.
+> `a9f4a6f`; el push disparó CI y Deploy, que terminaron en success. El despliegue no activó el gate.
+> El smoke posterior demostró los cierres y abrió DT-P32-03-01; ese microajuste ya está cerrado en
+> `60b520d`, por lo que QAS/23 1–6 está PASS y P-32 smoke quedó green.
 > **Origen:** regresión P-32 del 2026-08-14, §§8.1 y 9.2.
 > **Prioridad:** bloqueante para repetir P-32 con el gate ON.
 >
@@ -37,11 +36,9 @@
 > integración**, build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes.
 > Decisión registrada en `SUPUESTOS.md#cierre-localizado-dt-p32-03`.
 >
-> **Smoke 2026-08-15:** pruebas 1–4 y 6 PASS; prueba 5 BLOCKED. El cierre bilingüe quedó
-> demostrado. El bloqueo restante no modifica estos dos cortes: reveló que borradores incompletos
-> participan indebidamente en la señal global. El microajuste de un corte se especifica en
-> `DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md`. Hasta implementarlo y repetir QAS/23 4–6,
-> P-32 smoke permanece NO GREEN.
+> **Cierre de smoke 2026-08-15:** DT-P32-03 demostró los cierres bilingües y DT-P32-03-01 corrigió
+> la semántica de borradores. QAS/23 1–6 PASS con evidencia Meta aceptada. P-32 smoke green habilita
+> DT-I20-02; QAS/17 completa y el lote real quedan para después.
 
 ## 1. Problema confirmado
 
