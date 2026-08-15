@@ -464,6 +464,13 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 9. **DT-P32-02:** una base curada `es/en` no depende de legacy. El administrador puede descargar,
    editar y reimportar el JSON completo; primero se prevalida y luego crea una versión nueva en
    borrador. Nunca sobrescribe o activa. Una campaña bilingüe exige catálogo activo por idioma.
+10. **DT-P32-03 (corte 1/2):** el cierre visible se resuelve una sola vez para **todas** las rutas
+    (cierre normal, umbral/tope, intención de salida, rechazo/avance, cupo LLM, fallback de
+    evaluación, inactividad y cierre visible P-33). Con el catálogo apagado se conserva
+    `configConversacional.mensajeCierre` tal cual; encendido manda
+    `localizaciones.{idioma}.mensajeCierre` del snapshot del hilo. Si ese texto falta, el hilo cierra
+    con el mensaje de configuración no disponible de su propio idioma y no se abre la siguiente
+    pregunta: **jamás se responde con el cierre de otro idioma ni se traduce automáticamente**.
 
 ### 2.13 Consulta y cierre visible de la idea (P-33, especificada)
 

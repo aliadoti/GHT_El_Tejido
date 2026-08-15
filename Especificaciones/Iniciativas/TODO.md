@@ -9,14 +9,31 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 `DT-P32-03` CIERRE LOCALIZADO Y READINESS META — ESPECIFICADA 2026-08-14 (0/2).**
-> Es el siguiente cambio de código. Corte 1 crea regresión roja y un único resolutor de
-> `MensajeCierre` para todas las rutas, preservando gate OFF y prohibiendo fallback entre idiomas.
-> Corte 2 agrega `listoParaGateOn` y mapeos `plantillaRef+idioma` al readiness/API/portal. Después se
-> ejecuta `QAS/23` y la corrida P-32 completa. `DT-P32-04` queda 0/3 para después del green: idioma
-> central, `ContenidoCampaniaEfectivo` y resolutores especializados; no bloquea DT-I20-02, que conserva
-> la prioridad inmediata después del green. Sin código, push, despliegue ni
-> configuración remota en esta preparación.
+> **🟢 `DT-P32-03` CIERRE LOCALIZADO Y READINESS META — CORTE 1/2 DONE LOCAL 2026-08-14 (Claude Opus 5).**
+> **Corte 1 (entregado):** `IResolutorMensajeCierreCampania` /
+> `ResolutorMensajeCierreCampania` (Application, política pura) resuelve el cierre visible una sola
+> vez. Gate OFF conserva `configConversacional.mensajeCierre` exacto; gate ON usa
+> `localizaciones.{idioma}.mensajeCierre` —`es` mantiene su respaldo histórico dentro de la campaña— y
+> una localización ausente o vacía devuelve `LOCALIZACION_CAMPANIA_INCOMPLETA`: el hilo cierra con el
+> mensaje de configuración no disponible **de su propio idioma**, sin traducir, sin LLM y **sin caer
+> nunca a español**. Las seis rutas del orquestador (`cierreEvaluacion`, `cierreIdeaConsolidada`,
+> `cierreIdeasSegmentadas`, `cierreColaCoaching`, `cierreConAgradecimiento`, `cierreNeutro` — cubren
+> cierre normal, umbral/tope, salida, rechazo/avance, cupo LLM, fallback de evaluación, inactividad y
+> cierre visible P-33) resuelven antes de componer o mutar el hilo; en la cola I-18 el texto resuelto
+> es además el respaldo determinista del redactor I-20. Auditoría
+> `cierre_localizado:<codigo>:idioma=<x>:ruta=<x>` con `campaniaId` y sin texto. **No queda ninguna
+> lectura directa de `ConfigConversacional.MensajeCierre` en el orquestador** y dos pruebas
+> arquitectónicas lo impiden. Backend **841 unitarias + 103 de integración** (24 nuevas; las 12 de
+> ruta se verificaron rojas sin el resolutor), build Release `-warnaserror`, `dotnet format` y
+> `git diff --check` verdes. Sin frontend, push, despliegue ni configuración remota; gate OFF.
+> Decisión en `SUPUESTOS.md#cierre-localizado-dt-p32-03`; regla de flujo en
+> `Reglas_Conversacion_y_Participacion.md §2.12.10`.
+> **Siguiente cambio de código: corte 2/2** — readiness de mapeos Meta reutilizando
+> `OpcionesPlantillaEnvioInicial.TryResolver`, `listoParaGateOn` y `mapeosMeta[]` aditivos en
+> `GET /catalogos-textos/readiness`, portal **Preparación** con catálogos y plantillas como
+> comprobaciones separadas, y luego `QAS/23` (pruebas 4 a 7) y la corrida P-32 completa. `DT-P32-04`
+> sigue 0/3 para después del green; no bloquea `DT-I20-02`, que conserva la prioridad inmediata
+> después del green.
 
 > **✅ `DT-P32-02` SEMILLAS, JSON MASIVO Y READINESS — COMPLETA LOCAL 2026-08-14 (3/3).**
 > **Corte 3 (portal):** **Textos de conversación** separa **Crear semilla base** de **Revisar
@@ -591,7 +608,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
 | **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
-| **DT-P32-03** | **Cierre localizado único y readiness Meta** | **ESPECIFICADA 0/2 — SIGUIENTE CÓDIGO** | **Codex** | Corte 1 migra todas las rutas a un resolutor único sin fallback cruzado. Corte 2 agrega `listoParaGateOn` y `mapeosMeta` a API/Preparación reutilizando la resolución real del envío. QAS `23`; sin código ni cambio remoto. |
+| **DT-P32-03** | **Cierre localizado único y readiness Meta** | **CORTE 1/2 DONE local 2026-08-14 — SIGUIENTE CÓDIGO: CORTE 2/2** | **Claude** | Corte 1 (hecho): `IResolutorMensajeCierreCampania` resuelve el cierre para las seis rutas del orquestador; gate OFF conserva el legacy exacto, gate ON exige `localizaciones.{idioma}.mensajeCierre` y una localización ausente cierra con el fallo tipificado `LOCALIZACION_CAMPANIA_INCOMPLETA` sin fallback entre idiomas; auditoría sin texto y prueba arquitectónica contra nuevas lecturas directas. Backend 841 + 103, build/format/diff verdes; gate OFF, sin frontend ni cambio remoto. Corte 2 (pendiente): `listoParaGateOn` y `mapeosMeta` en API/Preparación reutilizando `OpcionesPlantillaEnvioInicial.TryResolver`, portal y `QAS/23` 4-7. |
 | **DT-P32-04** | **Núcleo transversal multidioma** | **ESPECIFICADA 0/3 — BACKLOG POST-GREEN** | **Codex** | Idioma central, `ContenidoCampaniaEfectivo`, resolutores especializados y readiness compuesto. No cambia fuentes de contenido, DTO ni Cosmos; evita una clase dios. No bloquea DT-I20-02. |
 | **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **ESPECIFICADA 0/3 — EN ESPERA DE DT-P32-02 GREEN** | **Codex** | Bug real: el prompt runtime pidió secciones Markdown/estado interno y el cuerpo llegó así a WhatsApp. Corrección por campo en salidas LLM, sin sanitización global ni cambio de puntajes, versión I-19, umbrales, estados, cierres, P-27/P-32/P-33 o historial. Incluye selección runtime activa+aprobada y migración gradual mediante familia nueva. Sin código ni configuración remota. Se retoma después del despliegue autorizado y la nueva corrida P-32 green. Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
@@ -653,7 +670,20 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: no hay código pendiente de `DT-P32-02`; sigue la corrida operativa autorizada.**
+1. **ARRANCA AQUÍ: `DT-P32-03` corte 2/2 — readiness de mapeos Meta y portal Preparación.**
+   El corte 1/2 quedó DONE local el 2026-08-14 (backend 841 + 103, build/format/diff verdes) y el
+   cierre localizado ya no cae a español. Ahora: actualizar primero el contrato aditivo de
+   `GET /catalogos-textos/readiness` (ya redactado en `04 §5.9`), extraer una validación estructural
+   única del mapeo que reutilice `OpcionesPlantillaEnvioInicial.TryResolver` —la misma política que
+   usa `ServicioEnvios`, sin una segunda interpretación de "configurado"—, enumerar los pares
+   `plantillaRef + idioma` que exigen las campañas `activa|borrador` con mensajes iniciales activos,
+   agregar `listoParaGateOn` y `mapeosMeta[]` **sin** cambiar `idiomas[].listo`, y mostrar en el panel
+   **Preparación** catálogos y plantillas como comprobaciones separadas. Un mensaje inicial activo sin
+   `plantillaRef` se reporta como `plantilla_ref_faltante` y deja `listoParaGateOn=false`. Sin Graph
+   API, sin secretos, sin escribir App Settings y con el gate OFF. Cerrar con unitarias del agregado,
+   integración de la ruta, pruebas del portal y `QAS/23`.
+
+2. **Después del corte 2/2: la corrida operativa autorizada de `DT-P32-02` y P-32.**
    Los tres cortes quedaron DONE local el 2026-08-14 (backend 817 + 103; portal 57/57, build y
    Prettier verdes); `4d0f35c`, CI #110 y Deploy #95 están confirmados. Con gate OFF, crear y revisar
    los borradores base `es/en`, probar la descarga, revisión y carga del JSON editado, activar
@@ -664,36 +694,36 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    Registrar D5/UAT, Meta, costo/latencia y rollback. **Solo con `QAS/22` y `QAS/17` en green se
    cambia el handoff a `DT-I20-02` corte 1/3.**
 
-2. **Antes de encender el gate:** confirmar aislamiento del emisor o teléfonos de prueba autorizados.
+3. **Antes de encender el gate:** confirmar aislamiento del emisor o teléfonos de prueba autorizados.
    `Simulacion__Habilitada=true` no evita salidas reales; al cierre debe quedar en `false` y el gate
    también, salvo acta formal de activación.
 
-3. **Solo con DT-P32-02 y la corrida P-32 green: implementar `DT-I20-02` corte 1/3.** Mantener su
+4. **Solo con DT-P32-02 y la corrida P-32 green: implementar `DT-I20-02` corte 1/3.** Mantener su
    spec, `QAS/21` y runbook sin cambios de alcance mientras espera.
 
-4. **Después: validar P-33 localmente terminada.** Ejecutar `QAS/20_*` en un ambiente aislado,
+5. **Después: validar P-33 localmente terminada.** Ejecutar `QAS/20_*` en un ambiente aislado,
    en español e inglés, y registrar D5/UAT, costo/latencia y el acta de flags. El gate global sigue
    OFF; no desplegar ni cambiar configuración remota sin autorización expresa.
 
-5. **En paralelo, D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local y
+6. **En paralelo, D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local y
    verde. Usar ejemplos anonimizados y `QAS/19_*`; no hay flag, el rollback es revertir su commit.
 
-6. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
+7. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`). `I-08 v2` ya está desplegada y
    validada contra Azure (2026-08-08, 13 casos PASS).
 
-7. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
+8. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por
    defecto; no desplegar ni modificar configuración remota sin orden.
-8. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
-9. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-10. **La aprobación expresa de P-26, P-27, P-33, `DT-P32-02` y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
+9. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
+10. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
+11. **La aprobación expresa de P-26, P-27, P-33, `DT-P32-02` y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
    de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
    resuelta por esas specs o sus anclas en `SUPUESTOS.md`.
-11. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
-12. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
-13. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
-14. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
+12. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
+13. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
+14. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
+15. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
 
 Declara brevemente, antes de cada acción significativa, **desde qué rol** decides y **qué REQ §/ARQ § + ID-iniciativa** cubres. Mantén el rigor de un equipo de 25+ años: simple, correcto, probado y documentado.

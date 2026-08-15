@@ -1,5 +1,11 @@
 # QAS 23 — DT-P32-03: cierre localizado y readiness Meta
 
+> **Estado (2026-08-14):** el corte 1/2 está implementado. Las pruebas 1 a 3 ya tienen su equivalente
+> automatizado en la suite backend (matriz por ruta con gate OFF/ON, hilo `es`/`en` y localización
+> ausente, más una prueba que impide nuevas lecturas directas del cierre), así que la ejecución manual
+> sirve para confirmarlo en el ambiente real. Las pruebas 4 a 7 dependen del corte 2/2, que aún no
+> existe: hasta entonces se registran como `BLOCKED`.
+
 ## Precondiciones
 
 - Ambiente de pruebas autorizado y gate inicialmente OFF.

@@ -14,6 +14,24 @@
 - Impacto / reversibilidad: <a que afecta, si cierra o no fronteras post-MVP>
 ```
 
+### cierre-localizado-dt-p32-03 - Localización incompleta cierra tipificado, nunca en otro idioma
+- Fecha: 2026-08-14 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/SDET/AppSec - Commit: corte 1/2 de `DT-P32-03`.
+- Contexto: `DT-P32-03 §3.1` exige un fallo tipificado (`LOCALIZACION_CAMPANIA_INCOMPLETA`) cuando el
+  gate está ON y falta `localizaciones.{idioma}.mensajeCierre`, pero no define qué ve el participante
+  ni qué pasa con el resto del turno. REQ §21 / ARQ `05 §4.4`.
+- Decisión: la ruta reutiliza el manejo ya existente de configuración incompleta: se envía el
+  `mensajeConfiguracionNoDisponible` del catálogo del idioma del hilo, la conversación queda cerrada
+  (idempotente, sin transición parcial) y no se envía la siguiente pregunta pendiente. El fallo se
+  audita como `AnomaliaLlm`/`fallback` con `cierre_localizado:<codigo>:idioma=<x>:ruta=<x>` y el
+  `campaniaId`; nunca se copia el texto del cierre. El gate OFF conserva el campo legacy exacto y el
+  idioma `es` conserva su respaldo histórico dentro de la propia campaña.
+- Alternativa(s) descartada(s): responder con el cierre español (es el defecto que la iniciativa
+  corrige), traducir con el LLM (`R-01`: el modelo no puede inventar contenido editorial), dejar el
+  hilo abierto (repetiría el fallo en cada turno) y lanzar una excepción (rompe la idempotencia del
+  webhook y deja el hilo a medias).
+- Impacto / reversibilidad: solo afecta campañas bilingües con el gate ON, que hoy está OFF; no cambia
+  contratos, Cosmos, portal ni flags. El rollback es revertir el commit o volver el gate a OFF.
+
 ### nucleo-multidioma-dt-p32-03-04 - Centralizar política sin unificar fuentes de contenido
 - Fecha: 2026-08-14 - Agente/Rol: Codex - Arquitecto/Backend/SDET/AppSec - Decisión expresa del usuario.
 - Contexto: la regresión P-32 encontró cierre cruzado y una precondición Meta invisible; el inventario

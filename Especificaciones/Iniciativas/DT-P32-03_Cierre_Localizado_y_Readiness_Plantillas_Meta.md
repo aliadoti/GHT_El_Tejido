@@ -1,8 +1,22 @@
 # DT-P32-03 — Cierre localizado único y readiness de plantillas Meta
 
-> **Estado:** ESPECIFICADA — 0/2, sin código ni cambio remoto.
+> **Estado:** EN CURSO — **corte 1/2 DONE local 2026-08-14** (cierre localizado único); corte 2/2
+> pendiente (readiness Meta y portal). Sin push, despliegue ni cambio remoto; gate OFF.
 > **Origen:** regresión P-32 del 2026-08-14, §§8.1 y 9.2.
 > **Prioridad:** bloqueante para repetir P-32 con el gate ON.
+>
+> **Corte 1/2 entregado:** `IResolutorMensajeCierreCampania` /
+> `ResolutorMensajeCierreCampania` (Application, puro) concentra la política OFF/ON y devuelve
+> `Disponible(texto, idioma, origen)` o `NoDisponible(LOCALIZACION_CAMPANIA_INCOMPLETA, idioma)`. Las
+> seis rutas de cierre del orquestador (`cierreEvaluacion`, `cierreIdeaConsolidada`,
+> `cierreIdeasSegmentadas`, `cierreColaCoaching`, `cierreConAgradecimiento` y `cierreNeutro`, que
+> cubren cierre normal, umbral/tope, intención de salida, rechazo/avance, cupo LLM, fallback de
+> evaluación, inactividad y cierre visible P-33) resuelven **antes** de componer el mensaje o mutar el
+> hilo; una localización ausente cierra con el manejo tipificado de configuración no disponible y deja
+> auditoría sin texto. No queda ninguna lectura directa de `ConfigConversacional.MensajeCierre` en el
+> orquestador y una prueba arquitectónica lo impide en el futuro. Backend **841 unitarias + 103 de
+> integración**, build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes.
+> Decisión registrada en `SUPUESTOS.md#cierre-localizado-dt-p32-03`.
 
 ## 1. Problema confirmado
 

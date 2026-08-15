@@ -29,6 +29,8 @@ namespace ElTejido.UnitTests.Conversacion;
 public sealed class OrquestadorConversacionTests
 {
     private const string Numero = "573001112233";
+    private const string CierreEspanol = "Gracias por participar.";
+    private const string CierreIngles = "Thanks for taking part.";
     private static readonly DateTimeOffset Epoca = DateTimeOffset.UnixEpoch;
 
     private readonly FakeConversaciones _conversaciones = new();
@@ -2941,12 +2943,288 @@ public sealed class OrquestadorConversacionTests
         public Dictionary<string, VersionIdeaConsolidada> Versiones { get; } = new(StringComparer.Ordinal);
     }
 
+    // =============================================================================================
+    // DT-P32-03 §3.1 — cierre localizado único. Cada ruta de cierre se ejercita con el gate P-32
+    // encendido sobre un hilo `en`: con localización responde en inglés y, sin ella, falla de forma
+    // tipificada sin caer nunca al respaldo español.
+    // =============================================================================================
+
+    [Fact]
+    public async Task P32_CierreTrasEvaluacion_HiloIngles_UsaElCierreLocalizado()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 5m)));
+        await PrepararConversacionAsync("en");
+        var opciones = new OpcionesConversacion { UmbralCierreAnticipado = 0.5, CierreAnticipadoHabilitado = true };
+
+        await Construir(opciones, catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(), Mensaje("My idea"), CancellationToken.None);
+
+        await EsperarCierreConAsync(CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreTrasEvaluacion_SinCierreLocalizado_CierraTipificadoSinRespaldoEspanol()
+    {
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 5m)));
+        await PrepararConversacionAsync("en");
+        var opciones = new OpcionesConversacion { UmbralCierreAnticipado = 0.5, CierreAnticipadoHabilitado = true };
+
+        await Construir(opciones, catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(conCierreIngles: false), Mensaje("My idea"), CancellationToken.None);
+
+        await EsperarCierreIncompletoAsync("cierreEvaluacion");
+    }
+
+    [Fact]
+    public async Task P32_CierreConAgradecimiento_HiloIngles_UsaElCierreLocalizado()
+    {
+        await PrepararConversacionEnRepreguntaAsync("en");
+
+        await Construir(catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(), Mensaje("One more thought"), CancellationToken.None);
+
+        await _evaluador.DidNotReceiveWithAnyArgs().EvaluarAsync(default!, default);
+        await EsperarCierreConAsync(CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreConAgradecimiento_SinCierreLocalizado_CierraTipificadoSinRespaldoEspanol()
+    {
+        await PrepararConversacionEnRepreguntaAsync("en");
+
+        await Construir(catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(conCierreIngles: false), Mensaje("One more thought"), CancellationToken.None);
+
+        await EsperarCierreIncompletoAsync("cierreConAgradecimiento");
+    }
+
+    [Fact]
+    public async Task P32_CierreConAgradecimiento_GateApagado_ConservaElCierreLegacyAunEnHiloIngles()
+    {
+        await PrepararConversacionEnRepreguntaAsync("en");
+
+        await Construir(catalogoTextos: GateCatalogo(false)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(), Mensaje("One more thought"), CancellationToken.None);
+
+        await EsperarCierreConAsync(CierreEspanol, prohibido: CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreNeutro_HiloIngles_UsaElCierreLocalizado()
+    {
+        SegmentarEnDosIdeas();
+        EvaluacionEnFallback();
+        await PrepararConversacionAsync("en");
+
+        await Construir(SinConsolidacion(), catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(segmentacionIdeas: true),
+            new MensajeEntrante(Numero, "Two ideas", "wamid.p32neutro", Epoca),
+            CancellationToken.None);
+
+        await EsperarCierreConAsync(CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreNeutro_SinCierreLocalizado_CierraTipificadoSinRespaldoEspanol()
+    {
+        SegmentarEnDosIdeas();
+        EvaluacionEnFallback();
+        await PrepararConversacionAsync("en");
+
+        await Construir(SinConsolidacion(), catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(conCierreIngles: false, segmentacionIdeas: true),
+            new MensajeEntrante(Numero, "Two ideas", "wamid.p32neutro", Epoca),
+            CancellationToken.None);
+
+        await EsperarCierreIncompletoAsync("cierreNeutro");
+    }
+
+    [Fact]
+    public async Task P32_CierreDeIdeaConsolidada_HiloIngles_UsaElCierreLocalizado()
+    {
+        ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync("en");
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(), catalogoTextos: GateCatalogo(true));
+
+        await orquestador.ProcesarMensajeEntranteAsync(ParticipanteBilingue(), Mensaje("My idea"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(ParticipanteBilingue(), Mensaje("si"), CancellationToken.None);
+
+        await EsperarCierreConAsync(CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreDeIdeaConsolidada_SinCierreLocalizado_CierraTipificadoSinRespaldoEspanol()
+    {
+        ConfigurarAlmacenIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync("en");
+        var participante = ParticipanteBilingue(conCierreIngles: false);
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(), catalogoTextos: GateCatalogo(true));
+
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("My idea"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("si"), CancellationToken.None);
+
+        await EsperarCierreIncompletoAsync("cierreIdeaConsolidada");
+    }
+
+    [Fact]
+    public async Task P32_CierreDeIdeasSegmentadas_HiloIngles_UsaElCierreLocalizado()
+    {
+        SegmentarEnDosIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 5m)));
+        await PrepararConversacionAsync("en");
+        var opciones = new OpcionesConversacion
+        {
+            UmbralCierreAnticipado = 0.5,
+            CierreAnticipadoHabilitado = true,
+            ConsolidacionProgresivaHabilitada = false,
+        };
+
+        await Construir(opciones, catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(segmentacionIdeas: true),
+            new MensajeEntrante(Numero, "Two ideas", "wamid.p32seg", Epoca),
+            CancellationToken.None);
+
+        await EsperarCierreConAsync(CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreDeIdeasSegmentadas_SinCierreLocalizado_CierraTipificadoSinRespaldoEspanol()
+    {
+        SegmentarEnDosIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 5m)));
+        await PrepararConversacionAsync("en");
+        var opciones = new OpcionesConversacion
+        {
+            UmbralCierreAnticipado = 0.5,
+            CierreAnticipadoHabilitado = true,
+            ConsolidacionProgresivaHabilitada = false,
+        };
+
+        await Construir(opciones, catalogoTextos: GateCatalogo(true)).ProcesarMensajeEntranteAsync(
+            ParticipanteBilingue(conCierreIngles: false, segmentacionIdeas: true),
+            new MensajeEntrante(Numero, "Two ideas", "wamid.p32seg", Epoca),
+            CancellationToken.None);
+
+        await EsperarCierreIncompletoAsync("cierreIdeasSegmentadas");
+    }
+
+    [Fact]
+    public async Task P32_CierreDeColaDeCoaching_HiloIngles_UsaElCierreLocalizadoComoRespaldo()
+    {
+        ConfigurarAlmacenIdeas();
+        SegmentarEnDosIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync("en");
+        var participante = ParticipanteBilingue(maxRepreguntas: 2, segmentacionIdeas: true, coachingSecuencialIdeas: true);
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(), catalogoTextos: GateCatalogo(true));
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            participante, new MensajeEntrante(Numero, "Two ideas", "wamid.p32cola", Epoca), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("si"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("si"), CancellationToken.None);
+
+        await EsperarCierreConAsync(CierreIngles);
+    }
+
+    [Fact]
+    public async Task P32_CierreDeColaDeCoaching_SinCierreLocalizado_CierraTipificadoSinRespaldoEspanol()
+    {
+        ConfigurarAlmacenIdeas();
+        SegmentarEnDosIdeas();
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        await PrepararConversacionAsync("en");
+        var participante = ParticipanteBilingue(
+            conCierreIngles: false, maxRepreguntas: 2, segmentacionIdeas: true, coachingSecuencialIdeas: true);
+        var orquestador = Construir(consolidador: ConsolidadorQueAcumula(), catalogoTextos: GateCatalogo(true));
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            participante, new MensajeEntrante(Numero, "Two ideas", "wamid.p32cola", Epoca), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("si"), CancellationToken.None);
+        await orquestador.ProcesarMensajeEntranteAsync(participante, Mensaje("si"), CancellationToken.None);
+
+        await EsperarCierreIncompletoAsync("cierreColaCoaching");
+    }
+
+    private static OpcionesCatalogoTextos GateCatalogo(bool habilitado)
+        => new() { Habilitado = habilitado };
+
+    /// <summary>Ruta de segmentación sin consolidación I-19, que es donde vive el cierre neutro.</summary>
+    private static OpcionesConversacion SinConsolidacion()
+        => new()
+        {
+            UmbralCierreAnticipado = 0.5,
+            CierreAnticipadoHabilitado = true,
+            ConsolidacionProgresivaHabilitada = false,
+        };
+
+    private void EvaluacionEnFallback()
+        => _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Fallback(
+                CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, EvaluadorLlm.RetroNeutra), "error_proveedor"));
+
+    /// <summary>El hilo cierra con el texto esperado y nunca con el de otro idioma.</summary>
+    private async Task EsperarCierreConAsync(string esperado, string? prohibido = null)
+    {
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains(esperado, StringComparison.Ordinal)),
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains(prohibido ?? CierreEspanol, StringComparison.Ordinal)),
+            Arg.Any<TipoEnvioMensaje>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    /// <summary>
+    /// Localización incompleta: se usa el manejo tipificado de configuración no disponible, queda el
+    /// rastro con campaña/idioma/ruta/código y ningún envío lleva el cierre español.
+    /// </summary>
+    private async Task EsperarCierreIncompletoAsync(string ruta)
+    {
+        await _gateway.Received(1).EnviarTextoAsync(
+            Numero,
+            OpcionesMensajesConversacion.MensajeConfiguracionNoDisponibleDefault,
+            TipoEnvioMensaje.Cierre,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await _gateway.DidNotReceive().EnviarTextoAsync(
+            Numero,
+            Arg.Is<string>(texto => texto.Contains(CierreEspanol, StringComparison.Ordinal)),
+            Arg.Any<TipoEnvioMensaje>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(log =>
+                log.TipoEvento == TipoEventoSeguridad.AnomaliaLlm
+                && log.Resultado == "fallback"
+                && log.CampaniaId == "c_1"
+                && log.Detalle == $"cierre_localizado:LOCALIZACION_CAMPANIA_INCOMPLETA:idioma=en:ruta={ruta}"),
+            Arg.Any<CancellationToken>());
+        _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
     private OrquestadorConversacion Construir(
         OpcionesConversacion? opciones = null,
         IConsolidadorIdeas? consolidador = null,
         IRedactorTurnoConversacional? redactor = null,
         IClasificadorIntencionControl? clasificador = null,
-        IResolutorTextosConversacion? resolutorTextos = null)
+        IResolutorTextosConversacion? resolutorTextos = null,
+        OpcionesCatalogoTextos? catalogoTextos = null)
         => new(
             _conversaciones,
             _respuestas,
@@ -2964,7 +3242,8 @@ public sealed class OrquestadorConversacionTests
             consolidador,
             redactor,
             clasificador,
-            resolutorTextos);
+            resolutorTextos,
+            catalogoTextos);
 
     /// <summary>I-20: redactor que siempre devuelve la misma voz, para verificar la composición.</summary>
     private static IRedactorTurnoConversacional RedactorQueDevuelve(string puente, string? pregunta)
@@ -2975,9 +3254,9 @@ public sealed class OrquestadorConversacionTests
         return redactor;
     }
 
-    private Task PrepararConversacionAsync()
+    private Task PrepararConversacionAsync(string idioma = "es")
         => _conversaciones.GuardarConversacionAsync(
-            DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca),
+            DominioConversacion.Iniciar("conv_c_1_u_1_p_1", "c_1", "u_1", "p_1", "whatsapp", null, Epoca, idioma: idioma),
             CancellationToken.None);
 
     private Task PrepararConversacionEnRepreguntaAsync(string idioma = "es")
@@ -3193,7 +3472,9 @@ public sealed class OrquestadorConversacionTests
         IEnumerable<MensajeInicial>? mensajesIniciales = null,
         LimitesSeguridad? limites = null,
         ConfigConversacional? configConversacional = null,
-        EstadoCampania estado = EstadoCampania.Activa)
+        EstadoCampania estado = EstadoCampania.Activa,
+        IEnumerable<string>? idiomasHabilitados = null,
+        IReadOnlyDictionary<string, LocalizacionCampania>? localizaciones = null)
         => Campania.Crear(
             "c_1", "Campania c_1", "Descripcion", "Objetivo", estado,
             mensajesIniciales, preguntas,
@@ -3203,7 +3484,49 @@ public sealed class OrquestadorConversacionTests
             ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
             configConversacional ?? ConfigConversacional.Crear(1, "Gracias por participar."),
             limites ?? LimitesSeguridad.Crear(1500, 10, 2),
-            usuariosHabilitados: null, Epoca, Epoca);
+            usuariosHabilitados: null, Epoca, Epoca,
+            idiomasHabilitados,
+            localizaciones);
+
+    /// <summary>
+    /// DT-P32-03: campaña bilingüe con la localización inglesa completa. <paramref name="conCierreIngles"/>
+    /// permite dejar solo el cierre sin traducir, que es el defecto reproducido en la corrida P-32.
+    /// </summary>
+    private static ParticipanteResuelto ParticipanteBilingue(
+        bool conCierreIngles = true,
+        int maxRepreguntas = 1,
+        bool segmentacionIdeas = false,
+        bool coachingSecuencialIdeas = false,
+        double? umbralCierreAnticipado = null)
+    {
+        var pregunta = CrearPregunta("p_1", 1, maxRepreguntas);
+        var campania = CrearCampania(
+            new[] { pregunta },
+            configConversacional: ConfigConversacional.Crear(
+                maxRepreguntas,
+                "Gracias por participar.",
+                segmentacionIdeas: segmentacionIdeas,
+                umbralCierreAnticipado: umbralCierreAnticipado,
+                coachingSecuencialIdeas: coachingSecuencialIdeas),
+            idiomasHabilitados: new[] { "es", "en" },
+            localizaciones: new Dictionary<string, LocalizacionCampania>(StringComparer.Ordinal)
+            {
+                ["en"] = LocalizacionCampania.Crear(
+                    "en",
+                    "Campaign c_1",
+                    "Description",
+                    "Objective",
+                    conCierreIngles ? CierreIngles : null,
+                    mensajesIniciales: null,
+                    preguntas: new Dictionary<string, LocalizacionPregunta>(StringComparer.Ordinal)
+                    {
+                        ["p_1"] = new("Question 1", "Instruction"),
+                    }),
+            });
+        var usuario = FabricasDominio.CrearUsuario("u_1", Numero, RolUsuario.Participante, idioma: "en");
+        var participante = FabricasDominio.CrearParticipante("pc_1", "c_1", "u_1", Numero);
+        return new ParticipanteResuelto(usuario, campania, participante, pregunta);
+    }
 
     private static DominioEvaluacion CrearEvaluacion(
         RecomendacionEvaluacion recomendacion,

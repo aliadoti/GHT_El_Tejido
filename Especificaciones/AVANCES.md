@@ -4,7 +4,23 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-14 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-P32-03` y
+- Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-03`
+  corte 1/2 DONE local — cierre localizado único, sin respaldo cruzado entre idiomas.** Todas las
+  rutas de cierre del orquestador pasan por `IResolutorMensajeCierreCampania`
+  (`ResolutorMensajeCierreCampania`, política pura en Application): con el gate P-32 **OFF** se
+  conserva el campo legacy exacto; con el gate **ON** manda `localizaciones.{idioma}.mensajeCierre`
+  —`es` conserva su respaldo histórico dentro de la campaña— y una localización ausente o vacía
+  devuelve `LOCALIZACION_CAMPANIA_INCOMPLETA`: el hilo cierra con el mensaje de configuración no
+  disponible del propio idioma, sin traducir, sin llamar al LLM y **sin caer nunca a español**. La
+  resolución ocurre antes de componer el mensaje o mutar el hilo, deja auditoría
+  `cierre_localizado:<codigo>:idioma=<x>:ruta=<x>` con `campaniaId` y sin texto, y no queda ninguna
+  lectura directa de `ConfigConversacional.MensajeCierre` en el orquestador (hay una prueba
+  arquitectónica que lo impide). Backend **944: 841 unitarias + 103 de integración** (24 nuevas: 9 de
+  política, 13 de matriz por ruta y 2 arquitectónicas), build Release `-warnaserror`,
+  `dotnet format` y `git diff --check` verdes. Sin frontend, push, despliegue ni configuración remota;
+  el gate sigue OFF. **Siguiente código: `DT-P32-03` corte 2/2** (readiness de mapeos Meta,
+  `listoParaGateOn`, portal Preparación y `QAS/23`).
+- Actualizacion anterior: 2026-08-14 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-P32-03` y
   `DT-P32-04` ESPECIFICADAS; 0/2 y 0/3, sin código ni cambio remoto.** El reporte P-32 del 2026-08-14
   confirmó cierre español en un hilo inglés y mapeos Meta como prerequisito del gate ON. DT-P32-03
   corrige primero todas las rutas mediante un resolutor único y amplía Preparación con
@@ -1023,6 +1039,19 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
+- [ ] **`DT-P32-03` corte 2/2 — readiness de mapeos Meta y portal Preparación.** Actualizar primero el
+  contrato aditivo de `GET /catalogos-textos/readiness` (ya redactado en `04 §5.9`), extraer una
+  validación estructural única del mapeo que reutilice `OpcionesPlantillaEnvioInicial.TryResolver` —la
+  misma que usa `ServicioEnvios`, sin una segunda interpretación de "configurado"—, enumerar los pares
+  `plantillaRef + idioma` requeridos por campañas `activa|borrador` con mensajes iniciales activos y
+  agregar `listoParaGateOn` y `mapeosMeta[]` sin cambiar `idiomas[].listo`. El portal debe mostrar
+  catálogos y plantillas como comprobaciones separadas. Sumar unitarias del agregado, integración de la
+  ruta, pruebas del portal y ejecutar `QAS/23`. Sin Graph API, sin secretos y con el gate OFF.
+- [x] **(HECHO 2026-08-14, Claude Opus 5 — backend 944: 841 unitarias + 103 integración; build Release
+  `-warnaserror`, format y diff verdes) `DT-P32-03` corte 1/2.** Resolutor único de cierre en
+  Application, migración de las seis rutas de cierre del orquestador, fallo tipificado
+  `LOCALIZACION_CAMPANIA_INCOMPLETA` sin fallback entre idiomas, auditoría sin texto y prueba
+  arquitectónica que impide nuevas lecturas directas del cierre. Gate OFF conserva el legacy exacto.
 - [ ] **`DT-P32-02` está COMPLETA local (3/3): lo que sigue es operativo, con autorización expresa.**
   El despliegue de `4d0f35c` ya está confirmado. Con gate OFF: crear y revisar borradores base
   `es/en`, probar descarga/revisión/carga del JSON, activar explícitamente los catálogos aprobados y
@@ -1357,6 +1386,7 @@
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
+| DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **Corte 1/2 DONE local**; corte 2/2 pendiente | pendiente | build Release `-warnaserror`, 841 unitarias + 103 integración, format y `git diff --check` verdes | Corte 1: `IResolutorMensajeCierreCampania` concentra la política del cierre visible —gate OFF conserva el campo legacy exacto; gate ON usa `localizaciones.{idioma}.mensajeCierre` (`es` mantiene su respaldo histórico) y una localización ausente devuelve `LOCALIZACION_CAMPANIA_INCOMPLETA`—. Las seis rutas de cierre del orquestador resuelven antes de componer o mutar el hilo, el fallo cierra con el mensaje de configuración no disponible del idioma del hilo y deja auditoría sin texto; ninguna ruta lee ya `ConfigConversacional.MensajeCierre` y una prueba arquitectónica lo impide. Sin contratos, portal, flags ni configuración remota; gate OFF. **Cómo probarlo:** con la conversación en inglés y el catálogo encendido, terminar una idea y comprobar que la despedida llega en inglés; si a esa campaña le falta la despedida en inglés, debe salir el aviso de "configuración no disponible" y nunca la despedida en español (`QAS/23`, pruebas 1 a 3). **Pendiente: corte 2/2** (readiness de mapeos Meta, `listoParaGateOn` y portal Preparación). |
 | DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; en espera de DT-P32-02 green | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Se retoma después de la nueva corrida P-32 green; QAS `21_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
@@ -1496,6 +1526,41 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-14 - Claude Opus 5 - **`DT-P32-03` corte 1/2 — cierre localizado único, sin respaldo cruzado
+  entre idiomas.** Rol: Arquitecto/Tech Lead para la frontera del nuevo puerto, Backend senior .NET
+  para la migración de rutas, SDET para la matriz de regresión y AppSec para la auditoría. Cubre
+  `DT-P32-03 §3.1`, `§5`, `§6.1-§6.4` y `§7`; REQ §21 / ARQ `05 §4.4`.
+  **Qué cambió:** (1) `ResolutorMensajeCierreCampania` (Application, sin E/S) concentra la política:
+  gate OFF → `configConversacional.mensajeCierre` legacy exacto; gate ON → `localizaciones[idioma]`
+  normalizada (`es` conserva su respaldo histórico dentro de la campaña); localización ausente o vacía
+  → `NoDisponible(LOCALIZACION_CAMPANIA_INCOMPLETA, idioma)`. Nunca hay fallback entre idiomas, no se
+  traduce y no se llama al LLM. (2) Las seis rutas de cierre del orquestador —`cierreEvaluacion`,
+  `cierreIdeaConsolidada`, `cierreIdeasSegmentadas`, `cierreColaCoaching`, `cierreConAgradecimiento` y
+  `cierreNeutro`, que cubren cierre normal, umbral/tope, intención de salida, rechazo/avance, cupo LLM,
+  fallback de evaluación, inactividad y cierre visible P-33— resuelven **antes** de componer el mensaje
+  o mutar el hilo; en `FinalizarColaAsync` el texto resuelto es además el respaldo determinista que
+  recibe el redactor I-20. (3) El fallo reutiliza el manejo tipificado de configuración no disponible
+  (mensaje del catálogo del idioma del hilo, conversación cerrada, sin siguiente pregunta) y registra
+  `AnomaliaLlm`/`fallback` con `cierre_localizado:<codigo>:idioma=<x>:ruta=<x>` y `campaniaId`, sin
+  copiar texto ni valores de App Settings.
+  **Pruebas:** 24 nuevas — 9 de la tabla de política del resolutor, 13 de matriz por ruta (gate ON/`en`
+  con localización, gate ON/`en` sin localización y regresión de gate OFF sobre hilo inglés) y 2
+  arquitectónicas que impiden nuevas lecturas directas de `ConfigConversacional.MensajeCierre`. Se
+  verificó que las 12 pruebas de ruta quedan en **rojo** al retirar el resolutor, y que la de gate OFF
+  permanece verde en ambos casos. Backend **841 unitarias + 103 de integración**, build Release
+  `-warnaserror`, `dotnet format --verify-no-changes` y `git diff --check` verdes.
+  **Fuera de alcance (queda para el corte 2/2):** readiness de mapeos Meta, `listoParaGateOn`, portal
+  Preparación y `QAS/23` pruebas 4 a 7. Sin frontend, push, despliegue ni configuración remota; el gate
+  `Conversacion:CatalogoTextosHabilitado` sigue OFF. Decisión en
+  `SUPUESTOS.md#cierre-localizado-dt-p32-03`.
+  **Cómo probarlo (lenguaje humano):** (1) entra al portal, en **Textos de conversación** confirma que
+  el catálogo de inglés está activo; (2) en la campaña de prueba revisa que la pestaña de inglés tenga
+  escrito el mensaje de despedida; (3) escribe por WhatsApp desde un número registrado como
+  participante en inglés y termina una idea (por ejemplo, di que ya está lista); (4) la despedida debe
+  llegar **en inglés**: si llega en español, la prueba falló; (5) repite borrando la despedida en
+  inglés de esa campaña: ahora debe llegar el aviso de que la configuración está incompleta, y **nunca**
+  la despedida en español; (6) apaga el catálogo y repite: todo debe verse exactamente como antes de
+  este cambio. Guía completa: `QAS/23`, pruebas 1 a 3.
 - 2026-08-14 - Claude Opus 5 - **`DT-P32-02` corte 3/3 — portal de edición masiva, readiness visible
   y cierre documental (COMPLETA local 3/3).** Rol: Frontend senior Angular para la pantalla, SDET
   para las pruebas, UX/A11Y para el lenguaje y los anuncios, y Tech Lead para el cierre. Cubre

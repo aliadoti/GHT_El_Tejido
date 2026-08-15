@@ -91,6 +91,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly PoliticaIntencionControl _politicaIntencionControl;
     private readonly bool _clasificacionIntencionControlHabilitada;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
+    private readonly IResolutorMensajeCierreCampania _resolutorCierre;
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -110,7 +111,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IRedactorTurnoConversacional? redactorTurno = null,
         IClasificadorIntencionControl? clasificadorIntencionControl = null,
         IResolutorTextosConversacion? resolutorTextos = null,
-        OpcionesCatalogoTextos? opcionesCatalogoTextos = null)
+        OpcionesCatalogoTextos? opcionesCatalogoTextos = null,
+        IResolutorMensajeCierreCampania? resolutorCierre = null)
     {
         _conversaciones = conversaciones;
         _respuestas = respuestas;
@@ -122,6 +124,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _clasificadorIntencionControl = clasificadorIntencionControl;
         _resolutorTextos = resolutorTextos;
         _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
+        // DT-P32-03 §3.1: una sola política de cierre para todas las rutas. Sin registro explícito se
+        // construye sobre el mismo gate, para que nadie pueda quedarse con una segunda interpretación.
+        _resolutorCierre = resolutorCierre ?? new ResolutorMensajeCierreCampania(_opcionesCatalogoTextos);
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
@@ -960,6 +965,15 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        // DT-P32-03 §3.1: el cierre localizado se resuelve antes de registrar telemetría o mutar el
+        // hilo; si el idioma no tiene contenido, la ruta cierra con el manejo tipificado.
+        var cierreCampania = await ResolverMensajeCierreAsync(
+            conversacion, campania, numero, emisor, "cierreEvaluacion", ahora, cancellationToken);
+        if (cierreCampania is null)
+        {
+            return;
+        }
+
         // Cierre: retro + agradecimiento en un solo mensaje (tipo Cierre). Si cerro por calificacion
         // alta se intercala una felicitacion para que el corte temprano se sienta natural.
         if (calificacionAlta)
@@ -982,8 +996,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                     "mensajeCalificacionAlta",
                     TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
                     cancellationToken),
-                campania.ConfigConversacional.MensajeCierre)
-            : campania.ConfigConversacional.MensajeCierre;
+                cierreCampania)
+            : cierreCampania;
         var cierre = Combinar(Combinar(parafraseoMostrable, evaluacion.RetroalimentacionEnviada), cierreFinal);
         await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
@@ -2006,7 +2020,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 return;
             }
 
-            var cierre = Combinar(resultado.Evaluacion.RetroalimentacionEnviada, campania.ConfigConversacional.MensajeCierre);
+            var cierreCampania = await ResolverMensajeCierreAsync(
+                conversacion, campania, numero, emisor, "cierreIdeaConsolidada", ahora, cancellationToken);
+            if (cierreCampania is null)
+            {
+                return;
+            }
+
+            var cierre = Combinar(resultado.Evaluacion.RetroalimentacionEnviada, cierreCampania);
             await EnviarAsync(conversacion, numero, cierre, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
             await _conversaciones.GuardarConversacionAsync(conversacion.Cerrar(ahora), cancellationToken);
             await EnviarSiguientePreguntaPendienteAsync(campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
@@ -2699,6 +2720,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        var cierreCampania = await ResolverMensajeCierreAsync(
+            conversacion, campania, numero, emisor, "cierreIdeasSegmentadas", ahora, cancellationToken);
+        if (cierreCampania is null)
+        {
+            return;
+        }
+
         var cierreFinal = calificacionAlta
             ? Combinar(
                 await TextoGlobalAsync(
@@ -2706,8 +2734,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                     "mensajeCalificacionAlta",
                     TextoConfigurado(_mensajes.MensajeCalificacionAlta, OpcionesMensajesConversacion.MensajeCalificacionAltaDefault),
                     cancellationToken),
-                campania.ConfigConversacional.MensajeCierre)
-            : campania.ConfigConversacional.MensajeCierre;
+                cierreCampania)
+            : cierreCampania;
         await EnviarAsync(conversacion, numero, Combinar(confirmacion, cierreFinal), TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         conversacion = conversacion.Cerrar(ahora);
@@ -3898,10 +3926,18 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         CancellationToken cancellationToken)
     {
         // I-20: el cierre se redacta sobre el mensaje configurado de la campaña, que sigue siendo el
-        // respaldo exacto. Es un acto sin pregunta (§4.1).
+        // respaldo exacto. Es un acto sin pregunta (§4.1). DT-P32-03 §3.1: ese respaldo se resuelve por
+        // idioma antes de llamar al redactor, para que el hilo nunca reciba el cierre de otro idioma.
+        var cierreCampania = await ResolverMensajeCierreAsync(
+            conversacion, campania, numero, emisor, "cierreColaCoaching", ahora, cancellationToken);
+        if (cierreCampania is null)
+        {
+            return;
+        }
+
         var cierre = await ComponerTurnoAsync(
             campania, pregunta, usuario.Id, usuario.WhatsappNormalizado, ActoConversacional.Cerrar,
-            respaldo: campania.ConfigConversacional.MensajeCierre, ahora, cancellationToken, idioma: conversacion.Idioma);
+            respaldo: cierreCampania, ahora, cancellationToken, idioma: conversacion.Idioma);
         var texto = Combinar(prefijo, cierre);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
         conversacion = conversacion.Cerrar(ahora);
@@ -4238,9 +4274,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
+        var cierreCampania = await ResolverMensajeCierreAsync(
+            conversacion, campania, numero, emisor, "cierreConAgradecimiento", ahora, cancellationToken);
+        if (cierreCampania is null)
+        {
+            return;
+        }
+
         var texto = string.IsNullOrWhiteSpace(acusePrevio)
-            ? campania.ConfigConversacional.MensajeCierre
-            : Combinar(acusePrevio, campania.ConfigConversacional.MensajeCierre);
+            ? cierreCampania
+            : Combinar(acusePrevio, cierreCampania);
         texto = await AgregarIdeaVisibleAlCierreAsync(conversacion, campania, texto, cancellationToken);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
@@ -4385,6 +4428,58 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 ahora),
             cancellationToken);
 
+    /// <summary>
+    /// DT-P32-03 §3.1: única puerta al cierre configurado de la campaña. Devuelve el texto resuelto o
+    /// <c>null</c> cuando la localización del idioma del hilo está incompleta; en ese caso la ruta ya
+    /// quedó cerrada con el manejo tipificado de configuración no disponible y el llamador debe salir
+    /// sin componer el mensaje ni avanzar a la siguiente pregunta.
+    /// </summary>
+    private async Task<string?> ResolverMensajeCierreAsync(
+        DominioConversacion conversacion,
+        Campania campania,
+        NumeroWhatsApp numero,
+        string? emisor,
+        string ruta,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var resultado = _resolutorCierre.Resolver(campania, conversacion.Idioma);
+        if (resultado is ResultadoMensajeCierreCampania.Disponible disponible)
+        {
+            return disponible.Texto;
+        }
+
+        var noDisponible = (ResultadoMensajeCierreCampania.NoDisponible)resultado;
+        await RegistrarCierreLocalizadoNoDisponibleAsync(
+            conversacion, numero, noDisponible, ruta, ahora, cancellationToken);
+        await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
+        return null;
+    }
+
+    /// <summary>
+    /// DT-P32-03 §5: deja rastro de campaña, idioma, ruta y código. Nunca copia el texto de cierre ni
+    /// valores de configuración.
+    /// </summary>
+    private Task RegistrarCierreLocalizadoNoDisponibleAsync(
+        DominioConversacion conversacion,
+        NumeroWhatsApp numero,
+        ResultadoMensajeCierreCampania.NoDisponible resultado,
+        string ruta,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+        => _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.AnomaliaLlm,
+                conversacion.UsuarioId,
+                numero.Valor,
+                "fallback",
+                $"cierre_localizado:{resultado.Codigo}:idioma={resultado.Idioma}:ruta={ruta}",
+                _correlacion.CorrelationIdActual,
+                ahora,
+                conversacion.CampaniaId),
+            cancellationToken);
+
     private async Task CerrarPorConfiguracionNoDisponibleAsync(
         DominioConversacion conversacion,
         NumeroWhatsApp numero,
@@ -4417,7 +4512,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        var texto = Combinar(EvaluadorLlm.RetroNeutra, campania.ConfigConversacional.MensajeCierre);
+        var cierreCampania = await ResolverMensajeCierreAsync(
+            conversacion, campania, numero, emisor, "cierreNeutro", ahora, cancellationToken);
+        if (cierreCampania is null)
+        {
+            return;
+        }
+
+        var texto = Combinar(EvaluadorLlm.RetroNeutra, cierreCampania);
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);
