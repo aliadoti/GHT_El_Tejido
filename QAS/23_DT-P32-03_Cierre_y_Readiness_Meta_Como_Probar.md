@@ -1,6 +1,10 @@
 # QAS 23 — DT-P32-03: cierre localizado y readiness Meta
 
-> **Estado (2026-08-14):** los dos cortes están implementados en local. Las pruebas 1 a 3 tienen su
+> **Estado (2026-08-15):** los dos cortes están **desplegados** (`a9f4a6f`; CI y Deploy en success),
+> así que esta guía ya puede ejecutarse contra el ambiente real. El gate
+> `Conversacion:CatalogoTextosHabilitado` no tiene override en Azure y sigue OFF: las pruebas 1 a 3
+> exigen encenderlo **solo** en el ambiente autorizado y devolverlo a OFF al terminar, mientras que
+> las pruebas 4 a 7 se hacen con el gate apagado porque readiness no depende de él. Las pruebas 1 a 3 tienen su
 > equivalente automatizado en la suite backend (matriz por ruta con gate OFF/ON, hilo `es`/`en` y
 > localización ausente, más una prueba que impide nuevas lecturas directas del cierre). Las pruebas 4
 > a 7 ya **no** están bloqueadas: el agregado de mapeos, `listoParaGateOn` y el panel **Preparación**

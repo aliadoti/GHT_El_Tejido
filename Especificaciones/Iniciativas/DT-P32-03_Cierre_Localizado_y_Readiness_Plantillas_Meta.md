@@ -1,8 +1,11 @@
 # DT-P32-03 — Cierre localizado único y readiness de plantillas Meta
 
-> **Estado:** **COMPLETA local 2026-08-14 (2/2)** — corte 1/2 (cierre localizado único) y corte 2/2
-> (readiness Meta y portal). Sin push, despliegue ni cambio remoto; gate OFF. Queda pendiente lo
-> operativo: `QAS/23` pruebas 4 a 7 y después `QAS/17` completo.
+> **Estado:** **IMPLEMENTADA Y DESPLEGADA 2026-08-15 (2/2)** — corte 1/2 (cierre localizado único,
+> `50fee37`) y corte 2/2 (readiness Meta y portal, `a9f4a6f`). `main` y `origin/main` apuntan a
+> `a9f4a6f`; el push disparó CI y Deploy, que terminaron en success. **El despliegue no activa nada:**
+> `Conversacion:CatalogoTextosHabilitado` no tiene override en Azure y conserva el default OFF, así
+> que el cierre localizado y la ruta de readiness quedan disponibles pero el gate sigue apagado. Queda
+> pendiente lo operativo: `QAS/23` pruebas 1 a 7 y después `QAS/17` completo.
 > **Origen:** regresión P-32 del 2026-08-14, §§8.1 y 9.2.
 > **Prioridad:** bloqueante para repetir P-32 con el gate ON.
 >

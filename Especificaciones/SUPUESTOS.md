@@ -33,7 +33,7 @@
   contratos, Cosmos, portal ni flags. El rollback es revertir el commit o volver el gate a OFF.
 
 ### readiness-mapeos-meta-dt-p32-03 - Readiness estructural, no certificación de Meta
-- Fecha: 2026-08-14 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/Frontend/SDET/AppSec - Commit: corte 2/2 de `DT-P32-03`.
+- Fecha: 2026-08-14 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/Frontend/SDET/AppSec - Commit: `a9f4a6f` (corte 2/2 de `DT-P32-03`, desplegado 2026-08-15).
 - Contexto: `DT-P32-03 §3.2` pide mostrar los mapeos Meta requeridos antes de encender el gate, pero
   no define quién decide "configurado" ni qué hacer con un mensaje inicial activo sin `plantillaRef`.
 - Decisión: `ValidadorMapeosPlantillaMeta` delega el veredicto de configurado en

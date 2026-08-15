@@ -6,12 +6,14 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-14 — `DT-P32-03` COMPLETA LOCAL (2/2); NO QUEDA CÓDIGO EN ELLA.** La corrida P-32
+> **HANDOFF 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2); NO QUEDA CÓDIGO EN ELLA.** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para
 > readiness. El corte 1 dejó un resolutor único de cierre sin fallback entre idiomas y el corte 2
 > agregó `listoParaGateOn` y `mapeosMeta[]` a `GET /catalogos-textos/readiness` más el panel
 > **Preparación** con catálogos y plantillas separados. Backend 854 + 105, portal 60, build/format/
-> `ng build`/diff verdes; gate OFF, sin push ni cambio remoto. **Lo siguiente es operativo:**
+> `ng build`/diff verdes. `origin/main` en `a9f4a6f`, CI y Deploy en success; el gate
+> `Conversacion:CatalogoTextosHabilitado` sigue sin override en Azure y por tanto OFF, así que el
+> despliegue no activó nada. **Lo siguiente es operativo:**
 > ejecutar `QAS/23` (1–7) y después `QAS/17` completo; recordar que readiness no consulta Graph API,
 > así que la aprobación de las plantillas en Meta se verifica a mano. `DT-P32-04` queda como backlog
 > post-green y no debe desplazar DT-I20-02 sin repriorización humana. No cambiar Azure, desplegar ni
