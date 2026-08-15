@@ -1,8 +1,10 @@
 # DT-I20-02 — Contrato visible en texto plano y gobierno seguro de prompts
 
-> **Estado:** **ESPECIFICADA 0/3 — SIGUIENTE CÓDIGO**. El P-32 smoke requerido quedó green el
-> 2026-08-15 (`DT-P32-03-01`, `60b520d`, QAS/23 1–6 PASS); se levanta la espera documental.
-> **Prioridad:** inmediata por defecto visible a participantes. Empezar estrictamente por corte 1/3.
+> **Estado:** **EN CURSO 1/3 — CORTE 1 DONE LOCAL (2026-08-15)**. El P-32 smoke requerido quedó green
+> el 2026-08-15 (`DT-P32-03-01`, `60b520d`, QAS/23 1–6 PASS). El corte 1 entregó
+> `ValidadorFragmentoVisibleLlm` (Application, puro), el respaldo **por campo** en el evaluador, la
+> guarda de I-20 previa a `DT-I20-01` y la eliminación del truncamiento a mitad de palabra.
+> **Siguiente:** corte 2/3 (selección runtime de la versión activa/aprobada más nueva).
 > **Origen:** reporte real de WhatsApp con encabezados Markdown e instrucciones internas de presentación.  
 > **Alcance:** salida visible del evaluador, fragmentos de I-20 y selección segura del prompt de evaluación en runtime.  
 > **No cambia:** contratos API/Cosmos, puntajes, umbrales, estados, cierres, versión I-19, P-27, P-32, P-33 ni mensajes históricos.
@@ -208,14 +210,23 @@ No crear ni activar el prompt remoto durante la corrida de desarrollo. Su migrac
 
 ## 6. Cortes de ejecución
 
-### Corte 1/3 — Guardia visible sin alterar decisiones
+### Corte 1/3 — Guardia visible sin alterar decisiones — **DONE local 2026-08-15**
 
-- crear el validador puro;
-- agregar regresión con la estructura exacta reportada;
-- integrar reemplazos por campo en el evaluador;
-- integrar la guardia en I-20 antes de `DT-I20-01`;
-- eliminar el truncamiento a mitad de palabra en los campos visibles;
-- mantener contratos y persistencia compatibles.
+- [x] crear el validador puro — `ElTejido.Application/Evaluacion/ValidadorFragmentoVisibleLlm.cs`,
+  con `TipoFragmentoVisible`, `ContextoFragmentoVisible` y motivos fijos `vacio`,
+  `markdown_estructural`, `etiqueta_interna`, `cantidad_preguntas` y `longitud`;
+- [x] agregar regresión con la estructura exacta reportada — en el validador y en `EvaluadorLlm`;
+- [x] integrar reemplazos por campo en el evaluador — `AplicarContratoVisibleAsync`, después del
+  filtro de fuga de rúbrica y antes de construir la evaluación;
+- [x] integrar la guardia en I-20 antes de `DT-I20-01` — al final de `GuardasRedaccionTurno.Rechazar`,
+  de modo que un fragmento con estructura degrada al fallback de I-20 y nunca llega a componerse;
+- [x] eliminar el truncamiento a mitad de palabra en los campos visibles — recorte en frontera de
+  oración y, sin frontera disponible, respaldo neutro;
+- [x] mantener contratos y persistencia compatibles — sin cambios de API, Cosmos, portal ni flags.
+
+> Pruebas de §7.2 (integración conversacional completa): **pendientes para el corte 3/3**, que ya las
+> incluye en su alcance. Las suites E2E actuales sustituyen `IEvaluadorLlm`, así que ejercitar el
+> contrato visible de punta a punta exige cablear el evaluador real con un `ILlmClient` falso.
 
 ### Corte 2/3 — Gobierno de versión runtime
 

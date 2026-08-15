@@ -209,6 +209,136 @@ public sealed class EvaluadorLlmTests
             Arg.Any<CancellationToken>());
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // DT-I20-02 §5.2/§7.1: contrato visible en texto plano, aplicado por campo y sin tocar el fondo.
+    // ----------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Evaluar_RetroConEncabezadosMarkdown_UsaRetroNeutraYConservaLaEvaluacion()
+    {
+        // §1: forma exacta reportada en WhatsApp el 2026-08-13 (regresión de la deuda).
+        const string retro =
+            "Ya quedó claro que quieres comparar el almacenamiento en racks.\\n"
+            + "### Lo que ya queda claro\\nEl objetivo.\\n"
+            + "### Lo que todavía falta\\nLa forma de comparar.\\n"
+            + "### Siguiente ajuste recomendado\\nDefinir la métrica.";
+        const string salida =
+            "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":4,\"justificacion\":\"clara\"}],"
+            + "\"calificacion_total\":4.0,\"explicacion\":\"buena idea\","
+            + "\"retroalimentacion_usuario\":\"" + retro + "\","
+            + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Con qué métrica compararías?\","
+            + "\"temas\":[\"racks\"],\"entidades\":[],\"anomalia_seguridad\":false}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(
+            CrearContexto() with { IdeaId = "idea_1", VersionIdeaId = "v_1" },
+            CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        var evaluacion = resultado.Evaluacion;
+        evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+        evaluacion.RetroalimentacionEnviada.Should().NotContain("###");
+        // §3: un defecto de presentación no invalida la evaluación de fondo ni cambia la idea evaluada.
+        evaluacion.CalificacionTotal.Should().Be(4.0m);
+        evaluacion.CalificacionPorCriterio.Should().ContainSingle(c => c.Criterio == "claridad" && c.Puntaje == 4m);
+        evaluacion.Recomendacion.Should().Be(RecomendacionEvaluacion.Repreguntar);
+        evaluacion.RepreguntaSugerida.Should().Be("¿Con qué métrica compararías?");
+        evaluacion.IdeaId.Should().Be("idea_1");
+        evaluacion.VersionIdeaId.Should().Be("v_1");
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.Resultado == "contrato_visible"
+                && l.Detalle!.Contains("retroalimentacion=markdown_estructural")
+                && !l.Detalle!.Contains("racks")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Evaluar_RepreguntaConEstructuraInvalida_SoloSustituyeEseCampo()
+    {
+        const string salida =
+            "{\"calificacion_total\":3,\"explicacion\":\"parcial\",\"retroalimentacion_usuario\":\"Tu idea avanza.\","
+            + "\"recomendacion\":\"repreguntar\","
+            + "\"repregunta_sugerida\":\"Pregunta clave: ¿qué métrica usarías?\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        resultado.Evaluacion.RepreguntaSugerida.Should().Be(EvaluadorLlm.RepreguntaNeutra);
+        // El campo válido se conserva carácter por carácter.
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be("Tu idea avanza.");
+        resultado.Evaluacion.Recomendacion.Should().Be(RecomendacionEvaluacion.Repreguntar);
+        resultado.Evaluacion.CalificacionTotal.Should().Be(3m);
+    }
+
+    [Fact]
+    public async Task Evaluar_RetroConPreguntaAdemasDeLaRepregunta_EvitaDosPreguntasEnElMismoTurno()
+    {
+        const string salida =
+            "{\"calificacion_total\":3,\"retroalimentacion_usuario\":\"Tu idea avanza. ¿Qué métrica usarías?\","
+            + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Quién mediría ese ahorro?\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+        resultado.Evaluacion.RepreguntaSugerida.Should().Be("¿Quién mediría ese ahorro?");
+    }
+
+    [Fact]
+    public async Task Evaluar_RetroValida_SeConservaCaracterPorCaracter()
+    {
+        // §4.1: `caja #3` y un salto de línea sin estructura son contenido legítimo.
+        const string retro = "La diferencia está en la caja #3.\\nEso ya queda claro.";
+        const string salida =
+            "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + retro + "\",\"recomendacion\":\"cerrar\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Evaluacion.RetroalimentacionEnviada.Should()
+            .Be("La diferencia está en la caja #3.\nEso ya queda claro.");
+        await _logSeguridad.DidNotReceive().RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.Resultado == "contrato_visible"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Evaluar_RetroExcesiva_RecortaEnFronteraDeOracionSinPartirPalabras()
+    {
+        // §5.2.7: el truncamiento ciego desaparece; el corte cae siempre en un cierre de oración.
+        var larga = string.Concat(Enumerable.Repeat("Esta frase describe el avance del piloto. ", 20)).Trim();
+        var salida =
+            "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + larga + "\",\"recomendacion\":\"cerrar\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        var enviada = resultado.Evaluacion.RetroalimentacionEnviada;
+        enviada.Length.Should().BeLessThanOrEqualTo(600);
+        enviada.Should().EndWith(".");
+        larga.Should().StartWith(enviada);
+    }
+
+    [Fact]
+    public async Task Evaluar_RetroLargaSinCierreDeOracion_UsaElRespaldoSinPartirPalabras()
+    {
+        var larga = string.Concat(Enumerable.Repeat("palabra ", 120)).Trim();
+        var salida =
+            "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + larga + "\",\"recomendacion\":\"cerrar\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+    }
+
     private EvaluadorLlm Construir()
         => new(_client, _logSeguridad, _correlacion, new RelojFijo(DateTimeOffset.UnixEpoch));
 

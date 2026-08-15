@@ -1331,3 +1331,41 @@
   activación condicionada al gate y portal. Rollback: revertir el corte y mantener el gate OFF.
 - Spec: `Iniciativas/DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md`; plan:
   `planes/DT-P32-03-01_Plan_Readiness_Gate_Solo_Activas.md`; QAS: `QAS/23_*` pruebas 4–6.
+
+### contrato-visible-texto-plano-dt-i20-02 — Qué cuenta como estructura y qué se hace con ella
+
+- Fecha: 2026-08-15 - Agente/Rol: Claude Opus 5, Arquitecto/Backend/SDET/AppSec (corte 1/3).
+- Contexto: el prompt de evaluación de runtime pedía secciones Markdown y estado interno; la
+  evaluación los persistió y WhatsApp los transportó. La spec prohíbe sanitizar el mensaje final
+  (rompería P-33 y contenido legítimo como `caja #3`), así que la guarda tiene que vivir en los
+  fragmentos generados por el LLM.
+- Decisión:
+  - la estructura editorial se detecta **anclada al inicio de línea** (encabezado, viñeta, lista
+    numerada, cita, separador, tabla y cerca de código); un `#`, un `-` o un `|` dentro de una frase
+    no son estructura y se conservan;
+  - las etiquetas del contrato JSON y las órdenes de proceso (`ready_to_save`, `save now`,
+    `listo para guardar`, nombres de campo) se buscan en cualquier posición porque nadie las escribe
+    de forma legítima; los **títulos de sección** ambiguos (`Estado`, `Pregunta clave`,
+    `Lo que ya queda claro`, `Resumen`, y sus equivalentes en inglés) solo cuentan cuando ocupan la
+    línea completa o la abren con dos puntos, para no bloquear "el estado de la bodega" ni la
+    apertura "Lo que ya queda claro es que…" que DT-I20-01 permite;
+  - el validador **no lleva idioma**: las reglas estructurales son independientes del idioma y las
+    etiquetas se buscan siempre en `es` y `en`, de modo que una etiqueta española filtrada en un hilo
+    inglés también se rechaza;
+  - la repregunta exige **exactamente una** pregunta y la retroalimentación **ninguna** cuando el
+    turno ya enviará la repregunta por separado (presupuesto de I-18);
+  - el exceso de longitud de la retroalimentación se resuelve **recortando en frontera de oración**;
+    si no hay ninguna dentro del máximo se usa `RetroNeutra`. Se eliminó el corte ciego a 600
+    caracteres que podía persistir una palabra partida.
+- Alternativas descartadas: limpiar el Markdown del mensaje final con expresiones regulares (altera
+  la idea de P-33 y el contenido configurado); descartar toda la evaluación ante un defecto de
+  presentación (pierde puntajes válidos y cambia decisiones de negocio); listar nombres de empresa o
+  vocabulario de negocio (bloquearía contenido legítimo del participante); recortar la retro en
+  cualquier carácter (persiste palabras partidas).
+- Alcance no tocado: los `Acotar(...)` que quedan en el orquestador y en el enrutamiento acotan
+  **entrada** del participante y **contexto del prompt** (historial y menús de selección), no campos
+  visibles generados por el LLM; cambiarlos alteraría P-26/P-30 y queda fuera de esta deuda.
+- Impacto/reversibilidad: componente nuevo y puro más dos puntos de integración; sin contrato REST,
+  sin Cosmos, sin flag y sin configuración remota. Rollback: revertir el commit del corte.
+- Spec: `Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md` §4/§5.1–§5.3;
+  QAS: `QAS/21_*`; runbook: `planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.

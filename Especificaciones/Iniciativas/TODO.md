@@ -9,13 +9,36 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 SIGUIENTE CÓDIGO: `DT-I20-02` CORTE 1/3 — GUARDA DE TEXTO VISIBLE.** P-32 smoke quedó green:
-> DT-P32-03-01 está desplegada en `60b520d`, QAS/23 1–6 PASS y la evidencia Meta fue aceptada. Gate y
-> simulación OFF; clave diagnóstica retirada. Implementar primero la regresión exacta del encabezado
-> Markdown y un validador puro de fragmentos LLM con fallback por campo, antes de DT-I20-01. No
-> sanitizar el mensaje final ni cambiar puntajes, idea/versionId, estados, cierre, repreguntas,
-> idioma, P-33, Cosmos, API o configuración remota. DT-P32-04 no bloquea. P-32 completa se repite
-> después de DT-I20-02.
+> **🟡 SIGUIENTE CÓDIGO: `DT-I20-02` CORTE 2/3 — GOBIERNO DE LA VERSIÓN DE PROMPT EN RUNTIME.**
+> El corte 1/3 quedó **DONE local el 2026-08-15**: `ValidadorFragmentoVisibleLlm` puro con motivos
+> fijos, regresión del encabezado Markdown reportado, respaldo **por campo** en el evaluador
+> (`RetroNeutra`/`RepreguntaNeutra`) sin tocar puntajes, idea/versionId, madurez, estados, cierre ni
+> presupuesto de repreguntas, guarda de I-20 **antes** de `DT-I20-01` y recorte en frontera de oración
+> en lugar del corte ciego a 600 caracteres. Backend **912 unitarias + 110 de integración**; build
+> Release `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin frontend, push, despliegue,
+> Cosmos ni configuración remota. El corte 2 debe resolver en runtime la versión de prompt más nueva
+> que sea **de la familia pedida, activa y aprobada**, conservando la consulta administrativa actual,
+> y probar avance, ausencia y rollback de versiones (§5.4). **No** crear ni activar prompts remotos,
+> no adelantar el corte 3 ni DT-P32-04. P-32 completa (QAS/17 y lote real) se repite después de
+> DT-I20-02.
+>
+> **🟢 `DT-I20-02` CORTE 1/3 CONTRATO VISIBLE EN TEXTO PLANO — DONE LOCAL 2026-08-15 (Claude Opus 5).**
+> `ValidadorFragmentoVisibleLlm` (Application, puro) valida **solo fragmentos generados por el LLM** y
+> devuelve un motivo fijo —`vacio`, `markdown_estructural`, `etiqueta_interna`, `cantidad_preguntas`,
+> `longitud`— sin devolver ni registrar el texto. Detecta estructura editorial **anclada al inicio de
+> línea** (encabezado, viñeta, lista numerada, cita, separador, tabla, cerca de código), así que
+> `caja #3`, un guion intercalado o un salto de línea sin estructura siguen siendo válidos; las
+> etiquetas del contrato JSON y las órdenes de proceso (`ready_to_save`, `save now`,
+> `listo para guardar`) se buscan en cualquier posición, y los títulos ambiguos (`Estado`,
+> `Pregunta clave`, `Lo que ya queda claro`, `Resumen` y sus equivalentes en inglés) solo cuentan como
+> etiqueta cuando ocupan la línea completa o la abren con dos puntos. El evaluador sustituye **campo
+> por campo** y deja intacta la evaluación de fondo; la auditoría registra `contrato_visible` con
+> `componente=evaluador;retroalimentacion=<motivo>;repregunta=<motivo>`. `GuardasRedaccionTurno` cierra
+> con el mismo contrato antes de que `FiltroDuplicacionTurno` (DT-I20-01) componga el turno. No hay
+> sanitización global: P-33, el catálogo P-32, los mensajes de campaña, las plantillas Meta y los
+> artefactos Markdown quedan fuera del validador. Decisión en
+> `SUPUESTOS.md#contrato-visible-texto-plano-dt-i20-02`. `QAS/21` pruebas 1–7 ya son ejecutables en
+> ambiente aislado autorizado; la 8 depende del corte 2.
 >
 > **✅ `DT-P32-03-01` READINESS SOLO CON CAMPAÑAS ACTIVAS — CERRADA 2026-08-15 (1/1, `60b520d`).**
 > Implementada, desplegada y QAS/23 1–6 PASS. `mapeosMeta[]` sigue enumerando campañas
@@ -653,7 +676,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **DT-P32-03** | **Cierre localizado único y readiness Meta** | **DESPLEGADA 2/2 — `a9f4a6f`** | **Claude** | Cierres QAS/23 1–3 PASS; la semántica posterior quedó cerrada en DT-P32-03-01. Sin código pendiente. |
 | **DT-P32-03-01** | **Readiness del gate solo con campañas activas** | **CERRADA — DESPLEGADA 1/1 + SMOKE GREEN** | **Claude/Codex** | `60b520d`; QAS/23 1–6 PASS en Azure, evidencia Meta aceptada, gate/simulación OFF y clave retirada. P-32 completa queda después de DT-I20-02. |
 | **DT-P32-04** | **Núcleo transversal multidioma** | **ESPECIFICADA 0/3 — BACKLOG POST-GREEN** | **Codex** | Idioma central, `ContenidoCampaniaEfectivo`, resolutores especializados y readiness compuesto. No cambia fuentes de contenido, DTO ni Cosmos; evita una clase dios. No bloquea DT-I20-02. |
-| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **ESPECIFICADA 0/3 — SIGUIENTE** | **Claude** | Empezar por corte 1: regresión exacta, validador puro y fallback por campo sin alterar decisiones. Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. |
+| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **EN CURSO 1/3 — corte 1 DONE local 2026-08-15** | **Claude** | Corte 1 entregado: `ValidadorFragmentoVisibleLlm` puro con motivos fijos, regresión del encabezado Markdown reportado, respaldo por campo en el evaluador, guarda de I-20 previa a `DT-I20-01` y recorte en frontera de oración (se eliminó el corte ciego). Backend 912 unitarias + 110 de integración; build, format y diff verdes; sin push, despliegue, Cosmos ni configuración remota. **Siguiente: corte 2/3** — versión de prompt activa **y** aprobada más nueva en runtime, con rollback verificable. Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`; supuesto `SUPUESTOS.md#contrato-visible-texto-plano-dt-i20-02`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
 | **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **DT-P32-02 quedó COMPLETA local 3/3 el 2026-08-14; sigue la corrida autorizada de `QAS/22` y `QAS/17`.** |
@@ -713,11 +736,16 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: implementar `DT-I20-02` corte 1/3.** Leer la iniciativa, I-19, I-20,
-   DT-I20-01, bases `05`/`08`, reglas y QAS/21. Reproducir primero el caso exacto del encabezado
-   Markdown. Crear el validador puro de fragmentos visibles y aplicar fallback por campo en el
-   evaluador y en I-20 antes del filtro de duplicación. No implementar todavía el corte 2 ni crear o
-   activar prompts remotos. No tocar DT-P32-04. Mantener gate y simulación OFF.
+1. **ARRANCA AQUÍ: implementar `DT-I20-02` corte 2/3.** El corte 1/3 está DONE local (2026-08-15) y
+   no se reabre. Leer la iniciativa §5.4 y §6 corte 2, bases `05`/`08` y `QAS/21` prueba 8. Agregar
+   una resolución de prompt **exclusiva de runtime** que devuelva la versión más nueva que sea a la
+   vez de la familia pedida, **activa y aprobada**; hoy el runtime toma la última versión y después
+   comprueba su estado, de modo que inactivar la última **no** es un rollback confiable. La consulta
+   administrativa de «última versión» conserva su semántica. Probar avance (v2 activa/aprobada),
+   ausencia (ninguna activa/aprobada ⇒ comportamiento seguro actual) y rollback (v2 inactiva o
+   borrador ⇒ runtime usa v1) y documentar el comportamiento efectivo en la base correspondiente. No
+   crear ni activar prompts remotos, no tocar Cosmos, API, portal ni configuración remota, no
+   adelantar el corte 3 ni DT-P32-04. Mantener gate y simulación OFF.
 
 2. **Después del corte 2/2: la corrida operativa autorizada de `DT-P32-02` y P-32.**
    Los tres cortes quedaron DONE local el 2026-08-14 (backend 817 + 103; portal 57/57, build y

@@ -6,15 +6,17 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-15 — SIGUIENTE CÓDIGO `DT-I20-02` CORTE 1/3.** DT-P32-03-01 está cerrada:
-> `60b520d` en `main/origin`, desplegada, QAS/23 1–6 PASS y evidencia Meta aceptada. Gate y simulación
-> OFF; `GHT_DIAG_KEY` retirada. P-32 smoke green habilita este corte, pero QAS/17 completa y el lote
-> real quedan para después de DT-I20-02. Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa
-> DT-I20-02, I-19, I-20, DT-I20-01, bases `05`/`08`, reglas y QAS/21. Crear primero la regresión exacta
-> del encabezado Markdown; implementar un validador puro de fragmentos LLM y fallback por campo en el
-> evaluador e I-20 antes del filtro DT-I20-01. **No sanitizar el mensaje final, no modificar Cosmos,
-> API ni configuración remota y no alterar puntajes, idea/versionId, umbrales, madurez, estados,
-> cierre, repreguntas, idioma o texto P-33.** No adelantar corte 2 ni DT-P32-04.
+> **HANDOFF 2026-08-15 — SIGUIENTE CÓDIGO `DT-I20-02` CORTE 2/3.** El corte 1/3 quedó **DONE local**:
+> `ValidadorFragmentoVisibleLlm` puro con motivos fijos, regresión del encabezado Markdown reportado,
+> respaldo **por campo** en el evaluador, guarda de I-20 antes de `DT-I20-01` y recorte en frontera de
+> oración en vez del corte ciego. Backend **912 unitarias + 110 de integración**; build Release
+> `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin push, despliegue, Cosmos ni
+> configuración remota. Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa DT-I20-02 (§5.4 y §6
+> corte 2), bases `05`/`08`, reglas y QAS/21 prueba 8. Implementar la resolución de runtime de la
+> versión de prompt **de la familia pedida, activa y aprobada** más nueva, conservando la consulta
+> administrativa actual, y probar avance, ausencia y rollback. **No crear ni activar prompts remotos,
+> no modificar Cosmos, API ni configuración remota y no alterar puntajes, idea/versionId, umbrales,
+> madurez, estados, cierre, repreguntas, idioma o texto P-33.** No adelantar el corte 3 ni DT-P32-04.
 
 > **HANDOFF HISTÓRICO 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2).** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para

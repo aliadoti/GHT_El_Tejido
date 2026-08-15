@@ -29,6 +29,12 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
 
     private const int MaxCaracteresRetro = 600;
 
+    /// <summary>
+    /// DT-I20-02 §4.2: la repregunta es una sola pregunta conversacional. Se acota con el mismo
+    /// maximo que la retroalimentacion; un exceso no se recorta, cae a <see cref="RepreguntaNeutra"/>.
+    /// </summary>
+    private const int MaxCaracteresRepregunta = 600;
+
     private static readonly JsonSerializerOptions OpcionesJson = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -102,6 +108,10 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
         var ejeDebil = CalculadorEjeDebil.Determinar(calificaciones, contexto.RubricaSnapshot.Criterios);
         salida = await AplicarFiltroRubricaAsync(contexto, salida, recomendacion, ejeDebil, cancellationToken);
 
+        // DT-I20-02 §5.2: ultima guarda antes de persistir. Solo toca los campos visibles generados por
+        // el LLM; puntajes, recomendacion, idea/version y el arbitraje server-side quedan intactos.
+        salida = await AplicarContratoVisibleAsync(contexto, salida, recomendacion, cancellationToken);
+
         if (salida.AnomaliaSeguridad)
         {
             await RegistrarAnomaliaAsync(contexto, cancellationToken);
@@ -140,6 +150,56 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
         {
             RetroalimentacionUsuario = fugaRetro ? RetroNeutra : salida.RetroalimentacionUsuario,
             RepreguntaSugerida = fugaRepregunta ? RepreguntaNeutra : salida.RepreguntaSugerida,
+        };
+    }
+
+    /// <summary>
+    /// DT-I20-02 §5.2: contrato visible en texto plano. Un incumplimiento de presentacion se resuelve
+    /// <b>por campo</b> —nunca descartando una evaluacion de fondo valida (§3)—: la retroalimentacion
+    /// invalida cae a <see cref="RetroNeutra"/> y la repregunta invalida a
+    /// <see cref="RepreguntaNeutra"/>, con el motivo fijo en auditoria y sin registrar el texto.
+    /// <para>
+    /// El exceso de longitud ya no se corta a ciegas: se recorta en frontera de oracion y, si no hay
+    /// ninguna dentro del maximo, se usa el respaldo. Nunca se persiste una palabra partida (§5.2.7).
+    /// </para>
+    /// </summary>
+    private async Task<SalidaLlmEvaluacion> AplicarContratoVisibleAsync(
+        ContextoEvaluacion contexto,
+        SalidaLlmEvaluacion salida,
+        RecomendacionEvaluacion recomendacion,
+        CancellationToken cancellationToken)
+    {
+        var exigeRepregunta = recomendacion == RecomendacionEvaluacion.Repreguntar;
+
+        var retro = RecortarEnFronteraDeOracion(salida.RetroalimentacionUsuario, MaxCaracteresRetro);
+        var motivoRetro = ValidadorFragmentoVisibleLlm.Validar(
+            retro,
+            new ContextoFragmentoVisible(TipoFragmentoVisible.Retroalimentacion, MaxCaracteresRetro)
+            {
+                // Con repregunta separada el turno ya lleva su unica pregunta (I-18): la retro no puede
+                // agregar otra.
+                AdmitePregunta = !exigeRepregunta,
+            }).Motivo;
+
+        var repregunta = salida.RepreguntaSugerida?.Trim();
+        var motivoRepregunta = exigeRepregunta
+            ? ValidadorFragmentoVisibleLlm.Validar(
+                repregunta,
+                new ContextoFragmentoVisible(TipoFragmentoVisible.Repregunta, MaxCaracteresRepregunta)
+                {
+                    AdmitePregunta = true,
+                }).Motivo
+            : null;
+
+        if (motivoRetro is not null || motivoRepregunta is not null)
+        {
+            await RegistrarContratoVisibleAsync(contexto, motivoRetro, motivoRepregunta, exigeRepregunta, cancellationToken);
+        }
+
+        return salida with
+        {
+            RetroalimentacionUsuario = motivoRetro is null ? retro : RetroNeutra,
+            RepreguntaSugerida = motivoRepregunta is null ? repregunta : RepreguntaNeutra,
         };
     }
 
@@ -231,7 +291,9 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             calificaciones,
             salida.CalificacionTotal,
             string.IsNullOrWhiteSpace(salida.Explicacion) ? "Sin explicacion." : salida.Explicacion!.Trim(),
-            Acotar(salida.RetroalimentacionUsuario!.Trim(), MaxCaracteresRetro),
+            // DT-I20-02 §5.2.7: ya viene validada y acotada en frontera de oracion por
+            // AplicarContratoVisibleAsync; aqui no se recorta nada a ciegas.
+            salida.RetroalimentacionUsuario!.Trim(),
             recomendacion,
             recomendacion == RecomendacionEvaluacion.Repreguntar ? salida.RepreguntaSugerida : null,
             salida.Temas,
@@ -323,6 +385,34 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             cancellationToken);
     }
 
+    /// <summary>
+    /// DT-I20-02 §8: solo metadatos de baja cardinalidad —componente, campo, resultado y motivo fijo—.
+    /// Nunca el texto generado, la respuesta del participante, la idea consolidada ni el prompt.
+    /// </summary>
+    private Task RegistrarContratoVisibleAsync(
+        ContextoEvaluacion contexto,
+        string? motivoRetro,
+        string? motivoRepregunta,
+        bool exigeRepregunta,
+        CancellationToken cancellationToken)
+    {
+        var repregunta = exigeRepregunta ? motivoRepregunta ?? "aceptado" : "no_aplica";
+        var detalle = FormattableString.Invariant(
+            $"componente=evaluador;retroalimentacion={motivoRetro ?? "aceptado"};repregunta={repregunta}");
+
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.AnomaliaLlm,
+                contexto.Usuario.Id,
+                numero: null,
+                "contrato_visible",
+                detalle,
+                _correlacion.CorrelationIdActual,
+                _tiempo.GetUtcNow()),
+            cancellationToken);
+    }
+
     private Task RegistrarFallbackAsync(ContextoEvaluacion contexto, string motivo, CancellationToken cancellationToken)
         => _logSeguridad.RegistrarAsync(
             LogSeguridad.Crear(
@@ -361,18 +451,24 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     private static bool EnEscala(decimal valor, EscalaRubrica escala)
         => valor >= escala.Min && valor <= escala.Max;
 
-    private static string Acotar(string texto, int maximo)
-        => texto.Length > maximo ? texto[..maximo] : texto;
-
+    /// <summary>I-05: sin maximo utilizable el parafraseo se descarta como degradacion segura.</summary>
     private static string? AcotarEnFronteraDeFrase(string? texto, int maximo)
+        => maximo <= 0 ? null : RecortarEnFronteraDeOracion(texto, maximo);
+
+    /// <summary>
+    /// Devuelve el texto tal cual si cabe en <paramref name="maximo"/>; si no, lo recorta en el ultimo
+    /// cierre de oracion que quepa. Devuelve <c>null</c> cuando no hay ninguno: DT-I20-02 §5.2.7
+    /// prohibe persistir una palabra u oracion partida, asi que el llamador usa su respaldo.
+    /// </summary>
+    private static string? RecortarEnFronteraDeOracion(string? texto, int maximo)
     {
-        if (string.IsNullOrWhiteSpace(texto) || maximo <= 0)
+        if (string.IsNullOrWhiteSpace(texto))
         {
             return null;
         }
 
         var normalizado = texto.Trim();
-        if (normalizado.Length <= maximo)
+        if (maximo <= 0 || normalizado.Length <= maximo)
         {
             return normalizado;
         }

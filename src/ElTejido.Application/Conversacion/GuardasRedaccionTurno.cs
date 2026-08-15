@@ -15,6 +15,11 @@ namespace ElTejido.Application.Conversacion;
 /// evaluación y patrones de puntaje <c>N/M</c>— y añade lo propio de I-20: umbral/nota/puntos y
 /// promesas de implementación.
 /// </para>
+/// <para>
+/// DT-I20-02 §5.3: cierra con <see cref="ValidadorFragmentoVisibleLlm"/>, el mismo contrato de texto
+/// plano que aplica el evaluador, para que ni el puente ni la pregunta lleguen a WhatsApp con
+/// encabezados, listas, tablas o etiquetas internas.
+/// </para>
 /// </summary>
 public static class GuardasRedaccionTurno
 {
@@ -70,9 +75,23 @@ public static class GuardasRedaccionTurno
             return "mas_de_una_pregunta";
         }
 
-        return ContieneFuga(puente, rubrica) || ContieneFuga(pregunta, rubrica)
-            ? "fuga_de_rubrica"
-            : null;
+        if (ContieneFuga(puente, rubrica) || ContieneFuga(pregunta, rubrica))
+        {
+            return "fuga_de_rubrica";
+        }
+
+        // DT-I20-02 §5.3: el contrato visible en texto plano se aplica a los fragmentos de I-20 antes
+        // de componer el turno; si uno lo incumple, se usa el fallback de I-20 y DT-I20-01 ni siquiera
+        // llega a ejecutarse sobre un texto con estructura editorial.
+        return ValidadorFragmentoVisibleLlm.Validar(
+                puente,
+                new ContextoFragmentoVisible(TipoFragmentoVisible.Puente, maxCaracteres)).Motivo
+            ?? ValidadorFragmentoVisibleLlm.Validar(
+                pregunta,
+                new ContextoFragmentoVisible(TipoFragmentoVisible.Pregunta, maxCaracteres)
+                {
+                    AdmitePregunta = true,
+                }).Motivo;
     }
 
     /// <summary>¿El texto revela la mecánica de evaluación o promete algo que el sistema no decide?</summary>

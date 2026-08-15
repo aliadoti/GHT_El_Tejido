@@ -4,7 +4,35 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-15 (Codex, cierre documental con evidencia Claude/operador):
+- Ultima actualizacion: 2026-08-15 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec):
+  **`DT-I20-02` CORTE 1/3 DONE LOCAL — contrato visible en texto plano con respaldo por campo.**
+  `ValidadorFragmentoVisibleLlm` (Application, puro, sin estado) valida **solo fragmentos generados
+  por el LLM** y devuelve un motivo fijo (`vacio`, `markdown_estructural`, `etiqueta_interna`,
+  `cantidad_preguntas`, `longitud`) sin devolver ni registrar el texto. Detecta estructura editorial
+  **anclada al inicio de línea** —encabezado ATX, viñeta, lista numerada, cita, separador, tabla y
+  cerca de código—, de modo que `caja #3`, un guion intercalado o un salto de línea sin estructura
+  siguen siendo válidos; las etiquetas del contrato JSON y las órdenes de proceso (`ready_to_save`,
+  `save now`, `listo para guardar`) se buscan en cualquier posición, y los títulos ambiguos (`Estado`,
+  `Pregunta clave`, `Lo que ya queda claro`, `Resumen` y sus equivalentes en inglés) solo cuentan como
+  etiqueta cuando ocupan la línea completa o la abren con dos puntos. En el evaluador,
+  `AplicarContratoVisibleAsync` corre después del filtro de fuga de rúbrica y antes de construir la
+  evaluación: la retroalimentación inválida cae a `RetroNeutra` y la repregunta inválida a
+  `RepreguntaNeutra` **campo por campo**, dejando intactos puntajes, recomendación, idea/versionId,
+  madurez, estados, cierre y presupuesto de repreguntas; la auditoría registra
+  `contrato_visible` con `componente=evaluador;retroalimentacion=<motivo>;repregunta=<motivo>` y
+  nunca el texto. Desapareció el corte ciego a 600 caracteres: ahora se recorta en **frontera de
+  oración** y, sin frontera dentro del máximo, se usa el respaldo, así que no se persiste una palabra
+  partida. En I-20, `GuardasRedaccionTurno.Rechazar` cierra con el mismo contrato **antes** de que el
+  orquestador aplique `FiltroDuplicacionTurno` (DT-I20-01), que sigue omitiendo el puente duplicado
+  igual que antes. No se sanitiza el mensaje final, no se toca `VersionIdeaConsolidada` (P-33), ni
+  catálogo P-32, mensajes de campaña, plantillas Meta o artefactos Markdown. Backend **912 unitarias
+  + 110 de integración** (49 nuevas: validador puro, evaluador e I-20); build Release `-warnaserror`,
+  `dotnet format --verify-no-changes` y `git diff --check` verdes. Sin frontend, sin push, sin
+  despliegue, sin Cosmos y sin configuración remota. **Siguiente código: `DT-I20-02` corte 2/3**
+  (selección runtime de la versión de prompt activa **y** aprobada más nueva, conservando la consulta
+  administrativa actual). Las pruebas de integración conversacional de §7.2 y la migración de prompt
+  quedan en el corte 3/3.
+- Actualizacion anterior: 2026-08-15 (Codex, cierre documental con evidencia Claude/operador):
   **`DT-P32-03-01` CERRADA — IMPLEMENTADA, DESPLEGADA Y P-32 SMOKE GREEN (1/1).** Commit
   `60b520d` está en `main/origin` y desplegado en Azure. La revalidación acotada dejó QAS/23 pruebas
   4–6 PASS; con los PASS conservados de 1–3, las seis pruebas están verdes y la evidencia humana de
@@ -1100,13 +1128,22 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`DT-I20-02` corte 1/3 — guarda de texto visible sin alterar decisiones.** Leer la iniciativa,
-  I-19, I-20, DT-I20-01, bases `05`/`08`, reglas y QAS/21. Crear primero la regresión exacta del
-  encabezado Markdown reportado; implementar un validador puro para fragmentos generados por el LLM
-  e integrar fallback **por campo** en evaluación e I-20 antes del filtro DT-I20-01. No sanitizar el
-  mensaje final ni cambiar puntajes, idea/versionId, umbrales, madurez, estados, cierre, repreguntas,
-  idioma, texto P-33, Cosmos, API o configuración remota. Verificar el corte completo antes de pasar
-  al gobierno de versiones del corte 2.
+- [ ] **`DT-I20-02` corte 2/3 — gobierno de la versión de prompt en runtime.** Leer la iniciativa
+  (§5.4, §6 corte 2), bases `05`/`08` y QAS/21 prueba 8. Agregar una operación de repositorio/servicio
+  **solo para runtime** que devuelva la versión más nueva que sea simultáneamente de la familia
+  pedida, **activa y aprobada**; la consulta administrativa de «última versión» conserva su semántica
+  actual (hoy el runtime usa `ObtenerUltimoPromptAsync` y luego comprueba el estado, así que inactivar
+  la última versión **no** es un rollback confiable). Probar como mínimo: v1 activa/aprobada + v2
+  inactiva ⇒ runtime usa v1; v1 activa/aprobada + v2 borrador ⇒ v1; v2 activa/aprobada ⇒ v2; ninguna
+  activa/aprobada ⇒ comportamiento seguro actual. Documentar el comportamiento efectivo en la base
+  correspondiente. **No** crear ni activar prompts remotos, no tocar Cosmos, API, portal ni
+  configuración remota, y no adelantar el corte 3 ni DT-P32-04.
+- [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 912 unitarias + 110 integración; build Release
+  `-warnaserror`, format y diff verdes) `DT-I20-02` corte 1/3.** `ValidadorFragmentoVisibleLlm` puro
+  con motivos fijos, regresión del encabezado Markdown reportado, respaldo **por campo** en el
+  evaluador (`RetroNeutra`/`RepreguntaNeutra`) sin tocar puntajes ni decisiones, guarda de I-20 previa
+  a `DT-I20-01` y recorte en frontera de oración en lugar del corte ciego. Sin sanitización global,
+  sin cambios de contrato, Cosmos ni configuración remota.
 - [x] **DT-P32-03-01 desplegada y smoke green.** Commit `60b520d`; QAS/23 1–6 PASS, evidencia Meta
   aceptada, gate y simulación OFF y clave diagnóstica retirada. P-32 completa queda para después de
   DT-I20-02.
@@ -1148,8 +1185,9 @@
   P-32 `POST /semillas/{idioma}` conserva su semántica; el gate sigue OFF y no hubo frontend.
 - [x] **P-32 smoke requerido completado.** QAS/22 y QAS/23 1–6 están verdes; QAS/17 completa queda
   programada después de DT-I20-02 por el orden acordado.
-- [ ] **`DT-I20-02` habilitada: ejecutar corte 1/3.** Su spec, QAS/21 y runbook están vigentes; no
-  crear ni activar prompts remotos durante este corte.
+- [x] **`DT-I20-02` corte 1/3 ejecutado (2026-08-15).** Su spec, QAS/21 y runbook siguen vigentes; no
+  se crearon ni activaron prompts remotos. `QAS/21` sigue pendiente de ejecución humana: sus pruebas
+  1–7 pueden correrse ya en ambiente aislado autorizado, y la 8 requiere el corte 2/3.
 - [ ] **Validar operativamente `P-33` antes de activarlo.** En un ambiente aislado, seguir
   `QAS/20_*` en español e inglés, comprobar consulta, corrección de idea cerrada, acuse y cierre;
   revisar costo/latencia y firmar el acta de flags. El gate global permanece OFF y no se cambia
@@ -1457,7 +1495,7 @@
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **DESPLEGADA 2/2 (`a9f4a6f`)** | cierres QAS/23 1–3 PASS | backend 854 + 105, portal 60 | Resolutor único sin fallback cruzado y readiness Meta. La semántica de borradores se cerró en DT-P32-03-01; no queda código pendiente. |
 | DT-P32-03-01 | Readiness solo con campañas activas | **CERRADA: DESPLEGADA 1/1 + SMOKE GREEN (2026-08-15)** | `60b520d` | backend 863 + 109, portal 62; QAS/23 1–6 PASS en Azure | Borradores visibles sin bloquear, guarda propia al activar con gate ON y evidencia Meta aceptada. Gate/simulación OFF y clave retirada. Reporte `Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. P-32 completa queda después de DT-I20-02. |
-| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **ESPECIFICADA 0/3 — SIGUIENTE** | — | empezar por regresión del corte 1 | Guarda por fragmento LLM con fallback por campo; preservar todas las decisiones server-side. No sanitización global, Cosmos ni configuración remota. |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **EN CURSO 1/3 — corte 1 DONE local (2026-08-15)** | — | backend 912 unitarias + 110 integración (49 nuevas) | Corte 1: `ValidadorFragmentoVisibleLlm` puro con motivos fijos, regresión del encabezado reportado, respaldo por campo en el evaluador, guarda de I-20 previa a `DT-I20-01` y recorte en frontera de oración. Sin sanitización global, contratos, Cosmos ni configuración remota. **Siguiente: corte 2/3** (versión de prompt activa y aprobada en runtime). |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -2225,3 +2263,18 @@
   green. Evidencia Meta aceptada. El operador confirmó gate OFF, simulación OFF y retiro de
   `GHT_DIAG_KEY`. P-32 sigue abierta para QAS/17 completa y lote real después de DT-I20-02. Handoff:
   DT-I20-02 corte 1/3, sin adelantar DT-P32-04.
+- 2026-08-15 - Claude Opus 5 - **DT-I20-02 corte 1/3 — DONE local.** Rol: Arquitecto/Backend/SDET/
+  AppSec. Nuevo `ValidadorFragmentoVisibleLlm` (Application, puro) con `TipoFragmentoVisible`,
+  `ContextoFragmentoVisible` y motivos fijos; detecta estructura Markdown solo al inicio de línea,
+  etiquetas internas del contrato en cualquier posición y títulos ambiguos solo como línea o
+  encabezado con dos puntos. `EvaluadorLlm.AplicarContratoVisibleAsync` sustituye **por campo** la
+  retroalimentación o la repregunta inválida y deja intactos puntajes, recomendación, idea/versionId y
+  todas las decisiones server-side; se eliminó el corte ciego a 600 caracteres a favor de un recorte
+  en frontera de oración con respaldo. `GuardasRedaccionTurno.Rechazar` aplica el mismo contrato a los
+  fragmentos de I-20 antes de `FiltroDuplicacionTurno`. Auditoría `contrato_visible` con motivos de
+  baja cardinalidad y sin texto. Verificado: build Release `-warnaserror`, **912 unitarias + 110 de
+  integración**, `dotnet format --verify-no-changes` y `git diff --check` verdes. Sin frontend, push,
+  despliegue, Cosmos ni configuración remota. Supuesto en
+  `SUPUESTOS.md#contrato-visible-texto-plano-dt-i20-02`. Handoff: **corte 2/3** (versión de prompt
+  activa y aprobada en runtime); las pruebas de integración conversacional de §7.2 y la migración de
+  prompt quedan en el corte 3/3.

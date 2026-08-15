@@ -257,6 +257,50 @@ public sealed class RedactorTurnoConversacionalTests
         resultado.Should().BeOfType<ResultadoRedaccionTurno.Exito>().Which.Puente.Should().BeNull();
     }
 
+    [Theory]
+    // DT-I20-02 §5.3/§7.1.10: los fragmentos de I-20 pasan el mismo contrato de texto plano; una
+    // salida con estructura editorial o etiqueta interna toma el fallback ya definido de I-20.
+    [InlineData("{\"puente\":\"### Lo que ya queda claro\",\"pregunta\":\"¿Qué métrica usarías?\"}", "markdown_estructural")]
+    [InlineData("{\"puente\":\"Tu idea avanza.\\n- Definir la métrica\",\"pregunta\":\"¿Qué métrica usarías?\"}", "markdown_estructural")]
+    [InlineData("{\"puente\":\"Tu idea avanza.\",\"pregunta\":\"Pregunta clave: ¿qué métrica usarías?\"}", "etiqueta_interna")]
+    [InlineData("{\"puente\":\"Estado: maduro\",\"pregunta\":\"¿Qué métrica usarías?\"}", "etiqueta_interna")]
+    public async Task DTI2002_FragmentoConEstructuraOEtiquetaInterna_DegradaAlRespaldo(string json, string motivo)
+    {
+        Responder(json);
+
+        var resultado = await Construir().RedactarAsync(Contexto(ActoConversacional.Mejorar), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoRedaccionTurno.Fallback>().Which.Motivo.Should().Be(motivo);
+    }
+
+    [Fact]
+    public async Task DTI2002_TextoPlanoConNumeralLegitimo_SeConserva()
+    {
+        // §4.1: `caja #3` no es un encabezado; solo se rechaza la estructura al inicio de línea.
+        Responder("{\"puente\":\"La diferencia está en la caja #3.\",\"pregunta\":\"¿Qué métrica usarías?\"}");
+
+        var resultado = await Construir().RedactarAsync(Contexto(ActoConversacional.Mejorar), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoRedaccionTurno.Exito>()
+            .Which.Puente.Should().Be("La diferencia está en la caja #3.");
+    }
+
+    [Fact]
+    public async Task DTI2002_ElContratoVisibleCorreAntesDeDTI2001_QueSigueOmitiendoElPuenteDuplicado()
+    {
+        // §7.1.11: el contrato visible no reemplaza la guarda de no duplicación; la precede. Un puente
+        // en texto plano válido llega a DT-I20-01, que lo omite por repetir el cuerpo validado.
+        const string cuerpo = "Ya queda claro el avance. Definiste responsables e indicadores.";
+        Responder("{\"puente\":\"Ya queda claro el avance.\",\"pregunta\":\"¿Qué métrica usarías?\"}");
+
+        var resultado = await Construir().RedactarAsync(Contexto(ActoConversacional.Mejorar), CancellationToken.None);
+
+        var exito = resultado.Should().BeOfType<ResultadoRedaccionTurno.Exito>().Subject;
+        var composicion = FiltroDuplicacionTurno.Componer(exito.Puente, cuerpo, exito.Pregunta, preguntaExigida: true);
+        composicion.PuenteOmitido.Should().BeTrue();
+        composicion.Texto.Should().Be(cuerpo + "\n\n¿Qué métrica usarías?");
+    }
+
     private void Responder(string json)
         => _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(json, UsoTokensLlm.Crear(20, 8)));
