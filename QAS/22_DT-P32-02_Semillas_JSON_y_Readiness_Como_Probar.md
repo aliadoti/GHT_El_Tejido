@@ -1,8 +1,8 @@
 # QAS 22 — DT-P32-02: semillas, JSON masivo y readiness
 
 > **Estado:** lista para ejecutar. `DT-P32-02` quedó **3/3 DONE local el 2026-08-14** (backend 817
-> unitarias + 103 de integración; portal 57/57, build y Prettier verdes). Falta la corrida real:
-> requiere autorización para desplegar en un ambiente aislado.
+> unitarias + 103 de integración; portal 57/57, build y Prettier verdes) y `4d0f35c` ya fue desplegado
+> con CI #110 y Deploy #95 en success. Falta la corrida real en una ventana aislada o autorizada.
 > **Dónde está cada acción en el portal:** todo vive en **Textos de conversación**. «Empezar el
 > contenido de este idioma» tiene *Crear semilla base*, *Revisar configuración anterior* y *Descargar
 > configuración anterior como JSON*; el panel de la versión seleccionada tiene *Descargar JSON para

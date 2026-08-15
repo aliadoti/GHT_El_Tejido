@@ -507,6 +507,13 @@ por compatibilidad, pero el portal usa las rutas explícitas. `readiness` inform
 `campaniasBloqueadas` (`campaniaId`, `nombre`, `estado`, `motivo`). Nunca incluye mensajes ni frases.
 Un catálogo activo cuyo contenido o huella ya no valida cuenta como **ausente**, no como listo.
 
+**Extensión DT-P32-03:** el cuerpo agrega `listoParaGateOn` y `mapeosMeta[]`. Cada mapeo identifica
+`plantillaRef`, idioma interno, presencia de nombre/código Meta, componentes configurados, problemas
+estructurales y campañas `activa|borrador` que lo requieren. `idiomas[].listo` conserva el significado
+de disponibilidad editorial del catálogo; `listoParaGateOn` agrega catálogo + mapeos operativos.
+Esta ruta no consulta Graph API y por tanto no certifica aprobación ni correspondencia de variables
+en Meta. No devuelve secretos ni contenido de participantes.
+
 **Precondición de campaña (DT-P32-02 §5):** pasar a `activa` una campaña con más de un idioma
 habilitado exige, además de las localizaciones completas, una versión global activa y válida por cada
 idioma; si falta, `400 VALIDATION_ERROR` con `catalogosTextos.{idioma}: activo_requerido`. Aplica con

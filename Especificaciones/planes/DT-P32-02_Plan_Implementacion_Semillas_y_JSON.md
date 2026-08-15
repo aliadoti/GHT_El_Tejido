@@ -1,9 +1,9 @@
 # Plan de implementación — DT-P32-02: semillas, JSON masivo y readiness
 
 > **Spec rectora:** `../Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`
-> **Estado:** listo para implementar, 0/3.
-> **Orden:** terminar los tres cortes, desplegar controladamente, ejecutar `QAS/22` y la corrida
-> completa `QAS/17`; solo después retomar `DT-I20-02`.
+> **Estado:** implementación 3/3 y despliegue de `4d0f35c` completos; pendiente validación operativa.
+> **Orden vigente:** ejecutar `QAS/22` con gate OFF, abrir la ventana ON según `QAS/18`, completar la
+> corrida `QAS/17` y volver a OFF salvo acta formal; solo después retomar `DT-I20-02`.
 
 ## 1. Fronteras
 
@@ -102,16 +102,16 @@ vigentes del proyecto.
 
 ## 5. Despliegue y corrida posterior
 
-La implementación local no autoriza push, despliegue, gate ON ni cambios remotos. Después de una
-autorización separada:
+El despliegue de `4d0f35c` ya está confirmado. Esto no autoriza gate ON ni otros cambios remotos. La
+corrida operativa, con autorización separada, sigue este orden:
 
-1. desplegar en ambiente aislado;
-2. crear y revisar borradores base `es/en`;
+1. confirmar ambiente/canal aislado o teléfonos de prueba autorizados;
+2. con gate OFF, crear y revisar borradores base `es/en`;
 3. probar descarga/prevalidación/importación JSON;
 4. activar explícitamente los catálogos aprobados;
-5. ejecutar `QAS/22`;
-6. ejecutar `QAS/17` completo con gate ON solo en la ventana autorizada;
-7. resolver cualquier FAIL y repetir hasta green;
+5. ejecutar `QAS/22` Pruebas 1 a 8 y la regresión legacy;
+6. abrir la ventana gate ON según `QAS/18` y ejecutar `QAS/17` completo;
+7. volver a gate OFF salvo acta formal, resolver cualquier FAIL y repetir hasta green;
 8. registrar D5/UAT/Meta/costo/latencia y rollback;
 9. cerrar DT-P32-02; y
 10. cambiar el handoff a `DT-I20-02` corte 1/3.

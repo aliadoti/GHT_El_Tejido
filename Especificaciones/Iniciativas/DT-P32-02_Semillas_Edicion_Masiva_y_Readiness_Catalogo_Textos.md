@@ -3,9 +3,11 @@
 > **Estado:** **DONE local — 3/3 — 2026-08-14.** Semilla base separada del legacy, límites operativos
 > con techo, prevalidación pura, rutas de semilla, JSON masivo, readiness, precondición de campaña
 > bilingüe y portal completo. Backend 817 unitarias + 103 de integración; portal 57/57, build Angular
-> y Prettier verdes. Sin despliegue, sin activación y sin cambios de configuración remota.
-> **Siguiente: autorización para desplegar en ambiente aislado, ejecutar `QAS/22` y luego `QAS/17`
-> completo; solo con ambas en green se retoma `DT-I20-02`.**
+> y Prettier verdes. `4d0f35c` ya fue desplegado; todavía sin activación del gate ni cambios de
+> configuración remota derivados de esta validación.
+> **Desplegada:** commit `4d0f35c`, CI #110 y Deploy #95 en success. **Siguiente:** ejecutar
+> `QAS/22` con gate OFF, abrir la ventana ON de `QAS/18`, completar `QAS/17` y volver a OFF salvo
+> acta formal; solo con ambas guías en green se retoma `DT-I20-02`.
 > **Prioridad:** inmediata; debe implementarse y validarse antes de retomar `DT-I20-02`.
 > **Origen:** `QAS/resultados/Resultados_P32_Multidioma_2026-08-13.md`, donde la semilla `es`
 > fue rechazada porque `FrasesDespertarProactivo` heredó más de 30 elementos.

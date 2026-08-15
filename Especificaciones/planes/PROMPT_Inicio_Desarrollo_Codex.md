@@ -6,15 +6,23 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF DE DESARROLLO 2026-08-14 — ARRANCA `DT-P32-02` CORTE 1/3.** El reporte P-32 del
-> 2026-08-13 confirmó que la semilla `es` quedó bloqueada al fotografiar una lista legacy con más de
-> 30 frases. La decisión del usuario es terminar primero semillas seguras, edición masiva por JSON,
-> readiness y el bloqueo de campañas bilingües sin catálogo activo; desplegar y repetir P-32 hasta
-> green; **solo después retomar `DT-I20-02`**. Leer `AVANCES.md`, `Iniciativas/TODO.md`,
-> `Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`, P-32, el plan
-> `planes/DT-P32-02_*` y `QAS/22_*`. Corte 1: separar semilla base `es/en` de fotografía legacy,
-> parametrizar límites con techo seguro y agregar prevalidación sin escritura. No truncar, activar,
-> desplegar, cambiar App Settings ni tocar datos remotos.
+> **HANDOFF 2026-08-14 — `DT-P32-03` ES EL SIGUIENTE CÓDIGO (0/2).** La corrida P-32 desplegada
+> encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para readiness. Leer
+> `Iniciativas/DT-P32-03_*`, su plan y `QAS/23`. Empezar con regresión roja de todas las rutas de
+> cierre, crear un único resolutor, mantener gate OFF exacto y jamás caer entre idiomas. En el corte
+> 2 agregar `listoParaGateOn` y mapeos Meta a API/Preparación. Tras green repetir QAS/23 + QAS/17.
+> `DT-P32-04` queda como backlog post-green y no debe mezclarse con el fix bloqueante ni desplazar
+> DT-I20-02 sin repriorización humana. No cambiar Azure, desplegar ni activar flags sin autorización.
+
+> **HANDOFF OPERATIVO 2026-08-14 — `DT-P32-02` 3/3 IMPLEMENTADA Y DESPLEGADA.** `4d0f35c` pasó CI
+> #110 y Deploy #95. No hay código pendiente: sigue la validación controlada. Leer `AVANCES.md`,
+> `Iniciativas/TODO.md`, `QAS/18_*`, `QAS/22_*` y ejecutar estrictamente `QAS/17_*`. Con el gate OFF,
+> revisar **Preparación**, crear como borrador las semillas base faltantes `es/en`, probar descarga,
+> edición, prevalidación y reimportación JSON, y activar explícitamente ambos catálogos. Después, un
+> humano autorizado abre la ventana `Conversacion__CatalogoTextosHabilitado=true`, espera el reinicio,
+> ejecuta el recorrido bilingüe y vuelve a `false` salvo acta formal. La simulación no aísla el emisor:
+> no conversar sin canal aislado o teléfonos de prueba autorizados. **Solo con QAS/22 y QAS/17 green
+> se retoma `DT-I20-02`.**
 >
 > **HANDOFF PREPARADO 2026-08-13 — `DT-I20-02` POSPUESTO HASTA GREEN P-32.** `P-33` ya está DONE local
 > 3/3. El siguiente cambio es corregir la exposición de encabezados Markdown e instrucciones internas

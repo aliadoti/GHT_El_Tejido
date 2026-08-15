@@ -29,6 +29,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 20 | [P-33 · Consultar y ver la idea al cerrar](20_P33_Consulta_y_Cierre_Visible_Como_Probar.md) | Guía simple para comprobar idea activa/última sin menú, consulta sin aporte, cierre visible y reapertura de la misma idea cerrada ante una corrección. |
 | 21 | [DT-I20-02 · Texto plano y prompt seguro](21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md) | Comprueba que WhatsApp no exponga encabezados ni etiquetas internas y que la corrección preserve evaluación, versión, estados, idioma y una sola pregunta. |
 | 22 | [DT-P32-02 · Semillas, JSON masivo y readiness](22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md) | Comprueba base `es/en`, descarga/prevalidación/reimportación masiva como borrador, límites, permisos, readiness y bloqueo de campañas sin catálogo activo. |
+| 23 | [DT-P32-03 · Cierre localizado y readiness Meta](23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md) | Comprueba todas las rutas de cierre por idioma, ausencia de fallback cruzado y mapeos Meta requeridos antes del gate ON. |
 | — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
 
 ## Cómo empezar (tester)

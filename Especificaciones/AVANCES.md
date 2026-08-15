@@ -4,7 +4,25 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Frontend/SDET/AppSec): **`DT-P32-02`
+- Ultima actualizacion: 2026-08-14 (Codex, Arquitecto/Backend/SDET/AppSec): **`DT-P32-03` y
+  `DT-P32-04` ESPECIFICADAS; 0/2 y 0/3, sin código ni cambio remoto.** El reporte P-32 del 2026-08-14
+  confirmó cierre español en un hilo inglés y mapeos Meta como prerequisito del gate ON. DT-P32-03
+  corrige primero todas las rutas mediante un resolutor único y amplía Preparación con
+  `listoParaGateOn`/mapeos. DT-P32-04 queda como backlog post-green y centraliza idioma, contenido
+  efectivo y resolutores especializados sin clase dios ni cambio de fuentes; no bloquea la prioridad
+  acordada de DT-I20-02. QAS nuevo `23`; plan y lista
+  operativa Meta documentados. **Siguiente código: DT-P32-03 corte 1/2. Gate debe permanecer OFF.**
+- Ultima actualizacion: 2026-08-14 (Codex, Arquitecto/SDET/DevOps/AppSec): **`DT-P32-02`
+  IMPLEMENTADA, VALIDADA Y DESPLEGADA; preparación operativa documentada.** `main` y `origin/main`
+  apuntan a `4d0f35c`; CI #110 y Deploy #95 finalizaron en success, `/health` y el portal respondieron
+  `200`, y la ruta de readiness está desplegada. El gate de catálogo no tiene override en Azure y por
+  tanto conserva el default OFF; `Simulacion__Habilitada=true` fue observado y no se modificó. Se
+  amplió `QAS/17` con el recorrido visible **Preparación → semilla base es/en → borrador → JSON →
+  prevalidación → nuevo borrador → activación explícita**, y `QAS/18` con la ventana humana
+  OFF → ON → OFF. Antes de conversar se debe confirmar aislamiento del emisor o teléfonos de prueba
+  autorizados; simulación entrante no bloquea WhatsApp saliente. **Siguiente: ejecutar QAS/22 1–8
+  con gate OFF, abrir la ventana ON autorizada, completar QAS/17 y volver a OFF salvo acta formal.**
+- Actualizacion anterior: 2026-08-14 (Claude Opus 5, Arquitecto/Frontend/SDET/AppSec): **`DT-P32-02`
   COMPLETA local 3/3 — corte 3/3 (portal, QAS y cierre documental).** La pantalla **Textos de
   conversación** separa **Crear semilla base** de **Revisar configuración anterior**, permite
   descargar la configuración anterior aunque su revisión falle, descargar el **JSON para edición
@@ -1006,11 +1024,12 @@
 
 ## Proximo paso (lo primero que debe hacer quien retome)
 - [ ] **`DT-P32-02` está COMPLETA local (3/3): lo que sigue es operativo, con autorización expresa.**
-  Pedir autorización para desplegar en un **ambiente aislado** (un push a `main` dispara el CD) y
-  luego: crear y revisar borradores base `es/en`, probar descarga/revisión/carga del JSON, activar
-  explícitamente los catálogos aprobados, ejecutar `QAS/22` completo y después `QAS/17` con gate ON
-  solo en la ventana autorizada, verificando que el aporte y la idea consolidada en inglés
-  permanezcan en inglés. Cualquier FAIL o BLOCKED mantiene el gate OFF y obliga a corregir y repetir.
+  El despliegue de `4d0f35c` ya está confirmado. Con gate OFF: crear y revisar borradores base
+  `es/en`, probar descarga/revisión/carga del JSON, activar explícitamente los catálogos aprobados y
+  ejecutar `QAS/22` Pruebas 1 a 8. Luego, solo con aislamiento o teléfonos autorizados, abrir la
+  ventana gate ON de `QAS/18`, completar `QAS/17` y volver a OFF salvo acta formal. Verificar que el
+  aporte y la idea consolidada en inglés permanezcan en inglés. Cualquier FAIL o BLOCKED mantiene el
+  gate OFF y obliga a corregir y repetir.
   Registrar D5/UAT, Meta, costo/latencia y rollback. **Solo con `QAS/22` y `QAS/17` en green se
   cambia el handoff a `DT-I20-02` corte 1/3.**
 - [x] **(HECHO 2026-08-14, Claude Opus 5 — portal 57/57, build Angular y Prettier verdes; backend sin

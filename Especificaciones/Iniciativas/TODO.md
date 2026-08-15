@@ -9,6 +9,15 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **🟡 `DT-P32-03` CIERRE LOCALIZADO Y READINESS META — ESPECIFICADA 2026-08-14 (0/2).**
+> Es el siguiente cambio de código. Corte 1 crea regresión roja y un único resolutor de
+> `MensajeCierre` para todas las rutas, preservando gate OFF y prohibiendo fallback entre idiomas.
+> Corte 2 agrega `listoParaGateOn` y mapeos `plantillaRef+idioma` al readiness/API/portal. Después se
+> ejecuta `QAS/23` y la corrida P-32 completa. `DT-P32-04` queda 0/3 para después del green: idioma
+> central, `ContenidoCampaniaEfectivo` y resolutores especializados; no bloquea DT-I20-02, que conserva
+> la prioridad inmediata después del green. Sin código, push, despliegue ni
+> configuración remota en esta preparación.
+
 > **✅ `DT-P32-02` SEMILLAS, JSON MASIVO Y READINESS — COMPLETA LOCAL 2026-08-14 (3/3).**
 > **Corte 3 (portal):** **Textos de conversación** separa **Crear semilla base** de **Revisar
 > configuración anterior**, permite descargar esa configuración aunque su revisión falle, descargar
@@ -21,8 +30,10 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > idioma, si hay activo/borrador y qué campañas quedan bloqueadas. Se conservan edición individual,
 > guardar, activar, reactivar y rollback. Portal **57/57** (14 nuevas), `ng build` y Prettier verdes
 > con Node 24.18.0; backend sin cambios (**817 + 103**).
-> **Siguiente (operativo, requiere autorización expresa): desplegar en ambiente aislado, ejecutar
-> `QAS/22` y luego `QAS/17` completo. Solo con ambas en green se retoma `DT-I20-02` corte 1/3.**
+> **Despliegue confirmado:** `4d0f35c`, CI #110 y Deploy #95 en success. **Siguiente (operativo,
+> requiere autorización expresa):** confirmar aislamiento o teléfonos de prueba, ejecutar `QAS/22`
+> con gate OFF, abrir la ventana ON controlada de `QAS/18`, completar `QAS/17` y volver a OFF salvo
+> acta formal. Solo con ambas guías en green se retoma `DT-I20-02` corte 1/3.
 >
 > **Corte 2 (histórico):**
 > **Corte 2:** `GET .../versiones/{v}/exportar` entrega la forma canónica editable
@@ -580,6 +591,8 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
 | **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
+| **DT-P32-03** | **Cierre localizado único y readiness Meta** | **ESPECIFICADA 0/2 — SIGUIENTE CÓDIGO** | **Codex** | Corte 1 migra todas las rutas a un resolutor único sin fallback cruzado. Corte 2 agrega `listoParaGateOn` y `mapeosMeta` a API/Preparación reutilizando la resolución real del envío. QAS `23`; sin código ni cambio remoto. |
+| **DT-P32-04** | **Núcleo transversal multidioma** | **ESPECIFICADA 0/3 — BACKLOG POST-GREEN** | **Codex** | Idioma central, `ContenidoCampaniaEfectivo`, resolutores especializados y readiness compuesto. No cambia fuentes de contenido, DTO ni Cosmos; evita una clase dios. No bloquea DT-I20-02. |
 | **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **ESPECIFICADA 0/3 — EN ESPERA DE DT-P32-02 GREEN** | **Codex** | Bug real: el prompt runtime pidió secciones Markdown/estado interno y el cuerpo llegó así a WhatsApp. Corrección por campo en salidas LLM, sin sanitización global ni cambio de puntajes, versión I-19, umbrales, estados, cierres, P-27/P-32/P-33 o historial. Incluye selección runtime activa+aprobada y migración gradual mediante familia nueva. Sin código ni configuración remota. Se retoma después del despliegue autorizado y la nueva corrida P-32 green. Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
@@ -642,18 +655,18 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 1. **ARRANCA AQUÍ: no hay código pendiente de `DT-P32-02`; sigue la corrida operativa autorizada.**
    Los tres cortes quedaron DONE local el 2026-08-14 (backend 817 + 103; portal 57/57, build y
-   Prettier verdes). Pedir **autorización expresa** para desplegar en un ambiente aislado —un push a
-   `main` dispara el CD— y entonces: crear y revisar los borradores base `es/en`, probar la descarga,
-   la revisión y la carga del JSON editado, activar explícitamente los catálogos aprobados, ejecutar
-   `QAS/22` completo y después `QAS/17` con gate ON solo en la ventana autorizada, comprobando que el
-   aporte y la idea consolidada en inglés permanezcan en inglés. Cualquier FAIL o BLOCKED mantiene el
-   gate OFF y obliga a corregir y repetir; conservar evidencia sin secretos ni participantes reales.
+   Prettier verdes); `4d0f35c`, CI #110 y Deploy #95 están confirmados. Con gate OFF, crear y revisar
+   los borradores base `es/en`, probar la descarga, revisión y carga del JSON editado, activar
+   explícitamente los catálogos aprobados y ejecutar `QAS/22` Pruebas 1 a 8. Después abrir la ventana
+   gate ON según `QAS/18` y completar `QAS/17`, comprobando que el aporte y la idea consolidada en
+   inglés permanezcan en inglés. Cualquier FAIL o BLOCKED devuelve o mantiene el gate OFF y obliga a
+   corregir y repetir; conservar evidencia sin secretos ni participantes reales.
    Registrar D5/UAT, Meta, costo/latencia y rollback. **Solo con `QAS/22` y `QAS/17` en green se
    cambia el handoff a `DT-I20-02` corte 1/3.**
 
-2. **Después de los tres cortes:** obtener autorización separada para desplegar en ambiente aislado,
-   ejecutar `QAS/22` y luego `QAS/17` completo. Cualquier FAIL/BLOCKED mantiene el gate OFF y obliga
-   a corregir/repetir; conservar evidencia sin secretos ni participantes reales.
+2. **Antes de encender el gate:** confirmar aislamiento del emisor o teléfonos de prueba autorizados.
+   `Simulacion__Habilitada=true` no evita salidas reales; al cierre debe quedar en `false` y el gate
+   también, salvo acta formal de activación.
 
 3. **Solo con DT-P32-02 y la corrida P-32 green: implementar `DT-I20-02` corte 1/3.** Mantener su
    spec, `QAS/21` y runbook sin cambios de alcance mientras espera.

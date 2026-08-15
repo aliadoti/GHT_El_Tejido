@@ -58,6 +58,47 @@ El archivo contiene las instrucciones para crear usuarios y campañas nuevos en 
 la rúbrica, prompt y OpenRouter existentes, usar la clave únicamente como `X-Diag-Key` y guardar el
 reporte. No pegues la clave en el mensaje al agente.
 
+## Preparar la ventana controlada del catálogo (gate OFF → ON → OFF)
+
+El gate no crea semillas ni publica borradores. Las semillas `es/en` se crean, revisan y activan desde
+**Textos de conversación** mientras el gate todavía está OFF. El gate solo decide si la conversación
+usa el catálogo global activo o conserva el camino legacy.
+
+Antes de abrir la ventana, el operador configura para cada par requerido por **Preparación**:
+
+- `WhatsApp__PlantillaEnvioInicial__Mapeos__{plantillaRef}__es__Nombre` e `Idioma`;
+- `WhatsApp__PlantillaEnvioInicial__Mapeos__{plantillaRef}__en__Nombre` e `Idioma`;
+- `...__Componentes__0..N` en el orden exacto del body aprobado, solo si tiene variables.
+
+No inventes estos valores: cópialos de las plantillas aprobadas en Meta. Si el body usa, por ejemplo,
+nombre y campaña, el orden habitual del sistema es `Componentes__0=nombre` y
+`Componentes__1=campania`, pero manda el orden real de Meta. Guarda, espera el reinicio y exige
+`listoParaGateOn=true`. Readiness no reemplaza la revisión humana de aprobación/variables.
+
+1. Empieza con el gate OFF. En Azure Portal abre **App Services** → el App Service de pruebas →
+   **Settings** → **Environment variables** → **App settings**. Si
+   `Conversacion__CatalogoTextosHabilitado` no existe, el default del sistema es `false`; también
+   puedes dejarlo explícitamente en `false`. En Linux se usan dos guiones bajos `__` porque .NET los
+   interpreta como `Conversacion:CatalogoTextosHabilitado`.
+2. Con el gate OFF, deja que el agente complete `QAS/22` Pruebas 1 a 8: debe crear/revisar los
+   catálogos `es/en`, activarlos explícitamente y ejecutar la regresión legacy aplicable. Activar un
+   catálogo no enciende el gate.
+3. Cuando el agente indique que llegó al recorrido gate-ON, autoriza la ventana. Agrega o edita la
+   variable `Conversacion__CatalogoTextosHabilitado` con valor `true` y pulsa **Apply** en el diálogo
+   y nuevamente en la página. El cambio de un App Setting reinicia automáticamente el App Service.
+4. Espera a que `/health` vuelva a responder `200`. Pide al agente refrescar el panel **Preparación**
+   y comprobar que muestra el gate encendido y `es/en` activos y válidos. La vista de contenido
+   efectivo no sustituye esta comprobación.
+5. Ejecuta únicamente el recorrido bilingüe autorizado. Si falta un catálogo, aparece mezcla de
+   idioma o se detecta un envío real no previsto, detén la corrida y aplica el rollback del paso 6.
+6. Al terminar la ventana, salvo que exista acta formal para dejar P-32 activo, cambia
+   `Conversacion__CatalogoTextosHabilitado` a `false`, pulsa **Apply**, espera el reinicio y confirma
+   en **Preparación** que el gate volvió a OFF. No borres catálogos ni versiones.
+
+El estado deseado antes de una activación estable es: catálogos `es/en` activos y válidos,
+`Simulacion__Habilitada=false`, gate OFF y evidencia QAS conservada. Solo después de QAS green, D5,
+UAT, costo/latencia, plantillas Meta aplicables y acta de cambio puede dejarse el gate ON para uso.
+
 ## Durante la ejecución
 
 1. Revisa que el agente identifique el ambiente, autorización y plan antes de actuar.

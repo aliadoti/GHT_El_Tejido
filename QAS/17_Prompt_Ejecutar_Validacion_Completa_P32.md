@@ -42,6 +42,7 @@ Actúa como SDET/QA senior para El Tejido. Ejecuta y documenta la **validación 
 conversación español/inglés y catálogo de textos** en el ambiente de pruebas autorizado.
 
 Primero lee `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`,
+`QAS/23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md`,
 `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`,
 `Especificaciones/Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`,
 `Especificaciones/Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md` §§10, 12, 14 y 15,
@@ -85,24 +86,31 @@ Reglas obligatorias:
       más de uno con el mismo nombre, detén las pruebas que dependan del LLM como BLOCKED y reporta el
       identificador encontrado; jamás solicites ni manipules la key de OpenRouter.
 
-   d. Ejecuta primero las Pruebas 1 a 8 de `QAS/22`. Comprueba que existe un catálogo global activo y
-      válido para `es` y `en`. Si falta, crea una **semilla base** del idioma como borrador, descarga
-      y reimporta el JSON editado después de prevalidarlo, revísalo y actívalo explícitamente con ETag.
-      Anota versión/huella. No uses una fotografía legacy inválida ni sobrescribas una activa.
+   d. Ejecuta primero las Pruebas 1 a 8 de `QAS/22`. En el portal entra a **Textos de conversación**
+      y revisa primero el panel **Preparación**. Para cada idioma `es` y `en` que no tenga catálogo
+      global activo y válido: selecciona el idioma, pulsa **Crear semilla base** y confirma que nace
+      como borrador; descarga su **JSON para edición masiva**, modifica contenido de prueba, cárgalo,
+      ejecuta la prevalidación sin escritura y confirma **Importar como nuevo borrador**. Revisa el
+      borrador resultante y actívalo explícitamente con ETag. Al terminar, vuelve al panel
+      **Preparación** y comprueba que ambos idiomas aparecen activos y válidos. Anota versión/huella.
+      No uses una fotografía legacy inválida, no sobrescribas una activa y no confundas activar una
+      versión editorial con encender el gate del proceso.
 
    e. Crea una campaña nueva llamada `CAMP-<identificador>-COMPLETA`, con esos tres recursos, una
       pregunta activa, un mensaje inicial y textos/localizaciones completos para `es` y `en` (nombre,
       descripción, objetivo, cierre, mensaje, pregunta e instrucción). Asocia solo los dos usuarios
       principales y actívala. Para pruebas por simulación no envíes WhatsApp real; usa el webhook
-      simulado. Si hay plantillas Meta aprobadas y autorización explícita, crea además los mapeos y
-      ejecuta el lote mixto real; de lo contrario márcalo BLOCKED.
+      simulado. Revisa en **Preparación** `listoParaGateOn` y los pares `plantillaRef+idioma`. El
+      agente no crea ni modifica App Settings: si el operador ya configuró plantillas aprobadas y
+      existe autorización explícita, verifica `Nombre`, `Idioma`, orden de `Componentes` y ejecuta
+      el lote mixto real; de lo contrario márcalo BLOCKED.
 
    f. Crea una segunda campaña nueva llamada `CAMP-<identificador>-INCOMPLETA`, habilita `es/en` y
       deja deliberadamente vacío el contenido `en`. No la completes ni intentes eludir sus controles:
       úsala exclusivamente para la Prueba 6, que debe demostrar el rechazo al activar y asociar el
       tercer usuario.
 
-6. Ejecuta y evidencia las pruebas 0 a 8 de `QAS/16`: snapshot, recorrido completo es/en, menú y
+6. Ejecuta primero `QAS/23` y después evidencia las pruebas 0 a 8 de `QAS/16`: snapshot, recorrido completo es/en, menú y
    comandos, lote mixto, edición de borrador, activación, rollback, campaña incompleta, D5 real y UAT.
    Para D5 compara pares equivalentes es/en: idea fuerte, débil, inyección y salida. El modelo puede
    redactar distinto, pero no puede cambiar estados, revelar información protegida ni mezclar idiomas.
@@ -118,6 +126,7 @@ Al finalizar crea `QAS/resultados/Resultados_P32_Multidioma_<AAAA-MM-DD>.md` con
   OpenBrain Thought-Scoring` y `OpenRouter-Terra`, o el bloqueo concreto si alguno no estaba disponible;
 - versiones/huellas de catálogo y plantillas Meta usadas, sin secretos;
 - resultado de semilla base, edición masiva JSON, prevalidación y readiness de `QAS/22`;
+- resultado de la matriz de cierres y mapeos Meta de `QAS/23`;
 - tabla `Prueba | es | en | Estado | Evidencia | Observación`;
 - resultado del lote mixto, activación/rollback y campaña incompleta;
 - reporte D5, costo/tokens/latencia observados y comparación de equivalencia;

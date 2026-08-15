@@ -88,6 +88,18 @@ Para el envío inicial de campañas, configurar en el App Service:
 - `WhatsApp__PlantillaEnvioInicial__Idioma` = `es_CO` (debe coincidir exactamente con el idioma aprobado).
 - `WhatsApp__PlantillaEnvioInicial__Componentes__0` = `nombre` y `WhatsApp__PlantillaEnvioInicial__Componentes__1` = `campania` si la plantilla usa dos variables de cuerpo.
 
+Con P-32 efectivo, cada alias localizado requiere el mapa por idioma:
+
+- `WhatsApp__PlantillaEnvioInicial__Mapeos__{plantillaRef}__{idiomaInterno}__Nombre`;
+- `WhatsApp__PlantillaEnvioInicial__Mapeos__{plantillaRef}__{idiomaInterno}__Idioma`;
+- `WhatsApp__PlantillaEnvioInicial__Mapeos__{plantillaRef}__{idiomaInterno}__Componentes__{N}`,
+  solo cuando la plantilla aprobada contiene variables de cuerpo.
+
+`Componentes` enumera, en el orden exacto de los placeholders del body de Meta, claves que el gateway
+busca en las variables de renderizado (`nombre`, `area`, `empresa`, `campania`/`campaña` o propiedad
+dinámica del usuario). Una plantilla sin variables usa arreglo vacío. El readiness DT-P32-03 valida la
+estructura local, pero la aprobación y el orden real se contrastan manualmente con Meta.
+
 ---
 
 ## 3. Endpoint del webhook (recordatorio de contrato)
@@ -405,6 +417,10 @@ runtime; importar/exportar JSON solo transporta borradores del catálogo Cosmos.
 Precedencia con el gate activo: catálogo activo válido → última versión válida en caché → respaldo
 mínimo compilado del mismo idioma. Nunca se cae de inglés a español. La falta de contenido propio de
 campaña detiene la transición sin inventar una pregunta ni cambiar estado.
+
+**DT-P32-03:** `MensajeCierre` se resuelve por un único servicio para todas las rutas. Gate OFF usa el
+campo legacy exacto; gate ON usa exclusivamente `localizaciones[Conversacion.idioma].mensajeCierre`.
+Una localización ausente produce error tipificado y nunca cae al cierre de otro idioma.
 
 **Saludo del primer entrante (BD):** el saludo combinado con la pregunta inicial **no** sale de `SaludoPrimerContacto` cuando la campania tiene un `MensajeInicial` activo; en ese caso se usa ese mensaje inicial (BD, variables resueltas por `RenderizadorMensaje`). `Conversacion__Mensajes__SaludoPrimerContacto` queda como **respaldo** para campanias sin mensaje inicial activo (ver `Reglas_Conversacion_y_Participacion.md §2.1`).
 

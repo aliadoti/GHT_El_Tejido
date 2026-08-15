@@ -6,11 +6,15 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 12-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> **Última revisión: 2026-08-14 — `DT-P32-02` ESPECIFICADA (0/3), implementación inmediata.**
-> Separa semilla base `es/en` de fotografía legacy, formaliza descargar/prevalidar/reimportar JSON
-> completo como nuevo borrador, parametriza límites con techo seguro, agrega readiness y exige
-> catálogo activo por idioma al activar campañas bilingües. Plan `planes/DT-P32-02_*`, QAS `22_*`.
-> Después del despliegue autorizado y una corrida completa P-32 green se retoma `DT-I20-02`.
+> **Última revisión: 2026-08-14 — `DT-P32-03` ESPECIFICADA (0/2), siguiente código.** Corrige el
+> cierre localizado en todas las rutas y amplía readiness con los mapeos Meta requeridos. Luego se
+> ejecuta QAS/23 + P-32 completa y se retoma DT-I20-02. `DT-P32-04` (0/3) centraliza
+> idioma/contenido/resolutores después del green, sin bloquear esa prioridad. Sin implementación ni
+> configuración remota.
+>
+> **Revisión anterior: 2026-08-14 — `DT-P32-02` IMPLEMENTADA Y DESPLEGADA (3/3).** Semillas base,
+> JSON masivo y readiness pasaron su validación; la corrida P-32 descubrió los bloqueos posteriores
+> que ahora cubre DT-P32-03. Plan `planes/DT-P32-02_*`, QAS `22_*`.
 >
 > **Revisión anterior: 2026-08-13 — `DT-I20-02` ESPECIFICADA (0/3), en espera de P-32 green.**
 > Corrige la exposición visible de encabezados Markdown/estado interno causada por el prompt runtime.
@@ -122,7 +126,9 @@
 | P-32 | [P-32_Conversacion_Multidioma_y_Catalogo_Textos.md](P-32_Conversacion_Multidioma_y_Catalogo_Textos.md) | **DONE local 2026-08-11** | **4/4 cortes locales completos.** Catálogo versionado y portal, snapshots, textos globales, localizaciones de campaña, envío mixto y contextos LLM bilingües. Backend: 768 unitarias + 87 integración; Prettier verde. Gate OFF; no hubo despliegue, push ni cambio remoto. Activar exige D5/UAT, plantillas Meta inglesas aprobadas y revisión de costo. |
 | P-33 | [P-33_Consulta_y_Cierre_Visible_de_la_Idea.md](P-33_Consulta_y_Cierre_Visible_de_la_Idea.md) | **DONE local 3/3 — 2026-08-13** | Consulta pura de la idea activa/última sin menú, aporte ni evaluación; versión exacta I-19 por demanda y en cierres normales; afinidad de 24 h y reapertura de la misma cerrada ante corrección sustantiva. Gate global OFF, opt-outs por campaña, catálogo `es/en`, telemetría sin contenido y QAS `20_*`. Build `-warnaserror`: 789 unitarias + 87 integración. Pendiente D5/UAT y acta de flags; sin activación remota. |
 | **DT-I20-01** | [DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md](DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md) | **DONE local 5/5 — 2026-08-13** | I-20: permite ocasionalmente `Queda claro que...`, pero elimina su uso sistemático y descarta de forma determinista el puente duplicado frente al cuerpo insertado por el servidor. Todas las campañas reciben la corrección en mensajes nuevos; sin flag, migración, API, portal ni cambios históricos. QAS: `QAS/19_*`. |
-| **DT-P32-02** | [DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md](DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md) | **Inmediata — 0/3** | **ESPECIFICADA 2026-08-14; sin código.** Base `es/en` independiente de legacy, edición masiva JSON prevalidada que siempre crea borrador, límites operativos seguros, readiness y catálogo activo obligatorio para campaña bilingüe. Plan `planes/DT-P32-02_*`; QAS `22_*`. |
+| **DT-P32-02** | [DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md](DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md) | **DONE/DESPLEGADA — 3/3** | Base `es/en`, edición masiva JSON, límites, readiness editorial y bloqueo de campaña bilingüe implementados; QAS/22 pasó en Azure. La corrida posterior abrió DT-P32-03. |
+| **DT-P32-03** | [DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md](DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md) | **Inmediata — 0/2** | **ESPECIFICADA 2026-08-14; siguiente código.** Cierre único sin fallback cruzado y readiness estructural de mapeos Meta. Plan `planes/DT-P32-03_*`; QAS `23_*`. |
+| **DT-P32-04** | [DT-P32-04_Nucleo_Transversal_Multidioma.md](DT-P32-04_Nucleo_Transversal_Multidioma.md) | **0/3 — backlog post-green** | Refactor incremental: idioma central, contenido efectivo, resolutores especializados y readiness compuesto, sin cambiar fuentes ni formas persistidas. No bloquea DT-I20-02. |
 | **DT-I20-02** | [DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md](DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md) | **0/3 — espera DT-P32-02 green** | **ESPECIFICADA 2026-08-13; sin código.** Valida por campo la salida visible del LLM y usa respaldos seguros sin cambiar la evaluación ni las reglas de conversación. Prohíbe saneamiento global, conserva I-19/P-27/P-32/P-33/DT-I20-01 y añade resolución runtime activa+aprobada más migración gradual. Se retoma tras la nueva corrida P-32 green. QAS `21_*`; runbook `planes/DT-I20-02_*`. |
 | DT-P27-01 | [DT-P27-01_Config_Versionada_Frases_Finalizacion.md](DT-P27-01_Config_Versionada_Frases_Finalizacion.md) | **DONE local 2/2 — 2026-08-08** | Validación tras normalizar (vacío/duplicado/límite) con descarte completo y fallback; historial append-only seguro de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Sin alias nuevos, flags, edición por campaña ni configuración remota. |
 | **DT-QA-02** | [DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md](DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md) | **DONE local 2026-08-08** | `GET /api/admin/evaluaciones` con puerto obligatorio, adaptadores Cosmos/memoria `fecha DESC`, filtros/paginación/resumen y diagnóstico derivado `enlazada`/`huerfana`/`superada`/`sin_version_idea`. El DTO no expone texto libre; `superada` no se cuenta como huérfana (I-16). Build y 814 pruebas no-Calibracion verdes; sin flags, despliegue ni configuración remota. No repara documentos ni agrega UI. **Siguiente prioridad actual: DT-P32-02 corte 1.** |

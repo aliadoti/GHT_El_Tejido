@@ -118,11 +118,13 @@ plantilla detiene también al otro participante.
 2. Marca inglés, completa todos los campos de español e inglés y guarda. Cada mensaje inicial debe
    tener un alias de plantilla; no escribas claves ni secretos en esa pantalla.
 3. En el ambiente de prueba, configura el mapeo de cada alias e idioma con la plantilla Meta ya
-   aprobada. Ejemplo: `WhatsApp__PlantillaEnvioInicial__Mapeos__inicio_campania__en__Nombre`.
+   aprobada. Para `inicio_campania`, revisa en **Preparación** los pares `es/en` y configura
+   `...__Nombre`, `...__Idioma` y, si el body tiene variables, `...__Componentes__0..N` en el orden
+   exacto aprobado. El operador, no el agente de prueba, realiza este cambio y reinicia la API.
 4. Prueba primero con la palanca multidioma apagada: ambos participantes conservan el envío histórico
    en español. Enciéndela solo en un entorno aislado cuando el catálogo global esté listo.
 
-**Deberías ver:** al encender la palanca en pruebas, cada participante recibe la plantilla de su
+**Deberías ver:** antes de encender la palanca, `listoParaGateOn=true`; al encenderla en pruebas, cada participante recibe la plantilla de su
 idioma. Si falta contenido o mapeo inglés, solo ese envío queda en error; los demás continúan.
 
 ## Prueba 3 — edición masiva JSON y cambio sin desplegar

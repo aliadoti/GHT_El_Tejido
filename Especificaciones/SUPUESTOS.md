@@ -14,6 +14,20 @@
 - Impacto / reversibilidad: <a que afecta, si cierra o no fronteras post-MVP>
 ```
 
+### nucleo-multidioma-dt-p32-03-04 - Centralizar política sin unificar fuentes de contenido
+- Fecha: 2026-08-14 - Agente/Rol: Codex - Arquitecto/Backend/SDET/AppSec - Decisión expresa del usuario.
+- Contexto: la regresión P-32 encontró cierre cruzado y una precondición Meta invisible; el inventario
+  muestra múltiples puntos de resolución y dos espacios de códigos de idioma.
+- Decisión: corregir primero cierre/readiness en `DT-P32-03`; después, con P-32 green, ejecutar
+  `DT-P32-04` en tres cortes. Centralizar idioma, snapshots y resolución mediante tipos/puertos
+  especializados, conservando Cosmos para catálogo global, localizaciones en campaña y App Settings
+  para Meta/operación. Readiness reutiliza las mismas políticas runtime.
+- Alternativas descartadas: una clase transversal monolítica (acopla dominios), un único JSON runtime
+  (pierde versionado/ETag/activación/LKG) y mover contenido de campaña o nombres físicos Meta al
+  catálogo global (mezcla ciclos de vida y ambientes).
+- Impacto / reversibilidad: DT-P32-03 agrega contrato API aditivo; DT-P32-04 no cambia formas Cosmos/API.
+  Gate OFF preserva legacy. Ninguna de estas specs autoriza configuración remota, despliegue o tráfico.
+
 ### semillas-json-readiness-dt-p32-02 - Base segura separada de legacy y carga masiva siempre borrador
 - Fecha: 2026-08-14 - Agente/Rol: Codex - Arquitecto/Backend/Frontend/SDET/AppSec - Decisión expresa
   del usuario: priorizar esta deuda y una nueva corrida P-32 green antes de `DT-I20-02`.
