@@ -118,6 +118,26 @@ internal static class EndpointsAdminCatalogosTextos
                 maxBytesImportacionJson = readiness.MaxBytesImportacionJson,
             },
             listo = readiness.Idiomas.All(x => x.Listo),
+            // DT-P32-03 §3.2: `listo` conserva su significado de catalogo; esta senal agrega los
+            // mapeos Meta requeridos y es la que decide si tiene sentido encender el gate.
+            listoParaGateOn = readiness.ListoParaGateOn,
+            mapeosMeta = readiness.MapeosMeta.Select(mapeo => new
+            {
+                plantillaRef = mapeo.PlantillaRef,
+                idioma = mapeo.Idioma,
+                configurado = mapeo.Configurado,
+                nombreConfigurado = mapeo.NombreConfigurado,
+                idiomaMetaConfigurado = mapeo.IdiomaMetaConfigurado,
+                componentes = mapeo.Componentes,
+                problemas = mapeo.Problemas,
+                campanias = mapeo.Campanias.Select(campania => new
+                {
+                    campaniaId = campania.CampaniaId,
+                    nombre = campania.Nombre,
+                    estado = campania.Estado,
+                    mensajeInicialId = campania.MensajeInicialId,
+                }).ToArray(),
+            }).ToArray(),
             idiomas = readiness.Idiomas.Select(x => new
             {
                 idioma = x.Idioma,

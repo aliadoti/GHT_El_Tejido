@@ -80,12 +80,38 @@ export interface ReadinessIdiomaCatalogo {
   campaniasBloqueadas: CampaniaBloqueadaCatalogo[];
 }
 
+export interface CampaniaRequierePlantillaMeta {
+  campaniaId: string;
+  nombre: string;
+  estado: string;
+  mensajeInicialId: string;
+}
+
+/**
+ * DT-P32-03 §3.2: revisión estructural del par `plantillaRef + idioma`. No certifica la aprobación
+ * en Meta ni la correspondencia de variables: esa comprobación sigue siendo manual.
+ */
+export interface MapeoPlantillaMeta {
+  plantillaRef: string | null;
+  idioma: 'es' | 'en';
+  configurado: boolean;
+  nombreConfigurado: boolean;
+  idiomaMetaConfigurado: boolean;
+  componentes: string[];
+  problemas: string[];
+  campanias: CampaniaRequierePlantillaMeta[];
+}
+
 /** DT-P32-02 §4.1: estado real de preparación, incluido el gate del proceso. */
 export interface ReadinessCatalogosTextos {
   gateHabilitado: boolean;
   limites: { maxFrasesPorGrupo: number; maxBytesImportacionJson: number };
+  /** Disponibilidad editorial de los catálogos; DT-P32-03 conserva su significado. */
   listo: boolean;
+  /** DT-P32-03: catálogos válidos **y** mapeos Meta configurados. */
+  listoParaGateOn: boolean;
   idiomas: ReadinessIdiomaCatalogo[];
+  mapeosMeta: MapeoPlantillaMeta[];
 }
 
 @Injectable({ providedIn: 'root' })

@@ -1,6 +1,7 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
+using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Configuracion;
 
@@ -16,7 +17,16 @@ public sealed record ReadinessCatalogosTextos(
     bool GateHabilitado,
     int MaxFrasesPorGrupo,
     int MaxBytesImportacionJson,
-    IReadOnlyList<ReadinessIdiomaCatalogoTextos> Idiomas);
+    IReadOnlyList<ReadinessIdiomaCatalogoTextos> Idiomas,
+    IReadOnlyList<MapeoPlantillaMetaEvaluado> MapeosMeta)
+{
+    /// <summary>
+    /// DT-P32-03 §3.2: señal operativa agregada. Exige catálogos válidos por idioma **y** todos los
+    /// mapeos Meta requeridos estructuralmente configurados. No certifica la aprobación en Meta:
+    /// esa comprobación es manual (`QAS/23`).
+    /// </summary>
+    public bool ListoParaGateOn => Idiomas.All(idioma => idioma.Listo) && MapeosMeta.All(mapeo => mapeo.Listo);
+}
 
 public sealed record ReadinessIdiomaCatalogoTextos(
     string Idioma,
@@ -45,17 +55,20 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
     private readonly IRepositorioCampanias _campanias;
     private readonly OpcionesCatalogoTextos _opciones;
     private readonly OpcionesConversacion _opcionesConversacion;
+    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
 
     public ServicioReadinessCatalogosTextos(
         IRepositorioCatalogosTextos catalogos,
         IRepositorioCampanias campanias,
         OpcionesCatalogoTextos opciones,
-        OpcionesConversacion opcionesConversacion)
+        OpcionesConversacion opcionesConversacion,
+        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
     {
         _catalogos = catalogos;
         _campanias = campanias;
         _opciones = opciones;
         _opcionesConversacion = opcionesConversacion;
+        _plantillaEnvioInicial = plantillaEnvioInicial ?? new OpcionesPlantillaEnvioInicial();
     }
 
     public async Task<ReadinessCatalogosTextos> ObtenerAsync(
@@ -75,7 +88,9 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
             _opciones.Habilitado,
             _opciones.MaxFrasesPorGrupo,
             _opciones.MaxBytesImportacionJson,
-            detalle);
+            detalle,
+            // DT-P32-03 §3.2: los pares Meta que exigirian las campanias si el gate se encendiera.
+            ValidadorMapeosPlantillaMeta.Evaluar(campanias, idiomas, _plantillaEnvioInicial));
     }
 
     private async Task<ReadinessIdiomaCatalogoTextos> ConstruirAsync(

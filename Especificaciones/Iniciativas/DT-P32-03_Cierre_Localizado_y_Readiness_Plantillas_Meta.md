@@ -1,9 +1,25 @@
 # DT-P32-03 — Cierre localizado único y readiness de plantillas Meta
 
-> **Estado:** EN CURSO — **corte 1/2 DONE local 2026-08-14** (cierre localizado único); corte 2/2
-> pendiente (readiness Meta y portal). Sin push, despliegue ni cambio remoto; gate OFF.
+> **Estado:** **COMPLETA local 2026-08-14 (2/2)** — corte 1/2 (cierre localizado único) y corte 2/2
+> (readiness Meta y portal). Sin push, despliegue ni cambio remoto; gate OFF. Queda pendiente lo
+> operativo: `QAS/23` pruebas 4 a 7 y después `QAS/17` completo.
 > **Origen:** regresión P-32 del 2026-08-14, §§8.1 y 9.2.
 > **Prioridad:** bloqueante para repetir P-32 con el gate ON.
+>
+> **Corte 2/2 entregado:** `ValidadorMapeosPlantillaMeta` (Application, puro) enumera los pares
+> `plantillaRef + idioma` que exigirían las campañas `activa|borrador` con sus mensajes iniciales
+> **activos**, deduplicados por alias + idioma y acumulando quién los pide. El veredicto de
+> "configurado" delega en `OpcionesPlantillaEnvioInicial.TryResolver` —la misma política que aplica
+> `ServicioEnvios`— y encima se reportan `plantilla_ref_faltante`, `nombre_faltante`,
+> `idioma_meta_faltante`, `componente_vacio` y `componente_duplicado`; una plantilla sin variables
+> puede declarar `componentes: []` y quedar estructuralmente lista.
+> `ServicioReadinessCatalogosTextos` expone `MapeosMeta` y la señal agregada `ListoParaGateOn`
+> (catálogos válidos **y** mapeos configurados) sin cambiar el significado de `idiomas[].listo`; el
+> endpoint los publica de forma aditiva y el portal muestra en **Preparación** catálogos y plantillas
+> como comprobaciones separadas, advirtiendo que esto no certifica la aprobación en Meta. Backend
+> **854 unitarias + 105 de integración** (15 nuevas), portal **60** (3 nuevas); build Release
+> `-warnaserror`, `dotnet format`, `ng test`, `ng build`, Prettier de los archivos tocados y
+> `git diff --check` verdes.
 >
 > **Corte 1/2 entregado:** `IResolutorMensajeCierreCampania` /
 > `ResolutorMensajeCierreCampania` (Application, puro) concentra la política OFF/ON y devuelve

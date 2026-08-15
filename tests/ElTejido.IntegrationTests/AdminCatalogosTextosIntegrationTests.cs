@@ -3,7 +3,10 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json.Nodes;
 using ElTejido.Application.Auth;
+using ElTejido.Application.Campanas;
 using ElTejido.Application.Configuracion;
+using ElTejido.Domain.Campanas;
+using ElTejido.Domain.Common;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
@@ -379,6 +382,68 @@ public sealed class AdminCatalogosTextosIntegrationTests
         activo.Should().Contain("\"gateHabilitado\":false");
     }
 
+    /// <summary>
+    /// DT-P32-03 §3.2: readiness enumera los pares `plantillaRef + idioma` que exigirian las
+    /// campanias con el gate encendido. Falta selectiva de `en`: el catalogo puede estar listo y el
+    /// lote inicial fallaria igual, asi que `listoParaGateOn` debe quedar en `false`.
+    /// </summary>
+    [Fact]
+    public async Task Readiness_ConMapeoMetaSoloEnEspanol_ReportaElParInglesFaltante()
+    {
+        using var fabrica = ConstruirFabrica(mapeos: MapeosMeta(("es", "es_CO"), ("en", null)));
+        using var client = ClienteAdmin(fabrica);
+        await SembrarCampaniaBilingueAsync(fabrica, "inicio_campania");
+        await ActivarSemillaBaseAsync(client, "es");
+        await ActivarSemillaBaseAsync(client, "en");
+
+        using var respuesta = await client.GetAsync("/api/admin/catalogos-textos/readiness");
+        var cuerpo = JsonNode.Parse(await respuesta.Content.ReadAsStringAsync())!.AsObject();
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        // El significado editorial de `listo` no cambia: los dos catalogos siguen activos y validos.
+        cuerpo["listo"]!.GetValue<bool>().Should().BeTrue();
+        cuerpo["listoParaGateOn"]!.GetValue<bool>().Should().BeFalse();
+
+        var mapeos = cuerpo["mapeosMeta"]!.AsArray();
+        mapeos.Should().HaveCount(2);
+        var espanol = mapeos.Single(x => x!["idioma"]!.GetValue<string>() == "es")!.AsObject();
+        espanol["plantillaRef"]!.GetValue<string>().Should().Be("inicio_campania");
+        espanol["configurado"]!.GetValue<bool>().Should().BeTrue();
+        espanol["problemas"]!.AsArray().Should().BeEmpty();
+
+        var ingles = mapeos.Single(x => x!["idioma"]!.GetValue<string>() == "en")!.AsObject();
+        ingles["configurado"]!.GetValue<bool>().Should().BeFalse();
+        ingles["nombreConfigurado"]!.GetValue<bool>().Should().BeFalse();
+        ingles["problemas"]!.AsArray().Select(x => x!.GetValue<string>())
+            .Should().BeEquivalentTo("nombre_faltante", "idioma_meta_faltante");
+        var requirente = ingles["campanias"]!.AsArray().Should().ContainSingle().Subject!.AsObject();
+        requirente["campaniaId"]!.GetValue<string>().Should().Be("c_bilingue");
+        requirente["estado"]!.GetValue<string>().Should().Be("activa");
+        requirente["mensajeInicialId"]!.GetValue<string>().Should().Be("mi_1");
+        // Ni secretos ni contenido del participante viajan en la respuesta.
+        cuerpo.ToJsonString().Should().NotContain("token").And.NotContain("Hola ");
+    }
+
+    [Fact]
+    public async Task Readiness_ConMapaCompleto_QuedaListoParaGateOn()
+    {
+        using var fabrica = ConstruirFabrica(mapeos: MapeosMeta(("es", "es_CO"), ("en", "en_US")));
+        using var client = ClienteAdmin(fabrica);
+        await SembrarCampaniaBilingueAsync(fabrica, "inicio_campania");
+        await ActivarSemillaBaseAsync(client, "es");
+        await ActivarSemillaBaseAsync(client, "en");
+
+        using var respuesta = await client.GetAsync("/api/admin/catalogos-textos/readiness");
+        var cuerpo = JsonNode.Parse(await respuesta.Content.ReadAsStringAsync())!.AsObject();
+
+        cuerpo["listoParaGateOn"]!.GetValue<bool>().Should().BeTrue();
+        var mapeos = cuerpo["mapeosMeta"]!.AsArray();
+        mapeos.Should().HaveCount(2);
+        mapeos.Should().OnlyContain(x => x!["configurado"]!.GetValue<bool>());
+        mapeos.Single(x => x!["idioma"]!.GetValue<string>() == "en")!["componentes"]!
+            .AsArray().Select(x => x!.GetValue<string>()).Should().Equal("nombre");
+    }
+
     [Fact]
     public async Task EdicionMasiva_VisorPrevalidaYConsultaReadinessPeroNoImporta()
     {
@@ -447,6 +512,90 @@ public sealed class AdminCatalogosTextosIntegrationTests
         return (json["version"]!.GetValue<int>(), response.Headers.ETag!.Tag);
     }
 
+    private static async Task ActivarSemillaBaseAsync(HttpClient client, string idioma)
+    {
+        var creado = await CrearSemillaBaseAsync(client, idioma);
+        using var activar = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/admin/catalogos-textos/catalogo_conversacion/{idioma}/versiones/{creado.Version}/activar");
+        activar.Headers.Add("X-CSRF-Token", "csrf-admin");
+        activar.Headers.TryAddWithoutValidation("If-Match", creado.Etag);
+        using var respuesta = await client.SendAsync(activar);
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    /// <summary>Ajustes `WhatsApp:PlantillaEnvioInicial:Mapeos` por idioma; `null` deja el par sin configurar.</summary>
+    private static Dictionary<string, string> MapeosMeta(
+        params (string Idioma, string? IdiomaMeta)[] idiomas)
+    {
+        var ajustes = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (idioma, idiomaMeta) in idiomas.Where(x => x.IdiomaMeta is not null))
+        {
+            var prefijo = $"WhatsApp:PlantillaEnvioInicial:Mapeos:inicio_campania:{idioma}";
+            ajustes[$"{prefijo}:Nombre"] = $"el_tejido_inicio_{idioma}";
+            ajustes[$"{prefijo}:Idioma"] = idiomaMeta!;
+            ajustes[$"{prefijo}:Componentes:0"] = "nombre";
+        }
+
+        return ajustes;
+    }
+
+    /// <summary>
+    /// Campania activa `es`/`en` cuyo unico mensaje inicial activo exige el alias en ambos idiomas.
+    /// El repositorio en memoria es singleton, asi que sembrarlo aqui alimenta el readiness real.
+    /// </summary>
+    private static async Task SembrarCampaniaBilingueAsync(
+        WebApplicationFactory<Program> fabrica,
+        string plantillaRef)
+    {
+        var mensaje = MensajeInicial.Crear(
+            "mi_1",
+            "saludo",
+            "Hola {{nombre}}.",
+            1,
+            ["nombre"],
+            EstadoRegistro.Activo,
+            PlantillaWhatsApp.Crear("legacy_saludo", "es", ["nombre"]));
+        var localizaciones = new[] { "es", "en" }.ToDictionary(
+            idioma => idioma,
+            idioma => LocalizacionCampania.Crear(
+                idioma,
+                "Campania",
+                "Descripcion",
+                "Objetivo",
+                "Gracias.",
+                new Dictionary<string, LocalizacionMensajeInicial>(StringComparer.Ordinal)
+                {
+                    ["mi_1"] = new("Hola {{nombre}}.", plantillaRef),
+                },
+                null),
+            StringComparer.Ordinal);
+
+        var campania = Campania.Crear(
+            "c_bilingue",
+            "Campania",
+            "Descripcion",
+            "Objetivo",
+            EstadoCampania.Activa,
+            [mensaje],
+            null,
+            "rub_1",
+            null,
+            "llm_1",
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            ConfigConversacional.Crear(1, "Gracias."),
+            LimitesSeguridad.Crear(1500, 10, 2),
+            null,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            idiomasHabilitados: ["es", "en"],
+            localizaciones: localizaciones);
+
+        await fabrica.Services
+            .GetRequiredService<IRepositorioCampanias>()
+            .GuardarCampaniaAsync(campania, CancellationToken.None);
+    }
+
     private static async Task<JsonObject> ArchivoBaseAsync(HttpClient client, string idioma)
     {
         await CrearSemillaBaseAsync(client, idioma);
@@ -473,11 +622,17 @@ public sealed class AdminCatalogosTextosIntegrationTests
     private static WebApplicationFactory<Program> ConstruirFabrica(
         int? maxFrasesPorGrupo = null,
         bool conLegacyExcedido = false,
-        int? maxBytesImportacionJson = null)
+        int? maxBytesImportacionJson = null,
+        IReadOnlyDictionary<string, string>? mapeos = null)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.UseSetting("Persistencia:Modo", "Memoria");
+            foreach (var ajuste in mapeos ?? new Dictionary<string, string>(StringComparer.Ordinal))
+            {
+                builder.UseSetting(ajuste.Key, ajuste.Value);
+            }
+
             if (maxFrasesPorGrupo is not null)
             {
                 builder.UseSetting(

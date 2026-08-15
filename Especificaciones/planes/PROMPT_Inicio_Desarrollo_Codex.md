@@ -6,13 +6,16 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-14 — `DT-P32-03` ES EL SIGUIENTE CÓDIGO (0/2).** La corrida P-32 desplegada
-> encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para readiness. Leer
-> `Iniciativas/DT-P32-03_*`, su plan y `QAS/23`. Empezar con regresión roja de todas las rutas de
-> cierre, crear un único resolutor, mantener gate OFF exacto y jamás caer entre idiomas. En el corte
-> 2 agregar `listoParaGateOn` y mapeos Meta a API/Preparación. Tras green repetir QAS/23 + QAS/17.
-> `DT-P32-04` queda como backlog post-green y no debe mezclarse con el fix bloqueante ni desplazar
-> DT-I20-02 sin repriorización humana. No cambiar Azure, desplegar ni activar flags sin autorización.
+> **HANDOFF 2026-08-14 — `DT-P32-03` COMPLETA LOCAL (2/2); NO QUEDA CÓDIGO EN ELLA.** La corrida P-32
+> desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para
+> readiness. El corte 1 dejó un resolutor único de cierre sin fallback entre idiomas y el corte 2
+> agregó `listoParaGateOn` y `mapeosMeta[]` a `GET /catalogos-textos/readiness` más el panel
+> **Preparación** con catálogos y plantillas separados. Backend 854 + 105, portal 60, build/format/
+> `ng build`/diff verdes; gate OFF, sin push ni cambio remoto. **Lo siguiente es operativo:**
+> ejecutar `QAS/23` (1–7) y después `QAS/17` completo; recordar que readiness no consulta Graph API,
+> así que la aprobación de las plantillas en Meta se verifica a mano. `DT-P32-04` queda como backlog
+> post-green y no debe desplazar DT-I20-02 sin repriorización humana. No cambiar Azure, desplegar ni
+> activar flags sin autorización.
 
 > **HANDOFF OPERATIVO 2026-08-14 — `DT-P32-02` 3/3 IMPLEMENTADA Y DESPLEGADA.** `4d0f35c` pasó CI
 > #110 y Deploy #95. No hay código pendiente: sigue la validación controlada. Leer `AVANCES.md`,

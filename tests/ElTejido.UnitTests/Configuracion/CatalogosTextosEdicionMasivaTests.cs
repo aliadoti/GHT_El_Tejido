@@ -3,6 +3,7 @@ using ElTejido.Application.Common;
 using ElTejido.Application.Configuracion;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Seguridad;
+using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Configuracion;
@@ -172,6 +173,71 @@ public sealed class CatalogosTextosEdicionMasivaTests
         ingles.CampaniasBloqueadas.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// DT-P32-03 §3.2: `idiomas[].listo` sigue hablando solo del catalogo; la senal que decide si
+    /// tiene sentido encender el gate es `listoParaGateOn`, que ademas exige los mapeos Meta.
+    /// </summary>
+    [Fact]
+    public async Task Readiness_ConCatalogoListoPeroSinMapeoMeta_NoQuedaListoParaGateOn()
+    {
+        var campanias = new RepositorioCampaniasMemoria();
+        await campanias.GuardarCampaniaAsync(CampaniaConPlantilla("inicio_campania"), CancellationToken.None);
+        await ActivarCatalogoIngles();
+
+        var resultado = await Readiness(campanias, gate: true, new OpcionesPlantillaEnvioInicial())
+            .ObtenerAsync("en", CancellationToken.None);
+
+        resultado.Idiomas.Should().ContainSingle().Which.Listo.Should().BeTrue();
+        resultado.ListoParaGateOn.Should().BeFalse();
+        var mapeo = resultado.MapeosMeta.Should().ContainSingle().Subject;
+        mapeo.PlantillaRef.Should().Be("inicio_campania");
+        mapeo.Idioma.Should().Be("en");
+        mapeo.Configurado.Should().BeFalse();
+        mapeo.Campanias.Should().ContainSingle().Which.CampaniaId.Should().Be("c_plantilla");
+    }
+
+    [Fact]
+    public async Task Readiness_ConCatalogoYMapeoCompletos_QuedaListoParaGateOn()
+    {
+        var campanias = new RepositorioCampaniasMemoria();
+        await campanias.GuardarCampaniaAsync(CampaniaConPlantilla("inicio_campania"), CancellationToken.None);
+        await ActivarCatalogoIngles();
+        var plantillas = new OpcionesPlantillaEnvioInicial
+        {
+            Mapeos =
+            {
+                ["inicio_campania"] = new Dictionary<string, PlantillaEnvioInicialConfigurada>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["en"] = new() { Nombre = "el_tejido_inicio", Idioma = "en_US", Componentes = ["nombre"] },
+                },
+            },
+        };
+
+        var resultado = await Readiness(campanias, gate: true, plantillas)
+            .ObtenerAsync("en", CancellationToken.None);
+
+        resultado.ListoParaGateOn.Should().BeTrue();
+        resultado.MapeosMeta.Should().ContainSingle().Which.Listo.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Readiness_ConMensajeInicialSinAlias_ReportaPlantillaRefFaltante()
+    {
+        var campanias = new RepositorioCampaniasMemoria();
+        await campanias.GuardarCampaniaAsync(CampaniaConPlantilla(plantillaRef: null), CancellationToken.None);
+        await ActivarCatalogoIngles();
+
+        var resultado = await Readiness(campanias, gate: true, new OpcionesPlantillaEnvioInicial())
+            .ObtenerAsync("en", CancellationToken.None);
+
+        resultado.ListoParaGateOn.Should().BeFalse();
+        var mapeo = resultado.MapeosMeta.Should().ContainSingle().Subject;
+        mapeo.PlantillaRef.Should().BeNull();
+        mapeo.Problemas.Should().Equal(ValidadorMapeosPlantillaMeta.PlantillaRefFaltante);
+        mapeo.Campanias.Should().ContainSingle().Which.MensajeInicialId.Should().Be("mi_1");
+    }
+
     [Fact]
     public async Task Readiness_ConLegacyExcedido_LoReportaSinImpedirLaSemillaBase()
     {
@@ -210,12 +276,29 @@ public sealed class CatalogosTextosEdicionMasivaTests
     private ServicioGestionCatalogosTextos Servicio()
         => new(_repositorio, _logs, TimeProvider.System);
 
-    private ServicioReadinessCatalogosTextos Readiness(IRepositorioCampanias campanias, bool gate)
+    private ServicioReadinessCatalogosTextos Readiness(
+        IRepositorioCampanias campanias,
+        bool gate,
+        OpcionesPlantillaEnvioInicial? plantillas = null)
         => new(
             _repositorio,
             campanias,
             new OpcionesCatalogoTextos { Habilitado = gate },
-            new OpcionesConversacion());
+            new OpcionesConversacion(),
+            plantillas);
+
+    private async Task ActivarCatalogoIngles()
+    {
+        var servicio = Servicio();
+        var creado = await servicio.ImportarMasivoAsync(Edicion(idioma: "en"), "admin", CancellationToken.None);
+        await servicio.ActivarAsync(
+            Familia,
+            "en",
+            creado.Catalogo.Version,
+            creado.Etag,
+            "admin",
+            CancellationToken.None);
+    }
 
     private static SolicitudEdicionMasivaCatalogoTextos Edicion(
         string idioma = "es",
@@ -259,4 +342,48 @@ public sealed class CatalogosTextosEdicionMasivaTests
             DateTimeOffset.UnixEpoch,
             DateTimeOffset.UnixEpoch,
             idiomasHabilitados: ["es", "en"]);
+
+    /// <summary>Campania inglesa con un mensaje inicial activo que exige (o no) un alias Meta.</summary>
+    private static Campania CampaniaConPlantilla(string? plantillaRef)
+        => Campania.Crear(
+            "c_plantilla",
+            "Campania",
+            "Descripcion",
+            "Objetivo",
+            EstadoCampania.Activa,
+            [
+                MensajeInicial.Crear(
+                    "mi_1",
+                    "saludo",
+                    "Hola {{nombre}}.",
+                    1,
+                    ["nombre"],
+                    EstadoRegistro.Activo,
+                    PlantillaWhatsApp.Crear("legacy_saludo", "es", ["nombre"])),
+            ],
+            null,
+            "rub_1",
+            null,
+            "llm_1",
+            ConfigMarkdown.Crear(TipoArtefactoMarkdown.Respuesta),
+            ConfigConversacional.Crear(1, "Gracias."),
+            LimitesSeguridad.Crear(1500, 10, 2),
+            null,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            idiomasHabilitados: ["en"],
+            localizaciones: new Dictionary<string, LocalizacionCampania>(StringComparer.Ordinal)
+            {
+                ["en"] = LocalizacionCampania.Crear(
+                    "en",
+                    "Campaign",
+                    "Description",
+                    "Goal",
+                    "Thanks.",
+                    new Dictionary<string, LocalizacionMensajeInicial>(StringComparer.Ordinal)
+                    {
+                        ["mi_1"] = new("Hi {{nombre}}.", plantillaRef),
+                    },
+                    null),
+            });
 }

@@ -1,10 +1,13 @@
 # QAS 23 — DT-P32-03: cierre localizado y readiness Meta
 
-> **Estado (2026-08-14):** el corte 1/2 está implementado. Las pruebas 1 a 3 ya tienen su equivalente
-> automatizado en la suite backend (matriz por ruta con gate OFF/ON, hilo `es`/`en` y localización
-> ausente, más una prueba que impide nuevas lecturas directas del cierre), así que la ejecución manual
-> sirve para confirmarlo en el ambiente real. Las pruebas 4 a 7 dependen del corte 2/2, que aún no
-> existe: hasta entonces se registran como `BLOCKED`.
+> **Estado (2026-08-14):** los dos cortes están implementados en local. Las pruebas 1 a 3 tienen su
+> equivalente automatizado en la suite backend (matriz por ruta con gate OFF/ON, hilo `es`/`en` y
+> localización ausente, más una prueba que impide nuevas lecturas directas del cierre). Las pruebas 4
+> a 7 ya **no** están bloqueadas: el agregado de mapeos, `listoParaGateOn` y el panel **Preparación**
+> existen, con unitarias del validador, integración de `GET /catalogos-textos/readiness` y pruebas del
+> portal. La ejecución manual sigue siendo obligatoria porque readiness **no** consulta Graph API: que
+> un par aparezca como configurado no prueba que Meta haya aprobado la plantilla ni que sus variables
+> coincidan; eso se verifica a mano en el administrador de WhatsApp.
 
 ## Precondiciones
 

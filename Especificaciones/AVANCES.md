@@ -4,7 +4,28 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-03`
+- Ultima actualizacion: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET/AppSec):
+  **`DT-P32-03` corte 2/2 DONE local — readiness de plantillas Meta y Preparación con dos
+  comprobaciones separadas. DT-P32-03 queda COMPLETA en local (2/2).** `GET
+  /api/admin/catalogos-textos/readiness` agrega, de forma aditiva, `listoParaGateOn` y `mapeosMeta[]`:
+  `ValidadorMapeosPlantillaMeta` (Application, puro) enumera los pares `plantillaRef + idioma` que
+  exigirían las campañas `activa|borrador` con sus mensajes iniciales activos, deduplicados por alias
+  + idioma y con las campañas que los piden; el veredicto de "configurado" es el mismo
+  `OpcionesPlantillaEnvioInicial.TryResolver` que usa `ServicioEnvios`, así que no hay una segunda
+  interpretación. Reporta `plantilla_ref_faltante`, `nombre_faltante`, `idioma_meta_faltante`,
+  `componente_vacio` y `componente_duplicado`; una plantilla legítima sin variables puede declarar
+  `componentes: []` y quedar lista. `idiomas[].listo` **no cambia** de significado: `listoParaGateOn`
+  es la señal agregada (catálogos válidos **y** mapeos configurados). No consulta Graph API ni
+  secretos, y por tanto no certifica la aprobación en Meta: eso sigue siendo verificación manual
+  (`QAS/23`). El portal muestra «Plantillas de WhatsApp» dentro de **Preparación**, con el problema
+  en lenguaje de administrador, quién pide cada plantilla y un veredicto final que distingue
+  «los textos están listos» de «listo para empezar a usarlos». Backend **959: 854 unitarias + 105 de
+  integración** (15 nuevas: 10 del validador, 3 de readiness y 2 de integración de la ruta) y portal
+  **60** (3 nuevas); build Release `-warnaserror`, `dotnet format --verify-no-changes`, `ng test`,
+  `ng build`, `prettier --check` de los archivos tocados y `git diff --check` verdes. Sin push,
+  despliegue ni configuración remota; el gate sigue OFF. **Siguiente: ejecutar `QAS/23` (pruebas 4 a
+  7) y luego `QAS/17` completo.**
+- Actualizacion anterior: 2026-08-14 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec): **`DT-P32-03`
   corte 1/2 DONE local — cierre localizado único, sin respaldo cruzado entre idiomas.** Todas las
   rutas de cierre del orquestador pasan por `IResolutorMensajeCierreCampania`
   (`ResolutorMensajeCierreCampania`, política pura en Application): con el gate P-32 **OFF** se
@@ -1386,7 +1407,7 @@
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
-| DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **Corte 1/2 DONE local**; corte 2/2 pendiente | pendiente | build Release `-warnaserror`, 841 unitarias + 103 integración, format y `git diff --check` verdes | Corte 1: `IResolutorMensajeCierreCampania` concentra la política del cierre visible —gate OFF conserva el campo legacy exacto; gate ON usa `localizaciones.{idioma}.mensajeCierre` (`es` mantiene su respaldo histórico) y una localización ausente devuelve `LOCALIZACION_CAMPANIA_INCOMPLETA`—. Las seis rutas de cierre del orquestador resuelven antes de componer o mutar el hilo, el fallo cierra con el mensaje de configuración no disponible del idioma del hilo y deja auditoría sin texto; ninguna ruta lee ya `ConfigConversacional.MensajeCierre` y una prueba arquitectónica lo impide. Sin contratos, portal, flags ni configuración remota; gate OFF. **Cómo probarlo:** con la conversación en inglés y el catálogo encendido, terminar una idea y comprobar que la despedida llega en inglés; si a esa campaña le falta la despedida en inglés, debe salir el aviso de "configuración no disponible" y nunca la despedida en español (`QAS/23`, pruebas 1 a 3). **Pendiente: corte 2/2** (readiness de mapeos Meta, `listoParaGateOn` y portal Preparación). |
+| DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **COMPLETA local 2/2** | pendiente | build Release `-warnaserror`, 854 unitarias + 105 integración, portal 60, format, `ng build` y `git diff --check` verdes | Corte 1: `IResolutorMensajeCierreCampania` concentra la política del cierre visible —gate OFF conserva el campo legacy exacto; gate ON usa `localizaciones.{idioma}.mensajeCierre` (`es` mantiene su respaldo histórico) y una localización ausente devuelve `LOCALIZACION_CAMPANIA_INCOMPLETA`—. Las seis rutas de cierre del orquestador resuelven antes de componer o mutar el hilo, el fallo cierra con el mensaje de configuración no disponible del idioma del hilo y deja auditoría sin texto; ninguna ruta lee ya `ConfigConversacional.MensajeCierre` y una prueba arquitectónica lo impide. Sin contratos, portal, flags ni configuración remota; gate OFF. **Cómo probarlo:** con la conversación en inglés y el catálogo encendido, terminar una idea y comprobar que la despedida llega en inglés; si a esa campaña le falta la despedida en inglés, debe salir el aviso de "configuración no disponible" y nunca la despedida en español (`QAS/23`, pruebas 1 a 3). Corte 2: `ValidadorMapeosPlantillaMeta` enumera los pares `plantillaRef + idioma` requeridos por campañas `activa|borrador`, reutiliza `OpcionesPlantillaEnvioInicial.TryResolver` para decidir "configurado" y reporta los problemas estructurales; `GET /readiness` agrega `listoParaGateOn` y `mapeosMeta[]` sin cambiar `idiomas[].listo`, y **Preparación** muestra catálogos y plantillas como comprobaciones separadas. No consulta Graph API: la aprobación en Meta sigue siendo verificación manual. **Cómo probarlo:** en Preparación debe verse una línea por plantilla requerida con su estado y las campañas que la piden; con el mapeo inglés ausente los textos pueden estar listos pero el panel debe decir que todavía no se puede empezar (`QAS/23`, pruebas 4 a 7). **Pendiente: solo lo operativo** (`QAS/23` 4-7 y `QAS/17`). |
 | DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | ESPECIFICADA 0/3; en espera de DT-P32-02 green | — | revisión documental + `git diff --check` | Guardia por fragmento LLM con fallback por campo; preserva puntajes, versión I-19, umbrales, estados, P-27/P-32/P-33 y DT-I20-01. Selección runtime activa+aprobada y migración por familia nueva/campaña aislada. Se retoma después de la nueva corrida P-32 green; QAS `21_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
@@ -1526,6 +1547,49 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-14 - Claude Opus 5 - **`DT-P32-03` corte 2/2 — readiness de plantillas Meta y Preparación
+  con dos comprobaciones (DT-P32-03 COMPLETA local 2/2).** Rol: Arquitecto para la frontera del
+  validador, Backend senior .NET para readiness y contrato, Frontend Angular + UX/A11Y para
+  Preparación, SDET para las pruebas y AppSec para la superficie expuesta. Cubre `DT-P32-03 §3.2`,
+  `§4`, `§5`, `§6.5-§6.10` y `§7`; contrato `04 §5.7`, `QAS/23` pruebas 4 a 7.
+  **Qué cambió:** (1) `ValidadorMapeosPlantillaMeta` (Application, puro, sin E/S) enumera los pares
+  `plantillaRef + idioma` requeridos por las campañas `activa|borrador` y sus mensajes iniciales
+  **activos**, deduplicados por alias + idioma y acumulando las campañas que los piden
+  (`campaniaId`, nombre, estado, `mensajeInicialId`). El juicio de "configurado" delega en
+  `OpcionesPlantillaEnvioInicial.TryResolver` —la misma política del envío real— y encima se reportan
+  los problemas estructurales `plantilla_ref_faltante`, `nombre_faltante`, `idioma_meta_faltante`,
+  `componente_vacio` y `componente_duplicado`. Un mensaje inicial activo sin alias no desaparece del
+  diagnóstico. (2) `ServicioReadinessCatalogosTextos` incorpora `MapeosMeta` y expone
+  `ListoParaGateOn` = catálogos por idioma listos **y** todos los mapeos listos; `idiomas[].listo`
+  conserva su significado editorial y ningún consumidor existente cambia. (3) El endpoint agrega
+  `listoParaGateOn` y `mapeosMeta[]` de forma aditiva. (4) El portal muestra «Plantillas de WhatsApp»
+  dentro de **Preparación**: cada par con su problema traducido a lenguaje de administrador, la lista
+  de campañas que lo piden, la advertencia explícita de que esto **no** confirma la aprobación en
+  Meta, y un veredicto final que separa «los textos están listos» de «listo para empezar a usarlos».
+  **Qué NO cambió:** no se consulta Graph API, no se leen ni registran secretos, no se crean ni
+  modifican plantillas en Meta, no se escriben App Settings y el portal no se internacionalizó.
+  **Pruebas:** 15 nuevas — 10 unitarias del validador (par listo, componentes vacíos legítimos, par
+  sin mapeo, código Meta ausente, componente vacío/duplicado, alias faltante, mensaje inactivo,
+  idioma fuera de alcance, deduplicación entre campañas y un alias por idioma), 3 unitarias de
+  readiness (`listoParaGateOn` falso con catálogo listo y mapeo ausente, verdadero con mapa completo,
+  y `plantilla_ref_faltante`) y 2 de integración de `GET /api/admin/catalogos-textos/readiness`
+  (falta selectiva de `en` sobre un lote bilingüe con ambos catálogos activos, y mapa completo). El
+  portal suma 3 pruebas. Totales: backend **854 unitarias + 105 de integración**, portal **60**;
+  build Release `-warnaserror`, `dotnet format --verify-no-changes`, `ng test`, `ng build`,
+  `prettier --check` de los archivos tocados y `git diff --check` verdes.
+  **Nota de gate:** `npx prettier . --check` sigue reportando 10 archivos preexistentes del andamiaje
+  (`.prettierrc`, `angular.json`, `tsconfig*.json`, `README.md`, `.vscode/*`) que este corte no tocó.
+  **Pendiente:** ejecutar `QAS/23` pruebas 4 a 7 y después `QAS/17` completo. Sin push, despliegue ni
+  configuración remota; el gate `Conversacion:CatalogoTextosHabilitado` sigue OFF.
+  **Cómo probarlo (lenguaje humano):** (1) entra al portal, abre **Textos de conversación** y mira el
+  bloque **Preparación**; (2) además del estado por idioma debe aparecer «Plantillas de WhatsApp» con
+  una línea por plantilla que las campañas necesiten, diciendo si está configurada y qué campaña la
+  pide; (3) si a una campaña bilingüe le falta el mapeo en inglés, esa línea debe decir que falta el
+  nombre y el código de idioma de Meta, y abajo debe leerse que los textos están listos **pero**
+  todavía no se puede empezar; (4) cuando ambos idiomas estén configurados, el mensaje final debe
+  decir que todo lo que se revisa ahí está listo; (5) recuerda que esta pantalla no puede confirmar
+  que Meta aprobó la plantilla: eso se revisa a mano en el administrador de WhatsApp. Guía completa:
+  `QAS/23`, pruebas 4 a 7.
 - 2026-08-14 - Claude Opus 5 - **`DT-P32-03` corte 1/2 — cierre localizado único, sin respaldo cruzado
   entre idiomas.** Rol: Arquitecto/Tech Lead para la frontera del nuevo puerto, Backend senior .NET
   para la migración de rutas, SDET para la matriz de regresión y AppSec para la auditoría. Cubre

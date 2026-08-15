@@ -32,6 +32,27 @@
 - Impacto / reversibilidad: solo afecta campañas bilingües con el gate ON, que hoy está OFF; no cambia
   contratos, Cosmos, portal ni flags. El rollback es revertir el commit o volver el gate a OFF.
 
+### readiness-mapeos-meta-dt-p32-03 - Readiness estructural, no certificación de Meta
+- Fecha: 2026-08-14 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/Frontend/SDET/AppSec - Commit: corte 2/2 de `DT-P32-03`.
+- Contexto: `DT-P32-03 §3.2` pide mostrar los mapeos Meta requeridos antes de encender el gate, pero
+  no define quién decide "configurado" ni qué hacer con un mensaje inicial activo sin `plantillaRef`.
+- Decisión: `ValidadorMapeosPlantillaMeta` delega el veredicto de configurado en
+  `OpcionesPlantillaEnvioInicial.TryResolver` —la misma política del envío real— y añade encima un
+  diagnóstico estructural (`plantilla_ref_faltante`, `nombre_faltante`, `idioma_meta_faltante`,
+  `componente_vacio`, `componente_duplicado`). Un mensaje inicial activo sin alias se reporta en vez
+  de desaparecer. `idiomas[].listo` conserva su significado editorial y la señal operativa nueva es
+  `listoParaGateOn` = catálogos válidos **y** mapeos listos. `componentes: []` es válido para una
+  plantilla sin variables. El portal dice explícitamente que esta revisión no confirma la aprobación
+  en Meta.
+- Alternativa(s) descartada(s): reimplementar la resolución dentro de readiness (crearía una segunda
+  interpretación de "configurado" que divergiría del envío), consultar Graph API desde readiness
+  (`§4`: fuera de alcance, mete secretos y una dependencia externa en una ruta de diagnóstico),
+  cambiar el significado de `idiomas[].listo` (rompe consumidores existentes) y tratar
+  `componentes: []` como problema (bloquearía plantillas legítimas sin variables).
+- Impacto / reversibilidad: contrato API aditivo y solo-lectura; no devuelve secretos, teléfonos ni
+  contenido de participantes. No cambia Cosmos, flags ni el envío. El rollback es revertir el commit;
+  el gate permanece OFF de todos modos.
+
 ### nucleo-multidioma-dt-p32-03-04 - Centralizar política sin unificar fuentes de contenido
 - Fecha: 2026-08-14 - Agente/Rol: Codex - Arquitecto/Backend/SDET/AppSec - Decisión expresa del usuario.
 - Contexto: la regresión P-32 encontró cierre cruzado y una precondición Meta invisible; el inventario

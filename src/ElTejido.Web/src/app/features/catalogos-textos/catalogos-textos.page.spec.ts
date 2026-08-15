@@ -36,6 +36,43 @@ describe('CatalogosTextosPage', () => {
     gateHabilitado: false,
     limites: { maxFrasesPorGrupo: 100, maxBytesImportacionJson: 262144 },
     listo: false,
+    listoParaGateOn: false,
+    mapeosMeta: [
+      {
+        plantillaRef: 'inicio_campania',
+        idioma: 'es',
+        configurado: true,
+        nombreConfigurado: true,
+        idiomaMetaConfigurado: true,
+        componentes: ['nombre'],
+        problemas: [],
+        campanias: [
+          {
+            campaniaId: 'c_1',
+            nombre: 'Convención 2026',
+            estado: 'borrador',
+            mensajeInicialId: 'mi_1',
+          },
+        ],
+      },
+      {
+        plantillaRef: 'inicio_campania',
+        idioma: 'en',
+        configurado: false,
+        nombreConfigurado: false,
+        idiomaMetaConfigurado: false,
+        componentes: [],
+        problemas: ['nombre_faltante', 'idioma_meta_faltante'],
+        campanias: [
+          {
+            campaniaId: 'c_1',
+            nombre: 'Convención 2026',
+            estado: 'borrador',
+            mensajeInicialId: 'mi_1',
+          },
+        ],
+      },
+    ],
     idiomas: [
       {
         idioma: 'es',
@@ -159,6 +196,58 @@ describe('CatalogosTextosPage', () => {
     expect(texto).toContain('todavía no se usan');
     expect(texto).toContain('inglés');
     expect(texto).toContain('Convención 2026');
+  });
+
+  /** DT-P32-03 §3.2: catálogos y plantillas se leen como dos comprobaciones separadas. */
+  it('muestra qué plantilla de WhatsApp falta y quién la pide', () => {
+    const fixture = configurar(crearApi());
+
+    const texto = textoVisible(fixture);
+
+    expect(texto).toContain('Plantillas de WhatsApp');
+    expect(texto).toContain('falta el nombre de la plantilla aprobada en Meta');
+    expect(texto).toContain('falta el código de idioma de Meta');
+    expect(texto).toContain('La piden: Convención 2026 (borrador)');
+    // El par español sí está configurado y debe leerse como tal.
+    expect(texto).toContain('con los datos: nombre');
+    // No puede prometer aprobación en Meta: eso se verifica a mano.
+    expect(texto).toContain('solo comprueba que la plantilla esté configurada en el servidor');
+  });
+
+  it('no declara listo para empezar cuando los textos están listos pero falta una plantilla', () => {
+    const api = crearApi({
+      readinessCatalogosTextos: vi.fn(() => of({ ...readiness, listo: true })),
+    });
+
+    const texto = textoVisible(configurar(api));
+
+    expect(texto).toContain('todavía falta configurar plantillas');
+    expect(texto).not.toContain('está listo para empezar a usar estos textos');
+  });
+
+  it('declara listo para empezar solo cuando catálogos y plantillas están completos', () => {
+    const api = crearApi({
+      readinessCatalogosTextos: vi.fn(() =>
+        of({
+          ...readiness,
+          listo: true,
+          listoParaGateOn: true,
+          mapeosMeta: [
+            {
+              ...readiness.mapeosMeta[0],
+              idioma: 'en' as const,
+              componentes: [],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const texto = textoVisible(configurar(api));
+
+    expect(texto).toContain('está listo para empezar a usar estos textos');
+    // Una plantilla sin variables es legítima y no se presenta como problema.
+    expect(texto).toContain('sin datos variables');
   });
 
   it('separa crear la semilla base de revisar la configuración anterior', () => {

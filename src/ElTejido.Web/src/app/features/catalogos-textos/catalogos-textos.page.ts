@@ -6,6 +6,7 @@ import {
   CatalogoTextos,
   CatalogoTextosEfectivo,
   ContenidoCatalogoTextos,
+  MapeoPlantillaMeta,
   PrevalidacionCatalogoTextos,
   ReadinessCatalogosTextos,
   ReadinessIdiomaCatalogo,
@@ -93,6 +94,57 @@ interface DiferenciaGrupo {
               </li>
             }
           </ul>
+
+          <!--
+            DT-P32-03 §3.2: catálogos y plantillas son dos comprobaciones distintas. Un catálogo
+            listo no basta: sin el mapeo Meta el primer envío falla para todos los participantes.
+          -->
+          <h4>Plantillas de WhatsApp</h4>
+          <p class="subhead" id="ayuda-plantillas">
+            Esta revisión solo comprueba que la plantilla esté configurada en el servidor. No puede
+            confirmar que Meta la haya aprobado ni que sus variables coincidan: eso se verifica a
+            mano.
+          </p>
+          @if (estado.mapeosMeta.length === 0) {
+            <p class="subhead">
+              Ninguna campaña activa o en borrador pide una plantilla para estos idiomas.
+            </p>
+          } @else {
+            <ul class="lista-simple" aria-describedby="ayuda-plantillas">
+              @for (mapeo of estado.mapeosMeta; track $index) {
+                <li>
+                  <strong
+                    >{{ mapeo.plantillaRef ?? 'sin nombre corto' }} ({{
+                      nombreIdioma(mapeo.idioma)
+                    }}):</strong
+                  >
+                  @if (mapeo.problemas.length === 0) {
+                    configurada{{
+                      mapeo.componentes.length > 0
+                        ? ' con los datos: ' + mapeo.componentes.join(', ')
+                        : ' sin datos variables'
+                    }}.
+                  } @else {
+                    <span class="form-error">
+                      {{ describirMapeo(mapeo) }}
+                    </span>
+                  }
+                  <span class="subhead"> La piden: {{ nombresRequirentes(mapeo) }}. </span>
+                </li>
+              }
+            </ul>
+          }
+
+          <p [class]="estado.listoParaGateOn ? 'subhead' : 'form-error'" role="status">
+            @if (estado.listoParaGateOn) {
+              Todo lo que se revisa aquí está listo para empezar a usar estos textos.
+            } @else if (estado.listo) {
+              Los textos están listos, pero todavía falta configurar plantillas: no empieces a
+              usarlos aún.
+            } @else {
+              Todavía falta preparación: no empieces a usar estos textos.
+            }
+          </p>
         } @else {
           <p class="subhead">Sin datos de preparación.</p>
         }
@@ -415,6 +467,33 @@ export class CatalogosTextosPage {
 
   protected nombresBloqueadas(item: ReadinessIdiomaCatalogo): string {
     return item.campaniasBloqueadas.map((campania) => campania.nombre).join(', ');
+  }
+
+  protected nombresRequirentes(mapeo: MapeoPlantillaMeta): string {
+    return mapeo.campanias.map((campania) => `${campania.nombre} (${campania.estado})`).join(', ');
+  }
+
+  /** DT-P32-03 §3.2: cada problema estructural dice qué falta configurar, sin jerga del servidor. */
+  protected describirMapeo(mapeo: MapeoPlantillaMeta): string {
+    const partes = mapeo.problemas.map((problema) => {
+      if (problema === 'plantilla_ref_faltante') {
+        return 'el mensaje inicial no dice qué plantilla usar en este idioma';
+      }
+      if (problema === 'nombre_faltante') {
+        return 'falta el nombre de la plantilla aprobada en Meta';
+      }
+      if (problema === 'idioma_meta_faltante') {
+        return 'falta el código de idioma de Meta';
+      }
+      if (problema === 'componente_vacio') {
+        return 'hay un dato variable en blanco';
+      }
+      if (problema === 'componente_duplicado') {
+        return 'hay un dato variable repetido';
+      }
+      return problema;
+    });
+    return `${partes.join('; ')}.`;
   }
 
   /** Traduce el motivo técnico del servidor a algo que un administrador pueda accionar. */
