@@ -51,6 +51,15 @@ public sealed class Prompt
 
     public DateTimeOffset ActualizadoEn { get; }
 
+    /// <summary>REQ 18: la aprobacion exige usuario y fecha; <c>Crear</c> impide informar solo uno.</summary>
+    public bool EstaAprobado => AprobadoPor is not null && FechaAprobacion is not null;
+
+    /// <summary>
+    /// DT-I20-02 §5.4: unica definicion de "usable por una conversacion en curso". Una version activa
+    /// sin aprobar, o aprobada pero inactiva, no puede atender runtime; el llamador degrada seguro.
+    /// </summary>
+    public bool EsVigenteParaRuntime => Estado == EstadoPrompt.Activo && EstaAprobado;
+
     public static Prompt Crear(
         string id,
         string nombre,

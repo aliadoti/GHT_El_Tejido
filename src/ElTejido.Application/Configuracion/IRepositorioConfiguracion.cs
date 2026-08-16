@@ -32,7 +32,19 @@ public interface IRepositorioConfiguracion
         string id,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Consulta administrativa: la version numericamente mas nueva, sea cual sea su estado. No usar
+    /// en runtime (ver <see cref="ObtenerPromptVigenteAsync"/>).
+    /// </summary>
     Task<Prompt?> ObtenerUltimoPromptAsync(string id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// DT-I20-02 §5.4: resolucion <b>de runtime</b>. Devuelve la version mas nueva de la familia que
+    /// sea a la vez activa y aprobada, o el motivo fijo por el que no hay ninguna utilizable. Asi,
+    /// inactivar la ultima version devuelve el flujo a la anterior vigente en vez de dejar la familia
+    /// sin prompt.
+    /// </summary>
+    Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken);
 
     Task GuardarConfigLlmAsync(ConfigLlm config, CancellationToken cancellationToken);
 

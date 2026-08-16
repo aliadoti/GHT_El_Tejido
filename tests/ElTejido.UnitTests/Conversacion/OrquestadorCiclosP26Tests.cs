@@ -51,7 +51,8 @@ public sealed class OrquestadorCiclosP26Tests
     public OrquestadorCiclosP26Tests()
     {
         _configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
-        _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt()]));
         _configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
         _correlacion.CorrelationIdActual.Returns("corr_test");
         _gateway.EnviarTextoAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoEnvioMensaje>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())

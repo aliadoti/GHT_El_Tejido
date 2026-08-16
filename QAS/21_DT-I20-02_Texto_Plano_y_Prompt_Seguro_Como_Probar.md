@@ -1,8 +1,9 @@
 # QAS 21 — DT-I20-02: texto plano y prompt seguro
 
-> **Estado:** pruebas **1 a 7 ejecutables** desde el corte 1/3 de `DT-I20-02` (DONE local 2026-08-15),
-> en un ambiente aislado con autorización. La **prueba 8** depende del corte 2/3 (selección runtime de
-> la versión de prompt activa y aprobada) y no puede ejecutarse todavía.  
+> **Estado:** **las ocho pruebas son ejecutables** desde los cortes 1/3 y 2/3 de `DT-I20-02` (DONE
+> local 2026-08-15), en un ambiente aislado y con autorización. En la prueba 8, «activa y aprobada» es
+> ahora la condición exacta: una versión activa **sin aprobar** tampoco se usa, y el runtime cae a la
+> anterior vigente.  
 > **Objetivo:** comprobar que WhatsApp responde de forma natural, sin mostrar formato editorial ni instrucciones internas, y sin cambiar las reglas de evaluación y conversación.
 
 ## Antes de empezar
@@ -92,10 +93,10 @@ Debe verse una sola formulación del mismo contenido. Es falla si reaparece un p
 
 ## Prueba 8 — Rollback de prompt en ambiente aislado
 
-Solo después de implementar la selección segura de versiones:
+La selección segura de versiones ya está implementada (corte 2/3):
 
 1. deja una versión anterior activa y aprobada;
-2. crea una versión posterior en borrador o inactiva;
+2. crea una versión posterior en borrador, inactiva o activa **sin aprobar**;
 3. ejecuta el flujo;
 4. confirma en telemetría autorizada que runtime usó la anterior activa/aprobada;
 5. activa y aprueba la nueva versión y repite;

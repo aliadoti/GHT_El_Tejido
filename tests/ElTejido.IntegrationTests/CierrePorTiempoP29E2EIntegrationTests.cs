@@ -231,8 +231,10 @@ public sealed class CierrePorTiempoP29E2EIntegrationTests
 
         var configuracion = Substitute.For<IRepositorioConfiguracion>();
         configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
-        configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt("pr_eval", "evaluar"));
-        configuracion.ObtenerUltimoPromptAsync("pr_cierre", Arg.Any<CancellationToken>()).Returns(CrearPrompt("pr_cierre", "cierre"));
+        configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt("pr_eval", "evaluar")]));
+        configuracion.ObtenerPromptVigenteAsync("pr_cierre", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt("pr_cierre", "cierre")]));
         configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
 
         var evaluador = Substitute.For<IEvaluadorLlm>();

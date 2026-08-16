@@ -49,7 +49,9 @@ public sealed class OrquestadorConversacionTests
     public OrquestadorConversacionTests()
     {
         _configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
-        _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
+        // DT-I20-02 §5.4: runtime resuelve la version vigente (activa y aprobada) de la familia.
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt()]));
         _configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
         _correlacion.CorrelationIdActual.Returns("corr_test");
         _gateway.EnviarTextoAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TipoEnvioMensaje>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
@@ -1816,7 +1818,8 @@ public sealed class OrquestadorConversacionTests
     [Fact]
     public async Task Procesar_ConfigIncompleta_CierraNeutroSinEvaluar()
     {
-        _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns((Prompt?)null);
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver(Array.Empty<Prompt>()));
         await PrepararConversacionAsync();
         var opciones = new OpcionesConversacion
         {
@@ -1887,11 +1890,66 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<CancellationToken>());
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // DT-I20-02 §5.4: gobierno de la version de prompt en runtime (rollback verificable).
+    // ----------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task DTI2002_UltimaVersionInactiva_EvaluaConLaAnteriorActivaYAprobada()
+    {
+        // Rollback del runbook: se inactiva la v2 y el flujo debe volver a la v1 vigente, no quedarse
+        // sin prompt utilizable.
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver(
+                [CrearPrompt(version: 1), CrearPrompt(EstadoPrompt.Inactivo, aprobado: true, version: 2)]));
+        ContextoEvaluacion? contextoEvaluado = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextoEvaluado = contexto), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, "Buena idea")));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        contextoEvaluado.Should().NotBeNull();
+        contextoEvaluado!.PromptSnapshot.Version.Should().Be(1);
+        contextoEvaluado.PromptSnapshot.EsVigenteParaRuntime.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DTI2002_UltimaVersionEnBorrador_NoSeUsaYSigueLaAnteriorVigente()
+    {
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver(
+                [CrearPrompt(version: 1), CrearPrompt(EstadoPrompt.Borrador, aprobado: false, version: 2)]));
+        ContextoEvaluacion? contextoEvaluado = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextoEvaluado = contexto), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, "Buena idea")));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        contextoEvaluado!.PromptSnapshot.Version.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task DTI2002_NuevaVersionActivaYAprobada_ElRuntimeAvanzaAElla()
+    {
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt(version: 1), CrearPrompt(version: 2)]));
+        ContextoEvaluacion? contextoEvaluado = null;
+        _evaluador.EvaluarAsync(Arg.Do<ContextoEvaluacion>(contexto => contextoEvaluado = contexto), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, "Buena idea")));
+        await PrepararConversacionAsync();
+
+        await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
+
+        contextoEvaluado!.PromptSnapshot.Version.Should().Be(2);
+    }
+
     [Fact]
     public async Task Procesar_PromptSinAprobacion_CierraNeutroSinEvaluar()
     {
-        _configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>())
-            .Returns(CrearPrompt(aprobado: false));
+        _configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt(aprobado: false)]));
         await PrepararConversacionAsync();
 
         await Construir().ProcesarMensajeEntranteAsync(Participante(), Mensaje("Mi idea"), CancellationToken.None);
@@ -3546,8 +3604,8 @@ public sealed class OrquestadorConversacionTests
         => Rubrica.Crear("rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
             new[] { CriterioRubrica.Crear("claridad", 1m) }, 1, estado, Epoca, Epoca);
 
-    private static Prompt CrearPrompt(EstadoPrompt estado = EstadoPrompt.Activo, bool aprobado = true)
-        => Prompt.Crear("pr_eval", "Prompt", "evaluar", "Eres evaluador.", 1, estado,
+    private static Prompt CrearPrompt(EstadoPrompt estado = EstadoPrompt.Activo, bool aprobado = true, int version = 1)
+        => Prompt.Crear("pr_eval", "Prompt", "evaluar", "Eres evaluador v" + version + ".", version, estado,
             aprobado ? "u_admin" : null, aprobado ? Epoca : null, Epoca, Epoca);
 
     private static ConfigLlm CrearConfig(EstadoRegistro estado = EstadoRegistro.Activo)

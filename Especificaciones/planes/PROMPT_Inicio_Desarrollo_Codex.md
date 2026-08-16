@@ -6,17 +6,21 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-15 — SIGUIENTE CÓDIGO `DT-I20-02` CORTE 2/3.** El corte 1/3 quedó **DONE local**:
-> `ValidadorFragmentoVisibleLlm` puro con motivos fijos, regresión del encabezado Markdown reportado,
-> respaldo **por campo** en el evaluador, guarda de I-20 antes de `DT-I20-01` y recorte en frontera de
-> oración en vez del corte ciego. Backend **912 unitarias + 110 de integración**; build Release
-> `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin push, despliegue, Cosmos ni
-> configuración remota. Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa DT-I20-02 (§5.4 y §6
-> corte 2), bases `05`/`08`, reglas y QAS/21 prueba 8. Implementar la resolución de runtime de la
-> versión de prompt **de la familia pedida, activa y aprobada** más nueva, conservando la consulta
-> administrativa actual, y probar avance, ausencia y rollback. **No crear ni activar prompts remotos,
-> no modificar Cosmos, API ni configuración remota y no alterar puntajes, idea/versionId, umbrales,
-> madurez, estados, cierre, repreguntas, idioma o texto P-33.** No adelantar el corte 3 ni DT-P32-04.
+> **HANDOFF 2026-08-15 — SIGUIENTE CÓDIGO `DT-I20-02` CORTE 3/3.** Los cortes 1/3 y 2/3 quedaron
+> **DONE local**: contrato visible en texto plano con respaldo por campo, guarda de I-20 antes de
+> `DT-I20-01`, recorte en frontera de oración, y `ResolutorPromptRuntime` /
+> `ObtenerPromptVigenteAsync` —runtime usa la versión más nueva **activa y aprobada**, la consulta
+> administrativa no cambia, los motivos de diagnóstico se conservan y el rollback por inactivación
+> funciona, también para la voz de I-20—. Backend **925 unitarias + 110 de integración**; build
+> Release `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin push, despliegue, Cosmos ni
+> configuración remota. Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa DT-I20-02 (§5.5, §6
+> corte 3, §7.2 y §9), bases `05`/`08`, reglas, QAS/21 y el runbook. Preparar el **contenido candidato**
+> del prompt de evaluación sin tocar Cosmos, agregar las pruebas de integración conversacional de §7.2
+> (cableando el evaluador real con un `ILlmClient` falso), ejecutar las regresiones de
+> I-18/I-19/I-20/P-27/P-32/P-33 y cerrar la documentación. **No crear ni activar prompts remotos, no
+> modificar Cosmos, API ni configuración remota y no alterar puntajes, idea/versionId, umbrales,
+> madurez, estados, cierre, repreguntas, idioma o texto P-33.** La migración usa familia nueva y
+> campaña aislada, como acción humana aprobada. No adelantar DT-P32-04.
 
 > **HANDOFF HISTÓRICO 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2).** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para

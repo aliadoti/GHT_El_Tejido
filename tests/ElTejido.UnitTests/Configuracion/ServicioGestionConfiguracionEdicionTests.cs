@@ -125,6 +125,9 @@ public sealed class ServicioGestionConfiguracionEdicionTests
         public Task<Prompt?> ObtenerUltimoPromptAsync(string id, CancellationToken cancellationToken)
             => Task.FromResult(Prompts.Where(p => p.Id == id).OrderByDescending(p => p.Version).FirstOrDefault());
 
+        public Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken)
+            => Task.FromResult(ResolutorPromptRuntime.Resolver(Prompts.Where(p => p.Id == id)));
+
         public Task<IReadOnlyCollection<Prompt>> ListarVersionesPromptAsync(string id, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyCollection<Prompt>>(Prompts.Where(p => p.Id == id).ToArray());
 

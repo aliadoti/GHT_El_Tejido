@@ -374,6 +374,15 @@ internal sealed class RepositorioConfiguracionMemoria : IRepositorioConfiguracio
         }
     }
 
+    /// <summary>DT-I20-02 §5.4: misma politica pura que la implementacion Cosmos.</summary>
+    public Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult(ResolutorPromptRuntime.Resolver(_prompts.Where(p => p.Id == id)));
+        }
+    }
+
     public Task GuardarConfigLlmAsync(ConfigLlm config, CancellationToken cancellationToken)
     {
         _configs[config.Id] = config;

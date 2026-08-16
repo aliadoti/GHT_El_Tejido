@@ -495,7 +495,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
         var configuracion = Substitute.For<IRepositorioConfiguracion>();
         configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
-        configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
+        configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt()]));
         configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
 
         var evaluador = Substitute.For<IEvaluadorLlm>();
@@ -573,7 +574,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
         var configuracion = Substitute.For<IRepositorioConfiguracion>();
         configuracion.ObtenerUltimaRubricaAsync("rub_1", Arg.Any<CancellationToken>()).Returns(CrearRubrica());
-        configuracion.ObtenerUltimoPromptAsync("pr_eval", Arg.Any<CancellationToken>()).Returns(CrearPrompt());
+        configuracion.ObtenerPromptVigenteAsync("pr_eval", Arg.Any<CancellationToken>())
+            .Returns(ResolutorPromptRuntime.Resolver([CrearPrompt()]));
         configuracion.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(CrearConfig());
 
         var evaluador = Substitute.For<IEvaluadorLlm>();

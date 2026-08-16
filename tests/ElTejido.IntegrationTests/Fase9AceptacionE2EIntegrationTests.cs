@@ -729,6 +729,11 @@ public sealed class Fase9AceptacionE2EIntegrationTests
             lock (_sync) return Task.FromResult(_prompts.Where(p => p.Id == id).OrderByDescending(p => p.Version).FirstOrDefault());
         }
 
+        public Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken)
+        {
+            lock (_sync) return Task.FromResult(ResolutorPromptRuntime.Resolver(_prompts.Where(p => p.Id == id)));
+        }
+
         public Task GuardarConfigLlmAsync(ConfigLlm config, CancellationToken cancellationToken)
         {
             lock (_sync) _configs[config.Id] = config;

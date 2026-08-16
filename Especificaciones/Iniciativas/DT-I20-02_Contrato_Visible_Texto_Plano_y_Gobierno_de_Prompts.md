@@ -1,10 +1,13 @@
 # DT-I20-02 — Contrato visible en texto plano y gobierno seguro de prompts
 
-> **Estado:** **EN CURSO 1/3 — CORTE 1 DONE LOCAL (2026-08-15)**. El P-32 smoke requerido quedó green
-> el 2026-08-15 (`DT-P32-03-01`, `60b520d`, QAS/23 1–6 PASS). El corte 1 entregó
+> **Estado:** **EN CURSO 2/3 — CORTES 1 Y 2 DONE LOCAL (2026-08-15)**. El P-32 smoke requerido quedó
+> green el 2026-08-15 (`DT-P32-03-01`, `60b520d`, QAS/23 1–6 PASS). El corte 1 entregó
 > `ValidadorFragmentoVisibleLlm` (Application, puro), el respaldo **por campo** en el evaluador, la
-> guarda de I-20 previa a `DT-I20-01` y la eliminación del truncamiento a mitad de palabra.
-> **Siguiente:** corte 2/3 (selección runtime de la versión activa/aprobada más nueva).
+> guarda de I-20 previa a `DT-I20-01` y la eliminación del truncamiento a mitad de palabra. El corte 2
+> entregó `ResolutorPromptRuntime` y `ObtenerPromptVigenteAsync`: runtime usa la versión más nueva
+> **activa y aprobada**, la consulta administrativa no cambia y el rollback por inactivación funciona.
+> **Siguiente:** corte 3/3 (prompt candidato, integración conversacional de §7.2, calibración y
+> continuidad documental).
 > **Origen:** reporte real de WhatsApp con encabezados Markdown e instrucciones internas de presentación.  
 > **Alcance:** salida visible del evaluador, fragmentos de I-20 y selección segura del prompt de evaluación en runtime.  
 > **No cambia:** contratos API/Cosmos, puntajes, umbrales, estados, cierres, versión I-19, P-27, P-32, P-33 ni mensajes históricos.
@@ -228,12 +231,19 @@ No crear ni activar el prompt remoto durante la corrida de desarrollo. Su migrac
 > incluye en su alcance. Las suites E2E actuales sustituyen `IEvaluadorLlm`, así que ejercitar el
 > contrato visible de punta a punta exige cablear el evaluador real con un `ILlmClient` falso.
 
-### Corte 2/3 — Gobierno de versión runtime
+### Corte 2/3 — Gobierno de versión runtime — **DONE local 2026-08-15**
 
-- implementar selección de la versión activa/aprobada más nueva;
-- conservar la consulta administrativa actual;
-- probar avance, ausencia y rollback de versiones;
-- documentar el comportamiento efectivo en la especificación base correspondiente.
+- [x] implementar selección de la versión activa/aprobada más nueva —
+  `IRepositorioConfiguracion.ObtenerPromptVigenteAsync` sobre la política pura
+  `ResolutorPromptRuntime` (Application), compartida por la implementación Cosmos y la de memoria;
+- [x] conservar la consulta administrativa actual — `ObtenerUltimoPromptAsync` sigue devolviendo la
+  versión numéricamente más nueva, sea cual sea su estado, para el portal y la API de configuración;
+- [x] probar avance, ausencia y rollback de versiones — política pura y flujo del orquestador;
+- [x] documentar el comportamiento efectivo en la especificación base correspondiente — `08 §3.3`.
+
+> La regla se aplicó también al **prompt de voz de I-20**, que hasta ahora solo exigía estado activo
+> (I-20 §5 ya lo declara versionado/aprobado). Decisión en
+> `SUPUESTOS.md#version-de-prompt-en-runtime-dt-i20-02`.
 
 ### Corte 3/3 — Prompt candidato, calibración y continuidad
 

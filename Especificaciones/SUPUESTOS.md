@@ -1369,3 +1369,35 @@
   sin Cosmos, sin flag y sin configuración remota. Rollback: revertir el commit del corte.
 - Spec: `Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md` §4/§5.1–§5.3;
   QAS: `QAS/21_*`; runbook: `planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.
+
+### version-de-prompt-en-runtime-dt-i20-02 — «Vigente» es activa **y** aprobada, en toda la conversación
+
+- Fecha: 2026-08-15 - Agente/Rol: Claude Opus 5, Arquitecto/Backend/SDET (corte 2/3).
+- Contexto: el `promptRef` identifica una **familia**, no una versión. Runtime tomaba la versión
+  numéricamente mayor y solo después comprobaba su estado, de modo que inactivar la última dejaba la
+  familia sin prompt utilizable en vez de volver a la anterior: «inactivar la última» no era rollback.
+- Decisión:
+  - se agrega al puerto una operación **de runtime** (`ObtenerPromptVigenteAsync`) que devuelve la
+    versión más nueva **activa y aprobada**, o un motivo fijo; la política vive en
+    `ResolutorPromptRuntime` (Application, pura) y las dos implementaciones de repositorio la comparten,
+    así que no hay una segunda interpretación de «vigente»;
+  - la consulta administrativa `ObtenerUltimoPromptAsync` **conserva** su semántica: el portal y la API
+    de configuración siguen mostrando la versión más nueva, sea cual sea su estado;
+  - cuando no hay ninguna vigente, el motivo diagnóstico describe la versión **más nueva** —la que el
+    operador acaba de tocar—, conservando los códigos `prompt_no_encontrado`, `prompt_no_activo` y
+    `prompt_no_aprobado` que ya usaba la telemetría;
+  - la misma regla se aplica al **prompt de voz de I-20**, que hasta ahora solo exigía estado activo.
+    I-20 §5 lo declara «versionado/aprobado», el efecto de no encontrarlo es una degradación suave
+    —el redactor conserva sus reglas duras— y mantener dos definiciones de «usable» habría dejado la
+    puerta abierta a que una voz nunca aprobada llegue al participante.
+- Alternativas descartadas: resolver la versión dentro del orquestador con `ListarVersionesPromptAsync`
+  (mete política en una clase que ya es demasiado grande); devolver solo `Prompt?` y volver a consultar
+  para diagnosticar (I/O extra y motivo derivado dos veces); cambiar la consulta administrativa para
+  que muestre la vigente (rompe la edición de borradores en el portal); dejar el prompt de voz con el
+  criterio anterior (dos reglas para el mismo concepto).
+- Impacto/reversibilidad: método aditivo en el puerto, política pura nueva y dos puntos de lectura del
+  orquestador; sin contrato REST, sin Cosmos, sin flag y sin configuración remota. Una campaña cuyo
+  prompt de voz esté activo pero nunca aprobado deja de usar esa voz hasta aprobarla —es el efecto
+  buscado y se ve en la telemetría de redacción—. Rollback: revertir el commit del corte.
+- Spec: `Iniciativas/DT-I20-02_*` §5.4; base `08 §3.3`; QAS `QAS/21_*` prueba 8; runbook
+  `planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.

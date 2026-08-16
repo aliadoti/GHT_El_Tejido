@@ -80,6 +80,13 @@ public sealed class RepositorioConfiguracionCosmos : IRepositorioConfiguracion
     public async Task<Prompt?> ObtenerUltimoPromptAsync(string id, CancellationToken cancellationToken)
         => (await ListarVersionesPromptAsync(id, cancellationToken)).FirstOrDefault();
 
+    /// <summary>
+    /// DT-I20-02 §5.4: misma consulta por familia que ya hacia la lectura de runtime —no agrega
+    /// llamadas a Cosmos—, resuelta por la politica pura <see cref="ResolutorPromptRuntime"/>.
+    /// </summary>
+    public async Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken)
+        => ResolutorPromptRuntime.Resolver(await ListarVersionesPromptAsync(id, cancellationToken));
+
     public Task GuardarConfigLlmAsync(ConfigLlm config, CancellationToken cancellationToken)
     {
         var document = ConfigCosmosDocument.FromConfigLlm(config);

@@ -200,6 +200,18 @@ Reglas duras:
 
 ### 3.3 Llamada al proveedor — `REQ §19.1`
 - Lee `ConfigLLM` activa (proveedor, modelo, endpoint, parámetros) y resuelve la API key por `apiKeyRef` desde Key Vault (Managed Identity, caché corta). Si la `ConfigLLM` está inactiva, la rúbrica no está activa o el prompt de evaluación no está activo/aprobado, el orquestador no llama al LLM y aplica fallback seguro (`§6`).
+- **Selección de la versión del prompt en runtime (DT-I20-02 §5.4).** El `promptRef` de la campaña o
+  la pregunta identifica una **familia**, no una versión. Runtime usa la versión **más nueva que sea
+  simultáneamente activa y aprobada** (`ObtenerPromptVigenteAsync`); si la más nueva se inactiva o
+  queda en borrador, el flujo **vuelve a la anterior vigente** en vez de quedarse sin prompt, así que
+  «inactivar la última versión» sí es un rollback efectivo. Una versión activa pero sin aprobar nunca
+  se usa. Cuando no existe ninguna vigente, el motivo de diagnóstico describe la versión más nueva
+  —`prompt_no_encontrado`, `prompt_no_activo` o `prompt_no_aprobado`— y se aplica el fallback seguro.
+  La consulta administrativa de «última versión» (`ObtenerUltimoPromptAsync`, portal y API de
+  configuración) **conserva su semántica**: sigue mostrando la más nueva sea cual sea su estado. La
+  misma regla aplica al prompt de voz de I-20, que también es versionado y aprobado (I-20 §5); sin una
+  versión vigente el redactor conserva solo sus reglas duras. El rollback recomendado para volver a
+  una redacción anterior sigue siendo restaurar el `promptRef` de la campaña (runbook DT-I20-02).
 - Para `proveedor = Anthropic`, el adaptador usa `POST {endpoint}/v1/messages`, headers `x-api-key` y `anthropic-version`, `system` separado de `messages`, y parsea `content[0].text`; el texto devuelto sigue validándose con el esquema JSON de `§4`.
 - Aplica `timeoutSegundos` y `maxReintentos` configurados (`REQ §25.1`). Reintenta solo errores transitorios.
 - Solicita **salida JSON con esquema fijo** (response_format JSON / function calling según proveedor).

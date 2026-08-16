@@ -642,6 +642,9 @@ public sealed class AdminFase4EndpointsIntegrationTests
         public Task<Prompt?> ObtenerUltimoPromptAsync(string id, CancellationToken cancellationToken)
             => Task.FromResult(_prompts.Where(p => p.Id == id).OrderByDescending(p => p.Version).FirstOrDefault());
 
+        public Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken)
+            => Task.FromResult(ResolutorPromptRuntime.Resolver(_prompts.Where(p => p.Id == id)));
+
         public Task GuardarConfigLlmAsync(ConfigLlm config, CancellationToken cancellationToken)
         {
             _configs[config.Id] = config;

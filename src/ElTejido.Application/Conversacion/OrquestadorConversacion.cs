@@ -2496,9 +2496,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var promptRef = _redaccion.ResolverPromptRef(campania, pregunta, acto);
+        // DT-I20-02 §5.4: la voz de I-20 tambien es un prompt versionado y aprobado (I-20 §5), asi que
+        // runtime toma la version vigente mas nueva y no la ultima por numero. Sin ninguna vigente el
+        // redactor conserva solo sus reglas duras, como cuando la campania no configura voz.
         var prompt = string.IsNullOrWhiteSpace(promptRef)
             ? null
-            : await _configuracion.ObtenerUltimoPromptAsync(promptRef, cancellationToken);
+            : (await _configuracion.ObtenerPromptVigenteAsync(promptRef, cancellationToken)).Prompt;
         var configLlm = string.IsNullOrWhiteSpace(campania.ConfigLlmRef)
             ? null
             : await _configuracion.ObtenerConfigLlmAsync(campania.ConfigLlmRef, cancellationToken);
@@ -2523,7 +2526,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             VersionCompleta = versionCompleta,
             RetroalimentacionValidada = retroalimentacionValidada,
             PreguntaAprobada = preguntaAprobada,
-            PromptSnapshot = prompt is { Estado: EstadoPrompt.Activo } ? prompt : null,
+            // Ya viene filtrado por la resolucion de runtime (activo + aprobado).
+            PromptSnapshot = prompt,
             RubricaSnapshot = rubrica,
         };
 
@@ -4543,7 +4547,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         }
 
         var rubrica = await _configuracion.ObtenerUltimaRubricaAsync(rubricaRef, cancellationToken);
-        var prompt = await _configuracion.ObtenerUltimoPromptAsync(promptRef, cancellationToken);
+        // DT-I20-02 §5.4: la version mas nueva ACTIVA Y APROBADA de la familia, no la ultima por
+        // numero. Asi, inactivar la ultima version devuelve el flujo a la anterior vigente y el
+        // rollback del runbook es confiable; los motivos de diagnostico no cambian.
+        var promptRuntime = await _configuracion.ObtenerPromptVigenteAsync(promptRef, cancellationToken);
         var configLlm = await _configuracion.ObtenerConfigLlmAsync(campania.ConfigLlmRef, cancellationToken);
         if (rubrica is null)
         {
@@ -4555,19 +4562,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return ContextoDisponible.NoDisponible("rubrica_no_activa");
         }
 
-        if (prompt is null)
+        if (promptRuntime.Prompt is not { } prompt)
         {
-            return ContextoDisponible.NoDisponible("prompt_no_encontrado");
-        }
-
-        if (prompt.Estado != EstadoPrompt.Activo)
-        {
-            return ContextoDisponible.NoDisponible("prompt_no_activo");
-        }
-
-        if (string.IsNullOrWhiteSpace(prompt.AprobadoPor) || prompt.FechaAprobacion is null)
-        {
-            return ContextoDisponible.NoDisponible("prompt_no_aprobado");
+            return ContextoDisponible.NoDisponible(
+                promptRuntime.Motivo ?? ResolucionPromptRuntime.MotivoNoEncontrado);
         }
 
         if (configLlm is null)

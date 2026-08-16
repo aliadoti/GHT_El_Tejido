@@ -103,6 +103,8 @@ public sealed class ServicioGestionConfiguracionTests
 
         public Task<Prompt?> ObtenerUltimoPromptAsync(string id, CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<ResolucionPromptRuntime> ObtenerPromptVigenteAsync(string id, CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<IReadOnlyCollection<Prompt>> ListarVersionesPromptAsync(string id, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<IReadOnlyCollection<Prompt>> BuscarPromptsAsync(string? tipoPrompt, EstadoPrompt? estado, CancellationToken cancellationToken) => throw new NotSupportedException();
