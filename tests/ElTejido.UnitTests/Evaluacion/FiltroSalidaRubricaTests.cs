@@ -18,6 +18,47 @@ public sealed class FiltroSalidaRubricaTests
         DateTimeOffset.UnixEpoch);
 
     [Fact]
+    public void ContieneFuga_RubricaDeOchoCriterios_RevisaTodosLosNombres()
+    {
+        // DT-RUB-01 §8: la lista negra se deriva de la lista canonica completa, sin importar cuantos
+        // criterios tenga la version. Agregar criterios en una version nueva cambia la politica sin
+        // tocar codigo.
+        var nombres = new[]
+        {
+            "Claridad", "Viabilidad", "Alcance", "Novedad",
+            "Impacto", "Coherencia", "Evidencia", "Sostenibilidad",
+        };
+        var rubrica = Rubrica.Crear(
+            "r_8",
+            "Rubrica de ocho",
+            "desc",
+            EscalaRubrica.Crear(1, 5),
+            nombres.Select((n, i) => CriterioRubrica.Crear(
+                NormalizacionRubrica.NormalizarId(n), n, string.Empty, i == 7 ? 0.125m : 0.125m, i + 1)),
+            1,
+            EstadoRubrica.Activa,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch);
+
+        foreach (var nombre in nombres)
+        {
+            FiltroSalidaRubrica.ContieneFuga($"Podrias mejorar la {nombre.ToLowerInvariant()} de tu propuesta.", rubrica)
+                .Should().BeTrue($"'{nombre}' es un criterio de la version efectiva");
+        }
+
+        FiltroSalidaRubrica.ContieneFuga("Cuentame como llevarias esto a la practica manana.", rubrica)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void ContieneFuga_NombreQueSoloExisteEnUnaVersionNueva_NoAfectaALaVersionAnterior()
+    {
+        // La politica depende de la version efectiva, no de un listado global.
+        FiltroSalidaRubrica.ContieneFuga("Piensa en la sostenibilidad de la idea.", RubricaDePrueba)
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public void ContieneFuga_TextoLimpio_DevuelveFalse()
     {
         var limpio = "Cuentame mas sobre como piensas ejecutar esta idea, seria genial conocer el detalle.";

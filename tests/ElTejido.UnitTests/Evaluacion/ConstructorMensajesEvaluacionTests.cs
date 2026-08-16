@@ -69,12 +69,16 @@ public sealed class ConstructorMensajesEvaluacionTests
 
         // El modelo recibe las claves EXACTAS del contrato (08 §4), sin depender del prompt del admin.
         system.Should().Contain("retroalimentacion_usuario");
-        system.Should().Contain("calificacion_total");
-        system.Should().Contain("calificacion_por_criterio");
+        system.Should().Contain("calificaciones");
+        system.Should().Contain("criterio_id");
         system.Should().Contain("recomendacion");
         // Y la escala concreta de la rubrica (1 a 5).
         system.Should().Contain("entre 1 y 5");
         system.Should().NotContain("parafraseo_devuelto");
+
+        // DT-RUB-01 §7: ya no se le pide un total al modelo; lo calcula el servidor con los pesos.
+        system.Should().NotContain("\"calificacion_total\"");
+        system.Should().Contain("el servidor lo calcula con los pesos configurados");
     }
 
     [Fact]

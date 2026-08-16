@@ -14,8 +14,16 @@ namespace ElTejido.UnitTests.Evaluacion;
 
 public sealed class EvaluadorLlmTests
 {
+    /// <summary>
+    /// DT-RUB-01 §7: la rubrica de prueba tiene dos criterios (claridad e impacto, peso 0.5 cada
+    /// uno), asi que una salida valida debe traer exactamente esos dos <c>criterio_id</c>.
+    /// </summary>
+    private const string Calificaciones =
+        "\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":4,\"justificacion\":\"clara\"},"
+        + "{\"criterio_id\":\"impacto\",\"puntaje\":4,\"justificacion\":\"util\"}],";
+
     private const string SalidaValida =
-        "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":4,\"justificacion\":\"clara\"}],"
+        "{" + Calificaciones
         + "\"calificacion_total\":4.0,\"explicacion\":\"buena idea\",\"retroalimentacion_usuario\":\"Buena idea\","
         + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"Cuanto ahorra?\","
         + "\"temas\":[\"eficiencia\"],\"entidades\":[\"bodega\"],\"anomalia_seguridad\":false}";
@@ -64,7 +72,7 @@ public sealed class EvaluadorLlmTests
     [Fact]
     public async Task Evaluar_ParafraseoActivo_AcotaEnFronteraDeFrase()
     {
-        const string salida = "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"Buena idea\",\"parafraseo_devuelto\":\"Primera frase. Segunda frase mas extensa.\",\"recomendacion\":\"cerrar\"}";
+        const string salida = "{" + Calificaciones + "\"calificacion_total\":4,\"retroalimentacion_usuario\":\"Buena idea\",\"parafraseo_devuelto\":\"Primera frase. Segunda frase mas extensa.\",\"recomendacion\":\"cerrar\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(salida, null));
 
@@ -119,7 +127,7 @@ public sealed class EvaluadorLlmTests
     [Fact]
     public async Task Evaluar_RepreguntarSinRepregunta_DevuelveFallback()
     {
-        const string salida = "{\"calificacion_total\":3,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"repreguntar\"}";
+        const string salida = "{" + Calificaciones + "\"calificacion_total\":3,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"repreguntar\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
@@ -130,7 +138,12 @@ public sealed class EvaluadorLlmTests
     [Fact]
     public async Task Evaluar_PuntajeFueraDeEscala_DevuelveFallback()
     {
-        const string salida = "{\"calificacion_total\":99,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"cerrar\"}";
+        // DT-RUB-01 §7: el total del modelo se ignora; lo que rechaza la salida es un PUNTAJE fuera
+        // de la escala de la rubrica.
+        const string salida =
+            "{\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":99,\"justificacion\":\"x\"},"
+            + "{\"criterio_id\":\"impacto\",\"puntaje\":4,\"justificacion\":\"y\"}],"
+            + "\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"cerrar\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
@@ -141,7 +154,7 @@ public sealed class EvaluadorLlmTests
     [Fact]
     public async Task Evaluar_AnomaliaSeguridad_RegistraLogSeguridad()
     {
-        const string salida = "{\"calificacion_total\":3,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"cerrar\",\"anomalia_seguridad\":true}";
+        const string salida = "{" + Calificaciones + "\"calificacion_total\":3,\"retroalimentacion_usuario\":\"ok\",\"recomendacion\":\"cerrar\",\"anomalia_seguridad\":true}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
@@ -156,7 +169,7 @@ public sealed class EvaluadorLlmTests
     public async Task Evaluar_RetroConFugaDeCriterio_CaeARetroNeutraYRegistraAnomalia()
     {
         const string salida =
-            "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":4,\"justificacion\":\"clara\"}],"
+            "{" + Calificaciones
             + "\"calificacion_total\":4.0,\"explicacion\":\"buena idea\","
             + "\"retroalimentacion_usuario\":\"Tu puntaje en claridad fue bueno.\","
             + "\"recomendacion\":\"cerrar\",\"temas\":[],\"entidades\":[],\"anomalia_seguridad\":false}";
@@ -176,7 +189,7 @@ public sealed class EvaluadorLlmTests
     public async Task Evaluar_RepreguntaConFugaDePuntaje_DescartaLaRepreguntaYRegistraAnomalia()
     {
         const string salida =
-            "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":2,\"justificacion\":\"confusa\"}],"
+            "{" + Calificaciones
             + "\"calificacion_total\":2.0,\"explicacion\":\"mejorable\",\"retroalimentacion_usuario\":\"Buen inicio\","
             + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"Sacaste 2 de 5, cuentame mas.\","
             + "\"temas\":[],\"entidades\":[],\"anomalia_seguridad\":false}";
@@ -223,7 +236,7 @@ public sealed class EvaluadorLlmTests
             + "### Lo que todavía falta\\nLa forma de comparar.\\n"
             + "### Siguiente ajuste recomendado\\nDefinir la métrica.";
         const string salida =
-            "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":4,\"justificacion\":\"clara\"}],"
+            "{" + Calificaciones
             + "\"calificacion_total\":4.0,\"explicacion\":\"buena idea\","
             + "\"retroalimentacion_usuario\":\"" + retro + "\","
             + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Con qué métrica compararías?\","
@@ -257,7 +270,7 @@ public sealed class EvaluadorLlmTests
     public async Task Evaluar_RepreguntaConEstructuraInvalida_SoloSustituyeEseCampo()
     {
         const string salida =
-            "{\"calificacion_total\":3,\"explicacion\":\"parcial\",\"retroalimentacion_usuario\":\"Tu idea avanza.\","
+            "{" + Calificaciones + "\"calificacion_total\":3,\"explicacion\":\"parcial\",\"retroalimentacion_usuario\":\"Tu idea avanza.\","
             + "\"recomendacion\":\"repreguntar\","
             + "\"repregunta_sugerida\":\"Pregunta clave: ¿qué métrica usarías?\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
@@ -270,14 +283,16 @@ public sealed class EvaluadorLlmTests
         // El campo válido se conserva carácter por carácter.
         resultado.Evaluacion.RetroalimentacionEnviada.Should().Be("Tu idea avanza.");
         resultado.Evaluacion.Recomendacion.Should().Be(RecomendacionEvaluacion.Repreguntar);
-        resultado.Evaluacion.CalificacionTotal.Should().Be(3m);
+        // DT-RUB-01 §7: la evaluacion de fondo no cambia y el total sigue siendo el del SERVIDOR
+        // (4 = (4x0.5 + 4x0.5)), no el 3 que declaro el modelo.
+        resultado.Evaluacion.CalificacionTotal.Should().Be(4m);
     }
 
     [Fact]
     public async Task Evaluar_RetroConPreguntaAdemasDeLaRepregunta_EvitaDosPreguntasEnElMismoTurno()
     {
         const string salida =
-            "{\"calificacion_total\":3,\"retroalimentacion_usuario\":\"Tu idea avanza. ¿Qué métrica usarías?\","
+            "{" + Calificaciones + "\"calificacion_total\":3,\"retroalimentacion_usuario\":\"Tu idea avanza. ¿Qué métrica usarías?\","
             + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Quién mediría ese ahorro?\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(salida, null));
@@ -294,7 +309,7 @@ public sealed class EvaluadorLlmTests
         // §4.1: `caja #3` y un salto de línea sin estructura son contenido legítimo.
         const string retro = "La diferencia está en la caja #3.\\nEso ya queda claro.";
         const string salida =
-            "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + retro + "\",\"recomendacion\":\"cerrar\"}";
+            "{" + Calificaciones + "\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + retro + "\",\"recomendacion\":\"cerrar\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(salida, null));
 
@@ -313,7 +328,7 @@ public sealed class EvaluadorLlmTests
         // §5.2.7: el truncamiento ciego desaparece; el corte cae siempre en un cierre de oración.
         var larga = string.Concat(Enumerable.Repeat("Esta frase describe el avance del piloto. ", 20)).Trim();
         var salida =
-            "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + larga + "\",\"recomendacion\":\"cerrar\"}";
+            "{" + Calificaciones + "\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + larga + "\",\"recomendacion\":\"cerrar\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(salida, null));
 
@@ -330,13 +345,151 @@ public sealed class EvaluadorLlmTests
     {
         var larga = string.Concat(Enumerable.Repeat("palabra ", 120)).Trim();
         var salida =
-            "{\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + larga + "\",\"recomendacion\":\"cerrar\"}";
+            "{" + Calificaciones + "\"calificacion_total\":4,\"retroalimentacion_usuario\":\"" + larga + "\",\"recomendacion\":\"cerrar\"}";
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
             .Returns(new LlmRespuesta(salida, null));
 
         var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
 
         resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+    }
+
+    [Theory]
+    // DT-RUB-01 §7 (QAS/24 prueba 5): las cuatro formas de salida invalida caen al fallback seguro.
+    [InlineData("[{\"criterio_id\":\"claridad\",\"puntaje\":4,\"justificacion\":\"ok\"}]", "criterio_faltante")]
+    [InlineData(
+        "[{\"criterio_id\":\"claridad\",\"puntaje\":4,\"justificacion\":\"ok\"},"
+        + "{\"criterio_id\":\"impacto\",\"puntaje\":4,\"justificacion\":\"ok\"},"
+        + "{\"criterio_id\":\"alcance\",\"puntaje\":4,\"justificacion\":\"ok\"}]",
+        "criterio_extra")]
+    [InlineData(
+        "[{\"criterio_id\":\"claridad\",\"puntaje\":4,\"justificacion\":\"ok\"},"
+        + "{\"criterio_id\":\"claridad\",\"puntaje\":2,\"justificacion\":\"ok\"}]",
+        "criterio_duplicado")]
+    [InlineData(
+        "[{\"criterio_id\":\"claridad\",\"puntaje\":9,\"justificacion\":\"ok\"},"
+        + "{\"criterio_id\":\"impacto\",\"puntaje\":4,\"justificacion\":\"ok\"}]",
+        "puntaje_fuera_escala")]
+    public async Task Evaluar_SalidaQueNoCumpleElConjuntoExacto_CaeAlFallbackSeguro(
+        string calificaciones,
+        string motivoEsperado)
+    {
+        var salida = "{\"calificaciones\":" + calificaciones
+            + ",\"retroalimentacion_usuario\":\"Buena idea\",\"recomendacion\":\"cerrar\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Fallback>();
+        ((ResultadoEvaluacion.Fallback)resultado).Motivo.Should().Be("salida_invalida:" + motivoEsperado);
+
+        // No se inventan notas parciales: la evaluacion de fallback no conserva calificaciones.
+        resultado.Evaluacion.CalificacionPorCriterio.Should().BeEmpty();
+        resultado.Evaluacion.CalificacionTotal.Should().Be(0m);
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+    }
+
+    [Fact]
+    public async Task Evaluar_TotalDelModeloDistinto_PersisteElTotalDelServidorYRegistraLaDiferencia()
+    {
+        // claridad=5, impacto=3 con pesos 0.5/0.5 -> total del servidor = 4. El modelo declara 1.
+        var salida =
+            "{\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":5,\"justificacion\":\"clara\"},"
+            + "{\"criterio_id\":\"impacto\",\"puntaje\":3,\"justificacion\":\"medio\"}],"
+            + "\"calificacion_total\":1,\"retroalimentacion_usuario\":\"Buena idea\",\"recomendacion\":\"cerrar\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        resultado.Evaluacion.CalificacionTotal.Should().Be(4m);
+
+        // La diferencia se observa con ids y magnitud, nunca con texto ni PII.
+        await _logSeguridad.Received(1).RegistrarAsync(
+            Arg.Is<LogSeguridad>(l => l.Resultado == "total_modelo_difiere"
+                && (l.Detalle ?? string.Empty).Contains("rubrica=r_general")
+                && (l.Detalle ?? string.Empty).Contains("diferencia=3")
+                && !(l.Detalle ?? string.Empty).Contains("Buena idea")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Evaluar_SalidaValida_PersisteSnapshotDeRubricaYPesosPorId()
+    {
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(SalidaValida, null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        var snapshot = resultado.Evaluacion.RubricaSnapshot;
+        snapshot.Should().NotBeNull();
+        snapshot!.RubricaId.Should().Be("r_general");
+        snapshot.Version.Should().Be(3);
+        snapshot.Criterios.Select(c => c.Id).Should().Equal("claridad", "impacto");
+        resultado.Evaluacion.PesosUsados.Keys.Should().BeEquivalentTo(["claridad", "impacto"]);
+        resultado.Evaluacion.CalificacionPorCriterio.Select(c => c.CriterioId)
+            .Should().Equal("claridad", "impacto");
+    }
+
+    [Fact]
+    public async Task Evaluar_Fallback_ConservaElSnapshotParaPoderExplicarLoOcurrido()
+    {
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta("no es json", null));
+
+        var resultado = await Construir().EvaluarAsync(CrearContexto(), CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Fallback>();
+        resultado.Evaluacion.RubricaSnapshot.Should().NotBeNull();
+        resultado.Evaluacion.RubricaSnapshot!.Criterios.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Evaluar_MismoPromptConOtraRubrica_UsaLosCriteriosDeEsaVersion()
+    {
+        // DT-RUB-01 §13.6: el prompt no nombra criterios; el servidor inyecta la version efectiva.
+        var otraRubrica = Rubrica.Crear(
+            "r_qa_tres",
+            "Rubrica de tres",
+            "desc",
+            EscalaRubrica.Crear(1, 5),
+            new[]
+            {
+                CriterioRubrica.Crear("relevancia", "Relevancia", string.Empty, 0.5m, 1),
+                CriterioRubrica.Crear("esfuerzo", "Esfuerzo", string.Empty, 0.3m, 2),
+                CriterioRubrica.Crear("riesgo", "Riesgo", string.Empty, 0.2m, 3),
+            },
+            1,
+            EstadoRubrica.Activa,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch);
+
+        const string salida =
+            "{\"calificaciones\":[{\"criterio_id\":\"relevancia\",\"puntaje\":5,\"justificacion\":\"alta\"},"
+            + "{\"criterio_id\":\"esfuerzo\",\"puntaje\":3,\"justificacion\":\"medio\"},"
+            + "{\"criterio_id\":\"riesgo\",\"puntaje\":2,\"justificacion\":\"alto\"}],"
+            + "\"retroalimentacion_usuario\":\"Buena idea\",\"recomendacion\":\"cerrar\"}";
+
+        LlmRequest? capturado = null;
+        _client.CompletarJsonAsync(Arg.Do<LlmRequest>(r => capturado = r), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(
+            CrearContexto() with { RubricaSnapshot = otraRubrica },
+            CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Exito>();
+        // (5x0.5) + (3x0.3) + (2x0.2) = 3.8
+        resultado.Evaluacion.CalificacionTotal.Should().Be(3.8m);
+
+        // El mismo prompt administrable viajo sin enumerar criterios: los inyecto el servidor.
+        capturado.Should().NotBeNull();
+        var contenido = string.Join("\n", capturado!.Mensajes.Select(m => m.Contenido));
+        contenido.Should().Contain("criterio_id=relevancia");
+        contenido.Should().Contain("criterio_id=riesgo");
+        contenido.Should().NotContain("criterio_id=claridad");
     }
 
     private EvaluadorLlm Construir()

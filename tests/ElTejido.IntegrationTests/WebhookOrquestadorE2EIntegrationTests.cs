@@ -426,7 +426,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
     /// y una pregunta incrustada además de la repregunta). Se usa como salida del LLM falso.
     /// </summary>
     private const string SalidaLlmDelCasoReportado =
-        "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":3,\"justificacion\":\"clara\"}],"
+        "{\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":3,\"justificacion\":\"clara\"}],"
         + "\"calificacion_total\":3,\"explicacion\":\"aporte concreto\","
         + "\"retroalimentacion_usuario\":\"Ya quedó claro que quieres comparar el almacenamiento en racks.\\n"
         + "### Lo que ya queda claro\\nEl objetivo y el punto de arribo.\\n"
@@ -438,7 +438,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
     /// <summary>Misma evaluación de fondo, pero con los campos visibles ya en texto plano.</summary>
     private const string SalidaLlmEquivalenteValida =
-        "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":3,\"justificacion\":\"clara\"}],"
+        "{\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":3,\"justificacion\":\"clara\"}],"
         + "\"calificacion_total\":3,\"explicacion\":\"aporte concreto\","
         + "\"retroalimentacion_usuario\":\"Tu idea sobre el almacenamiento en racks ya tiene objetivo y punto de arribo.\","
         + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Con qué unidad compararías los dos puntos de arribo?\","

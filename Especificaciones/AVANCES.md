@@ -4,7 +4,31 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Arquitecto/Backend/SDET):
+- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Backend/SDET/AppSec):
+  **`DT-RUB-01` CORTE 2/4 DONE LOCAL — evaluación autoritativa.** El contrato de salida cambió de
+  `calificacion_por_criterio`/`criterio` a **`calificaciones`/`criterio_id`**: el emparejamiento es
+  por id canónico y **el nombre visible lo pone el snapshot del servidor**, no el modelo.
+  `ContratoSalidaRubrica` (Application, puro) exige el conjunto **exacto** de la versión efectiva y
+  devuelve los códigos estables `criterio_faltante`, `criterio_extra`, `criterio_duplicado`,
+  `puntaje_fuera_escala` y `justificacion_vacia`; cualquiera de ellos cae al **fallback seguro ya
+  existente**, sin notas parciales ni reintento. **El total lo calcula el servidor**
+  (`sum(puntaje*peso)/sum(peso)` en `decimal`, sin redondear) y es el que se persiste y el que
+  consumen umbrales y madurez —cuya semántica no cambia—; `calificacion_total` del modelo pasó a
+  `decimal?` y solo emite `total_modelo_difiere` con rúbrica, versión y magnitud, sin texto ni PII.
+  El prompt ya no pide un total y el servidor inyecta el bloque determinista de la versión efectiva
+  (id, versión, escala, instrucciones y criterios en orden con `criterio_id`, nombre, descripción y
+  peso) más la lista literal de ids exigidos: una prueba corre **el mismo prompt contra dos rúbricas
+  distintas** y verifica que cada salida usa solo los criterios de la suya. `CalculadorEjeDebil`
+  empareja por id (desempate menor peso → `orden` → id ordinal) y cae al nombre **solo** para
+  calificaciones históricas sin id; `FiltroSalidaRubrica` deriva alias de la lista canónica completa
+  —probado con ocho criterios— y suma el plural `calificaciones`, que la comparación por palabra
+  entera no cubría. La evaluación persiste `criterioId`, `pesosUsados` indexado por id y el nuevo
+  `rubricaSnapshot` (escala, huella y criterios ordenados), también en el camino de fallback; un
+  documento histórico sin `criterioId` se lee conservando su nombre snapshot y **no se muta**.
+  Backend **985 unitarias (+26) + 119 de integración** y 1 de calibración, todas verdes; build
+  Release `-warnaserror`, `dotnet format` y `git diff --check` limpios. Sin portal, push, despliegue,
+  Cosmos, Azure ni migración. **Siguiente: corte 3/4** (portal estructurado).
+- Actualizacion anterior: 2026-08-16 (Claude Opus 5, Arquitecto/Backend/SDET):
   **`DT-RUB-01` CORTE 1/4 DONE LOCAL — dominio, validador/compilador, persistencia y API.** La
   estructura versionada ya es la fuente única. `CriterioRubrica` pasa a
   `(Id, Nombre, Descripcion, Peso, Orden)`: el `id` canónico es la clave estable y el nombre queda

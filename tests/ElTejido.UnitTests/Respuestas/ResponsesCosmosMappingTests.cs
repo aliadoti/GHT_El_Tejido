@@ -1,4 +1,5 @@
 using ElTejido.Domain.Campanas;
+using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Infrastructure.Respuestas;
@@ -124,6 +125,94 @@ public sealed class ResponsesCosmosMappingTests
         resultado.AnomaliaSeguridad.Should().BeTrue();
         resultado.ConfigLlmSnapshot.Modelo.Should().Be("gpt-4o-mini");
         resultado.ParafraseoDevuelto.Should().Be("Entendi que propones optimizar la bodega.");
+    }
+
+    [Fact]
+    public void Evaluacion_RoundTrip_ConservaSnapshotDeRubricaYCriterioId()
+    {
+        // DT-RUB-01 §8: la evaluacion debe seguir siendo explicable aunque despues exista una version
+        // nueva de la rubrica, sin volver a consultarla.
+        var rubrica = Rubrica.Crear(
+            "r_general",
+            "Rubrica general",
+            "desc",
+            new EscalaRubrica(1, 5),
+            [
+                CriterioRubrica.Crear("claridad", "Claridad", "Que tan concreta es.", 0.3m, 1),
+                CriterioRubrica.Crear("viabilidad", "Viabilidad", "Que tan realizable es.", 0.7m, 2),
+            ],
+            3,
+            EstadoRubrica.Activa,
+            Epoca,
+            Epoca);
+
+        var evaluacion = DominioEvaluacion.Crear(
+            "eval_1", "c_1", "resp_1", "u_1", "p_1", "r_general", 3, "pr_eval", 5, "llm_default",
+            new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
+            new Dictionary<string, decimal> { ["claridad"] = 0.3m, ["viabilidad"] = 0.7m },
+            new[]
+            {
+                CalificacionCriterio.Crear("claridad", "Claridad", 5m, "clara"),
+                CalificacionCriterio.Crear("viabilidad", "Viabilidad", 3m, "cuesta"),
+            },
+            3.6m, "buena", "Buena idea", RecomendacionEvaluacion.Cerrar, null,
+            null, null, anomaliaSeguridad: false, Epoca,
+            rubricaSnapshot: SnapshotRubricaEvaluacion.Desde(rubrica));
+
+        var resultado = EvaluacionCosmosDocument.FromDomain(evaluacion).ToDomain();
+
+        resultado.CalificacionPorCriterio.Select(c => c.CriterioId).Should().Equal("claridad", "viabilidad");
+        resultado.CalificacionTotal.Should().Be(3.6m);
+        resultado.RubricaSnapshot.Should().NotBeNull();
+        resultado.RubricaSnapshot!.RubricaId.Should().Be("r_general");
+        resultado.RubricaSnapshot.Version.Should().Be(3);
+        resultado.RubricaSnapshot.Escala.Max.Should().Be(5);
+        resultado.RubricaSnapshot.HashEstructura.Should().Be(rubrica.HashEstructura);
+        resultado.RubricaSnapshot.Criterios.Select(c => c.Id).Should().Equal("claridad", "viabilidad");
+        resultado.RubricaSnapshot.Criterios.Select(c => c.Peso).Should().Equal(0.3m, 0.7m);
+        resultado.RubricaSnapshot.Criterios[0].Descripcion.Should().Be("Que tan concreta es.");
+    }
+
+    [Fact]
+    public void Evaluacion_DocumentoHistoricoSinCriterioId_ConservaElNombreSnapshot()
+    {
+        // 03 §3.9: la compatibilidad de lectura no infiere una clave que el documento nunca tuvo.
+        const string JsonLegacy = """
+            {
+              "id": "eval_legacy",
+              "type": "Evaluacion",
+              "campaniaId": "c_1",
+              "respuestaId": "resp_1",
+              "usuarioId": "u_1",
+              "preguntaId": "p_1",
+              "rubricaRef": "r_general",
+              "versionRubrica": 2,
+              "promptRef": "pr_eval",
+              "versionPrompt": 4,
+              "configLLMRef": "llm_default",
+              "configLLMSnapshot": { "proveedor": "AzureOpenAI", "modelo": "gpt-4o-mini", "endpoint": "https://x", "parametros": {} },
+              "pesosUsados": { "Impacto": 1.0 },
+              "calificacionPorCriterio": [ { "criterio": "Impacto", "puntaje": 4, "justificacion": "ok" } ],
+              "calificacionTotal": 4.0,
+              "explicacion": "buena",
+              "retroalimentacionEnviada": "Gracias",
+              "recomendacion": "cerrar",
+              "temas": [],
+              "entidades": [],
+              "anomaliaSeguridad": false,
+              "fecha": "1970-01-01T00:00:00Z"
+            }
+            """;
+
+        var resultado = Newtonsoft.Json.JsonConvert
+            .DeserializeObject<EvaluacionCosmosDocument>(JsonLegacy)!
+            .ToDomain();
+
+        resultado.CalificacionPorCriterio.Should().ContainSingle();
+        resultado.CalificacionPorCriterio.First().Criterio.Should().Be("Impacto");
+        resultado.CalificacionPorCriterio.First().CriterioId.Should().BeEmpty();
+        resultado.RubricaSnapshot.Should().BeNull();
+        resultado.CalificacionTotal.Should().Be(4.0m);
     }
 
     [Fact]

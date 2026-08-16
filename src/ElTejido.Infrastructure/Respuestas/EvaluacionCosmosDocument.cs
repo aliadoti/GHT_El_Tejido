@@ -1,3 +1,4 @@
+using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Evaluacion;
 using Newtonsoft.Json;
 using DominioEvaluacion = ElTejido.Domain.Evaluacion.Evaluacion;
@@ -97,6 +98,11 @@ internal sealed class EvaluacionCosmosDocument
     [JsonProperty("seedThoughtsSnapshot", NullValueHandling = NullValueHandling.Ignore)]
     public SeedThoughtsSnapshotDocument? SeedThoughtsSnapshot { get; init; }
 
+    // DT-RUB-01 (aditivo): version de rubrica congelada. Ausente en documentos previos, que se leen
+    // igual conservando el nombre snapshot de cada calificacion.
+    [JsonProperty("rubricaSnapshot", NullValueHandling = NullValueHandling.Ignore)]
+    public RubricaSnapshotDocument? RubricaSnapshot { get; init; }
+
     public static EvaluacionCosmosDocument FromDomain(DominioEvaluacion evaluacion)
         => new()
         {
@@ -122,6 +128,7 @@ internal sealed class EvaluacionCosmosDocument
             CalificacionPorCriterio = evaluacion.CalificacionPorCriterio
                 .Select(c => new CalificacionCriterioDocument
                 {
+                    CriterioId = c.CriterioId.Length == 0 ? null : c.CriterioId,
                     Criterio = c.Criterio,
                     Puntaje = c.Puntaje,
                     Justificacion = c.Justificacion,
@@ -153,6 +160,27 @@ internal sealed class EvaluacionCosmosDocument
                 Contenido = evaluacion.SeedThoughtsSnapshot.Contenido.ToList(),
                 Truncadas = evaluacion.SeedThoughtsSnapshot.Truncadas,
             },
+            RubricaSnapshot = evaluacion.RubricaSnapshot is null ? null : new RubricaSnapshotDocument
+            {
+                RubricaId = evaluacion.RubricaSnapshot.RubricaId,
+                Version = evaluacion.RubricaSnapshot.Version,
+                Escala = new EscalaSnapshotDocument
+                {
+                    Min = evaluacion.RubricaSnapshot.Escala.Min,
+                    Max = evaluacion.RubricaSnapshot.Escala.Max,
+                },
+                HashEstructura = evaluacion.RubricaSnapshot.HashEstructura,
+                Criterios = evaluacion.RubricaSnapshot.Criterios
+                    .Select(c => new CriterioSnapshotDocument
+                    {
+                        Id = c.Id,
+                        Nombre = c.Nombre,
+                        Descripcion = c.Descripcion.Length == 0 ? null : c.Descripcion,
+                        Peso = c.Peso,
+                        Orden = c.Orden,
+                    })
+                    .ToList(),
+            },
         };
 
     public DominioEvaluacion ToDomain()
@@ -174,7 +202,11 @@ internal sealed class EvaluacionCosmosDocument
                 ConfigLlmSnapshot.Parametros),
             PesosUsados,
             CalificacionPorCriterio
-                .Select(c => CalificacionCriterio.Crear(c.Criterio, c.Puntaje, c.Justificacion))
+                // DT-RUB-01: un documento historico sin criterioId conserva su nombre snapshot y no
+                // se muta; no se infiere una clave que nunca tuvo (03 §3.9).
+                .Select(c => string.IsNullOrWhiteSpace(c.CriterioId)
+                    ? CalificacionCriterio.CrearHistorico(c.Criterio, c.Puntaje, c.Justificacion)
+                    : CalificacionCriterio.Crear(c.CriterioId, c.Criterio, c.Puntaje, c.Justificacion))
                 .ToArray(),
             CalificacionTotal,
             Explicacion,
@@ -192,7 +224,17 @@ internal sealed class EvaluacionCosmosDocument
             OrigenTextoEvaluado,
             SeedThoughtsSnapshot is null
                 ? null
-                : new SeedThoughtsSnapshot(SeedThoughtsSnapshot.Usadas, SeedThoughtsSnapshot.Contenido, SeedThoughtsSnapshot.Truncadas));
+                : new SeedThoughtsSnapshot(SeedThoughtsSnapshot.Usadas, SeedThoughtsSnapshot.Contenido, SeedThoughtsSnapshot.Truncadas),
+            RubricaSnapshot is null
+                ? null
+                : new SnapshotRubricaEvaluacion(
+                    RubricaSnapshot.RubricaId,
+                    RubricaSnapshot.Version,
+                    new EscalaRubrica(RubricaSnapshot.Escala.Min, RubricaSnapshot.Escala.Max),
+                    RubricaSnapshot.HashEstructura,
+                    RubricaSnapshot.Criterios
+                        .Select(c => CriterioRubrica.Crear(c.Id, c.Nombre, c.Descripcion ?? string.Empty, c.Peso, c.Orden))
+                        .ToArray()));
 
     private static string MapearRecomendacion(RecomendacionEvaluacion recomendacion)
         => recomendacion == RecomendacionEvaluacion.Repreguntar ? "repreguntar" : "cerrar";
@@ -217,6 +259,10 @@ internal sealed class EvaluacionCosmosDocument
 
     internal sealed class CalificacionCriterioDocument
     {
+        // DT-RUB-01 (aditivo): clave de emparejamiento. Ausente en documentos previos.
+        [JsonProperty("criterioId", NullValueHandling = NullValueHandling.Ignore)]
+        public string? CriterioId { get; init; }
+
         [JsonProperty("criterio")]
         public string Criterio { get; init; } = string.Empty;
 
@@ -225,6 +271,51 @@ internal sealed class EvaluacionCosmosDocument
 
         [JsonProperty("justificacion")]
         public string Justificacion { get; init; } = string.Empty;
+    }
+
+    internal sealed class RubricaSnapshotDocument
+    {
+        [JsonProperty("id")]
+        public string RubricaId { get; init; } = string.Empty;
+
+        [JsonProperty("version")]
+        public int Version { get; init; }
+
+        [JsonProperty("escala")]
+        public EscalaSnapshotDocument Escala { get; init; } = new();
+
+        [JsonProperty("hashEstructura")]
+        public string HashEstructura { get; init; } = string.Empty;
+
+        [JsonProperty("criterios")]
+        public List<CriterioSnapshotDocument> Criterios { get; init; } = new();
+    }
+
+    internal sealed class EscalaSnapshotDocument
+    {
+        [JsonProperty("min")]
+        public int Min { get; init; } = 1;
+
+        [JsonProperty("max")]
+        public int Max { get; init; } = 5;
+    }
+
+    internal sealed class CriterioSnapshotDocument
+    {
+        [JsonProperty("id")]
+        public string Id { get; init; } = string.Empty;
+
+        [JsonProperty("nombre")]
+        public string Nombre { get; init; } = string.Empty;
+
+        [JsonProperty("descripcion", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Descripcion { get; init; }
+
+        [JsonProperty("peso")]
+        public decimal Peso { get; init; }
+
+        [JsonProperty("orden")]
+        public int Orden { get; init; }
     }
 
     internal sealed class UsoTokensDocument

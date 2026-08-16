@@ -9,11 +9,20 @@ namespace ElTejido.Application.Evaluacion;
 /// </summary>
 public sealed record SalidaLlmEvaluacion
 {
-    [JsonPropertyName("calificacion_por_criterio")]
-    public IReadOnlyList<SalidaCalificacionCriterio>? CalificacionPorCriterio { get; init; }
+    /// <summary>
+    /// DT-RUB-01 (08 §4.1): una entrada por cada <c>criterio_id</c> de la version efectiva, ni una
+    /// mas ni una menos. El emparejamiento es por id, nunca por el nombre visible.
+    /// </summary>
+    [JsonPropertyName("calificaciones")]
+    public IReadOnlyList<SalidaCalificacionCriterio>? Calificaciones { get; init; }
 
+    /// <summary>
+    /// Compatibilidad: el modelo puede seguir devolviendo un total, pero el servidor lo
+    /// <b>ignora</b> para decisiones y persistencia (08 §4.1). Solo alimenta la metrica
+    /// <c>total_modelo_difiere</c>, sin texto ni PII.
+    /// </summary>
     [JsonPropertyName("calificacion_total")]
-    public decimal CalificacionTotal { get; init; }
+    public decimal? CalificacionTotal { get; init; }
 
     [JsonPropertyName("explicacion")]
     public string? Explicacion { get; init; }
@@ -42,8 +51,9 @@ public sealed record SalidaLlmEvaluacion
 
 public sealed record SalidaCalificacionCriterio
 {
-    [JsonPropertyName("criterio")]
-    public string? Criterio { get; init; }
+    /// <summary>Clave estable del criterio en la version efectiva (03 §3.11).</summary>
+    [JsonPropertyName("criterio_id")]
+    public string? CriterioId { get; init; }
 
     [JsonPropertyName("puntaje")]
     public decimal Puntaje { get; init; }

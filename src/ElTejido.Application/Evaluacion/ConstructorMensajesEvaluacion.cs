@@ -53,6 +53,44 @@ public static class ConstructorMensajesEvaluacion
         + "respuesta mejorada, no des ejemplos ni alternativas que respondan por la persona, no "
         + "inventes responsables, datos, fechas o soluciones. La transicion la decide el servidor.";
 
+    /// <summary>
+    /// DT-RUB-01 §6: bloque determinista compilado desde la <b>estructura</b> de la version efectiva.
+    /// El servidor inyecta id, version, escala, instrucciones generales y los criterios en orden con
+    /// su <c>criterio_id</c>, nombre, descripcion y peso, de modo que el prompt administrable no
+    /// tenga que enumerar criterios y la misma familia de prompt sirva para una rubrica de uno, cinco
+    /// u ocho.
+    /// </summary>
+    private static string BloqueRubricaEfectiva(Domain.Configuracion.Rubrica rubrica)
+    {
+        var builder = new StringBuilder()
+            .Append(FormattableString.Invariant(
+                $"RUBRICA EFECTIVA (id={rubrica.Id}, version={rubrica.Version})\n"))
+            .Append(FormattableString.Invariant(
+                $"ESCALA: {rubrica.Escala.Min}..{rubrica.Escala.Max}\n"));
+
+        if (rubrica.InstruccionesGenerales.Length > 0)
+        {
+            builder.Append("INSTRUCCIONES GENERALES: ").AppendLine(rubrica.InstruccionesGenerales);
+        }
+
+        builder.AppendLine(
+            "CRITERIOS (en este orden; devuelve EXACTAMENTE una calificacion por cada criterio_id, "
+            + "ni una mas ni una menos):");
+        foreach (var criterio in rubrica.Criterios.OrderBy(c => c.Orden))
+        {
+            builder.Append(FormattableString.Invariant(
+                $"{criterio.Orden}. criterio_id={criterio.Id} | {criterio.Nombre} | peso {criterio.Peso:0.####}"));
+            if (criterio.Descripcion.Length > 0)
+            {
+                builder.Append(" | ").Append(criterio.Descripcion);
+            }
+
+            builder.Append('\n');
+        }
+
+        return builder.Append('\n').ToString();
+    }
+
     public static IReadOnlyList<LlmMensaje> Construir(ContextoEvaluacion contexto)
     {
         var escala = contexto.RubricaSnapshot.Escala;
@@ -71,11 +109,13 @@ public static class ConstructorMensajesEvaluacion
                 escala.Min,
                 escala.Max,
                 contexto.SolicitarParafraseo,
-                contexto.CoachingSecuencialIdeas))
+                contexto.CoachingSecuencialIdeas,
+                contexto.RubricaSnapshot.Criterios.OrderBy(c => c.Orden).Select(c => c.Id).ToArray()))
             .ToString();
 
         var contexto2 = new StringBuilder()
-            .AppendLine("RUBRICA (Markdown, versionada):")
+            .Append(BloqueRubricaEfectiva(contexto.RubricaSnapshot))
+            .AppendLine("RUBRICA (Markdown derivado, versionado):")
             .AppendLine(contexto.RubricaSnapshot.ContenidoMarkdown.Trim())
             .AppendLine()
             .Append("CONTEXTO CAMPANA: ").AppendLine(Valor(contexto.NombreCampaniaEfectivo, contexto.Campania.Nombre))
@@ -129,13 +169,17 @@ public static class ConstructorMensajesEvaluacion
     /// de las claves y la escala de la rubrica para no depender de que el prompt del admin los
     /// describa; sin esto el modelo inventa claves y la salida no pasa la validacion (-> fallback).
     /// </summary>
-    private static string EsquemaSalida(int min, int max, bool solicitarParafraseo, bool coachingSecuencial)
+    private static string EsquemaSalida(
+        int min,
+        int max,
+        bool solicitarParafraseo,
+        bool coachingSecuencial,
+        IReadOnlyList<string> criterioIds)
         => "Devuelve EXCLUSIVAMENTE un objeto JSON valido (sin texto adicional ni bloques de codigo) "
             + "con EXACTAMENTE estas claves:\n"
             + "{\n"
-            + "  \"calificacion_por_criterio\": [ { \"criterio\": \"<nombre del criterio de la rubrica>\", "
-            + $"\"puntaje\": <numero entre {min} y {max}>, \"justificacion\": \"<texto breve>\" }} ],\n"
-            + $"  \"calificacion_total\": <numero entre {min} y {max}>,\n"
+            + "  \"calificaciones\": [ { \"criterio_id\": \"<uno de los criterio_id de la rubrica efectiva>\", "
+            + $"\"puntaje\": <numero entre {min} y {max}>, \"justificacion\": \"<texto breve, no vacio>\" }} ],\n"
             + "  \"explicacion\": \"<por que esa calificacion, breve>\",\n"
             + "  \"retroalimentacion_usuario\": \"<mensaje breve para el participante; NO puede estar vacio>\",\n"
             + (solicitarParafraseo
@@ -152,5 +196,10 @@ public static class ConstructorMensajesEvaluacion
             + (coachingSecuencial
                 ? "(en este contexto usa \"repreguntar\" y devuelve exactamente una pregunta abierta). "
                 : "(usa \"repreguntar\" solo si falta informacion clave). ")
-            + "\"calificacion_por_criterio\" usa los criterios de la rubrica.";
+            // DT-RUB-01 §7: el conjunto exacto se enumera aqui para que el modelo no tenga que
+            // deducirlo del Markdown. El servidor lo vuelve a verificar por criterio_id y calcula el
+            // total ponderado; un total devuelto por el modelo se ignora.
+            + "\"calificaciones\" debe contener EXACTAMENTE una entrada por cada uno de estos "
+            + $"criterio_id, sin repetir ni agregar otros: {string.Join(", ", criterioIds)}. "
+            + "No calcules un total: el servidor lo calcula con los pesos configurados.";
 }

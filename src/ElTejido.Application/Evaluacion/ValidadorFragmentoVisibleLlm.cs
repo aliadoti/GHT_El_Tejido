@@ -114,6 +114,11 @@ public static class ValidadorFragmentoVisibleLlm
         "ready_to_save", "ready to save", "save_now", "save now", "listo para guardar", "guardar ahora",
         "retroalimentacion_usuario", "repregunta_sugerida", "calificacion_total", "calificacion_por_criterio",
         "anomalia_seguridad", "parafraseo_devuelto",
+        // DT-RUB-01: clave del contrato de salida vigente (08 §4). Las anteriores se conservan para
+        // que un modelo que arrastre el formato viejo tampoco pueda filtrarlas al participante.
+        // "calificaciones" no entra aqui: es una palabra corriente, y como fuga de rubrica la cubre
+        // FiltroSalidaRubrica.
+        "criterio_id",
     ];
 
     /// <summary>

@@ -9,6 +9,26 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **🟢 `DT-RUB-01` CORTE 2/4 EVALUACIÓN AUTORITATIVA — DONE LOCAL 2026-08-16 (Claude Opus 5).**
+> El contrato de salida pasó de `calificacion_por_criterio`/`criterio` a
+> **`calificaciones`/`criterio_id`**: se empareja por id canónico y **el nombre visible lo pone el
+> snapshot del servidor**, no el modelo. `ContratoSalidaRubrica` (Application, puro) exige el conjunto
+> **exacto** de la versión efectiva y devuelve `criterio_faltante`, `criterio_extra`,
+> `criterio_duplicado`, `puntaje_fuera_escala` o `justificacion_vacia`; cualquiera cae al **fallback
+> seguro ya existente**, sin notas parciales ni reintento. **El total lo calcula el servidor**
+> (`sum(puntaje*peso)/sum(peso)` en `decimal`, sin redondear) y es el que se persiste y el que
+> consumen umbrales y madurez, cuya semántica no cambia; `calificacion_total` del modelo se ignora y
+> solo emite `total_modelo_difiere` con rúbrica, versión y magnitud, sin texto ni PII. El servidor
+> inyecta el bloque determinista de la versión efectiva y la lista literal de ids exigidos, así que el
+> prompt administrable **no nombra criterios**: hay una prueba que corre el mismo prompt contra dos
+> rúbricas distintas. `CalculadorEjeDebil` empareja por id (desempate menor peso → `orden` → id) y
+> solo cae al nombre para calificaciones históricas; `FiltroSalidaRubrica` deriva alias de la lista
+> canónica completa —probado con ocho criterios— y suma el plural `calificaciones`. La evaluación
+> persiste `criterioId`, `pesosUsados` por id y el nuevo `rubricaSnapshot`, también en fallback; un
+> documento histórico sin `criterioId` conserva su nombre snapshot y no se muta. Backend **985
+> unitarias (+26) + 119 de integración** y 1 de calibración; build Release `-warnaserror`,
+> `dotnet format` y `git diff --check` verdes. **Siguiente: corte 3/4** (portal estructurado).
+>
 > **🟢 `DT-RUB-01` CORTE 1/4 DOMINIO, VALIDADOR/COMPILADOR, PERSISTENCIA Y API — DONE LOCAL
 > 2026-08-16 (Claude Opus 5).** `CriterioRubrica` es ahora `(Id, Nombre, Descripcion, Peso, Orden)`:
 > el `id` canónico es la clave estable y el nombre solo la etiqueta visible.

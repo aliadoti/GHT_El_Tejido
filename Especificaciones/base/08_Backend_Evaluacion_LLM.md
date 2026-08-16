@@ -358,9 +358,10 @@ contiene **exactamente** los ids de la versión efectiva:
 - un `puntaje` por criterio **dentro de la escala**;
 - una `justificacion` no vacía y acotada por criterio.
 
-Cualquiera de esas cuatro anomalías es una salida inválida y sigue la **política de fallback existente**
+Cualquiera de esas anomalías es una salida inválida y sigue la **política de fallback existente**
 (`§6`): no se inventan notas parciales, no se completa el criterio faltante y **no** se agrega un
-reintento LLM en esta deuda.
+reintento LLM en esta deuda. El motivo viaja como `salida_invalida:<código>` con los códigos estables
+de `§7` más `justificacion_vacia` para el quinto caso.
 
 El **total de negocio lo calcula el servidor**, siempre, sobre la lista canónica:
 
@@ -422,7 +423,8 @@ Si el proveedor falla (timeout, 5xx tras reintentos) **o** la salida es inválid
 - Alertas por umbral de error o de gasto (configurable).
 - **DT-RUB-01 — códigos estables de rúbrica.** Se registran únicamente ids, versiones, cantidades,
   hash y estos códigos: `criterio_faltante`, `criterio_extra`, `criterio_duplicado`,
-  `puntaje_fuera_escala`, `rubrica_inconsistente`, `total_modelo_difiere`. **Nunca** se registra el
+  `puntaje_fuera_escala`, `rubrica_inconsistente`, `total_modelo_difiere` (con `rubrica`, `version` y
+  la magnitud de la diferencia). **Nunca** se registra el
   Markdown, las descripciones, las justificaciones, el aporte del participante ni el texto visible.
   La respuesta del participante sigue delimitada como dato y no puede cambiar la rúbrica inyectada.
 

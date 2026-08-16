@@ -96,15 +96,32 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             return await FallbackAsync(contexto, "salida_invalida:no_json", uso, cancellationToken);
         }
 
-        if (!EsSalidaValida(salida, contexto.RubricaSnapshot.Escala, out var recomendacion, out var razonInvalida))
+        if (!EsSalidaValida(salida, out var recomendacion, out var razonInvalida))
         {
             return await FallbackAsync(contexto, "salida_invalida:" + razonInvalida, uso, cancellationToken);
         }
 
+        // DT-RUB-01 §7 (08 §4.1): el conjunto de criterios se contrasta contra la version efectiva
+        // por criterio_id ANTES de cualquier otra cosa. Falta, sobra, se duplica un id o un puntaje
+        // sale de escala -> fallback seguro con el codigo estable, sin notas parciales ni reintento.
+        var contratoRubrica = ContratoSalidaRubrica.Emparejar(salida.Calificaciones, contexto.RubricaSnapshot);
+        if (!contratoRubrica.Valido)
+        {
+            return await FallbackAsync(contexto, "salida_invalida:" + contratoRubrica.Motivo, uso, cancellationToken);
+        }
+
+        var calificaciones = contratoRubrica.Calificaciones;
+
+        // El total de negocio SIEMPRE lo calcula el servidor con los pesos configurados; el total que
+        // devuelva el modelo se ignora y solo emite una metrica de diferencia sin texto ni PII.
+        var totalServidor = ContratoSalidaRubrica.CalcularTotalPonderado(
+            calificaciones,
+            contexto.RubricaSnapshot.Criterios);
+        await RegistrarDiferenciaTotalAsync(contexto, salida.CalificacionTotal, totalServidor, cancellationToken);
+
         // I-03: el eje mas debil se calcula SIEMPRE server-side (nunca por el LLM), tras validar la
         // salida (08 §3.4). Solo alimenta el registro de la salvaguarda de fuga; no se persiste ni se
         // muestra al participante.
-        var calificaciones = MapearCalificaciones(salida);
         var ejeDebil = CalculadorEjeDebil.Determinar(calificaciones, contexto.RubricaSnapshot.Criterios);
         salida = await AplicarFiltroRubricaAsync(contexto, salida, recomendacion, ejeDebil, cancellationToken);
 
@@ -117,7 +134,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             await RegistrarAnomaliaAsync(contexto, cancellationToken);
         }
 
-        return new ResultadoEvaluacion.Exito(ConstruirEvaluacion(contexto, salida, recomendacion, uso, calificaciones));
+        return new ResultadoEvaluacion.Exito(
+            ConstruirEvaluacion(contexto, salida, recomendacion, uso, calificaciones, totalServidor));
     }
 
     /// <summary>
@@ -203,11 +221,6 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
         };
     }
 
-    private static IReadOnlyList<CalificacionCriterio> MapearCalificaciones(SalidaLlmEvaluacion salida)
-        => (salida.CalificacionPorCriterio ?? Array.Empty<SalidaCalificacionCriterio>())
-            .Select(c => CalificacionCriterio.Crear(c.Criterio ?? "criterio", c.Puntaje, c.Justificacion ?? string.Empty))
-            .ToArray();
-
     private LlmRequest ConstruirRequest(ContextoEvaluacion contexto)
     {
         var config = contexto.ConfigLlmSnapshot;
@@ -224,9 +237,12 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             contexto.Campania.Id);
     }
 
+    /// <summary>
+    /// Validaciones que no dependen de la rubrica. El conjunto exacto de criterios, la escala de cada
+    /// puntaje y el total los resuelve <see cref="ContratoSalidaRubrica"/> (08 §4.1).
+    /// </summary>
     private static bool EsSalidaValida(
         SalidaLlmEvaluacion salida,
-        EscalaRubrica escala,
         out RecomendacionEvaluacion recomendacion,
         out string razon)
     {
@@ -252,19 +268,6 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             return false;
         }
 
-        if (!EnEscala(salida.CalificacionTotal, escala))
-        {
-            razon = "calificacion_fuera_de_escala";
-            return false;
-        }
-
-        if (salida.CalificacionPorCriterio is not null
-            && !salida.CalificacionPorCriterio.All(c => EnEscala(c.Puntaje, escala)))
-        {
-            razon = "criterio_fuera_de_escala";
-            return false;
-        }
-
         return true;
     }
 
@@ -273,7 +276,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
         SalidaLlmEvaluacion salida,
         RecomendacionEvaluacion recomendacion,
         UsoTokensLlm? uso,
-        IReadOnlyList<CalificacionCriterio> calificaciones)
+        IReadOnlyList<CalificacionCriterio> calificaciones,
+        decimal totalServidor)
     {
         return DominioEvaluacion.Crear(
             "eval_" + Guid.NewGuid().ToString("N"),
@@ -289,7 +293,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             CrearSnapshotConfig(contexto.ConfigLlmSnapshot),
             CrearPesos(contexto.RubricaSnapshot),
             calificaciones,
-            salida.CalificacionTotal,
+            // DT-RUB-01 §7: el total persistido es el del servidor, nunca el que devolvio el modelo.
+            totalServidor,
             string.IsNullOrWhiteSpace(salida.Explicacion) ? "Sin explicacion." : salida.Explicacion!.Trim(),
             // DT-I20-02 §5.2.7: ya viene validada y acotada en frontera de oracion por
             // AplicarContratoVisibleAsync; aqui no se recorta nada a ciegas.
@@ -306,7 +311,11 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
                 : null,
             contexto.IdeaId,
             contexto.VersionIdeaId,
-            contexto.IdeaId is null ? null : "ideaConsolidada");
+            contexto.IdeaId is null ? null : "ideaConsolidada",
+            seedThoughtsSnapshot: null,
+            // DT-RUB-01 §8: snapshot suficiente para explicar el resultado aunque despues exista una
+            // version nueva de la rubrica.
+            rubricaSnapshot: SnapshotRubricaEvaluacion.Desde(contexto.RubricaSnapshot));
     }
 
     private async Task<ResultadoEvaluacion> FallbackAsync(
@@ -343,7 +352,9 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             uso,
             ideaId: contexto.IdeaId,
             versionIdeaId: contexto.VersionIdeaId,
-            origenTextoEvaluado: contexto.IdeaId is null ? null : "ideaConsolidada");
+            origenTextoEvaluado: contexto.IdeaId is null ? null : "ideaConsolidada",
+            seedThoughtsSnapshot: null,
+            rubricaSnapshot: SnapshotRubricaEvaluacion.Desde(contexto.RubricaSnapshot));
 
         return new ResultadoEvaluacion.Fallback(evaluacion, motivo);
     }
@@ -413,6 +424,40 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             cancellationToken);
     }
 
+    /// <summary>
+    /// DT-RUB-01 §9: si el modelo devolvio un total por compatibilidad y no coincide con el calculo
+    /// server-side, se emite <c>total_modelo_difiere</c> con ids, version y la magnitud de la
+    /// diferencia. Nunca texto, justificaciones ni el aporte del participante. El valor del modelo no
+    /// influye en ninguna decision: esto es observabilidad de la migracion, no un arbitraje.
+    /// </summary>
+    private Task RegistrarDiferenciaTotalAsync(
+        ContextoEvaluacion contexto,
+        decimal? totalModelo,
+        decimal totalServidor,
+        CancellationToken cancellationToken)
+    {
+        if (totalModelo is null || totalModelo.Value == totalServidor)
+        {
+            return Task.CompletedTask;
+        }
+
+        var diferencia = Math.Abs(totalModelo.Value - totalServidor);
+        var detalle = FormattableString.Invariant(
+            $"rubrica={contexto.RubricaSnapshot.Id};version={contexto.RubricaSnapshot.Version};diferencia={diferencia:0.####}");
+
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.AnomaliaLlm,
+                contexto.Usuario.Id,
+                numero: null,
+                "total_modelo_difiere",
+                detalle,
+                _correlacion.CorrelationIdActual,
+                _tiempo.GetUtcNow()),
+            cancellationToken);
+    }
+
     private Task RegistrarFallbackAsync(ContextoEvaluacion contexto, string motivo, CancellationToken cancellationToken)
         => _logSeguridad.RegistrarAsync(
             LogSeguridad.Crear(
@@ -429,8 +474,12 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     private static ConfigLlmSnapshot CrearSnapshotConfig(ConfigLlm config)
         => new(config.Proveedor, config.Modelo, config.Endpoint, config.Parametros);
 
+    /// <summary>
+    /// DT-RUB-01: <c>pesosUsados</c> se indexa por <c>criterioId</c>, la misma clave que usan la
+    /// salida del modelo y el snapshot, para que el documento sea interpretable sin resolver nombres.
+    /// </summary>
     private static IReadOnlyDictionary<string, decimal> CrearPesos(Rubrica rubrica)
-        => rubrica.Criterios.ToDictionary(c => c.Nombre, c => c.Peso, StringComparer.Ordinal);
+        => rubrica.Criterios.ToDictionary(c => c.Id, c => c.Peso, StringComparer.Ordinal);
 
     private static bool TryMapearRecomendacion(string? valor, out RecomendacionEvaluacion recomendacion)
     {

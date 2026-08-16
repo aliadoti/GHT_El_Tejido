@@ -19,7 +19,10 @@ public static class FiltroSalidaRubrica
         @"\b\d+(\.\d+)?\s*(/|de)\s*\d+(\.\d+)?\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static readonly string[] PalabrasProhibidas = ["rubrica", "criterio", "criterios", "calificacion"];
+    // "calificaciones" se lista aparte de "calificacion" porque la comparacion es por palabra completa
+    // (\b): el plural no lo cubre el singular.
+    private static readonly string[] PalabrasProhibidas =
+        ["rubrica", "criterio", "criterios", "calificacion", "calificaciones"];
 
     /// <summary>
     /// Devuelve <c>true</c> si <paramref name="texto"/> nombra un criterio de <paramref name="rubrica"/>,
@@ -35,9 +38,14 @@ public static class FiltroSalidaRubrica
 
         var normalizado = Normalizar(texto);
 
+        // DT-RUB-01 §8: los alias se derivan UNICAMENTE de la lista canonica de la version efectiva y
+        // se revisan TODOS los criterios, cualquiera que sea su cantidad. Agregar o reordenar
+        // criterios en una version nueva cambia la politica sin tocar codigo. Se cubre el nombre
+        // visible y tambien el id, porque el id puede aparecer en un texto generado por el modelo.
         foreach (var criterio in rubrica.Criterios)
         {
-            if (ContienePalabra(normalizado, Normalizar(criterio.Nombre)))
+            if (ContienePalabra(normalizado, Normalizar(criterio.Nombre))
+                || ContienePalabra(normalizado, Normalizar(criterio.Id.Replace('_', ' '))))
             {
                 return true;
             }

@@ -38,7 +38,8 @@ public sealed class Evaluacion
         string? ideaId,
         string? versionIdeaId,
         string? origenTextoEvaluado,
-        SeedThoughtsSnapshot? seedThoughtsSnapshot)
+        SeedThoughtsSnapshot? seedThoughtsSnapshot,
+        SnapshotRubricaEvaluacion? rubricaSnapshot)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -68,6 +69,7 @@ public sealed class Evaluacion
         VersionIdeaId = versionIdeaId;
         OrigenTextoEvaluado = origenTextoEvaluado;
         SeedThoughtsSnapshot = seedThoughtsSnapshot;
+        RubricaSnapshot = rubricaSnapshot;
     }
 
     public string Id { get; }
@@ -129,6 +131,12 @@ public sealed class Evaluacion
     public string? OrigenTextoEvaluado { get; }
     public SeedThoughtsSnapshot? SeedThoughtsSnapshot { get; }
 
+    /// <summary>
+    /// DT-RUB-01 (aditivo, opcional): version de rubrica congelada con escala, huella y criterios
+    /// ordenados. Ausente en documentos historicos, que se siguen leyendo con su nombre snapshot.
+    /// </summary>
+    public SnapshotRubricaEvaluacion? RubricaSnapshot { get; }
+
     public static Evaluacion Crear(
         string id,
         string campaniaId,
@@ -157,7 +165,8 @@ public sealed class Evaluacion
         string? ideaId = null,
         string? versionIdeaId = null,
         string? origenTextoEvaluado = null,
-        SeedThoughtsSnapshot? seedThoughtsSnapshot = null)
+        SeedThoughtsSnapshot? seedThoughtsSnapshot = null,
+        SnapshotRubricaEvaluacion? rubricaSnapshot = null)
     {
         if (versionRubrica <= 0 || versionPrompt <= 0)
         {
@@ -221,7 +230,8 @@ public sealed class Evaluacion
             Normalizar(ideaId),
             Normalizar(versionIdeaId),
             Normalizar(origenTextoEvaluado),
-            seedThoughtsSnapshot);
+            seedThoughtsSnapshot,
+            rubricaSnapshot);
     }
 
     /// <summary>I-19: adjunta la procedencia canónica cuando un adaptador de evaluación no la provee.</summary>
@@ -231,7 +241,8 @@ public sealed class Evaluacion
             VersionPrompt, ConfigLlmRef, ConfigLlmSnapshot, PesosUsados, CalificacionPorCriterio,
             CalificacionTotal, Explicacion, RetroalimentacionEnviada, Recomendacion, RepreguntaSugerida,
             Temas, Entidades, AnomaliaSeguridad, Fecha, UsoTokens, ParafraseoDevuelto, ideaId,
-            versionIdeaId, "ideaConsolidada", seedThoughtsSnapshot ?? SeedThoughtsSnapshot);
+            versionIdeaId, "ideaConsolidada", seedThoughtsSnapshot ?? SeedThoughtsSnapshot,
+            RubricaSnapshot);
 
     private static IReadOnlyCollection<string> NormalizarLista(IEnumerable<string>? valores)
         => valores is null

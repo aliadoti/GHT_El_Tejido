@@ -974,8 +974,8 @@ public sealed class Fase9AceptacionE2EIntegrationTests
                 """
                 {
                   "calificacion_total": 4,
-                  "calificacion_por_criterio": [
-                    { "criterio": "claridad", "puntaje": 4, "justificacion": "Clara y accionable." }
+                  "calificaciones": [
+                    { "criterio_id": "claridad", "puntaje": 4, "justificacion": "Clara y accionable." }
                   ],
                   "explicacion": "La idea describe un problema operativo concreto.",
                   "retroalimentacion_usuario": "Buena idea; tiene un foco claro y accionable.",

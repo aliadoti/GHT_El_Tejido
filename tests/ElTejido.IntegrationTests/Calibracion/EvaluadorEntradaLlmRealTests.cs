@@ -17,8 +17,15 @@ namespace ElTejido.IntegrationTests.Calibracion;
 /// </summary>
 public sealed class EvaluadorEntradaLlmRealTests
 {
+    /// <summary>
+    /// DT-RUB-01 §7: la rubrica del banco tiene tres criterios, asi que una salida valida debe traer
+    /// exactamente esos tres <c>criterio_id</c>. Con todos en 4, el total ponderado del servidor
+    /// tambien es 4.
+    /// </summary>
     private const string SalidaValida =
-        "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":4,\"justificacion\":\"ok\"}],"
+        "{\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":4,\"justificacion\":\"ok\"},"
+        + "{\"criterio_id\":\"concrecion\",\"puntaje\":4,\"justificacion\":\"ok\"},"
+        + "{\"criterio_id\":\"impacto\",\"puntaje\":4,\"justificacion\":\"ok\"}],"
         + "\"calificacion_total\":4,\"explicacion\":\"buena\",\"retroalimentacion_usuario\":\"Gracias\","
         + "\"recomendacion\":\"cerrar\",\"repregunta_sugerida\":\"\",\"temas\":[\"aprendizaje\"],"
         + "\"entidades\":[\"equipo\"],\"anomalia_seguridad\":false}";
