@@ -25,7 +25,7 @@ ElTejido.Web/src/app/
 │  ├─ usuarios/     # CRUD usuarios + tags
 │  ├─ campanias/    # CRUD campañas, mensajes iniciales, preguntas, asociación participantes
 │  ├─ envios/       # disparo y monitoreo de envíos/reenvíos
-│  ├─ rubricas/     # carga/edición/versionado de rúbricas Markdown
+│  ├─ rubricas/     # editor estructurado (escala, criterios, pesos) y versionado; DT-RUB-01
 │  ├─ prompts/      # edición, versionado y aprobación de prompts
 │  ├─ config-llm/   # configuración LLM + API key (write-only, enmascarada)
 │  └─ resultados/   # consulta de conversaciones, respuestas, evaluaciones, Markdown
@@ -97,7 +97,31 @@ Reglas (`REQ §32.2`): no exponer archivos de fuente; usar fallback del sistema 
 
 **Envíos** (`REQ §33.1.10–11`, `§27.2`): seleccionar campaña/participantes; ver cantidad de destinatarios; botón de envío; tabla de estado por participante (enviado/error/pendiente); reintentar fallidos; reenviar a sin respuesta. Monitorea el `jobId`.
 
-**Rúbricas** (`REQ §33.1.13`): editor/carga de Markdown; vista de criterios/pesos/escala parseados; versiones.
+**Rúbricas** (`REQ §33.1.13`): **editor estructurado**; versiones.
+
+> **DT-RUB-01 — se reemplaza la edición libre del Markdown.** El Markdown dejó de ser la fuente: la
+> pantalla autoriza la **estructura** y el servidor compila el texto. Desaparecen del portal y de sus
+> pruebas el criterio `Impacto` quemado, la escala `1..5` fija y el Markdown inicial que aparentaba
+> ser la fuente.
+
+La pantalla ofrece:
+
+- nombre, descripción e **instrucciones generales**;
+- escala **mínima y máxima** editables;
+- **tabla ordenada de criterios** con `id`, nombre, descripción y peso, con acciones **agregar,
+  editar, quitar y mover**, disponibles únicamente dentro de la versión `borrador`;
+- **suma de pesos visible** (en porcentaje) y validación inmediata, con error por fila;
+- **preview Markdown obtenido del servidor** vía `POST /api/admin/rubricas/prevalidar` (sin
+  escritura). El portal **no** mantiene un segundo compilador en TypeScript; el preview y el guardado
+  usan el mismo validador/compilador;
+- acción **“Crear nueva versión”** para una rúbrica `activa`/`archivada`, que clona la estructura en
+  un borrador nuevo. Una versión comprometida **no se edita en sitio**;
+- el portal **nunca envía `contenidoMarkdown` como autoridad**.
+
+**Campaña y pregunta solo seleccionan** familia (`rubricaRef`) y versión (`versionRubrica`), con la
+precedencia ya existente pregunta → campaña; **no muestran un editor de criterios**. La ayuda
+contextual dice: *“Los criterios se administran en Rúbricas; aquí se selecciona una versión
+completa”*.
 
 **Prompts** (`REQ §33.1.14`): edición por tipo; versionado; **botón de aprobación humana**; indicador de "no aprobado / no usable".
 

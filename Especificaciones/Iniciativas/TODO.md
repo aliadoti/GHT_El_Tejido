@@ -9,7 +9,24 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 SIGUIENTE CÓDIGO: `DT-RUB-01` — RÚBRICA ESTRUCTURADA COMO FUENTE ÚNICA (0/4).** QAS/21
+> **🟢 `DT-RUB-01` CORTE 0 (DOCUMENTAL) — DONE 2026-08-16 (Claude Opus 5).** Commit separado y **sin
+> código**. `03 §3.11` invierte la dirección de la rúbrica: estructura canónica (`escala`,
+> `instruccionesGenerales`, `criterios[]` con `id`/`nombre`/`descripcion`/`peso`/`orden`) como fuente
+> única y `contenidoMarkdown` como **proyección derivada**, con unicidad, suma de pesos `1`, orden
+> consecutivo, techo técnico de 50, `hashEstructura` canónico, `integridadEstructural` y lectura
+> legacy que no muta el documento. `03 §3.9` suma `rubricaSnapshot` y `criterioId`, y declara
+> `calificacionTotal` como valor **server-side**. `04 §5.5` publica el cuerpo canónico,
+> `POST /api/admin/rubricas/prevalidar` sin escritura y los ocho motivos estables de
+> `VALIDATION_ERROR`. `07 §3.1` documenta el cambio de dirección y el validador puro compartido;
+> `07 §3.3` fija campaña/pregunta como **solo selectores**. `08 §3.2` inyecta el bloque determinista
+> y declara el prompt agnóstico de criterios; el nuevo `08 §4.1` define el conjunto exacto por
+> `criterio_id`, el total `sum(puntaje*peso)/sum(peso)` en `decimal` sin redondear y la degradación de
+> `calificacion_total`. `11` reemplaza el editor libre de Markdown por el estructurado con preview
+> server-side. **Baseline previo medido:** build Release `-warnaserror` verde, **925 unitarias + 111
+> de integración** y **1 de calibración**. **Siguiente: corte 1/4** (dominio, validador/compilador,
+> persistencia aditiva y API).
+>
+> **🟡 EN CURSO: `DT-RUB-01` — RÚBRICA ESTRUCTURADA COMO FUENTE ÚNICA (0/4 de código).** QAS/21
 > terminó con preparación y pruebas 1–8 PASS en Azure; D5 quedó BLOCKED por credencial. La corrida
 > descubrió una deuda previa: la rúbrica `2` persiste solo `Impacto`/peso `1`, mientras su Markdown y
 > el LLM usan cinco ejes. No se debe congelar un baseline con esa contradicción. Implementar primero

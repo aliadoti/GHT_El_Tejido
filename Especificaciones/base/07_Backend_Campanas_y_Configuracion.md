@@ -85,15 +85,52 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
 
 ## 3. Rúbricas (`REQ §17`)
 
-### 3.1 Carga y parseo
-- Se crea/actualiza con un documento **Markdown** (`contenidoMarkdown`) que el LLM consumirá (`REQ §17.3.4, §17.3.6`).
-- Al guardar, el servicio **parsea** del Markdown (o de campos estructurados acompañantes) los `criterios[]`, `pesos` y `escala` para poder validarlos y mostrarlos en el portal. Si el parseo no es determinista, se aceptan criterios/pesos/escala como campos estructurados además del Markdown (la fuente para el LLM sigue siendo el Markdown).
-- Validación: la suma de pesos debe ser coherente (p. ej. ~1.0 o normalizable); escala con min/max válidos. Si no, `400/422` con detalle.
+### 3.1 Estructura canónica y Markdown derivado (DT-RUB-01)
+
+> **Cambio de dirección respecto del diseño original.** Antes la rúbrica se cargaba como Markdown y el
+> servicio *parseaba* de ahí criterios/pesos/escala. Eso permitió que una versión declarara un único
+> criterio mientras su Markdown enumeraba cinco, y que el modelo calificara ejes que el servidor no
+> conocía. Desde DT-RUB-01 el flujo se invierte: **se autoriza la estructura y el Markdown se compila
+> desde ella.** Ver `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`.
+
+- La versión se crea/actualiza con la **estructura canónica** de `03 §3.11`: `escala`,
+  `instruccionesGenerales` y `criterios[]` ordenados con `id`, `nombre`, `descripcion`, `peso` y
+  `orden`. Es la **única fuente de verdad**.
+- `contenidoMarkdown` **ya no es una entrada**: lo genera el servidor con un **compilador
+  determinista** a partir de esos campos. La misma estructura produce siempre el mismo Markdown y el
+  mismo `hashEstructura`. Es lo que consume el LLM (`REQ §17.3.6`) y lo que el portal muestra como
+  preview y auditoría; no puede agregar, quitar ni renombrar criterios.
+- El **validador** es puro (sin Cosmos ni HTTP) y lo comparten la escritura y la prevalidación, de
+  modo que el preview del portal y el guardado real nunca discrepan. El portal **no** mantiene un
+  segundo compilador en TypeScript.
+- Validación (`400 VALIDATION_ERROR` con los motivos tipificados de `04 §5.5`): al menos un criterio;
+  `id` y `nombre` no vacíos y únicos tras normalizar mayúsculas y diacríticos; `peso > 0` y **suma de
+  pesos = 1**; `orden` único y consecutivo desde 1; `min < max` en la escala; techo técnico de
+  criterios. **Un solo criterio inválido rechaza el cuerpo completo**: nunca se persiste una versión
+  parcial.
+- El hash de integridad se calcula sobre la representación **canónica** (criterios en `orden`, campos
+  normalizados), no sobre el orden de propiedades del JSON recibido.
+- **Lectura legacy:** una versión histórica sin `id`/`orden` se rehidrata derivando el `id` del
+  `nombre` y el `orden` de la posición, sin mutar el documento. Si estructura y Markdown se
+  contradicen, queda `legacy_no_verificada` y **no puede** asignarse a una campaña nueva ni activarse
+  como versión nueva hasta crear una versión estructurada válida. Las campañas históricas no se
+  migran automáticamente.
 
 ### 3.2 Versionado y edición híbrida por estado (`REQ §17.3.2–3`)
 - **Estrategia elegida:** `id` estable de familia (p. ej. `r_general`) + campo `version` incremental; cada versión es un documento independiente en `config` con el mismo nombre de familia y distinto `version`. La "versión activa" es la de mayor `version` con `estado=activa`. La Evaluación guarda `rubricaRef + versionRubrica` (snapshot).
 - **Edición híbrida por estado:** una rúbrica en `borrador` (estado **no comprometido**, nunca usado para evaluar) se edita **en sitio** sobre su versión vigente (`PUT /api/admin/rubricas/{id}`), sin incrementar versión. Una vez `activa` (o `archivada`) queda inmutable: toda edición posterior es **nueva versión** (`POST .../versiones`); el `PUT` responde `409 CONFLICT`. Así las versiones comprometidas nunca mutan y los snapshots de evaluaciones pasadas se conservan. Ver `SUPUESTOS.md#edicion-config-hibrida`.
 - `GET .../versiones` lista el historial.
+- **DT-RUB-01:** editar una versión comprometida crea una versión nueva en `borrador`, inicialmente
+  **clonada** de la comprometida. Activar esa versión nueva **no** reapunta silenciosamente campañas
+  o preguntas que fijaron otra versión: la referencia se cambia explícitamente. Ni las versiones ni
+  las evaluaciones históricas se reescriben o borran.
+
+### 3.3 La campaña solo selecciona (DT-RUB-01)
+
+`Campania.rubricaRef` y `Pregunta.rubricaRef`/`versionRubrica` son **selectores de referencia y
+versión**, con la precedencia ya existente pregunta → campaña. La campaña y la pregunta **nunca**
+crean, editan, eliminan, reordenan ni sobrescriben criterios; sus formularios y sus cuerpos de API no
+exponen una lista de criterios editable. Los criterios se administran únicamente en Rúbricas.
 
 ---
 

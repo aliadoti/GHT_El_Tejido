@@ -416,12 +416,63 @@ individual tipificado; no detiene otros idiomas ni cae a español.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/admin/rubricas` | Lista (`estado`). |
-| POST | `/api/admin/rubricas` | Crea v1 (sube Markdown; parsea criterios/pesos/escala). Estado por defecto del portal: `borrador`. |
+| POST | `/api/admin/rubricas` | Crea v1 a partir de la **estructura canónica**. Estado por defecto del portal: `borrador`. |
 | GET | `/api/admin/rubricas/{id}` | Última versión activa. |
 | PUT | `/api/admin/rubricas/{id}` | Edita **en sitio** la versión vigente. Solo si está en `borrador`; si no, responde `409 CONFLICT` (usar `/versiones`). No incrementa versión. |
 | GET | `/api/admin/rubricas/{id}/versiones` | Lista versiones. |
 | POST | `/api/admin/rubricas/{id}/versiones` | Nueva versión (no muta las previas). |
+| POST | `/api/admin/rubricas/prevalidar` | **DT-RUB-01.** Valida y compila la misma estructura **sin escribir**; devuelve `valido`, errores tipificados y el `contenidoMarkdown` derivado. |
 | PATCH | `/api/admin/rubricas/{id}/estado` | `borrador`/`activa`/`archivada`. |
+
+**DT-RUB-01 — cuerpo canónico** de crear / editar borrador / crear versión y de `prevalidar`:
+
+```json
+{
+  "nombre": "Rúbrica general de ideas",
+  "descripcion": "Evalúa claridad, impacto y viabilidad",
+  "instruccionesGenerales": "Evalúa la propuesta con evidencia del aporte.",
+  "escala": { "min": 1, "max": 5 },
+  "criterios": [
+    { "id": "claridad", "nombre": "Claridad", "descripcion": "Qué tan comprensible y concreta es la propuesta.", "peso": 0.3, "orden": 1 },
+    { "id": "viabilidad", "nombre": "Viabilidad", "descripcion": "Qué tan realizable es.", "peso": 0.5, "orden": 2 },
+    { "id": "alcance", "nombre": "Alcance", "descripcion": "A cuánta gente llega.", "peso": 0.2, "orden": 3 }
+  ],
+  "estado": "borrador"
+}
+```
+
+El servidor, en una sola operación: (1) normaliza y valida toda la versión; (2) **rechaza el cuerpo
+completo** si un solo criterio es inválido, sin escritura parcial; (3) compila el
+`contenidoMarkdown` canónico; (4) persiste estructura y proyección juntas; (5) devuelve la versión
+resultante con `contenidoMarkdown`, `hashEstructura` e `integridadEstructural`.
+
+- `contenidoMarkdown` es **de solo lectura** para clientes nuevos (`03 §3.11`): si el cuerpo lo trae,
+  se ignora y nunca puede contradecir la estructura. Durante una transición acotada se sigue
+  aceptando en documentos legacy **para lectura**.
+- `criterios` es una lista ordenada de longitud variable (1..techo técnico, valor inicial 50). No hay
+  un número funcional fijo de criterios.
+- `prevalidar` responde `200` con `{ "valido": false, "errores": [...] }` cuando el cuerpo es legible
+  pero incumple reglas; no escribe nada y **no es prueba de activación**. Con un prompt de evaluación
+  que enumera criterios a mano, agrega la advertencia `prompt_contiene_criterios_fijos`.
+- Editar una versión `activa`/`archivada` responde `409 CONFLICT`: la corrección se hace creando una
+  versión nueva en `borrador`, inicialmente clonada. Activar la nueva versión **no** cambia campañas
+  o preguntas que fijaron otra versión.
+
+Errores estables bajo `400 VALIDATION_ERROR` (`§3`), en `error.detalles[].campo` / `.motivo`:
+
+| `campo` | `motivo` |
+|---|---|
+| `criterios` | `requerido` |
+| `criterios.{i}.id` | `requerido` \| `duplicado` \| `formato_invalido` |
+| `criterios.{i}.nombre` | `requerido` \| `duplicado` |
+| `criterios.{i}.peso` | `fuera_de_rango` |
+| `criterios.{i}.orden` | `duplicado` \| `no_consecutivo` |
+| `criterios.pesos` | `suma_invalida` |
+| `escala` | `invalida` |
+| `rubrica` | `integridad_invalida` |
+
+Campaña y pregunta **solo seleccionan** `rubricaRef` + `versionRubrica` (`§5.4`, precedencia
+pregunta → campaña). Sus cuerpos no aceptan ni devuelven una lista de criterios editable.
 
 ### 5.6 Prompts — `REQ §18`
 | Método | Ruta | Descripción |

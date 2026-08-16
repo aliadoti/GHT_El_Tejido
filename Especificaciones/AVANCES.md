@@ -4,7 +4,33 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Codex, Arquitecto/SDET/AppSec):
+- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Arquitecto/Tech Lead):
+  **`DT-RUB-01` CORTE 0 (DOCUMENTAL) DONE — contratos actualizados antes de tocar código.** Commit
+  separado, sin una sola línea de código. Los cinco contratos base ya declaran la fuente canónica:
+  **`03 §3.11`** invierte la dirección de la rúbrica —`escala`, `instruccionesGenerales` y
+  `criterios[]` con `id`/`nombre`/`descripcion`/`peso`/`orden` son la única fuente y
+  `contenidoMarkdown` pasa a ser **proyección derivada**—, define unicidad, suma de pesos `1`, orden
+  consecutivo, techo técnico de 50 criterios, `hashEstructura` sobre la representación canónica,
+  `integridadEstructural` (`valida|legacy_no_verificada|invalida`) y la regla de lectura legacy que
+  **no muta** el documento. **`03 §3.9`** suma `rubricaSnapshot` y `calificacionPorCriterio[].criterioId`
+  y declara `calificacionTotal` como valor **calculado por el servidor**. **`04 §5.5`** publica el
+  cuerpo canónico, `POST /api/admin/rubricas/prevalidar` (valida y compila **sin escribir**), el
+  rechazo del cuerpo completo sin escritura parcial y los ocho motivos estables de `VALIDATION_ERROR`.
+  **`07 §3.1`** declara explícitamente el cambio de dirección respecto del diseño original (antes se
+  parseaba el Markdown; ahora se compila desde la estructura), el validador puro compartido por
+  escritura y prevalidación, y el nuevo `§3.3` fija que campaña y pregunta **solo seleccionan**.
+  **`08 §3.2`** inyecta el bloque determinista de la versión efectiva y declara que el prompt
+  administrable es **agnóstico de los criterios**; el nuevo **`08 §4.1`** define el conjunto exacto por
+  `criterio_id` (faltante/extra/duplicado/fuera de escala → fallback existente), el total
+  `sum(puntaje*peso)/sum(peso)` en `decimal` sin redondear y la degradación de `calificacion_total` a
+  campo ignorado; `§3.4`, `§3.5`, `§5.10`, `§7` y `§8` alinean eje débil por id canónico, snapshot,
+  antifuga sobre la lista canónica y los seis códigos estables sin PII. **`11`** reemplaza el editor
+  libre de Markdown por el editor estructurado con preview server-side y retira `Impacto`/escala fija.
+  **Baseline del gate focalizado, medido antes de tocar código:** build Release `-warnaserror` verde,
+  **925 unitarias + 111 de integración** (`Category!=Calibracion`) y **1 de calibración**, todas en
+  verde. Sin código, portal, push, despliegue, Cosmos, Azure ni migración. **Siguiente: corte 1/4**
+  (dominio, validador/compilador deterministas, persistencia aditiva y API).
+- Actualizacion anterior: 2026-08-16 (Codex, Arquitecto/SDET/AppSec):
   **`DT-RUB-01` ESPECIFICADA 0/4 Y PRIORIZADA COMO SIGUIENTE CÓDIGO.** QAS/21 terminó con
   preparación y pruebas 1–8 PASS contra Azure y LLM real; D5 quedó BLOCKED por credencial. El reporte
   confirmó una deuda previa a DT-I20-02: la rúbrica `2` guarda `Impacto`/peso `1`, pero su Markdown y

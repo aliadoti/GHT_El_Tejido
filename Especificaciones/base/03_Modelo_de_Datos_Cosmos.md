@@ -650,8 +650,17 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "configLLMSnapshot": { "proveedor": "AzureOpenAI", "modelo": "gpt-4o-mini", "endpoint": "https://...", "parametros": { "temperature": 0.2 } },
   "seedThoughtsSnapshot": { "usadas": false, "contenido": [], "truncadas": false },
   "pesosUsados": { "claridad": 0.3, "impacto": 0.5, "viabilidad": 0.2 },
+  "rubricaSnapshot": {
+    "id": "r_general",
+    "version": 3,
+    "escala": { "min": 1, "max": 5 },
+    "hashEstructura": "sha256:...",
+    "criterios": [
+      { "id": "claridad", "nombre": "Claridad", "descripcion": "Qué tan comprensible y concreta es la propuesta.", "peso": 0.3, "orden": 1 }
+    ]
+  },
   "calificacionPorCriterio": [
-    { "criterio": "claridad", "puntaje": 4, "justificacion": "Idea clara." }
+    { "criterioId": "claridad", "criterio": "Claridad", "puntaje": 4, "justificacion": "Idea clara." }
   ],
   "calificacionTotal": 4.1,
   "explicacion": "Buena idea, falta cuantificar impacto.",
@@ -669,6 +678,21 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 - `recomendacion` ∈ `cerrar` | `repreguntar`.
 - `idioma` y `catalogoTextosVersion` (**P-32**, aditivos) reproducen la instrucción lingüística y el
   catálogo efectivos; documento histórico equivale a `es`/legacy.
+- **DT-RUB-01 — `calificacionTotal` es un valor calculado por el servidor**, nunca el total que
+  devuelva el modelo. Se obtiene como `sum(puntaje * peso) / sum(peso)` sobre la lista canónica de
+  criterios de la versión efectiva, en `decimal` y **sin redondear** antes de aplicar umbrales o
+  clasificar madurez (`08 §4.1`). El formato de portal/reporte puede mostrar dos decimales sin cambiar
+  el valor autoritativo. Umbrales, madurez, cierre anticipado, Markdown ejecutivo y calibración
+  consumen exclusivamente este campo.
+- `calificacionPorCriterio[].criterioId` (**DT-RUB-01**, aditivo) es la clave de emparejamiento con
+  `rubricaSnapshot.criterios[].id`. `criterio` se conserva como **etiqueta visible del snapshot**
+  para leer documentos históricos y reportes sin resolver la rúbrica. Un documento histórico **sin**
+  `criterioId` se lee conservando su `criterio` snapshot y **no se muta**; la compatibilidad de
+  lectura no habilita escrituras nuevas ambiguas.
+- `rubricaSnapshot` (**DT-RUB-01**, aditivo) congela id, versión, escala, hash de estructura y los
+  criterios ordenados con nombre, descripción y peso. Existe para que una evaluación siga siendo
+  explicable **aunque después se cree o active una versión nueva** de la rúbrica. `pesosUsados` se
+  conserva por compatibilidad y queda derivado de este snapshot (clave = `criterioId`).
 - `usoTokens` (P-10, **aditivo**, ausente = uso desconocido → suma 0): tokens reportados por el proveedor en la llamada; el costo acumulado de la campaña se deriva sumando este campo sobre las evaluaciones (sin documentos contadores). Ver `Campania.configSeguridad.presupuestoTokensCampania` y `10 §2`.
 - `parafraseoDevuelto` (I-05, **aditivo**, opcional): resumen fiel del aporte mostrado antes de la retroalimentación. Ausente/null (documento previo, flag apagado o salida LLM sin el campo) conserva la retro clásica; si supera `Conversacion:MaxCaracteresParafraseo`, se guarda solo hasta la última frase completa dentro del límite.
 - `ideaId`, `versionIdeaId` y `origenTextoEvaluado` (**I-19**, aditivos, opcionales): demuestran qué
@@ -721,13 +745,16 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
   "pk": "Rubrica",
   "nombre": "Rúbrica general de ideas",
   "descripcion": "Evalúa claridad, impacto y viabilidad",
-  "contenidoMarkdown": "# Rúbrica...\n## Criterios...\n",
+  "instruccionesGenerales": "Evalúa la propuesta con evidencia del aporte.",
   "escala": { "min": 1, "max": 5 },
   "criterios": [
-    { "nombre": "claridad", "peso": 0.3 },
-    { "nombre": "impacto", "peso": 0.5 },
-    { "nombre": "viabilidad", "peso": 0.2 }
+    { "id": "claridad", "nombre": "Claridad", "descripcion": "Qué tan comprensible y concreta es la propuesta.", "peso": 0.3, "orden": 1 },
+    { "id": "impacto", "nombre": "Impacto", "descripcion": "Alcance del beneficio esperado.", "peso": 0.5, "orden": 2 },
+    { "id": "viabilidad", "nombre": "Viabilidad", "descripcion": "Qué tan realizable es con los recursos actuales.", "peso": 0.2, "orden": 3 }
   ],
+  "contenidoMarkdown": "# Rúbrica...\n## Criterios...\n",
+  "integridadEstructural": "valida",
+  "hashEstructura": "sha256:...",
   "version": 3,
   "estado": "activa",
   "creadoEn": "2026-06-09T10:00:00Z",
@@ -736,7 +763,44 @@ Guarda **snapshots de versión** para reproducibilidad (`ARQ §8.3`). El cuerpo 
 ```
 - **Versionada** (`REQ §17.3.2`). Cada edición *comprometida* crea una nueva versión (nuevo documento con mismo `nombre`/familia e `id` que incluye versión, o `id` estable + colección de versiones; ver `07 §4` para la estrategia de versionado elegida).
 - `estado` ∈ `borrador` | `activa` | `archivada`. `borrador` es un estado **no comprometido**: una rúbrica en borrador nunca se usa para evaluar (el orquestador exige `activa`), por lo que su versión vigente puede editarse **en sitio** (`PUT`, ver `04 §5.5`) sin romper snapshots; al activarse queda inmutable y toda edición posterior es nueva versión. Ver `SUPUESTOS.md#edicion-config-hibrida`.
-- `escala` y `criterios`/`pesos` son la fuente; el `contenidoMarkdown` es lo que recibe el LLM (`REQ §17.3.6`).
+
+> **DT-RUB-01 — la estructura es la fuente única.** `escala`, `instruccionesGenerales` y `criterios[]`
+> son la **única** fuente de verdad de la versión. `contenidoMarkdown` deja de ser una entrada editable
+> y pasa a ser una **proyección derivada determinista** que compila el servidor a partir de esos
+> campos (`07 §3.1`): es lo que recibe el LLM y lo que se muestra como preview/auditoría
+> (`REQ §17.3.6`), pero **no puede contradecir la estructura** ni agregar criterios. Ver
+> `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`.
+
+Campos de `criterios[]` (**aditivos**: `id`, `descripcion` y `orden` son nuevos; ver compatibilidad
+abajo):
+
+| Campo | Regla |
+|---|---|
+| `id` | Clave estable, normalizada y **única dentro de la versión**. Es la clave de emparejamiento con la salida del LLM (`08 §4`) y con `pesosUsados`/`calificacionPorCriterio` (`§3.9`). No vacía. |
+| `nombre` | Etiqueta visible; admite espacios y tildes. No vacía y **única** tras normalizar mayúsculas y diacríticos. |
+| `descripcion` | Texto de apoyo para el modelo y el preview. Puede estar vacío. |
+| `peso` | `decimal > 0`. La **suma de pesos de la versión debe ser `1`**; el portal lo presenta como porcentaje. |
+| `orden` | Entero **único y consecutivo** desde 1. Determina el preview y el orden del contrato enviado al LLM. |
+
+Reglas de la versión:
+
+- `criterios` es una lista **ordenada de longitud variable**; no existe un número funcional fijo. Se
+  aplica un **techo técnico** para evitar payloads abusivos (valor inicial: 50 criterios), que no es
+  un número de negocio.
+- `escala` es global para la versión, con `min < max`. No hay escalas por criterio en este corte.
+- `instruccionesGenerales` (**aditivo**, opcional) es la guía transversal que se inyecta al modelo
+  junto con los criterios; ausente/vacía se omite del bloque compilado.
+- `hashEstructura` (**aditivo**, opcional) se calcula sobre la **representación canónica** de la
+  versión (criterios en `orden`, campos normalizados), no sobre el orden de propiedades del JSON
+  recibido, para que dos guardados de la misma estructura produzcan el mismo Markdown y el mismo hash.
+- `integridadEstructural` (**aditivo**, opcional) ∈ `valida` | `legacy_no_verificada` | `invalida`.
+  Ausente en documentos históricos = se evalúa en lectura. Una rúbrica `legacy_no_verificada` o
+  `invalida` **se puede leer**, pero no puede asignarse a una campaña nueva ni activarse como versión
+  nueva hasta crear una versión estructurada válida.
+- **Compatibilidad:** un documento histórico sin `id`/`orden` en sus criterios se lee derivando un
+  `id` normalizado del `nombre` y el `orden` de la posición del arreglo; la lectura **no muta el
+  documento**. Escrituras nuevas exigen la estructura completa y válida (`04 §5.5`). Si estructura y
+  `contenidoMarkdown` histórico se contradicen, la versión queda `legacy_no_verificada`.
 
 ### 3.12 `Prompt` (contenedor `config`) — `REQ §29.9`, `§18`
 
