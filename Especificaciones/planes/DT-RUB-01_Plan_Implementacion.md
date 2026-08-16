@@ -1,12 +1,12 @@
 # Plan de implementación — DT-RUB-01
 
-> **Estado:** CORTE 0 DONE + **CORTE 1/4 DONE LOCAL** (2026-08-16). Contratos `03`, `04`, `07`, `08`
-> y `11` ya declaran estructura canónica, Markdown derivado, salida exacta por `criterio_id` y total
-> server-side. Baseline del gate focalizado antes de tocar código: **925 unitarias + 111 de
-> integración** (`Category!=Calibracion`) **+ 1 de calibración**. Tras el corte 1: **959 + 119 + 1**.
-> Tras el **corte 2/4 (DONE local)**: **985 + 119 + 1**, build Release `-warnaserror`,
-> `dotnet format` y `git diff --check` verdes. Tras el **corte 3/4 (DONE local)**: portal **70
-> pruebas en 9 archivos**, `ng build` y Prettier verdes. Siguiente: corte 4/4.
+> **Estado:** **COMPLETA LOCAL — corte 0 + 4/4 (2026-08-16).** Contratos `03`, `04`, `07`, `08` y
+> `11` declaran estructura canónica, Markdown derivado, salida exacta por `criterio_id` y total
+> server-side. Progresión del gate focalizado: baseline **925 unitarias + 111 de integración
+> (`Category!=Calibracion`) + 1 de calibración** → corte 1 **959 + 119 + 1** → corte 2
+> **985 + 119 + 1** → corte 4 **992 + 120 + 1**. Portal: **70 pruebas en 9 archivos**. Build Release
+> `-warnaserror`, `dotnet format`, `git diff --check`, `ng build` y Prettier verdes en cada corte.
+> **Sin push, despliegue, Cosmos, Azure, D5 ni migración real.**
 >
 > **Nota de entorno:** `npx ng test` es intermitente en esta máquina —el pool de vitest a veces no
 > arranca algún worker y reporta menos archivos de los que existen, nunca una aserción fallida—.

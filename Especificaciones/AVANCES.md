@@ -4,7 +4,25 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Frontend/SDET):
+- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Arquitecto/SDET):
+  **`DT-RUB-01` COMPLETA LOCAL 4/4 — integración, QAS/24 y preparación operativa.** El corte 4 cierra
+  con pruebas cruzadas: el **mismo prompt** evalúa rúbricas de **1, 3, 5 y 8 criterios** exigiendo
+  exactamente sus ids (y cae al fallback si falta uno, con 3 y con 8); el **snapshot de v1 sigue
+  explicando el resultado** después de existir una v2 con otro reparto de pesos; y un **E2E
+  conversacional por el webhook real** demuestra que la decisión de negocio usa el total del
+  servidor: el modelo califica el criterio con 5 pero declara un total de 1, y la idea queda
+  **madura** con `calificacionTotal = 5` —con el total del modelo habría quedado en incubación—.
+  Se entregó `planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md` con el procedimiento de inventario
+  de solo lectura, la tabla a llenar, la migración por versión nueva y el rollback; **no se ejecutó
+  ninguna consulta ni escritura contra Cosmos, Azure o campañas reales**. `QAS/24` quedó actualizado
+  en lenguaje simple con lo que cambió en el producto, los motivos exactos de validación y la
+  advertencia de que **todas las rúbricas previas aparecerán «sin verificar»** —incluida la `2`—, que
+  es el resultado buscado y no un defecto. **Validación final:** build Release `-warnaserror`,
+  **992 unitarias + 120 de integración + 1 de calibración**, `dotnet format` y `git diff --check`
+  verdes; portal **70 pruebas en 9 archivos**, `ng build` y Prettier verdes. Sin push, despliegue,
+  Cosmos, Azure, D5 ni migración real. **Siguiente (requiere autorización humana):** desplegar,
+  ejecutar `QAS/24` en campaña aislada, levantar el inventario y solo después D5 comparable.
+- Actualizacion anterior: 2026-08-16 (Claude Opus 5, Frontend/SDET):
   **`DT-RUB-01` CORTE 3/4 DONE LOCAL — portal estructurado.** La pantalla **Rúbricas** reemplaza la
   edición libre del Markdown por un editor de estructura: nombre, descripción, instrucciones
   generales, **escala mínima y máxima editables** y una tabla ordenada de criterios con `id`, nombre,

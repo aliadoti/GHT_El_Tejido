@@ -538,6 +538,65 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             respuestas);
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // DT-RUB-01 §7/§13.8: la decisión de negocio usa el total calculado por el servidor.
+    // ----------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// El modelo califica el único criterio de la rúbrica con 5 —total server-side 5— pero declara un
+    /// <c>calificacion_total</c> de 1. Con la escala 1..5 y el umbral por defecto (0.6 → corte 3.4),
+    /// ambos valores caen a lados opuestos de la clasificación de madurez, así que el resultado
+    /// distingue sin ambigüedad qué total se usó.
+    /// </summary>
+    private const string SalidaLlmConTotalDelModeloEnganoso =
+        "{\"calificaciones\":[{\"criterio_id\":\"claridad\",\"puntaje\":5,\"justificacion\":\"muy clara\"}],"
+        + "\"calificacion_total\":1,\"explicacion\":\"aporte concreto\","
+        + "\"retroalimentacion_usuario\":\"Tu idea sobre el almacenamiento ya tiene objetivo y alcance.\","
+        + "\"recomendacion\":\"cerrar\",\"repregunta_sugerida\":\"\","
+        + "\"temas\":[\"almacenamiento\"],\"entidades\":[],\"anomalia_seguridad\":false}";
+
+    [Fact]
+    public async Task DTRUB01_TotalDelModeloEnganoso_LaDecisionYLoPersistidoUsanElTotalDelServidor()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+
+        using var fabrica = ConstruirConLlmFalso(
+            gateway,
+            conversaciones,
+            respuestas,
+            SalidaLlmConTotalDelModeloEnganoso);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.DTRUB01.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(
+            client,
+            "wamid.DTRUB01.2",
+            "Reorganizar el almacenamiento en racks para bajar el tiempo de alistamiento");
+        await EsperarAsync(() => respuestas.Evaluaciones.Count >= 1);
+
+        var evaluacion = respuestas.Evaluaciones.Should().ContainSingle().Subject;
+
+        // Lo persistido es el ponderado del servidor (5 x peso 1), no el 1 que devolvió el modelo.
+        evaluacion.CalificacionTotal.Should().Be(5m);
+
+        // Y la decisión de negocio siguió ese mismo valor: con el total del modelo (1 < corte 3.4) la
+        // idea habría quedado en incubación.
+        var idea = respuestas.Ideas.Values.Should().ContainSingle().Subject;
+        idea.NivelMadurez.Should().Be(NivelMadurez.Maduro);
+
+        // El snapshot alcanza para explicar el resultado sin volver a consultar la rúbrica.
+        evaluacion.RubricaSnapshot.Should().NotBeNull();
+        evaluacion.RubricaSnapshot!.Criterios.Select(c => c.Id).Should().Equal("claridad");
+        evaluacion.CalificacionPorCriterio.Select(c => c.CriterioId).Should().Equal("claridad");
+
+        // Nada del mecanismo llega al participante.
+        var visible = string.Join("\n", gateway.Enviados.Select(e => e.Texto));
+        visible.Should().NotContain("criterio").And.NotContain("5/5").And.NotContain("rubrica");
+    }
+
     private static WebApplicationFactory<Program> ConstruirConLlmFalso(
         GatewayDePrueba gateway,
         ConversacionesFake conversaciones,

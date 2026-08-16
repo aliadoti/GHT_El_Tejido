@@ -9,6 +9,21 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **✅ `DT-RUB-01` RÚBRICA ESTRUCTURADA Y EVALUACIÓN DETERMINISTA — COMPLETA LOCAL 4/4 2026-08-16
+> (Claude Opus 5).** Corte 4: el **mismo prompt** evalúa rúbricas de **1, 3, 5 y 8 criterios**
+> exigiendo exactamente sus ids; el **snapshot de v1 sigue explicando el resultado** tras existir una
+> v2 con otro reparto; y un **E2E conversacional por el webhook real** prueba que la decisión usa el
+> total del servidor —el modelo califica 5 y declara total 1: la idea queda **madura** con
+> `calificacionTotal = 5`—. Entregado
+> `planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md` (inventario de solo lectura, migración por
+> versión nueva y rollback); **sin ninguna consulta ni escritura contra Cosmos, Azure o campañas
+> reales**. `QAS/24` actualizado, incluida la advertencia de que **todas las rúbricas previas
+> aparecerán «sin verificar»** —también la `2`—, que es lo buscado. Validación final: build Release
+> `-warnaserror`, **992 unitarias + 120 de integración + 1 de calibración**, `dotnet format` y
+> `git diff --check` verdes; portal **70 en 9 archivos**, `ng build` y Prettier verdes.
+> **Siguiente, y requiere autorización humana:** desplegar, ejecutar `QAS/24` en campaña aislada,
+> levantar el inventario y solo después un D5 comparable. `DT-P32-04` sigue después de eso.
+>
 > **🟢 `DT-RUB-01` CORTE 3/4 PORTAL ESTRUCTURADO — DONE LOCAL 2026-08-16 (Claude Opus 5).**
 > **Rúbricas** deja de editar Markdown libre: ahora autoriza estructura —nombre, descripción,
 > instrucciones generales, escala editable y tabla ordenada de criterios con `id`, nombre,

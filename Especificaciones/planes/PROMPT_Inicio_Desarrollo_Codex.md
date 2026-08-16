@@ -6,7 +6,28 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-16 — SIGUIENTE CÓDIGO `DT-RUB-01` (0/4).** QAS/21 preparación y pruebas 1–8
+> **HANDOFF 2026-08-16 — `DT-RUB-01` COMPLETA LOCAL 4/4; NO HAY CÓDIGO PENDIENTE.** La estructura
+> versionada de la rúbrica es ya la fuente única: `contenidoMarkdown` es una proyección derivada por
+> el servidor, la salida del LLM se empareja por `criterio_id` exigiendo el conjunto exacto de la
+> versión efectiva, el total de negocio lo calcula el servidor
+> (`sum(puntaje*peso)/sum(peso)` en `decimal`, sin redondear) y eje débil, antifuga y snapshot usan
+> la misma lista canónica. El portal reemplazó el editor de Markdown por el editor estructurado con
+> preview del servidor. **Aviso importante para la validación desplegada:** con este cambio **todas
+> las rúbricas anteriores aparecen como «sin verificar»** (`legacy_no_verificada`), incluida la `2`.
+> Es el resultado buscado —ninguna fue compilada por el servidor, así que no se puede afirmar que su
+> estructura y su Markdown coincidan—: se siguen leyendo y las campañas ya configuradas evalúan
+> igual, pero no se pueden activar ni asignar a algo nuevo hasta crear una versión estructurada con
+> los criterios que apruebe **negocio** (no se deducen del Markdown). Validación local: build Release
+> `-warnaserror`, **992 unitarias + 120 de integración + 1 de calibración**, `dotnet format`,
+> `git diff --check`, portal **70 en 9 archivos**, `ng build` y Prettier verdes. Sin push,
+> despliegue, Cosmos, Azure, D5 ni migración. **Siguiente, todo con autorización humana:** desplegar,
+> ejecutar `QAS/24` en campaña aislada, levantar el inventario de
+> `planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md` y solo después un D5 comparable (`n=3`, misma
+> rúbrica/versión/modelo/parámetros/golden set en ambos brazos). Sigue pendiente el cierre operativo
+> de QAS/21: confirmar tras el reinicio `Simulacion__Habilitada=false` y
+> `Conversacion__CatalogoTextosHabilitado=false`, y retirar `GHT_DIAG_KEY`. `DT-P32-04` va después.
+>
+> **HANDOFF HISTÓRICO 2026-08-16 — SIGUIENTE CÓDIGO `DT-RUB-01` (0/4).** QAS/21 preparación y pruebas 1–8
 > están PASS con LLM real; D5 quedó BLOCKED por credencial. Antes de D5 debe corregirse la deuda
 > confirmada en la rúbrica `2`: la estructura declara solo `Impacto`, pero el Markdown/modelo usan
 > cinco ejes. Leer `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`, su plan
