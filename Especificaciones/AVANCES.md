@@ -4,6 +4,17 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
+- Ultima actualizacion: 2026-08-16 (Codex, Arquitecto/SDET/AppSec):
+  **`DT-RUB-01` ESPECIFICADA 0/4 Y PRIORIZADA COMO SIGUIENTE CÓDIGO.** QAS/21 terminó con
+  preparación y pruebas 1–8 PASS contra Azure y LLM real; D5 quedó BLOCKED por credencial. El reporte
+  confirmó una deuda previa a DT-I20-02: la rúbrica `2` guarda `Impacto`/peso `1`, pero su Markdown y
+  la salida del modelo usan cinco ejes. No se congela baseline en ese estado. La nueva spec hace que
+  la estructura versionada sea fuente única, genera Markdown, exige ids exactos, calcula el total
+  ponderado en servidor y alimenta eje débil, antifuga y snapshots con la misma lista. Entregados
+  plan y QAS/24; sin código, remoto, despliegue ni migración. Siguiente: corte documental 0 y luego
+  cuatro cortes de implementación. `DT-P32-04` queda después de QAS/24/D5 comparable. Pendiente
+  operativo humano más urgente: confirmar tras reinicio simulación y gate P-32 OFF y retirar
+  `GHT_DIAG_KEY`; no bloquea desarrollo local, sí cualquier nueva corrida remota.
 - Ultima actualizacion: 2026-08-15 (Codex, Arquitecto/SDET/AppSec):
   **`DT-I20-02` desplegada; QAS/21 delega la preparación remota al agente de pruebas.** Por
   autorización expresa del usuario, la corrida crea una familia `qa_dt_i20_02_*`, hasta dos versiones
@@ -1556,7 +1567,8 @@
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **DESPLEGADA 2/2 (`a9f4a6f`)** | cierres QAS/23 1–3 PASS | backend 854 + 105, portal 60 | Resolutor único sin fallback cruzado y readiness Meta. La semántica de borradores se cerró en DT-P32-03-01; no queda código pendiente. |
 | DT-P32-03-01 | Readiness solo con campañas activas | **CERRADA: DESPLEGADA 1/1 + SMOKE GREEN (2026-08-15)** | `60b520d` | backend 863 + 109, portal 62; QAS/23 1–6 PASS en Azure | Borradores visibles sin bloquear, guarda propia al activar con gate ON y evidencia Meta aceptada. Gate/simulación OFF y clave retirada. Reporte `Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. P-32 completa queda después de DT-I20-02. |
-| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **IMPLEMENTADA Y DESPLEGADA 3/3; QAS/21 PENDIENTE (2026-08-15)** | `3be6118`/`efe0a99`/`f7c2da3` | backend 925 unitarias + 112 integración | Contrato por campo, gobierno runtime y prompt candidato completos. El agente crea familia/campaña QA durante `QAS/21`, prueba dos versiones y restaura `promptRefs` de campaña/pregunta. D5 requiere costo autorizado; migración real requiere nueva aprobación. |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED (2026-08-16)** | `3be6118`/`efe0a99`/`f7c2da3` | backend 925 + 112 al cierre; Azure: 24 mensajes/11 evaluaciones sin hallazgos visibles | Familia y campaña QA creadas/revertidas; gobierno v1/v2 probado. D5 espera credencial y DT-RUB-01 para comparar con una rúbrica íntegra. Sin migración real. Reporte `Resultados_DT-I20-02_2026-08-16.md`. |
+| DT-RUB-01 | Rúbrica estructurada y evaluación determinista | **ESPECIFICADA 0/4 — SIGUIENTE CÓDIGO (2026-08-16)** | n/a, documentación | `git diff --check` verde | Corrige la contradicción `Impacto` vs. cinco ejes antes de D5: estructura versionada canónica, Markdown derivado, ids exactos, total server-side, eje débil/antifuga/snapshots coherentes y portal sin hardcodes. Plan `planes/DT-RUB-01_*`; QAS `24_*`. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -2373,3 +2385,10 @@
   QA, sus versiones de gobierno runtime, una campaña aislada y participantes `es/en`. La guía puntúa
   el borrador, prevalidación, aprobación, precedencia de `promptRefs` de pregunta/campaña, rollback,
   D5 y reporte; prohíbe tocar familia `1`, campañas reales, configuración o despliegue.
+- 2026-08-16 - Codex - **DT-RUB-01 especificada y priorizada antes de D5.** Rol: Arquitecto/Backend/
+  Frontend/SDET/AppSec. Se incorporó el resultado QAS/21 (preparación + pruebas 1–8 PASS; D5 BLOCKED)
+  y se trazó el hallazgo `Impacto` estructurado frente a cinco ejes Markdown hasta portal, evaluación,
+  total, eje débil y antifuga. Decisión aprobada: la versión estructurada de rúbrica manda; campaña y
+  pregunta solo seleccionan; Markdown y contrato LLM se derivan; el servidor valida ids exactos y
+  calcula el total; snapshots históricos no se reescriben. Entregados spec, plan en cuatro cortes y
+  QAS/24. Sin código, datos remotos, despliegue ni migración. Handoff: corte documental 0 de DT-RUB-01.

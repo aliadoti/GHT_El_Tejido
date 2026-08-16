@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Especificaciones/Iniciativas/TODO.md",
+                "file": "Especificaciones/Iniciativas/DT-P32-04_Nucleo_Transversal_Multidioma.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "TODO"
+              "title": "DT-P32-04_Nucleo_Transversal_Multidioma"
             }
           }
         ]
@@ -187,6 +187,14 @@
   },
   "active": "9b6a542bf4acce9c",
   "lastOpenFiles": [
+    "Especificaciones/Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md",
+    "Especificaciones/Iniciativas/D5_Banco_Calibracion.md",
+    "QAS/24_DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista_Como_Probar.md",
+    "Especificaciones/planes/DT-RUB-01_Plan_Implementacion.md",
+    "Especificaciones/Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md",
+    "QAS/resultados/Resultados_DT-I20-02_2026-08-16.md",
+    "QAS/resultados/Resultados_DT-I20-02_2026-08-16.md.tmp.52912.b7677e61acf1",
+    "Especificaciones/Iniciativas/TODO.md",
     "QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md.tmp.1001.80eb10e30732",
     "Especificaciones/planes/PROMPT_Inicio_Desarrollo_Codex.md.tmp.1001.a77cccceb244",
     "Especificaciones/Iniciativas/TODO.md.tmp.1001.92ee22814ef2",
@@ -196,8 +204,6 @@
     "Especificaciones/AVANCES.md.tmp.1001.b08e4dc558a3",
     "Especificaciones/AVANCES.md.tmp.1001.b244bfefdabf",
     "Especificaciones/AVANCES.md.tmp.1001.9be9dacb2e0e",
-    "Especificaciones/AVANCES.md.tmp.1001.9b198cef510d",
-    "Especificaciones/planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md.tmp.1001.2e0b66d13bff",
     "Especificaciones/planes/DT-I20-02_Prompt_Candidato_Evaluacion.md",
     "QAS/resultados/Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md",
     "Especificaciones/planes/DT-P32-03-01_Plan_Readiness_Gate_Solo_Activas.md",
@@ -217,12 +223,6 @@
     "Especificaciones/Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md",
     "QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md",
     "Especificaciones/planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md",
-    "QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md",
-    "Especificaciones/Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md",
-    "QAS/README.md",
-    "Especificaciones/Iniciativas/TODO.md",
-    "Client_partner/02_Backlog_Requerimientos/Requerimientos/Nuevas iniciativas/REQ-054_Consulta_y_cierre_visible_de_la_idea.md",
-    "QAS/20_P33_Consulta_y_Cierre_Visible_Como_Probar.md",
     "Client_partner/flujo_participante_tejido.png",
     "QAS/resultados/2026-08-06/portal_login.png",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",

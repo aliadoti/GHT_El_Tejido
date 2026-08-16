@@ -6,6 +6,9 @@
 > **Corrida QAS autorizada 2026-08-15:** el humano delegó al agente que ejecute `QAS/21` la creación
 > acotada de la familia QA, dos versiones como máximo, una campaña aislada y sus participantes de
 > prueba. Esta delegación no incluye campañas reales ni la familia `1`.
+> **Resultado 2026-08-16:** preparación y pruebas 1–8 PASS; rollback completado. D5 quedó BLOCKED por
+> credencial y no debe repetirse hasta implementar/validar DT-RUB-01 con una versión íntegra de
+> rúbrica. El cierre humano de simulación/gate OFF y retiro de `GHT_DIAG_KEY` se verifica aparte.
 
 ## Riesgo que controla este runbook
 
@@ -93,7 +96,7 @@ Detenerse y ejecutar rollback si ocurre cualquiera:
 
 ## Evidencia de cierre
 
-- pruebas QAS y D5 aprobadas;
+- QAS/21 pruebas 1–8 aprobadas y, antes de migración real, D5 aprobado con DT-RUB-01 green;
 - versión runtime efectiva verificada;
 - métricas antes/después;
 - lista de campañas migradas;

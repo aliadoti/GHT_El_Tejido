@@ -1,6 +1,12 @@
 # QAS 21 — DT-I20-02: texto plano y prompt seguro
 
-> **Estado:** `DT-I20-02` está **IMPLEMENTADA Y DESPLEGADA 3/3** (2026-08-15). Esta corrida incluye
+> **Resultado 2026-08-16:** preparación y pruebas 1–8 **PASS** contra Azure con LLM real; D5
+> **BLOCKED** por credencial. Familia/campaña QA revertidas sin migrar campañas reales. El reporte
+> dejó como cierre humano pendiente confirmar, después del reinicio, simulación y gate P-32 OFF y
+> retirar `GHT_DIAG_KEY`. Antes de repetir D5 se implementa DT-RUB-01 para que ambos brazos usen una
+> rúbrica estructuralmente íntegra. Evidencia: `resultados/Resultados_DT-I20-02_2026-08-16.md`.
+>
+> **Estado de la guía:** `DT-I20-02` está **IMPLEMENTADA Y DESPLEGADA 3/3** (2026-08-15). Esta corrida incluye
 > como preparación puntuada la creación de una **familia nueva**, su aprobación, la asociación a una
 > campaña aislada y el rollback. Las guardias de código **no dependen de ningún flag**. En la prueba
 > 8, «activa y aprobada» es la condición exacta: una versión activa sin aprobar tampoco se usa y el

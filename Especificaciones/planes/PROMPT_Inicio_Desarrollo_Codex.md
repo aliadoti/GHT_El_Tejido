@@ -6,7 +6,17 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF OPERATIVO 2026-08-15 — `DT-I20-02` IMPLEMENTADA Y DESPLEGADA 3/3; SIGUE QAS/21.** El
+> **HANDOFF 2026-08-16 — SIGUIENTE CÓDIGO `DT-RUB-01` (0/4).** QAS/21 preparación y pruebas 1–8
+> están PASS con LLM real; D5 quedó BLOCKED por credencial. Antes de D5 debe corregirse la deuda
+> confirmada en la rúbrica `2`: la estructura declara solo `Impacto`, pero el Markdown/modelo usan
+> cinco ejes. Leer `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`, su plan
+> y QAS/24. Comenzar por el corte documental 0 y luego implementar estructura canónica, Markdown
+> derivado, salida exacta, total server-side y portal estructurado. No inventar criterios/pesos, no
+> tocar remoto y no migrar campañas reales. Antes de otra corrida Azure, un humano debe confirmar
+> simulación y gate P-32 OFF después del reinicio y retirar `GHT_DIAG_KEY`. Ese cierre no bloquea el
+> desarrollo local. DT-P32-04 queda después de QAS/24 y D5 comparable.
+>
+> **HANDOFF HISTÓRICO 2026-08-15 — `DT-I20-02` IMPLEMENTADA Y DESPLEGADA 3/3; SEGUÍA QAS/21.** El
 > usuario autorizó al agente de pruebas a crear una familia QA nueva, hasta dos versiones, una
 > campaña aislada y participantes `es/en`, todo dentro de la preparación puntuada de `QAS/21`. Debe
 > ejecutar estrictamente `QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md`, que contiene

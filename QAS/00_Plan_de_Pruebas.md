@@ -2,8 +2,9 @@
 
 > **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 12-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
 > **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
-> **Última revisión del estado real:** 2026-08-13. P-33 está DONE local 3/3 y pendiente de D5/UAT.
-> DT-I20-02 está especificada 0/3; su regresión se implementa antes de migrar el prompt de evaluación.
+> **Última revisión del estado real:** 2026-08-16. DT-I20-02 está desplegada y QAS/21 preparación +
+> pruebas 1–8 están PASS; D5 quedó BLOCKED. Antes de congelar su baseline se implementa DT-RUB-01,
+> porque la rúbrica efectiva debe tener una sola lista de criterios y un total calculado por servidor.
 
 ---
 
@@ -18,7 +19,7 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 
 > **Nota de seguridad sobre el tejido diferido:** aunque I-09 sale del alcance funcional, si por error quedara con flag ON, sus casos de seguridad (SEC-06..08 anonimización, SEC-12 injection transitiva) siguen siendo **CORE**. Verificar en el smoke que `tejidoColectivo` está OFF en todas las campañas del Hito.
 
-### 1.3 Estado real relevante (de `AVANCES.md` / índice, al 2026-08-13)
+### 1.3 Estado real relevante (de `AVANCES.md` / índice, al 2026-08-16)
 | Función | Estado | Implicación para QA |
 |---|---|---|
 | I-03 follow-up eje débil + `FiltroSalidaRubrica` | **DONE local**; filtro **siempre-on** | Probar sí o sí (seguridad). D5 real vs staging pendiente. |
@@ -35,7 +36,8 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 | I-01 cierre por umbral | Umbral global 0.6; **`CierreAnticipadoHabilitado=false`** por defecto; activación humana en Pruebas | Probar solo si el acta enciende el kill-switch y el valor elegido. |
 | I-12 seed thoughts | **BLOCKED** (insumo vencido) | No bloquea el Hito conversacional; validar solo "campaña sin seeds = comportamiento base". |
 | P-33 consulta/cierre visible | **DONE local 3/3; gate OFF** | Usar `QAS/20`: probar consulta pura sin aporte, activo→última sin menú, versión exacta, cierres, afinidad/reapertura, aislamiento y rollback `es/en`. Pendiente D5/UAT y acta de flags. |
-| DT-I20-02 texto plano visible | **ESPECIFICADA 0/3; sin código** | Usar `QAS/21`: probar que los fragmentos LLM no muestran Markdown/estado interno y que la corrección no cambia idea/versionId, puntajes, madurez, estados, cierres, repreguntas, idioma ni texto P-33. |
+| DT-I20-02 texto plano visible | **DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | Conservar el reporte `Resultados_DT-I20-02_2026-08-16.md`; no migrar campañas reales ni congelar baseline hasta ejecutar D5 comparable. |
+| DT-RUB-01 rúbrica estructurada | **ESPECIFICADA 0/4; siguiente código** | Usar `QAS/24`: estructura única, cantidad variable, validaciones, total ponderado server-side, snapshots, compatibilidad y mismo prompt con dos rúbricas. D5 viene después del green. |
 
 > **Regla de ambigüedad:** ante duda sobre el estado real, asumir el **comportamiento documentado** en `Reglas_Conversacion_y_Participacion.md` y `AVANCES.md`, y **marcar el caso como "Verificar build"**.
 

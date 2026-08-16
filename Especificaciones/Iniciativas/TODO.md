@@ -9,8 +9,22 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🔵 NO HAY CÓDIGO PENDIENTE: `DT-I20-02` ESTÁ IMPLEMENTADA Y DESPLEGADA 3/3
-> (2026-08-15). SIGUE `QAS/21`.** El usuario autorizó al agente de pruebas a crear como parte de la
+> **🟡 SIGUIENTE CÓDIGO: `DT-RUB-01` — RÚBRICA ESTRUCTURADA COMO FUENTE ÚNICA (0/4).** QAS/21
+> terminó con preparación y pruebas 1–8 PASS en Azure; D5 quedó BLOCKED por credencial. La corrida
+> descubrió una deuda previa: la rúbrica `2` persiste solo `Impacto`/peso `1`, mientras su Markdown y
+> el LLM usan cinco ejes. No se debe congelar un baseline con esa contradicción. Implementar primero
+> `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`, comenzando por el corte
+> documental 0: estructura canónica, Markdown derivado, contrato exacto por `criterio_id`, total
+> ponderado server-side, eje débil/antifuga y snapshots sobre la misma lista. QAS:
+> `QAS/24_DT-RUB-01_*`; plan: `planes/DT-RUB-01_*`. No inventar criterios/pesos ni tocar datos
+> remotos. `DT-P32-04` continúa después de esta corrección y de un D5 comparable.
+> **Cierre operativo previo a cualquier nueva corrida remota:** después de QAS/21 falta confirmar por
+> lectura posterior al reinicio `Simulacion__Habilitada=false` y
+> `Conversacion__CatalogoTextosHabilitado=false`, y retirar `GHT_DIAG_KEY` de la sesión. Esta tarea
+> humana es más urgente, pero no bloquea los cortes locales de DT-RUB-01.
+>
+> **🔵 HISTÓRICO: `DT-I20-02` QUEDÓ IMPLEMENTADA Y DESPLEGADA 3/3
+> (2026-08-15); ENTONCES SEGUÍA `QAS/21`.** El usuario autorizó al agente de pruebas a crear como parte de la
 > corrida una familia `qa_dt_i20_02_*`, hasta dos versiones, una campaña aislada y participantes
 > `es/en`. Ejecutar estrictamente `QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md`: allí
 > están la prevalidación, precedencia campaña/pregunta, pruebas 1–8, D5, rollback y reporte. No tocar
@@ -704,7 +718,8 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **DT-P32-03** | **Cierre localizado único y readiness Meta** | **DESPLEGADA 2/2 — `a9f4a6f`** | **Claude** | Cierres QAS/23 1–3 PASS; la semántica posterior quedó cerrada en DT-P32-03-01. Sin código pendiente. |
 | **DT-P32-03-01** | **Readiness del gate solo con campañas activas** | **CERRADA — DESPLEGADA 1/1 + SMOKE GREEN** | **Claude/Codex** | `60b520d`; QAS/23 1–6 PASS en Azure, evidencia Meta aceptada, gate/simulación OFF y clave retirada. P-32 completa queda después de DT-I20-02. |
 | **DT-P32-04** | **Núcleo transversal multidioma** | **ESPECIFICADA 0/3 — BACKLOG POST-GREEN** | **Codex** | Idioma central, `ContenidoCampaniaEfectivo`, resolutores especializados y readiness compuesto. No cambia fuentes de contenido, DTO ni Cosmos; evita una clase dios. No bloquea DT-I20-02. |
-| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **IMPLEMENTADA Y DESPLEGADA 3/3 — 2026-08-15; QAS/21 PENDIENTE** | **Claude/Codex** | Contrato por campo, gobierno runtime y prompt candidato completos; backend 925 unitarias + 112 integración. El agente de pruebas tiene autorización acotada para crear familia `qa_dt_i20_02_*`, hasta dos versiones, campaña aislada y usuarios `es/en`, ejecutar pruebas 1–8 y rollback. D5 exige costo autorizado; familia `1`, campañas reales, configuración y despliegue quedan fuera. Spec `Iniciativas/DT-I20-02_*`; QAS `QAS/21_*`; runbook `planes/DT-I20-02_*`. |
+| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | **Claude/Codex** | Preparación autónoma y ocho pruebas PASS con LLM real; familia/campaña QA revertidas sin migrar campañas reales. D5 no se ejecuta hasta corregir DT-RUB-01 y disponer de credencial/costo: comparar prompts exige la misma rúbrica íntegra, modelo, parámetros y golden set. Reporte `QAS/resultados/Resultados_DT-I20-02_2026-08-16.md`. |
+| **DT-RUB-01** | **Rúbrica estructurada y evaluación determinista** | **ESPECIFICADA 0/4 — SIGUIENTE CÓDIGO** | **Por asignar** | Elimina `Impacto`/escala hardcodeados; la estructura versionada gobierna Markdown derivado, contrato exacto del LLM, total ponderado server-side, eje débil, antifuga y snapshots. Primero actualizar contratos base en corte documental separado; después dominio/API, evaluación, portal e integración. No inventar criterios/pesos ni migrar campañas reales. Spec `Iniciativas/DT-RUB-01_*`; plan `planes/DT-RUB-01_*`; QAS `QAS/24_*`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
 | **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **DT-P32-02 quedó COMPLETA local 3/3 el 2026-08-14; sigue la corrida autorizada de `QAS/22` y `QAS/17`.** |
@@ -764,38 +779,29 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **ARRANCA AQUÍ: ejecutar `QAS/21` en el despliegue vigente.** `DT-I20-02` está implementada y
-   desplegada 3/3. El agente tiene autorización acotada para crear la familia QA, dos versiones como
-   máximo, la campaña aislada y participantes `es/en` descritos en la guía. Debe ejecutar la
-   preparación puntuada, pruebas 1–8, D5 si existe autorización separada de costo, rollback de los
-   `promptRefs` de campaña y pregunta, cierre de la campaña QA y reporte. No migrar campañas reales,
-   no tocar la familia `1`, configuración o despliegue. Si se usa simulación Azure, su encendido y la
-   entrega segura de `GHT_DIAG_KEY` siguen siendo preparación humana temporal.
+1. **Cierre operativo humano inmediato:** confirmar después del reinicio que simulación y gate P-32
+   quedaron OFF y retirar `GHT_DIAG_KEY` de la sesión. No iniciar otra corrida Azure hasta completar
+   esta verificación. No es una tarea de código y no impide trabajar localmente.
 
-2. **Después del corte 2/2: la corrida operativa autorizada de `DT-P32-02` y P-32.**
-   Los tres cortes quedaron DONE local el 2026-08-14 (backend 817 + 103; portal 57/57, build y
-   Prettier verdes); `4d0f35c`, CI #110 y Deploy #95 están confirmados. Con gate OFF, crear y revisar
-   los borradores base `es/en`, probar la descarga, revisión y carga del JSON editado, activar
-   explícitamente los catálogos aprobados y ejecutar `QAS/22` Pruebas 1 a 8. Después abrir la ventana
-   gate ON según `QAS/18` y completar `QAS/17`, comprobando que el aporte y la idea consolidada en
-   inglés permanezcan en inglés. Cualquier FAIL o BLOCKED devuelve o mantiene el gate OFF y obliga a
-   corregir y repetir; conservar evidencia sin secretos ni participantes reales.
-   Registrar D5/UAT, Meta, costo/latencia y rollback. **Solo con `QAS/22` y `QAS/17` en green se
-   cambia el handoff a `DT-I20-02` corte 1/3.**
+2. **ARRANCA CÓDIGO AQUÍ: `DT-RUB-01`, corte documental 0.** Leer la spec y el plan nuevos; actualizar en un
+   cambio separado `03`, `04`, `07`, `08` y `11` para que estructura/criterios/pesos/escala sean la
+   fuente única, el Markdown sea derivado, el LLM devuelva exactamente los `criterio_id` y el servidor
+   calcule el total. Después ejecutar los cuatro cortes de código. No inventar los cinco criterios ni
+   sus pesos, no tocar Cosmos/Azure y no modificar campañas reales.
 
-3. **Antes de encender el gate:** confirmar aislamiento del emisor o teléfonos de prueba autorizados.
-   `Simulacion__Habilitada=true` no evita salidas reales; al cierre debe quedar en `false` y el gate
-   también, salvo acta formal de activación.
+3. **Después del despliegue autorizado de DT-RUB-01:** un administrador crea una versión nueva y
+   correcta de la rúbrica `2`, la asocia primero a una campaña aislada y ejecuta `QAS/24`. Una rúbrica
+   activa o una evaluación histórica no se sobrescriben.
 
-4. **Solo con DT-P32-02 y la corrida P-32 green: implementar `DT-I20-02` corte 1/3.** Mantener su
-   spec, `QAS/21` y runbook sin cambios de alcance mientras espera.
+4. **D5 de DT-I20-02 queda después de QAS/24 green y de la credencial/costo autorizados.** Comparar
+   familia `1` frente a la candidata con la misma rúbrica/version, modelo, parámetros y golden set,
+   `n=3` por caso. No congelar baseline ni migrar campañas reales con D5 BLOCKED.
 
-5. **Después: validar P-33 localmente terminada.** Ejecutar `QAS/20_*` en un ambiente aislado,
-   en español e inglés, y registrar D5/UAT, costo/latencia y el acta de flags. El gate global sigue
-   OFF; no desplegar ni cambiar configuración remota sin autorización expresa.
+5. **Luego retomar `DT-P32-04`**, salvo repriorización humana: es el refactor transversal
+   multidioma y no corrige la integridad de las evaluaciones.
 
-6. **En paralelo, D5 de `DT-I20-01` (validación de calidad, no código).** El código está DONE local y
-   verde. Usar ejemplos anonimizados y `QAS/19_*`; no hay flag, el rollback es revertir su commit.
+6. **Operación previa ya ejecutada:** QAS/21 preparación y pruebas 1–8 PASS; campaña QA archivada y
+   `promptRefs` restaurados. El cierre de flags/clave se controla en el paso 1.
 
 7. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
@@ -807,12 +813,15 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    defecto; no desplegar ni modificar configuración remota sin orden.
 9. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 10. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-11. **La aprobación expresa de P-26, P-27, P-33, `DT-P32-02` y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
-   de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
-   resuelta por esas specs o sus anclas en `SUPUESTOS.md`.
-12. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
-13. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
-14. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
-15. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
+11. **La aprobación expresa del diseño de `DT-RUB-01` existe.** Implementa en el orden y cortes de la
+    spec. Solo vuelve a consultar al usuario para definir el contenido funcional de la rúbrica `2` o
+    si aparece una decisión de producto/contrato no resuelta.
+12. **La aprobación expresa de P-26, P-27, P-33, `DT-P32-02` y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
+    de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
+    resuelta por esas specs o sus anclas en `SUPUESTOS.md`.
+13. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
+14. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
+15. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.
+16. **Antes de cerrar cualquier sesión o dejar un handoff, actualiza este `TODO.md` sin excepción:** cabecera, estado de §4 y primer paso de §8 deben quedar sincronizados con `AVANCES.md`. Si hay bloqueo, déjalo explícito aquí con la condición concreta para retomarlo; no dejes un TODO que apunte a trabajo ya terminado.
 
 Declara brevemente, antes de cada acción significativa, **desde qué rol** decides y **qué REQ §/ARQ § + ID-iniciativa** cubres. Mantén el rigor de un equipo de 25+ años: simple, correcto, probado y documentado.

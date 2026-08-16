@@ -9,9 +9,9 @@
 > entregó el **contenido candidato del prompt** (`planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`, sin
 > crear ni activar nada), las pruebas de integración de §7.2 sobre el evaluador real y el cierre
 > documental de `05`, `08` y las reglas.
-> **Pendiente operativo:** el agente de pruebas está autorizado a crear la familia nueva, aprobarla,
-> asociarla solo a una campaña aislada y ejecutar `QAS/21`; D5 exige presupuesto/credenciales
-> separados. Ninguna campaña real se migra sin una nueva autorización, según el runbook.
+> **Resultado operativo 2026-08-16:** QAS/21 preparación y pruebas 1–8 PASS con LLM real; familia y
+> campaña QA revertidas. D5 quedó BLOCKED por credencial y se difiere hasta DT-RUB-01 green, porque la
+> rúbrica `2` es estructuralmente contradictoria. Ninguna campaña real se migra sin nueva autorización.
 > **Origen:** reporte real de WhatsApp con encabezados Markdown e instrucciones internas de presentación.  
 > **Alcance:** salida visible del evaluador, fragmentos de I-20 y selección segura del prompt de evaluación en runtime.  
 > **No cambia:** contratos API/Cosmos, puntajes, umbrales, estados, cierres, versión I-19, P-27, P-32, P-33 ni mensajes históricos.
@@ -231,9 +231,8 @@ No crear ni activar el prompt remoto durante la corrida de desarrollo. Su migrac
   oración y, sin frontera disponible, respaldo neutro;
 - [x] mantener contratos y persistencia compatibles — sin cambios de API, Cosmos, portal ni flags.
 
-> Pruebas de §7.2 (integración conversacional completa): **pendientes para el corte 3/3**, que ya las
-> incluye en su alcance. Las suites E2E actuales sustituyen `IEvaluadorLlm`, así que ejercitar el
-> contrato visible de punta a punta exige cablear el evaluador real con un `ILlmClient` falso.
+> Pruebas de §7.2 (integración conversacional completa): **entregadas en el corte 3/3** con el
+> evaluador real y un `ILlmClient` falso; QAS/21 las confirmó además contra Azure con LLM real.
 
 ### Corte 2/3 — Gobierno de versión runtime — **DONE local 2026-08-15**
 
@@ -256,8 +255,8 @@ No crear ni activar el prompt remoto durante la corrida de desarrollo. Su migrac
   backend ya inyecta (no se duplica esquema ni idioma) y la lista de verificación humana previa;
 - [x] ejecutar pruebas unitarias, integración y regresiones de I-18/I-19/I-20/P-27/P-32/P-33 — suite
   completa verde (ver §7.4);
-- [ ] ejecutar D5 real y QAS humana en ambiente aislado cuando existan credenciales y autorización —
-  **pendiente por costo, credenciales y autorización humana**; `QAS/21` queda ejecutable de 1 a 8;
+- [x] ejecutar QAS/21 preparación y pruebas 1–8 en ambiente aislado — PASS 2026-08-16;
+- [ ] ejecutar D5 real cuando DT-RUB-01 esté green y existan credenciales/autorización — BLOCKED;
 - [x] actualizar `05`, `08`, reglas, `SUPUESTOS`, `TODO`, `AVANCES` y el prompt de arranque con el
   estado real — `05 §4.4.2`, `08 §3.3` y `§3.4`, `Reglas_Conversacion_y_Participacion.md §2.14`;
 - [x] dejar la activación remota como acción humana separada y aprobada — nada se creó ni activó;
@@ -358,7 +357,8 @@ El detalle operativo está en `Especificaciones/planes/DT-I20-02_Runbook_Migraci
 - [x] Runtime selecciona la versión activa/aprobada más nueva y permite rollback verificable.
 - [x] No hay cambios históricos, de API, portal, Cosmos ni configuración remota durante el desarrollo.
 - [x] Build, pruebas no calibración, formato y `git diff --check` están verdes.
-- [x] D5/QAS real queda **explícitamente pendiente** por costo, credenciales y autorización humana.
+- [x] QAS/21 preparación y pruebas 1–8 PASS con LLM real; D5 queda **BLOCKED** hasta DT-RUB-01 green
+  y credencial/costo autorizados.
 
 ---
 

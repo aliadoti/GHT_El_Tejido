@@ -1401,3 +1401,32 @@
   buscado y se ve en la telemetría de redacción—. Rollback: revertir el commit del corte.
 - Spec: `Iniciativas/DT-I20-02_*` §5.4; base `08 §3.3`; QAS `QAS/21_*` prueba 8; runbook
   `planes/DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.
+### rubrica-estructurada-fuente-unica-dt-rub-01 — La campaña selecciona; la rúbrica gobierna
+
+- Fecha: 2026-08-16 - Agente/Rol: Codex, Arquitecto/Backend/Frontend/SDET/AppSec.
+- Contexto: QAS/21 pasó sus ocho pruebas de DT-I20-02, pero detectó que la rúbrica `2` persiste un
+  único criterio estructurado (`Impacto`, peso `1`) mientras su Markdown y el LLM usan cinco ejes. El
+  portal actual permite editar Markdown y vuelve a enviar siempre ese criterio/escala hardcodeados.
+- Decisión:
+  - la estructura de la versión de rúbrica —escala, instrucciones, criterios ordenados, descripciones
+    y pesos— es la única fuente de verdad;
+  - el Markdown es una proyección determinista generada por el servidor, no una segunda autoridad;
+  - campaña y pregunta solo seleccionan `rubricaRef + versionRubrica`; no editan criterios;
+  - el prompt de evaluación es agnóstico de criterios y el servidor inyecta la lista exacta en cada
+    llamada;
+  - el LLM devuelve exactamente un puntaje por id canónico; faltantes, extras y duplicados invalidan
+    la salida;
+  - el servidor calcula el total ponderado y esa cifra gobierna umbrales, madurez y resultados;
+  - eje débil, antifuga y snapshot consumen la misma estructura;
+  - versiones activas/archivadas son inmutables; una corrección crea nueva versión y no altera
+    evaluaciones históricas.
+- Alternativas descartadas: criterios editables en campaña (crea dos autoridades); obligar al humano
+  a mantener prompt y rúbrica sincronizados (error operativo inevitable); parsear Markdown libre en
+  runtime (ambiguo y no determinista); confiar en `calificacion_total` del modelo (no auditable);
+  sobrescribir la rúbrica activa (rompe reproducibilidad).
+- Impacto/reversibilidad: contratos aditivos con lectura legacy y nuevas escrituras estrictas. La
+  migración de la rúbrica `2` exige una versión nueva con contenido aprobado por negocio; no se
+  infieren criterios ni pesos. Rollback de operación restaura referencias de campaña/pregunta y nunca
+  borra versiones/evaluaciones.
+- Spec: `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`; plan:
+  `planes/DT-RUB-01_Plan_Implementacion.md`; QAS: `QAS/24_*`.
