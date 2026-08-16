@@ -5,7 +5,12 @@
 > server-side. Baseline del gate focalizado antes de tocar código: **925 unitarias + 111 de
 > integración** (`Category!=Calibracion`) **+ 1 de calibración**. Tras el corte 1: **959 + 119 + 1**.
 > Tras el **corte 2/4 (DONE local)**: **985 + 119 + 1**, build Release `-warnaserror`,
-> `dotnet format` y `git diff --check` verdes. Siguiente: corte 3/4 (portal).
+> `dotnet format` y `git diff --check` verdes. Tras el **corte 3/4 (DONE local)**: portal **70
+> pruebas en 9 archivos**, `ng build` y Prettier verdes. Siguiente: corte 4/4.
+>
+> **Nota de entorno:** `npx ng test` es intermitente en esta máquina —el pool de vitest a veces no
+> arranca algún worker y reporta menos archivos de los que existen, nunca una aserción fallida—.
+> Repetir hasta ver los 9 archivos; `VITEST_MAX_FORKS=1` lo hace más probable y más rápido.
 > **Spec:** `../Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`.
 > **QAS:** `../../QAS/24_DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista_Como_Probar.md`.
 

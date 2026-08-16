@@ -9,6 +9,22 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **🟢 `DT-RUB-01` CORTE 3/4 PORTAL ESTRUCTURADO — DONE LOCAL 2026-08-16 (Claude Opus 5).**
+> **Rúbricas** deja de editar Markdown libre: ahora autoriza estructura —nombre, descripción,
+> instrucciones generales, escala editable y tabla ordenada de criterios con `id`, nombre,
+> descripción y peso, con agregar/quitar/subir/bajar, suma de pesos en porcentaje y validación
+> inmediata—. **Se eliminaron el criterio `Impacto` quemado, la escala `1..5` fija y el Markdown
+> inicial**, con prueba que lo fija. El **preview lo da el servidor** (`POST .../prevalidar`); el
+> portal no compila en TypeScript y traduce los motivos tipificados a lenguaje de administrador. El
+> cuerpo enviado **no lleva `contenidoMarkdown`**, incluye `orden` explícito y el peso en fracción.
+> Editar una versión comprometida abre **Crear nueva versión** clonada que nace en `borrador`, y una
+> versión `legacy_no_verificada` aparece «sin verificar» y **no se puede activar**. Campaña y
+> pregunta siguen siendo solo selectores, con la ayuda «Los criterios se administran en Rúbricas;
+> aquí se selecciona una versión completa» en los cuatro puntos; la pregunta ahora expone también
+> `versionRubrica`. Portal **70 pruebas en 9 archivos** (8 nuevas), `ng build` y Prettier verdes;
+> backend sin cambios. ⚠️ `ng test` es intermitente en esta máquina (workers de vitest que no
+> arrancan, nunca aserciones): repetir hasta ver los 9 archivos. **Siguiente: corte 4/4.**
+>
 > **🟢 `DT-RUB-01` CORTE 2/4 EVALUACIÓN AUTORITATIVA — DONE LOCAL 2026-08-16 (Claude Opus 5).**
 > El contrato de salida pasó de `calificacion_por_criterio`/`criterio` a
 > **`calificaciones`/`criterio_id`**: se empareja por id canónico y **el nombre visible lo pone el

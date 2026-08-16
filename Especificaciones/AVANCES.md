@@ -4,7 +4,30 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Backend/SDET/AppSec):
+- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Frontend/SDET):
+  **`DT-RUB-01` CORTE 3/4 DONE LOCAL — portal estructurado.** La pantalla **Rúbricas** reemplaza la
+  edición libre del Markdown por un editor de estructura: nombre, descripción, instrucciones
+  generales, **escala mínima y máxima editables** y una tabla ordenada de criterios con `id`, nombre,
+  descripción y peso, con agregar / editar / **quitar** / **subir-bajar**, suma de pesos visible en
+  porcentaje y validación inmediata. **Desaparecieron el criterio `Impacto` quemado, la escala
+  `1..5` fija y el Markdown inicial que aparentaba ser la fuente**; una prueba lo fija explícitamente.
+  El **preview lo entrega el servidor** vía `POST /api/admin/rubricas/prevalidar` —el portal no
+  mantiene un segundo compilador en TypeScript— y los motivos tipificados se traducen a lenguaje de
+  administrador (`Criterio 2: ese valor ya lo usa otro criterio`, `Los pesos deben sumar 100%`). El
+  cuerpo enviado **no incluye `contenidoMarkdown`** y lleva `orden` explícito y el peso en fracción;
+  hay una prueba por cada una de esas dos propiedades. Editar una versión activa/archivada abre
+  **Crear nueva versión** clonada que nace en `borrador` —activar es una acción aparte— y una versión
+  con integridad `legacy_no_verificada` muestra «sin verificar» y **no se puede activar** desde el
+  portal. Campaña y pregunta siguen siendo **solo selectores**: se les añadió la ayuda contextual
+  «Los criterios se administran en Rúbricas; aquí se selecciona una versión completa» en los cuatro
+  puntos y la pregunta ahora expone también `versionRubrica` (vacío = hereda la vigente), que antes
+  existía en el contrato pero no en el formulario. Portal **70 pruebas en 9 archivos** (8 nuevas),
+  `ng build` y Prettier verdes; backend sin cambios (985 + 119 + 1). ⚠️ **`ng test` es intermitente
+  en esta máquina**: el pool de vitest a veces no logra arrancar algún worker y reporta menos
+  archivos de los que hay —nunca una aserción fallida—; se verificó repitiendo hasta obtener dos
+  corridas completas de 9/9 archivos. Sin push, despliegue, Cosmos, Azure ni migración.
+  **Siguiente: corte 4/4** (integración, QAS/24, inventario de migración y cierre local).
+- Actualizacion anterior: 2026-08-16 (Claude Opus 5, Backend/SDET/AppSec):
   **`DT-RUB-01` CORTE 2/4 DONE LOCAL — evaluación autoritativa.** El contrato de salida cambió de
   `calificacion_por_criterio`/`criterio` a **`calificaciones`/`criterio_id`**: el emparejamiento es
   por id canónico y **el nombre visible lo pone el snapshot del servidor**, no el modelo.

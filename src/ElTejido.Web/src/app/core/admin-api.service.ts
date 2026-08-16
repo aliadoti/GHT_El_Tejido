@@ -16,6 +16,7 @@ import {
   ParticipanteCampania,
   ParticipantePreview,
   Pregunta,
+  PrevalidacionRubrica,
   PromptConfig,
   ReporteCargaMasiva,
   ReportePurgaCampanias,
@@ -411,6 +412,14 @@ export class AdminApiService {
 
   cambiarEstadoRubrica(id: string, estado: string) {
     return this.api.patch<Rubrica>(`/api/admin/rubricas/${id}/estado`, { estado });
+  }
+
+  /**
+   * DT-RUB-01 (04 §5.5): valida y compila la misma estructura que la escritura, sin escribir. Es la
+   * unica fuente del preview: el portal no mantiene un segundo compilador en TypeScript.
+   */
+  prevalidarRubrica(body: unknown) {
+    return this.api.post<PrevalidacionRubrica>('/api/admin/rubricas/prevalidar', body);
   }
 
   prompts(query?: Record<string, string | number | undefined>) {

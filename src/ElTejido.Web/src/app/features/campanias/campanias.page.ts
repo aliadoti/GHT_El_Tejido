@@ -484,6 +484,11 @@ export class CampaniasPage {
       orden: Number(formulario.orden) || 1,
       estado: formulario.estado,
       rubricaRef: formulario.rubricaRef,
+      // DT-RUB-01: la pregunta fija una version completa; vacio hereda la vigente de la familia.
+      versionRubrica:
+        formulario.versionRubrica === null || formulario.versionRubrica === undefined
+          ? null
+          : Math.max(1, Math.trunc(Number(formulario.versionRubrica) || 1)),
       promptRefs: formulario.promptEvaluarRef ? { evaluar: formulario.promptEvaluarRef } : {},
       maxRepreguntas: Math.max(0, Number(formulario.maxRepreguntas) || 0),
       limitesSeguridad: {

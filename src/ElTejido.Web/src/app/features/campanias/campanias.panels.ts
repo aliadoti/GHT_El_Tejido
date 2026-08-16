@@ -62,6 +62,8 @@ export interface PreguntaForm {
   orden: number;
   estado: string;
   rubricaRef: string;
+  /** DT-RUB-01: version exacta de la familia; vacio hereda la version vigente. */
+  versionRubrica: number | null;
   promptEvaluarRef: string;
   maxRepreguntas: number;
   maxCaracteresMensaje: number;
@@ -96,6 +98,7 @@ export function preguntaVacia(): PreguntaForm {
     orden: 1,
     estado: 'activo',
     rubricaRef: '',
+    versionRubrica: null,
     promptEvaluarRef: '',
     maxRepreguntas: 1,
     maxCaracteresMensaje: 1500,
@@ -112,6 +115,7 @@ export function formularioDesdePregunta(pregunta: Pregunta): PreguntaForm {
     orden: pregunta.orden,
     estado: pregunta.estado,
     rubricaRef: pregunta.rubricaRef ?? '',
+    versionRubrica: pregunta.versionRubrica ?? null,
     promptEvaluarRef: pregunta.promptRefs?.['evaluar'] ?? '',
     maxRepreguntas: pregunta.maxRepreguntas ?? 1,
     maxCaracteresMensaje: pregunta.limitesSeguridad?.maxCaracteresMensaje ?? 1500,
@@ -243,6 +247,9 @@ export class CampaniasListaPanel {
             }
           </select></label
         >
+        <p class="muted">
+          Los criterios se administran en Rubricas; aqui se selecciona una version completa.
+        </p>
         @if (rubricas().length === 0) {
           <p class="muted">No hay rubricas activas. Crea una en la seccion Rubricas.</p>
         }
@@ -324,7 +331,10 @@ export class CampaniaCreacionPanel implements OnChanges {
             @for (rubrica of rubricas(); track rubrica.id) {
               <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
             }
-          </select></label
+          </select>
+          <span class="muted">
+            Los criterios se administran en Rubricas; aqui se selecciona una version completa.
+          </span></label
         ><label
           >Config LLM<select
             name="editarConfigLlmRef"
@@ -849,7 +859,16 @@ export class LocalizacionesCampaniaPanel implements OnChanges {
           @for (rubrica of rubricas(); track rubrica.id) {
             <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
           }
-        </select></label
+        </select>
+        <span class="muted">
+          Los criterios se administran en Rubricas; aqui se selecciona una version completa.
+        </span></label
+      ><label
+        >Version de rubrica (opcional)<input
+          type="number"
+          name="preguntaVersionRubrica"
+          placeholder="version vigente"
+          [(ngModel)]="nueva.versionRubrica" /></label
       ><label
         >Prompt de evaluacion (opcional, sobreescribe la campania)<select
           name="preguntaPromptRef"
@@ -944,7 +963,16 @@ export class LocalizacionesCampaniaPanel implements OnChanges {
               @for (rubrica of rubricas(); track rubrica.id) {
                 <option [value]="rubrica.id">{{ rubrica.nombre }}</option>
               }
-            </select></label
+            </select>
+            <span class="muted">
+              Los criterios se administran en Rubricas; aqui se selecciona una version completa.
+            </span></label
+          ><label
+            >Version de rubrica<input
+              type="number"
+              name="editarPreguntaVersionRubrica"
+              placeholder="version vigente"
+              [(ngModel)]="edicion.versionRubrica" /></label
           ><label
             >Prompt de evaluacion<select
               name="editarPreguntaPromptRef"

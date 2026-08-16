@@ -251,9 +251,12 @@ describe('Portal admin E2E (recorrido SPA)', () => {
 
     const rubricasTexto = (rubricasFixture.nativeElement as HTMLElement).textContent ?? '';
     expect(rubricasTexto).toContain('Vista de rubrica');
-    expect(rubricasTexto).toContain('Contenido completo de la rubrica');
+    expect(rubricasTexto).toContain('Contenido derivado por el servidor');
     expect(rubricasTexto).toContain('Impacto');
-    expect(rubricasTexto).not.toContain('Nueva version');
+    // DT-RUB-01: el visor ve la estructura completa (ids, pesos y orden), no solo el Markdown.
+    expect(rubricasTexto).toContain('claridad');
+    expect(rubricasTexto).toContain('60%');
+    expect(rubricasTexto).not.toContain('Crear nueva version');
     expect(rubricasFixture.nativeElement.querySelector('textarea')).toBeNull();
 
     const promptsFixture = TestBed.createComponent(PromptsPage);
@@ -614,9 +617,27 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       id,
       nombre: 'Rubrica de impacto',
       descripcion: 'Valora la propuesta.',
-      contenidoMarkdown: '# Impacto\n\nContenido completo de la rubrica.',
+      instruccionesGenerales: 'Evalua con evidencia del aporte.',
+      contenidoMarkdown: '# Rubrica: Rubrica de impacto\n\nContenido derivado por el servidor.',
+      hashEstructura: 'sha256:abc',
+      integridadEstructural: 'valida',
       escala: { min: 1, max: 5 },
-      criterios: [{ nombre: 'Impacto', peso: 1 }],
+      criterios: [
+        {
+          id: 'claridad',
+          nombre: 'Claridad',
+          descripcion: 'Que tan concreta es.',
+          peso: 0.4,
+          orden: 1,
+        },
+        {
+          id: 'impacto',
+          nombre: 'Impacto',
+          descripcion: 'Beneficio esperado.',
+          peso: 0.6,
+          orden: 2,
+        },
+      ],
       version: 3,
       estado: 'activa',
       creadoEn: '2026-07-21T00:00:00Z',

@@ -202,17 +202,38 @@ export interface ParticipanteCampania {
   fechaUltimaRespuesta?: string | null;
 }
 
+/** DT-RUB-01 (03 §3.11): criterio de la estructura canonica. El `id` es la clave estable. */
+export interface CriterioRubrica {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  peso: number;
+  orden: number;
+}
+
 export interface Rubrica {
   id: string;
   nombre: string;
   descripcion: string;
+  instruccionesGenerales: string;
+  /** Proyeccion derivada por el servidor; de solo lectura para el portal (DT-RUB-01). */
   contenidoMarkdown: string;
+  hashEstructura: string;
+  integridadEstructural: 'valida' | 'legacy_no_verificada' | 'invalida';
   escala: { min: number; max: number };
-  criterios: Array<{ nombre: string; peso: number }>;
+  criterios: CriterioRubrica[];
   version: number;
   estado: string;
   creadoEn: string;
   actualizadoEn: string;
+}
+
+/** Respuesta de `POST /api/admin/rubricas/prevalidar` (04 §5.5). */
+export interface PrevalidacionRubrica {
+  valido: boolean;
+  errores: Array<{ campo: string; motivo: string }>;
+  contenidoMarkdown: string;
+  hashEstructura: string;
 }
 
 export interface PromptConfig {
