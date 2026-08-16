@@ -1,8 +1,8 @@
 # DT-I20-02 — Prompt candidato de evaluación (contenido, sin activar)
 
-> **Estado:** contenido preparado el 2026-08-15 (corte 3/3). **No está creado ni activado en Cosmos.**
-> Crearlo, aprobarlo y asociarlo a una campaña es una **acción humana autorizada** que sigue el
-> `DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.
+> **Estado:** contenido preparado el 2026-08-15 (corte 3/3). **Aún no consta creado ni activado en
+> Cosmos.** El usuario autorizó que el agente de pruebas lo cree, apruebe y asocie exclusivamente a
+> la campaña aislada siguiendo `QAS/21` y `DT-I20-02_Runbook_Migracion_Prompt_Evaluacion.md`.
 > **Familia:** una **nueva**, nunca otra versión de la familia `1` (las campañas activas la comparten y
 > una versión nueva ahí las afectaría a todas a la vez).
 
@@ -87,12 +87,14 @@ decisiones. El prompt corrige la **causa**; el validador corrige el **síntoma**
 ## 4. Antes de crearlo (lista de verificación humana)
 
 - [ ] Es una **familia nueva**, no una versión de la familia `1`.
-- [ ] Se crea como **borrador** y se revisa entre negocio, producto y desarrollo.
+- [ ] El agente lo crea como **borrador** y prevalida ID, tipo, versión, estado y contenido exacto
+  antes de aprobarlo; esto solo autoriza QA, no migraciones reales.
 - [ ] Se aprueba y activa solo la versión revisada (runtime exige **activa y aprobada**, corte 2/3).
 - [ ] Se asocia **únicamente** a la campaña aislada de QA.
 - [ ] Se ejecuta `QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md` completo.
 - [ ] Se ejecuta D5 contra el baseline autorizado y se revisan calidad, costo y latencia.
 - [ ] La migración de campañas reales se hace una por una y con aprobación explícita.
-- [ ] El rollback es restaurar el `promptRef` anterior de la campaña, no inactivar la última versión.
+- [ ] El rollback restaura el `promptRef` anterior de la campaña **y de la pregunta activa**, no se
+  limita a inactivar la última versión.
 
 Si alguna de estas casillas no está marcada, **no se migra ninguna campaña real**.

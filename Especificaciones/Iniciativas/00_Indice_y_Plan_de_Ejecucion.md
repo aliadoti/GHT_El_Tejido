@@ -6,11 +6,11 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 12-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> **Última revisión: 2026-08-15 — `DT-P32-03-01` CERRADA; sigue `DT-I20-02` 1/3.** El microajuste
-> está en `main/origin`, desplegado como `60b520d`, y QAS/23 1–6 quedó PASS en Azure con evidencia
-> Meta aceptada. Gate y simulación terminaron OFF y la clave diagnóstica fue retirada. P-32 smoke
-> green habilita DT-I20-02; no cierra P-32, cuya QAS/17 completa y lote real quedan para después.
-> DT-P32-04 permanece como refactor posterior y no bloqueante.
+> **Última revisión: 2026-08-15 — `DT-I20-02` IMPLEMENTADA Y DESPLEGADA 3/3; sigue QAS/21.** El
+> agente de pruebas está autorizado a crear la familia QA, hasta dos versiones, una campaña aislada
+> y participantes `es/en` según `QAS/21`; no puede migrar campañas reales ni tocar la familia `1`.
+> P-32 completa queda para después del resultado. DT-P32-04 permanece como refactor posterior y no
+> bloqueante.
 >
 > **Revisión anterior: 2026-08-14 — `DT-P32-02` IMPLEMENTADA Y DESPLEGADA (3/3).** Semillas base,
 > JSON masivo y readiness pasaron su validación; la corrida P-32 descubrió los bloqueos posteriores
@@ -130,7 +130,7 @@
 | **DT-P32-03** | [DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md](DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md) | **DESPLEGADA — 2/2** | Cierre bilingüe demostrado; smoke 1–4 y 6 PASS. La semántica descubierta en prueba 5 se corrige aparte en DT-P32-03-01. |
 | **DT-P32-03-01** | [DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md](DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md) | **CERRADA — 1/1 + SMOKE GREEN** | `60b520d` desplegado; QAS/23 1–6 PASS y evidencia Meta aceptada. Gate/simulación OFF. |
 | **DT-P32-04** | [DT-P32-04_Nucleo_Transversal_Multidioma.md](DT-P32-04_Nucleo_Transversal_Multidioma.md) | **0/3 — backlog post-green** | Refactor incremental: idioma central, contenido efectivo, resolutores especializados y readiness compuesto, sin cambiar fuentes ni formas persistidas. No bloquea DT-I20-02. |
-| **DT-I20-02** | [DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md](DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md) | **0/3 — SIGUIENTE** | Corte 1: regresión exacta, validador puro y fallback por campo sin alterar decisiones. QAS `21_*`; runbook `planes/DT-I20-02_*`. |
+| **DT-I20-02** | [DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md](DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md) | **DESPLEGADA — 3/3; QAS/21 PENDIENTE** | Contrato visible por campo, gobierno de versión runtime y prompt candidato completos. El agente crea familia/campaña QA durante `QAS/21`; D5 requiere autorización de costo y una migración real exige nueva aprobación. |
 | DT-P27-01 | [DT-P27-01_Config_Versionada_Frases_Finalizacion.md](DT-P27-01_Config_Versionada_Frases_Finalizacion.md) | **DONE local 2/2 — 2026-08-08** | Validación tras normalizar (vacío/duplicado/límite) con descarte completo y fallback; historial append-only seguro de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Sin alias nuevos, flags, edición por campaña ni configuración remota. |
 | **DT-QA-02** | [DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md](DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md) | **DONE local 2026-08-08** | `GET /api/admin/evaluaciones` con puerto obligatorio, adaptadores Cosmos/memoria `fecha DESC`, filtros/paginación/resumen y diagnóstico derivado `enlazada`/`huerfana`/`superada`/`sin_version_idea`. El DTO no expone texto libre; `superada` no se cuenta como huérfana (I-16). Build y 814 pruebas no-Calibracion verdes; sin flags, despliegue ni configuración remota. No repara documentos ni agrega UI. **Siguiente prioridad actual: DT-P32-02 corte 1.** |
 | DT-QA-01 | [DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md](DT-QA-01_Inyeccion_Webhook_Simulado_Diagnostico.md) | **DONE local 2026-08-05** | Herramienta de QA: endpoint `POST /diagnostico/simulacion/webhook-entrante` (gating `X-Diag-Key` + Development/`Simulacion:Habilitada`) que inyecta un mensaje entrante y lo encola por `IColaWebhook` **sin exigir firma**. Auditoría sin PII e id estable para el dedupe; 7 pruebas focalizadas verdes. **No** relaja la firma real. Pendiente: despliegue controlado. |

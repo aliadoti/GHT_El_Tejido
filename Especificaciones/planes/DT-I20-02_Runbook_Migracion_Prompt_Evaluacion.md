@@ -3,6 +3,9 @@
 > **Uso:** después de implementar y desplegar las guardias de `DT-I20-02`.  
 > **Propietario de la activación:** humano autorizado.  
 > **Prohibido en la corrida de desarrollo:** modificar Cosmos, asociar campañas reales, activar prompts, flags o despliegues.
+> **Corrida QAS autorizada 2026-08-15:** el humano delegó al agente que ejecute `QAS/21` la creación
+> acotada de la familia QA, dos versiones como máximo, una campaña aislada y sus participantes de
+> prueba. Esta delegación no incluye campañas reales ni la familia `1`.
 
 ## Riesgo que controla este runbook
 
@@ -46,16 +49,25 @@ Debe indicar que `retroalimentacion_usuario` y `repregunta_sugerida` son texto p
 
 ## Secuencia de activación
 
-1. Crear la familia nueva como borrador.
-2. Revisar el contenido entre negocio, producto y desarrollo.
-3. Aprobar/activar solo la versión candidata autorizada.
-4. Asociarla únicamente a la campaña aislada de QA.
-5. Ejecutar `QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md`.
-6. Ejecutar D5 contra el baseline autorizado y revisar calidad, costo y latencia.
-7. Si todo pasa, migrar una sola campaña controlada.
-8. Observar fallbacks, errores, latencia y calidad durante la ventana acordada.
-9. Migrar las demás campañas una por una solo con aprobación.
-10. Registrar familia/versiones antes y después, responsable, fecha y evidencia sin contenido sensible.
+1. El agente crea la familia nueva como borrador durante la preparación puntuada de `QAS/21`.
+2. Comprueba por lectura que familia, tipo, versión y contenido coinciden exactamente con el
+   candidato. Esa prevalidación es la revisión autorizada para la campaña aislada; no reemplaza el
+   acta humana requerida para migrar campañas reales.
+3. Aprueba/activa solo la versión candidata autorizada.
+4. Duplica una campaña inequívocamente de QA —la copia nace en borrador y sin participantes— o crea
+   una nueva si no existe fuente segura.
+5. Guarda el `promptRef` anterior y asocia la familia nueva únicamente a la campaña aislada y a su
+   pregunta activa. La pregunta tiene precedencia, por lo que deben comprobarse ambos niveles.
+6. Ejecuta `QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md` completo, incluida la
+   versión 2 temporal de la Prueba 8 y el rollback de ambos `promptRefs`.
+7. Ejecuta D5 contra el baseline autorizado y revisa calidad, costo y latencia. Sin autorización de
+   costo, registra D5 como `BLOCKED` y no inventa evidencia.
+8. Cierra la campaña QA, conserva la evidencia y entrega el reporte. **La autorización actual termina
+   aquí.**
+9. Solo con una nueva aprobación humana, migrar una campaña real controlada y observar fallbacks,
+   errores, latencia y calidad durante la ventana acordada.
+10. Migrar las demás campañas una por una solo con aprobación.
+11. Registrar familia/versiones antes y después, responsable, fecha y evidencia sin contenido sensible.
 
 ## Criterios para detener la migración
 
@@ -72,7 +84,8 @@ Detenerse y ejecutar rollback si ocurre cualquiera:
 ## Rollback
 
 1. Detener nuevas migraciones.
-2. Restaurar en la campaña afectada el `promptRef` de la familia anterior aprobada.
+2. Restaurar en la campaña afectada **y en su pregunta activa** el `promptRef` de la familia anterior
+   aprobada; el valor de la pregunta prevalece sobre el de campaña.
 3. Verificar con una conversación aislada que runtime cargó la versión activa/aprobada esperada.
 4. Mantener las guardias de código activas: son el control de seguridad ante una salida visible inválida.
 5. Registrar el motivo fijo y la versión, sin copiar contenido del participante o del prompt.

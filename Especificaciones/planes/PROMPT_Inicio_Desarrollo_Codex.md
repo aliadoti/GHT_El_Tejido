@@ -6,20 +6,23 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-15 — `DT-I20-02` COMPLETA LOCAL 3/3; NO HAY CÓDIGO PENDIENTE.** Entregado:
+> **HANDOFF OPERATIVO 2026-08-15 — `DT-I20-02` IMPLEMENTADA Y DESPLEGADA 3/3; SIGUE QAS/21.** El
+> usuario autorizó al agente de pruebas a crear una familia QA nueva, hasta dos versiones, una
+> campaña aislada y participantes `es/en`, todo dentro de la preparación puntuada de `QAS/21`. Debe
+> ejecutar estrictamente `QAS/21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md`, que contiene
+> alcance, aislamiento, rollback, D5 y formato del reporte. No tocar la familia `1`, campañas reales,
+> configuración, secretos ni despliegue. La migración real requiere otra autorización.
+>
+> **HANDOFF DE DESARROLLO 2026-08-15 — `DT-I20-02` COMPLETA LOCAL 3/3; NO HAY CÓDIGO PENDIENTE.** Entregado:
 > contrato visible en texto plano con respaldo **por campo**, guarda de I-20 antes de `DT-I20-01`,
 > recorte en frontera de oración, `ResolutorPromptRuntime` / `ObtenerPromptVigenteAsync` —runtime usa
 > la versión más nueva **activa y aprobada**, la consulta administrativa no cambia y el rollback por
 > inactivación funciona, también para la voz de I-20—, el **contenido candidato** del prompt
 > (`planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`, sin crear ni activar nada en Cosmos) y las
 > pruebas de §7.2 sobre el evaluador real con un `ILlmClient` falso. Backend **925 unitarias + 112 de
-> integración**; build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin push,
-> despliegue, Cosmos ni configuración remota. **Lo siguiente es una decisión del usuario, con
-> autorización expresa:** (a) desplegar y ejecutar `QAS/21` 1–8 en ambiente aislado y luego la
-> migración por familia nueva y campaña de QA del runbook, o (b) retomar **P-32 completa** (`QAS/17` y
-> la prueba 7 del lote mixto real). Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa DT-I20-02,
-> `QAS/21` y el runbook antes de actuar. **No crear ni activar prompts, flags ni configuración remota
-> sin acta humana.** No adelantar DT-P32-04.
+> integración**; build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes. Este bloque
+> conserva la evidencia del cierre local; el estado operativo vigente es el handoff inmediatamente
+> anterior. No adelantar DT-P32-04.
 
 > **HANDOFF HISTÓRICO 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2).** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para

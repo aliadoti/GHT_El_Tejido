@@ -1,7 +1,7 @@
 # DT-I20-02 — Contrato visible en texto plano y gobierno seguro de prompts
 
-> **Estado:** **COMPLETA LOCAL 3/3 (2026-08-15)** — código, pruebas y documentación cerrados; sin
-> push, despliegue, Cosmos ni configuración remota. El corte 1 entregó `ValidadorFragmentoVisibleLlm`
+> **Estado:** **IMPLEMENTADA Y DESPLEGADA 3/3 (2026-08-15)** — código, pruebas y documentación
+> cerrados. El corte 1 entregó `ValidadorFragmentoVisibleLlm`
 > (Application, puro), el respaldo **por campo** en el evaluador, la guarda de I-20 previa a
 > `DT-I20-01` y la eliminación del truncamiento a mitad de palabra. El corte 2 entregó
 > `ResolutorPromptRuntime` y `ObtenerPromptVigenteAsync`: runtime usa la versión más nueva **activa y
@@ -9,8 +9,9 @@
 > entregó el **contenido candidato del prompt** (`planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`, sin
 > crear ni activar nada), las pruebas de integración de §7.2 sobre el evaluador real y el cierre
 > documental de `05`, `08` y las reglas.
-> **Pendiente, y es acción humana autorizada:** crear la familia nueva, aprobarla, asociarla a la
-> campaña aislada, ejecutar `QAS/21` y D5 reales, y migrar campañas una por una según el runbook.
+> **Pendiente operativo:** el agente de pruebas está autorizado a crear la familia nueva, aprobarla,
+> asociarla solo a una campaña aislada y ejecutar `QAS/21`; D5 exige presupuesto/credenciales
+> separados. Ninguna campaña real se migra sin una nueva autorización, según el runbook.
 > **Origen:** reporte real de WhatsApp con encabezados Markdown e instrucciones internas de presentación.  
 > **Alcance:** salida visible del evaluador, fragmentos de I-20 y selección segura del prompt de evaluación en runtime.  
 > **No cambia:** contratos API/Cosmos, puntajes, umbrales, estados, cierres, versión I-19, P-27, P-32, P-33 ni mensajes históricos.
