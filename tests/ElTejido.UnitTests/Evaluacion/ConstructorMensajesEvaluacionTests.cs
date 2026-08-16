@@ -154,7 +154,6 @@ public sealed class ConstructorMensajesEvaluacionTests
             "r_1",
             "Rubrica",
             "desc",
-            "# Rubrica",
             EscalaRubrica.Crear(1, 5),
             new[] { CriterioRubrica.Crear("claridad", 1m) },
             1,

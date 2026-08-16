@@ -4,7 +4,31 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Arquitecto/Tech Lead):
+- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Arquitecto/Backend/SDET):
+  **`DT-RUB-01` CORTE 1/4 DONE LOCAL — dominio, validador/compilador, persistencia y API.** La
+  estructura versionada ya es la fuente única. `CriterioRubrica` pasa a
+  `(Id, Nombre, Descripcion, Peso, Orden)`: el `id` canónico es la clave estable y el nombre queda
+  como etiqueta visible. `ValidadorRubricaEstructurada` (Domain, **puro**) devuelve **todos** los
+  motivos de `04 §5.5` —no corta en el primero— y `CompiladorRubricaMarkdown` produce la proyección
+  Markdown y la huella `sha256` desde la representación canónica, con el peso normalizado en escala
+  decimal para que `0.3m` y `0.30m` den el mismo hash. `Rubrica.Crear` **dejó de aceptar
+  `contenidoMarkdown`**: solo admite estructura válida y deriva el Markdown; la ruptura del cambio de
+  firma es de compilación (no hay misbinding silencioso posible). `Rubrica.Rehidratar` es la puerta de
+  lectura histórica: no lanza, **no muta** el documento, conserva su Markdown original y calcula
+  `integridadEstructural` comparando el Markdown persistido con el compilado —decisión y consecuencias
+  en `SUPUESTOS.md#integridad-estructural-rubrica-dt-rub-01`—. Persistencia aditiva
+  (`instruccionesGenerales`, `hashEstructura`, `integridadEstructural`, y `id`/`descripcion`/`orden`
+  por criterio) con round-trip probado nuevo y legacy. La API publica el cuerpo canónico, ignora el
+  `contenidoMarkdown` del cliente, **rechaza el cuerpo completo** ante cualquier criterio inválido y
+  agrega `POST /api/admin/rubricas/prevalidar`, que responde `200` con `valido:false` y motivos
+  tipificados sin escribir; una prueba fija que el preview y la escritura producen **el mismo**
+  Markdown y hash. Activar una versión `legacy_no_verificada` devuelve `400` con
+  `rubrica: integridad_invalida`. Backend **959 unitarias (+34) + 119 de integración (+8)** y 1 de
+  calibración, todas verdes; build Release `-warnaserror`, `dotnet format` y `git diff --check`
+  limpios. Sin portal, push, despliegue, Cosmos, Azure ni migración. **Siguiente: corte 2/4**
+  (evaluación autoritativa: contrato exacto por `criterio_id`, total ponderado server-side, eje débil,
+  antifuga y snapshot sobre la lista canónica).
+- Actualizacion anterior: 2026-08-16 (Claude Opus 5, Arquitecto/Tech Lead):
   **`DT-RUB-01` CORTE 0 (DOCUMENTAL) DONE — contratos actualizados antes de tocar código.** Commit
   separado, sin una sola línea de código. Los cinco contratos base ya declaran la fuente canónica:
   **`03 §3.11`** invierte la dirección de la rúbrica —`escala`, `instruccionesGenerales` y

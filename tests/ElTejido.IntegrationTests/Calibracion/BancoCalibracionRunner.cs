@@ -212,7 +212,6 @@ internal sealed class EvaluadorEntradaLlmReal : IEvaluadorEntrada
             config.Rubrica.Id,
             "Rubrica staging",
             "Rubrica de calibracion",
-            config.Rubrica.Markdown,
             EscalaRubrica.Crear(config.Rubrica.EscalaMin, config.Rubrica.EscalaMax),
             config.Rubrica.Criterios.Select(c => CriterioRubrica.Crear(c.Nombre, c.Peso)).ToArray(),
             config.Rubrica.Version,

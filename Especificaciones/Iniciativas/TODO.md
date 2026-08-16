@@ -9,6 +9,27 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
+> **🟢 `DT-RUB-01` CORTE 1/4 DOMINIO, VALIDADOR/COMPILADOR, PERSISTENCIA Y API — DONE LOCAL
+> 2026-08-16 (Claude Opus 5).** `CriterioRubrica` es ahora `(Id, Nombre, Descripcion, Peso, Orden)`:
+> el `id` canónico es la clave estable y el nombre solo la etiqueta visible.
+> `ValidadorRubricaEstructurada` (Domain, puro) devuelve **todos** los motivos de `04 §5.5` para que
+> el portal marque cada fila, y `CompiladorRubricaMarkdown` deriva Markdown y huella `sha256` de la
+> representación canónica (peso normalizado: `0.3m` y `0.30m` dan el mismo hash).
+> **`Rubrica.Crear` ya no acepta `contenidoMarkdown`** —solo estructura válida, y compila la
+> proyección—; `Rubrica.Rehidratar` lee documentos históricos sin lanzar y **sin mutarlos**,
+> conservando su Markdown y marcando `integridadEstructural` al comparar lo persistido con lo
+> compilado. Consecuencia buscada: **toda rúbrica anterior queda `legacy_no_verificada`** —es
+> exactamente el caso de la rúbrica `2`— se sigue leyendo y evaluando donde ya estaba configurada,
+> pero **no se puede activar** (`400`, `rubrica: integridad_invalida`) hasta crear una versión
+> estructurada. Persistencia aditiva con round-trip probado nuevo y legacy. La API publica el cuerpo
+> canónico, **ignora** el `contenidoMarkdown` del cliente, rechaza el cuerpo completo ante cualquier
+> criterio inválido y suma `POST /api/admin/rubricas/prevalidar` (200 con `valido:false` y motivos,
+> sin escribir); una prueba fija que preview y escritura producen el mismo Markdown y hash. Backend
+> **959 unitarias (+34) + 119 de integración (+8)** y 1 de calibración; build Release `-warnaserror`,
+> `dotnet format` y `git diff --check` verdes. Sin portal, push, despliegue ni datos remotos.
+> Decisiones en `SUPUESTOS.md#integridad-estructural-rubrica-dt-rub-01` y
+> `#orden-y-suma-de-pesos-rubrica-dt-rub-01`. **Siguiente: corte 2/4** (evaluación autoritativa).
+>
 > **🟢 `DT-RUB-01` CORTE 0 (DOCUMENTAL) — DONE 2026-08-16 (Claude Opus 5).** Commit separado y **sin
 > código**. `03 §3.11` invierte la dirección de la rúbrica: estructura canónica (`escala`,
 > `instruccionesGenerales`, `criterios[]` con `id`/`nombre`/`descripcion`/`peso`/`orden`) como fuente

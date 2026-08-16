@@ -53,6 +53,8 @@ internal static class EndpointsAdminFase4
         rubricas.MapPut("/{id}", ActualizarRubricaAsync);
         rubricas.MapGet("/{id}/versiones", VersionesRubricaAsync);
         rubricas.MapPost("/{id}/versiones", CrearVersionRubricaAsync);
+        // DT-RUB-01 (04 §5.5): mismo validador y compilador que la escritura, sin escribir nada.
+        rubricas.MapPost("/prevalidar", PrevalidarRubrica);
         rubricas.MapPatch("/{id}/estado", CambiarEstadoRubricaAsync);
 
         var prompts = grupo.MapGroup("/prompts");
@@ -303,6 +305,23 @@ internal static class EndpointsAdminFase4
     private static async Task<IResult> CambiarEstadoRubricaAsync(string id, CambiarEstadoRequest request, HttpContext contexto, CancellationToken ct)
         => Results.Ok(MapearRubrica(await ServicioConfig(contexto).CambiarEstadoRubricaAsync(id, ParseEstadoRubrica(request.Estado), ct)));
 
+    /// <summary>
+    /// DT-RUB-01 (04 §5.5): responde <c>200</c> incluso cuando la estructura es invalida —el cuerpo
+    /// era legible, solo incumple reglas— con <c>valido:false</c> y los motivos tipificados. No
+    /// escribe nada y no constituye prueba de activacion.
+    /// </summary>
+    private static IResult PrevalidarRubrica(RubricaRequest request, HttpContext contexto)
+    {
+        var resultado = ServicioConfig(contexto).PrevalidarRubrica(ToSolicitudPrevalidacion(request));
+        return Results.Ok(new
+        {
+            resultado.Valido,
+            errores = resultado.Errores.Select(e => new { campo = e.Campo, motivo = e.Motivo }).ToArray(),
+            contenidoMarkdown = resultado.ContenidoMarkdown,
+            hashEstructura = resultado.HashEstructura,
+        });
+    }
+
     private static async Task<IResult> ListarPromptsAsync(HttpContext contexto, CancellationToken ct)
     {
         var query = contexto.Request.Query;
@@ -460,10 +479,44 @@ internal static class EndpointsAdminFase4
             RequerirTexto(request.Id, "id"),
             RequerirTexto(request.Nombre, "nombre"),
             RequerirTexto(request.Descripcion, "descripcion"),
-            RequerirTexto(request.ContenidoMarkdown, "contenidoMarkdown"),
-            EscalaRubrica.Crear(request.Escala?.Min ?? 1, request.Escala?.Max ?? 5),
-            (request.Criterios ?? Array.Empty<CriterioRequest>()).Select(c => CriterioRubrica.Crear(RequerirTexto(c.Nombre, "criterio.nombre"), c.Peso)),
+            request.InstruccionesGenerales,
+            // DT-RUB-01: la escala y los criterios se arman SIN lanzar para que el validador
+            // estructurado pueda reportar todos los motivos por campo (04 §5.5) en vez de que la
+            // primera guarda de dominio corte con un mensaje generico.
+            new EscalaRubrica(request.Escala?.Min ?? 1, request.Escala?.Max ?? 5),
+            ToCriterios(request.Criterios),
             ParseEstadoRubricaOpcional(request.Estado) ?? EstadoRubrica.Activa);
+
+    /// <summary>
+    /// DT-RUB-01: cuerpo de prevalidacion. No exige id porque el portal previsualiza antes de fijar
+    /// la familia; el id no participa del Markdown derivado ni de la huella.
+    /// </summary>
+    private static SolicitudGuardarRubrica ToSolicitudPrevalidacion(RubricaRequest request)
+        => new(
+            string.IsNullOrWhiteSpace(request.Id) ? "preview" : request.Id.Trim(),
+            RequerirTexto(request.Nombre, "nombre"),
+            request.Descripcion?.Trim() ?? string.Empty,
+            request.InstruccionesGenerales,
+            new EscalaRubrica(request.Escala?.Min ?? 1, request.Escala?.Max ?? 5),
+            ToCriterios(request.Criterios),
+            EstadoRubrica.Borrador);
+
+    /// <summary>
+    /// Mapea los criterios del cuerpo sin normalizar en silencio: un id ausente se deriva del nombre
+    /// (comodidad de alta), pero un id presente viaja tal cual para que un formato no canonico se
+    /// reporte como <c>formato_invalido</c> y el autor vea la clave que realmente quedaria.
+    /// </summary>
+    private static IReadOnlyList<CriterioRubrica> ToCriterios(IReadOnlyCollection<CriterioRequest>? criterios)
+        => (criterios ?? Array.Empty<CriterioRequest>())
+            .Select(c => new CriterioRubrica(
+                string.IsNullOrWhiteSpace(c.Id)
+                    ? NormalizacionRubrica.NormalizarId(c.Nombre)
+                    : c.Id.Trim(),
+                c.Nombre?.Trim() ?? string.Empty,
+                c.Descripcion?.Trim() ?? string.Empty,
+                c.Peso,
+                c.Orden ?? 0))
+            .ToArray();
 
     private static SolicitudGuardarPrompt ToSolicitudPrompt(PromptRequest request)
         => new(
@@ -668,13 +721,26 @@ internal static class EndpointsAdminFase4
             rubrica.Id,
             rubrica.Nombre,
             rubrica.Descripcion,
+            rubrica.InstruccionesGenerales,
+            // DT-RUB-01: de solo lectura para clientes nuevos; es la proyeccion, no la fuente.
             rubrica.ContenidoMarkdown,
+            rubrica.HashEstructura,
+            integridadEstructural = ToApiIntegridad(rubrica.IntegridadEstructural),
             escala = rubrica.Escala,
             criterios = rubrica.Criterios,
             rubrica.Version,
             estado = ToApiEstado(rubrica.Estado),
             rubrica.CreadoEn,
             rubrica.ActualizadoEn,
+        };
+
+    private static string ToApiIntegridad(EstadoIntegridadRubrica integridad)
+        => integridad switch
+        {
+            EstadoIntegridadRubrica.Valida => "valida",
+            EstadoIntegridadRubrica.LegacyNoVerificada => "legacy_no_verificada",
+            EstadoIntegridadRubrica.Invalida => "invalida",
+            _ => "invalida",
         };
 
     private static object MapearPrompt(Prompt prompt)
@@ -913,9 +979,14 @@ internal static class EndpointsAdminFase4
     private sealed record ReiniciarParticipanteRequest(bool? ReiniciarEnvios);
     private sealed record ReiniciarCampaniaRequest(IReadOnlyCollection<string>? UsuarioIds, bool? ReiniciarEnvios);
     private sealed record FiltroParticipantesRequest(string? Area, string? Empresa, IReadOnlyCollection<string>? Tags, string? Busqueda);
-    private sealed record RubricaRequest(string? Id, string? Nombre, string? Descripcion, string? ContenidoMarkdown, EscalaRequest? Escala, IReadOnlyCollection<CriterioRequest>? Criterios, string? Estado);
+    /// <summary>
+    /// DT-RUB-01 (04 §5.5): cuerpo canonico. <c>ContenidoMarkdown</c> se conserva solo para que un
+    /// cliente antiguo no falle al enviarlo, pero se <b>ignora</b>: la proyeccion la compila el
+    /// servidor y no puede contradecir la estructura.
+    /// </summary>
+    private sealed record RubricaRequest(string? Id, string? Nombre, string? Descripcion, string? ContenidoMarkdown, string? InstruccionesGenerales, EscalaRequest? Escala, IReadOnlyCollection<CriterioRequest>? Criterios, string? Estado);
     private sealed record EscalaRequest(int Min, int Max);
-    private sealed record CriterioRequest(string? Nombre, decimal Peso);
+    private sealed record CriterioRequest(string? Id, string? Nombre, string? Descripcion, decimal Peso, int? Orden);
     private sealed record PromptRequest(string? Id, string? Nombre, string? TipoPrompt, string? Contenido, string? Estado);
     private sealed record AprobarPromptRequest(string? AprobadoPor);
     // `apiKey` ya no se acepta: solo `apiKeyRef` (nombre de un secreto que ya existe en Key Vault).

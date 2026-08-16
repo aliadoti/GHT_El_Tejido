@@ -51,6 +51,102 @@ public sealed class ServicioGestionConfiguracionEdicionTests
     }
 
     [Fact]
+    public async Task CrearVersionRubrica_NoMutaLaVersionAnterior()
+    {
+        await _servicio.CrearRubricaAsync(SolicitudRubrica("rub_1", "v1", EstadoRubrica.Activa), CancellationToken.None);
+
+        var nueva = await _servicio.CrearVersionRubricaAsync(
+            "rub_1",
+            SolicitudRubrica("rub_1", "v2", EstadoRubrica.Borrador) with
+            {
+                Criterios = new[]
+                {
+                    CriterioRubrica.Crear("claridad", "Claridad", string.Empty, 0.6m, 1),
+                    CriterioRubrica.Crear("impacto", "Impacto", string.Empty, 0.4m, 2),
+                },
+            },
+            CancellationToken.None);
+
+        nueva.Version.Should().Be(2);
+        nueva.Criterios.Should().HaveCount(2);
+
+        var v1 = _repo.Rubricas.Single(r => r.Version == 1);
+        v1.Nombre.Should().Be("v1");
+        v1.Estado.Should().Be(EstadoRubrica.Activa);
+        v1.Criterios.Should().ContainSingle();
+        v1.HashEstructura.Should().NotBe(nueva.HashEstructura);
+    }
+
+    [Fact]
+    public async Task CrearRubrica_EstructuraInvalida_DevuelveMotivosPorCampoYNoEscribe()
+    {
+        var solicitud = SolicitudRubrica("rub_1", "Rota", EstadoRubrica.Borrador) with
+        {
+            Criterios = new[]
+            {
+                CriterioRubrica.Crear("claridad", "Claridad", string.Empty, 0.5m, 1),
+                CriterioRubrica.Crear("claridad", "Otra", string.Empty, 0.2m, 2),
+            },
+        };
+
+        var acto = () => _servicio.CrearRubricaAsync(solicitud, CancellationToken.None);
+
+        var error = (await acto.Should().ThrowAsync<ErrorValidacion>()).Which;
+        error.Detalles.Should().Contain(d => d.Campo == "criterios.1.id" && d.Problema == "duplicado");
+        error.Detalles.Should().Contain(d => d.Campo == "criterios.pesos" && d.Problema == "suma_invalida");
+        _repo.Rubricas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CambiarEstadoRubrica_VersionLegacyNoVerificada_NoSePuedeActivar()
+    {
+        // Documento historico: estructura de un solo criterio contra un Markdown de cinco ejes.
+        _repo.Rubricas.Add(Rubrica.Rehidratar(
+            "rub_legacy",
+            "Rubrica legacy",
+            "desc",
+            null,
+            "# Rubrica\nCinco ejes distintos de la estructura.",
+            EscalaRubrica.Crear(1, 5),
+            new[] { CriterioRubrica.Crear("Impacto", 1m) },
+            1,
+            EstadoRubrica.Borrador,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch));
+
+        var acto = () => _servicio.CambiarEstadoRubricaAsync("rub_legacy", EstadoRubrica.Activa, CancellationToken.None);
+
+        var error = (await acto.Should().ThrowAsync<ErrorValidacion>()).Which;
+        error.Detalles.Should().Contain(d => d.Campo == "rubrica" && d.Problema == "integridad_invalida");
+        _repo.Rubricas.Single().Estado.Should().Be(EstadoRubrica.Borrador);
+    }
+
+    [Fact]
+    public void PrevalidarRubrica_NoEscribeYDevuelveElMismoMarkdownQueLaEscritura()
+    {
+        var solicitud = SolicitudRubrica("rub_1", "Preview", EstadoRubrica.Borrador);
+
+        var resultado = _servicio.PrevalidarRubrica(solicitud);
+
+        resultado.Valido.Should().BeTrue();
+        resultado.Errores.Should().BeEmpty();
+        resultado.ContenidoMarkdown.Should().Contain("Impacto");
+        _repo.Rubricas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PrevalidarRubrica_CoincideExactamenteConLoQuePersisteLaEscritura()
+    {
+        var solicitud = SolicitudRubrica("rub_1", "Rubrica", EstadoRubrica.Borrador);
+
+        var preview = _servicio.PrevalidarRubrica(solicitud);
+        var guardada = await _servicio.CrearRubricaAsync(solicitud, CancellationToken.None);
+
+        guardada.ContenidoMarkdown.Should().Be(preview.ContenidoMarkdown);
+        guardada.HashEstructura.Should().Be(preview.HashEstructura);
+    }
+
+    [Fact]
     public async Task ActualizarPrompt_EnBorrador_EditaEnSitioSinAprobacion()
     {
         await _servicio.CrearPromptAsync(SolicitudPrompt("pr_1", "Original"), CancellationToken.None);
@@ -85,7 +181,7 @@ public sealed class ServicioGestionConfiguracionEdicionTests
             id,
             nombre,
             "desc",
-            "# Rubrica",
+            "Evalua con evidencia.",
             EscalaRubrica.Crear(1, 5),
             new[] { CriterioRubrica.Crear("Impacto", 1m) },
             estado);

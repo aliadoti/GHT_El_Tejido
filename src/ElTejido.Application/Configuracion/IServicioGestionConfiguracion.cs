@@ -24,6 +24,13 @@ public interface IServicioGestionConfiguracion
 
     Task<Rubrica> CambiarEstadoRubricaAsync(string id, EstadoRubrica estado, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// DT-RUB-01 (04 §5.5): ejecuta el mismo validador y compilador que la escritura real
+    /// <b>sin escribir nada</b> y devuelve los motivos tipificados junto con el Markdown derivado.
+    /// Es la fuente del preview del portal; no constituye prueba de activacion.
+    /// </summary>
+    ResultadoPrevalidacionRubrica PrevalidarRubrica(SolicitudGuardarRubrica solicitud);
+
     Task<IReadOnlyCollection<Prompt>> BuscarPromptsAsync(string? tipoPrompt, EstadoPrompt? estado, CancellationToken cancellationToken);
 
     Task<Prompt> ObtenerPromptAsync(string id, CancellationToken cancellationToken);
@@ -56,14 +63,29 @@ public interface IServicioGestionConfiguracion
     Task<ConfigLlm> CambiarEstadoConfigLlmAsync(string id, EstadoRegistro estado, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Estructura canonica de una version de rubrica (03 §3.11, 04 §5.5). DT-RUB-01 elimina
+/// <c>ContenidoMarkdown</c> del cuerpo: la proyeccion la compila el servidor desde estos campos.
+/// </summary>
 public sealed record SolicitudGuardarRubrica(
     string Id,
     string Nombre,
     string Descripcion,
-    string ContenidoMarkdown,
+    string? InstruccionesGenerales,
     EscalaRubrica Escala,
     IEnumerable<CriterioRubrica> Criterios,
     EstadoRubrica Estado);
+
+/// <summary>
+/// Resultado de <c>POST /api/admin/rubricas/prevalidar</c> (04 §5.5). Cuando
+/// <paramref name="Valido"/> es <c>false</c>, <paramref name="ContenidoMarkdown"/> queda vacio: no se
+/// publica un preview de una estructura que el servidor no aceptaria.
+/// </summary>
+public sealed record ResultadoPrevalidacionRubrica(
+    bool Valido,
+    IReadOnlyList<ErrorRubrica> Errores,
+    string ContenidoMarkdown,
+    string HashEstructura);
 
 public sealed record SolicitudGuardarPrompt(
     string Id,

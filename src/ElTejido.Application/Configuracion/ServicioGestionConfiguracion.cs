@@ -46,7 +46,7 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
             throw new ErrorConflicto("Ya existe una rubrica con ese id.");
         }
 
-        var rubrica = CrearRubrica(solicitud, version: 1, creadoEn: _tiempo.GetUtcNow());
+        var rubrica = ConstruirRubrica(solicitud, version: 1, creadoEn: _tiempo.GetUtcNow());
         await _repositorio.GuardarRubricaAsync(rubrica, cancellationToken);
         return rubrica;
     }
@@ -57,7 +57,7 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         CancellationToken cancellationToken)
     {
         var actual = await ObtenerRubricaAsync(id, cancellationToken);
-        var rubrica = CrearRubrica(
+        var rubrica = ConstruirRubrica(
             solicitud with { Id = actual.Id },
             actual.Version + 1,
             actual.CreadoEn);
@@ -78,17 +78,10 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         }
 
         // Edicion in-place: misma version, conserva creadoEn, mantiene el borrador (la activacion va por estado).
-        var rubrica = Rubrica.Crear(
-            actual.Id,
-            solicitud.Nombre,
-            solicitud.Descripcion,
-            solicitud.ContenidoMarkdown,
-            solicitud.Escala,
-            solicitud.Criterios,
+        var rubrica = ConstruirRubrica(
+            solicitud with { Id = actual.Id, Estado = EstadoRubrica.Borrador },
             actual.Version,
-            EstadoRubrica.Borrador,
-            actual.CreadoEn,
-            _tiempo.GetUtcNow());
+            actual.CreadoEn);
         await _repositorio.GuardarRubricaAsync(rubrica, cancellationToken);
         return rubrica;
     }
@@ -99,19 +92,51 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
         CancellationToken cancellationToken)
     {
         var actual = await ObtenerRubricaAsync(id, cancellationToken);
+
+        // DT-RUB-01 §3.2: una version legacy o incoherente se lee y se sigue evaluando donde ya
+        // estaba configurada, pero no se puede activar hasta crear una version estructurada valida.
+        if (estado == EstadoRubrica.Activa && !actual.HabilitadaParaAsignacionNueva)
+        {
+            throw new ErrorValidacion(
+                "La rubrica no tiene una estructura verificada; crea una version nueva antes de activarla.",
+                new[] { new DetalleError("rubrica", "integridad_invalida") });
+        }
+
         var rubrica = Rubrica.Crear(
             actual.Id,
             actual.Nombre,
             actual.Descripcion,
-            actual.ContenidoMarkdown,
             actual.Escala,
             actual.Criterios,
             actual.Version,
             estado,
             actual.CreadoEn,
-            _tiempo.GetUtcNow());
+            _tiempo.GetUtcNow(),
+            actual.InstruccionesGenerales);
         await _repositorio.GuardarRubricaAsync(rubrica, cancellationToken);
         return rubrica;
+    }
+
+    public ResultadoPrevalidacionRubrica PrevalidarRubrica(SolicitudGuardarRubrica solicitud)
+    {
+        var criterios = ValidadorRubricaEstructurada.NormalizarOrden(solicitud.Criterios);
+        var validacion = ValidadorRubricaEstructurada.Validar(solicitud.Escala, criterios);
+        if (!validacion.Valido)
+        {
+            return new ResultadoPrevalidacionRubrica(false, validacion.Errores, string.Empty, string.Empty);
+        }
+
+        var instrucciones = solicitud.InstruccionesGenerales?.Trim() ?? string.Empty;
+        return new ResultadoPrevalidacionRubrica(
+            true,
+            Array.Empty<ErrorRubrica>(),
+            CompiladorRubricaMarkdown.Compilar(
+                solicitud.Nombre,
+                solicitud.Descripcion,
+                instrucciones,
+                solicitud.Escala,
+                criterios),
+            CompiladorRubricaMarkdown.CalcularHuella(instrucciones, solicitud.Escala, criterios));
     }
 
     public Task<IReadOnlyCollection<Prompt>> BuscarPromptsAsync(
@@ -307,18 +332,34 @@ public sealed class ServicioGestionConfiguracion : IServicioGestionConfiguracion
             new SolicitudActualizarConfigLlm(null, null, null, null, null, null, null, null, null, estado),
             cancellationToken);
 
-    private Rubrica CrearRubrica(SolicitudGuardarRubrica solicitud, int version, DateTimeOffset creadoEn)
-        => Rubrica.Crear(
+    /// <summary>
+    /// DT-RUB-01 §5: valida la estructura completa antes de construir nada y traduce cada
+    /// incumplimiento al motivo estable de 04 §5.5. Un solo criterio invalido rechaza el cuerpo
+    /// entero, de modo que jamas se persiste una version parcial.
+    /// </summary>
+    private Rubrica ConstruirRubrica(SolicitudGuardarRubrica solicitud, int version, DateTimeOffset creadoEn)
+    {
+        var criterios = ValidadorRubricaEstructurada.NormalizarOrden(solicitud.Criterios);
+        var validacion = ValidadorRubricaEstructurada.Validar(solicitud.Escala, criterios);
+        if (!validacion.Valido)
+        {
+            throw new ErrorValidacion(
+                "La estructura de la rubrica no es valida.",
+                validacion.Errores.Select(e => new DetalleError(e.Campo, e.Motivo)).ToArray());
+        }
+
+        return Rubrica.Crear(
             solicitud.Id,
             solicitud.Nombre,
             solicitud.Descripcion,
-            solicitud.ContenidoMarkdown,
             solicitud.Escala,
-            solicitud.Criterios,
+            criterios,
             version,
             solicitud.Estado,
             creadoEn,
-            _tiempo.GetUtcNow());
+            _tiempo.GetUtcNow(),
+            solicitud.InstruccionesGenerales);
+    }
 
     private Prompt CrearPrompt(
         SolicitudGuardarPrompt solicitud,

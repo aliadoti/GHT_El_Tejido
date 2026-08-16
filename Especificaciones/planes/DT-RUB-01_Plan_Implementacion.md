@@ -1,9 +1,10 @@
 # Plan de implementación — DT-RUB-01
 
-> **Estado:** CORTE 0 DONE (2026-08-16) — 0/4 de código. Contratos `03`, `04`, `07`, `08` y `11` ya
-> declaran estructura canónica, Markdown derivado, salida exacta por `criterio_id` y total
+> **Estado:** CORTE 0 DONE + **CORTE 1/4 DONE LOCAL** (2026-08-16). Contratos `03`, `04`, `07`, `08`
+> y `11` ya declaran estructura canónica, Markdown derivado, salida exacta por `criterio_id` y total
 > server-side. Baseline del gate focalizado antes de tocar código: **925 unitarias + 111 de
-> integración** (`Category!=Calibracion`) **+ 1 de calibración**, build Release `-warnaserror` verde.
+> integración** (`Category!=Calibracion`) **+ 1 de calibración**. Tras el corte 1: **959 + 119 + 1**,
+> build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes. Siguiente: corte 2/4.
 > **Spec:** `../Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`.
 > **QAS:** `../../QAS/24_DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista_Como_Probar.md`.
 

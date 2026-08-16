@@ -322,6 +322,175 @@ public sealed class AdminFase4EndpointsIntegrationTests
         configJson.Should().Contain("apiKeyRef");
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(8)]
+    public async Task Rubricas_AdminGuardaCualquierCantidadDeCriterios(int cantidad)
+    {
+        using var fabrica = ConstruirParaConfiguracion();
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/rubricas",
+            CuerpoRubrica("r_qa", CriteriosUniformes(cantidad)));
+
+        creacion.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await creacion.Content.ReadAsStringAsync();
+        json.Should().Contain("\"integridadEstructural\":\"valida\"");
+        json.Should().Contain("\"hashEstructura\":\"sha256:");
+
+        // El servidor no agrega, quita ni renombra criterios (DT-RUB-01 §13.2).
+        using var documento = JsonDocument.Parse(json);
+        documento.RootElement.GetProperty("criterios").GetArrayLength().Should().Be(cantidad);
+        documento.RootElement.GetProperty("contenidoMarkdown").GetString().Should().NotContain("Impacto");
+    }
+
+    [Fact]
+    public async Task Rubricas_CriterioInvalido_RechazaElCuerpoCompletoSinEscribir()
+    {
+        using var fabrica = ConstruirParaConfiguracion();
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/rubricas",
+            CuerpoRubrica(
+                "r_qa",
+                new[]
+                {
+                    new { id = "claridad", nombre = "Claridad", descripcion = "ok", peso = 0.5m, orden = 1 },
+                    new { id = "claridad", nombre = "Otra", descripcion = "ok", peso = 0.2m, orden = 2 },
+                }));
+
+        creacion.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await creacion.Content.ReadAsStringAsync();
+        error.Should().Contain("VALIDATION_ERROR");
+        error.Should().Contain("criterios.1.id");
+        error.Should().Contain("duplicado");
+        error.Should().Contain("suma_invalida");
+
+        // No quedo una version parcial: la familia sigue sin existir.
+        using var consulta = await client.GetAsync("/api/admin/rubricas/r_qa");
+        consulta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Rubricas_Prevalidar_DevuelveMarkdownDerivadoSinEscribir()
+    {
+        using var fabrica = ConstruirParaConfiguracion();
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var preview = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/rubricas/prevalidar",
+            CuerpoRubrica("r_qa", CriteriosUniformes(3)));
+
+        preview.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await preview.Content.ReadAsStringAsync();
+        json.Should().Contain("\"valido\":true");
+        json.Should().Contain("## Criterios");
+        json.Should().Contain("hashEstructura");
+
+        // Prevalidar no escribe: la familia no existe despues del preview.
+        using var consulta = await client.GetAsync("/api/admin/rubricas/r_qa");
+        consulta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Rubricas_PrevalidarEstructuraInvalida_Responde200ConMotivosTipificados()
+    {
+        using var fabrica = ConstruirParaConfiguracion();
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var preview = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/rubricas/prevalidar",
+            new
+            {
+                nombre = "Rubrica QA",
+                descripcion = "desc",
+                escala = new { min = 5, max = 5 },
+                criterios = new[] { new { id = "Claridad Total", nombre = "Claridad", descripcion = "", peso = 0.4m, orden = 1 } },
+            });
+
+        // El cuerpo era legible: responde 200 con valido:false, no un 400 (04 §5.5).
+        preview.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await preview.Content.ReadAsStringAsync();
+        json.Should().Contain("\"valido\":false");
+        json.Should().Contain("formato_invalido");
+        json.Should().Contain("suma_invalida");
+        json.Should().Contain("\"campo\":\"escala\"");
+        json.Should().Contain("\"contenidoMarkdown\":\"\"");
+    }
+
+    [Fact]
+    public async Task Rubricas_ContenidoMarkdownDelCliente_SeIgnoraYSeDerivaDeLaEstructura()
+    {
+        using var fabrica = ConstruirParaConfiguracion();
+        using var client = CrearClienteConSesion(fabrica);
+
+        using var creacion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/rubricas",
+            new
+            {
+                id = "r_qa",
+                nombre = "Rubrica QA",
+                descripcion = "desc",
+                contenidoMarkdown = "# Rubrica inventada\nCriterio fantasma: Impacto.",
+                escala = new { min = 1, max = 5 },
+                criterios = new[] { new { id = "claridad", nombre = "Claridad", descripcion = "", peso = 1m, orden = 1 } },
+            });
+
+        creacion.StatusCode.Should().Be(HttpStatusCode.Created);
+        var markdown = await LeerStringAsync(creacion, "contenidoMarkdown");
+        markdown.Should().NotContain("fantasma");
+        markdown.Should().NotContain("Impacto");
+        markdown.Should().Contain("Claridad");
+    }
+
+    private static WebApplicationFactory<Program> ConstruirParaConfiguracion()
+        => Construir(
+            new RepositorioUsuariosMemoria(),
+            new RepositorioCampaniasMemoria(),
+            new RepositorioParticipantesMemoria(),
+            new RepositorioConfiguracionMemoria(),
+            new SecretProviderFake());
+
+    private static object CuerpoRubrica(string id, object criterios)
+        => new
+        {
+            id,
+            nombre = "Rubrica QA",
+            descripcion = "Rubrica de prueba",
+            instruccionesGenerales = "Evalua con evidencia del aporte.",
+            escala = new { min = 1, max = 5 },
+            criterios,
+        };
+
+    private static object[] CriteriosUniformes(int cantidad)
+    {
+        var peso = decimal.Round(1m / cantidad, 6);
+        return Enumerable.Range(1, cantidad)
+            .Select(i => (object)new
+            {
+                id = $"criterio_{i}",
+                nombre = $"Criterio {i}",
+                descripcion = $"Descripcion {i}",
+                peso = i == cantidad ? 1m - (peso * (cantidad - 1)) : peso,
+                orden = i,
+            })
+            .ToArray();
+    }
+
     private static WebApplicationFactory<Program> Construir(
         IRepositorioUsuarios usuarios,
         IRepositorioCampanias campanias,

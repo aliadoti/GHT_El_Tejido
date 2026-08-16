@@ -462,7 +462,7 @@ Errores estables bajo `400 VALIDATION_ERROR` (`§3`), en `error.detalles[].campo
 
 | `campo` | `motivo` |
 |---|---|
-| `criterios` | `requerido` |
+| `criterios` | `requerido` \| `limite_excedido` (techo técnico, `03 §3.11`) |
 | `criterios.{i}.id` | `requerido` \| `duplicado` \| `formato_invalido` |
 | `criterios.{i}.nombre` | `requerido` \| `duplicado` |
 | `criterios.{i}.peso` | `fuera_de_rango` |

@@ -803,7 +803,7 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
     }
 
     private static Rubrica CrearRubrica()
-        => Rubrica.Crear("rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
+        => Rubrica.Crear("rub_1", "Rubrica", "desc", EscalaRubrica.Crear(1, 5),
             new[] { CriterioRubrica.Crear("claridad", 1m) }, 1, EstadoRubrica.Activa, Epoca, Epoca);
 
     private static Prompt CrearPrompt()

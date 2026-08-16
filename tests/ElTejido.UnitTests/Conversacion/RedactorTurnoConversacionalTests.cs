@@ -322,7 +322,7 @@ public sealed class RedactorTurnoConversacionalTests
         return new ContextoRedaccionTurno(campania, pregunta, acto, ConfigLlm(), MaxCaracteres: 320)
         {
             RubricaSnapshot = Rubrica.Crear(
-                "rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
+                "rub_1", "Rubrica", "desc", EscalaRubrica.Crear(1, 5),
                 new[] { CriterioRubrica.Crear("claridad", 1m) }, 1, EstadoRubrica.Activa, Epoca, Epoca),
             PromptSnapshot = Prompt.Crear(
                 "pr_voz", "Voz", "conversacion", "Habla claro y cercano.", 1, EstadoPrompt.Activo,

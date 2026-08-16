@@ -108,6 +108,49 @@
 
 ## Supuestos registrados
 
+### integridad-estructural-rubrica-dt-rub-01 - Cómo se decide que una rúbrica legacy no está verificada
+- Fecha: 2026-08-16 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/SDET - Commit: corte 1/4 de `DT-RUB-01`.
+- Contexto: `DT-RUB-01 §3.2` exige marcar `legacy_no_verificada` o `invalida` cuando «las
+  representaciones no son coherentes», pero no define **cómo** se compara una estructura contra un
+  Markdown escrito a mano. Interpretar el Markdown para extraer criterios sería justamente el parseo
+  no determinista que la iniciativa elimina. REQ §17 / `03 §3.11`, `07 §3.1`.
+- Decisión: la coherencia se decide **sin interpretar el texto**: se compila la proyección canónica
+  desde la estructura y se compara carácter a carácter con el `contenidoMarkdown` persistido.
+  Estructura válida + Markdown idéntico al compilado ⇒ `valida`; estructura válida + Markdown que no
+  produjo el compilador ⇒ `legacy_no_verificada`; estructura que rompe las reglas canónicas ⇒
+  `invalida`. La lectura **nunca muta** el documento y conserva el Markdown histórico, así que las
+  campañas ya configuradas siguen enviando al modelo exactamente el mismo texto que antes. Solo se
+  bloquean las acciones **nuevas**: activar una versión no verificada devuelve `400 VALIDATION_ERROR`
+  con `rubrica: integridad_invalida`.
+- Consecuencia esperada y aceptada: **toda** rúbrica anterior a este corte queda
+  `legacy_no_verificada`, porque ninguna fue compilada por el servidor. Es el resultado buscado: es
+  exactamente la condición de la rúbrica `2` (un criterio `Impacto` frente a un Markdown de cinco
+  ejes) y obliga a crear una versión estructurada antes de comprometerla de nuevo.
+- Alternativa(s) descartada(s): parsear el Markdown para compararlo (reintroduce el parseo frágil que
+  causó la deuda); confiar en un campo `integridadEstructural` persistido (una marca guardada envejece
+  y puede mentir si el documento se edita por fuera; se persiste solo como dato informativo y la
+  lectura la vuelve a derivar); reescribir el Markdown legacy al leerlo (mutaría documentos históricos
+  y cambiaría en silencio lo que recibe el LLM en campañas ya activas).
+- Impacto / reversibilidad: aditivo y reversible. No cambia contratos de escritura de campaña ni
+  evaluaciones históricas; revertir el corte de código deja los campos nuevos como datos ignorados.
+
+### orden-y-suma-de-pesos-rubrica-dt-rub-01 - Orden implícito y tolerancia de la suma de pesos
+- Fecha: 2026-08-16 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend - Commit: corte 1/4 de `DT-RUB-01`.
+- Contexto: `03 §3.11` exige `orden` único y consecutivo y suma de pesos `1`, pero no dice qué hacer
+  cuando el cuerpo no envía `orden` (caso natural de un arreglo ya ordenado) ni si `1` se compara de
+  forma exacta, lo que haría imposible un reparto de tres criterios iguales.
+- Decisión: (a) si **ningún** criterio trae `orden`, se asigna por posición del arreglo; si **algunos**
+  lo traen y otros no, no se inventa nada y la mezcla se reporta como `orden: no_consecutivo`. La
+  misma regla rehidrata documentos históricos. (b) La suma se compara contra `1` con tolerancia
+  `0.0001`, de modo que `0.33 + 0.33 + 0.34` es válido; el total ponderado divide por `sum(peso)`, así
+  que la tolerancia no puede desviar el resultado. (c) El techo técnico son 50 criterios y emite el
+  motivo `criterios: limite_excedido`, declarado en `04 §5.5`.
+- Alternativa(s) descartada(s): exigir siempre `orden` explícito (fricción innecesaria para el caso
+  común y para la lectura legacy); normalizar en silencio un orden mezclado (adivinaría la intención
+  del autor); comparar la suma de forma exacta (haría imposible repartir tres criterios iguales).
+- Impacto / reversibilidad: afecta solo validador y compilador puros; endurecer o relajar la
+  tolerancia es un cambio local sin efecto en contratos ni en datos persistidos.
+
 ### fase0-frontend-lint - Lint inicial del portal Angular
 - Fecha: 2026-06-12 - Agente/Rol: Codex - SDET/Frontend - Commit: n/a (sin repositorio Git)
 - Contexto: Angular CLI 22 no genero un target `lint`/ESLint por defecto, pero `12_CICD_GitHub_Actions.md` seccion 3.1 exige `npm run lint`.

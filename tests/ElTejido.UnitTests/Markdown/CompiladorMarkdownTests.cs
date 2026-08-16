@@ -263,7 +263,7 @@ public sealed class CompiladorMarkdownTests
             .Returns(new[]
             {
                 Rubrica.Crear(
-                    "r_general", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
+                    "r_general", "Rubrica", "desc", EscalaRubrica.Crear(1, 5),
                     new[] { CriterioRubrica.Crear("claridad", 1m) }, version, EstadoRubrica.Activa, Epoca, Epoca),
             });
 

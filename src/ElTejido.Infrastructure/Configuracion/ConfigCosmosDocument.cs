@@ -33,6 +33,20 @@ internal sealed class ConfigCosmosDocument
     [JsonProperty("contenidoMarkdown")]
     public string? ContenidoMarkdown { get; init; }
 
+    /// <summary>DT-RUB-01 (aditivo): guia transversal inyectada al modelo. Ausente en documentos previos.</summary>
+    [JsonProperty("instruccionesGenerales", NullValueHandling = NullValueHandling.Ignore)]
+    public string? InstruccionesGenerales { get; init; }
+
+    /// <summary>
+    /// DT-RUB-01 (aditivo, informativo): integridad y huella calculadas al persistir. La lectura las
+    /// vuelve a derivar de la estructura para no confiar en una marca que quedo desactualizada.
+    /// </summary>
+    [JsonProperty("integridadEstructural", NullValueHandling = NullValueHandling.Ignore)]
+    public string? IntegridadEstructural { get; init; }
+
+    [JsonProperty("hashEstructura", NullValueHandling = NullValueHandling.Ignore)]
+    public string? HashEstructura { get; init; }
+
     [JsonProperty("escala")]
     public EscalaDocument? Escala { get; init; }
 
@@ -97,6 +111,11 @@ internal sealed class ConfigCosmosDocument
             Nombre = rubrica.Nombre,
             Descripcion = rubrica.Descripcion,
             ContenidoMarkdown = rubrica.ContenidoMarkdown,
+            InstruccionesGenerales = rubrica.InstruccionesGenerales.Length == 0
+                ? null
+                : rubrica.InstruccionesGenerales,
+            IntegridadEstructural = ToCosmosIntegridad(rubrica.IntegridadEstructural),
+            HashEstructura = rubrica.HashEstructura,
             Escala = EscalaDocument.FromDomain(rubrica.Escala),
             Criterios = rubrica.Criterios.Select(CriterioDocument.FromDomain).ToArray(),
             Version = rubrica.Version,
@@ -105,14 +124,21 @@ internal sealed class ConfigCosmosDocument
             ActualizadoEn = rubrica.ActualizadoEn,
         };
 
+    /// <summary>
+    /// DT-RUB-01: la lectura usa <see cref="Rubrica.Rehidratar"/>, no el constructor estricto, para
+    /// que un documento historico incoherente se pueda leer y diagnosticar en vez de romper la
+    /// consulta. El indice del arreglo suple el <c>orden</c> ausente y el <c>id</c> se deriva del
+    /// nombre; el documento no se muta.
+    /// </summary>
     public Rubrica ToRubrica()
-        => Rubrica.Crear(
+        => Rubrica.Rehidratar(
             FamiliaId ?? Id,
             Nombre,
             Descripcion ?? string.Empty,
-            ContenidoMarkdown ?? string.Empty,
+            InstruccionesGenerales,
+            ContenidoMarkdown,
             (Escala ?? new EscalaDocument()).ToDomain(),
-            (Criterios ?? Array.Empty<CriterioDocument>()).Select(c => c.ToDomain()),
+            (Criterios ?? Array.Empty<CriterioDocument>()).Select((c, indice) => c.ToDomain(indice)),
             Version,
             ParseEstadoRubrica(Estado),
             CreadoEn,
@@ -222,6 +248,15 @@ internal sealed class ConfigCosmosDocument
             _ => throw new InvalidOperationException($"Estado de rubrica no soportado: {estado}."),
         };
 
+    private static string ToCosmosIntegridad(EstadoIntegridadRubrica integridad)
+        => integridad switch
+        {
+            EstadoIntegridadRubrica.Valida => "valida",
+            EstadoIntegridadRubrica.LegacyNoVerificada => "legacy_no_verificada",
+            EstadoIntegridadRubrica.Invalida => "invalida",
+            _ => throw new InvalidOperationException($"Integridad de rubrica no soportada: {integridad}."),
+        };
+
     private static EstadoRubrica ParseEstadoRubrica(string estado)
         => estado switch
         {
@@ -276,16 +311,41 @@ internal sealed class ConfigCosmosDocument
 
     internal sealed class CriterioDocument
     {
+        /// <summary>DT-RUB-01 (aditivo): ausente en documentos previos; se deriva del nombre al leer.</summary>
+        [JsonProperty("id", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Id { get; init; }
+
         [JsonProperty("nombre")]
         public string Nombre { get; init; } = string.Empty;
+
+        [JsonProperty("descripcion", NullValueHandling = NullValueHandling.Ignore)]
+        public string? Descripcion { get; init; }
 
         [JsonProperty("peso")]
         public decimal Peso { get; init; }
 
-        public static CriterioDocument FromDomain(CriterioRubrica criterio)
-            => new() { Nombre = criterio.Nombre, Peso = criterio.Peso };
+        /// <summary>DT-RUB-01 (aditivo): ausente en documentos previos; se suple con la posicion.</summary>
+        [JsonProperty("orden", NullValueHandling = NullValueHandling.Ignore)]
+        public int? Orden { get; init; }
 
-        public CriterioRubrica ToDomain() => CriterioRubrica.Crear(Nombre, Peso);
+        public static CriterioDocument FromDomain(CriterioRubrica criterio)
+            => new()
+            {
+                Id = criterio.Id,
+                Nombre = criterio.Nombre,
+                Descripcion = criterio.Descripcion.Length == 0 ? null : criterio.Descripcion,
+                Peso = criterio.Peso,
+                Orden = criterio.Orden,
+            };
+
+        /// <param name="indice">Posicion en el arreglo persistido; solo se usa si falta <c>orden</c>.</param>
+        public CriterioRubrica ToDomain(int indice)
+            => CriterioRubrica.Crear(
+                string.IsNullOrWhiteSpace(Id) ? NormalizacionRubrica.NormalizarId(Nombre) : Id,
+                Nombre,
+                Descripcion ?? string.Empty,
+                Peso,
+                Orden ?? indice + 1);
     }
 
     internal sealed class LimitesTokensDocument

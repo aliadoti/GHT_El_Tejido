@@ -3601,7 +3601,7 @@ public sealed class OrquestadorConversacionTests
             parafraseoDevuelto: parafraseo);
 
     private static Rubrica CrearRubrica(EstadoRubrica estado = EstadoRubrica.Activa)
-        => Rubrica.Crear("rub_1", "Rubrica", "desc", "# Rubrica", EscalaRubrica.Crear(1, 5),
+        => Rubrica.Crear("rub_1", "Rubrica", "desc", EscalaRubrica.Crear(1, 5),
             new[] { CriterioRubrica.Crear("claridad", 1m) }, 1, estado, Epoca, Epoca);
 
     private static Prompt CrearPrompt(EstadoPrompt estado = EstadoPrompt.Activo, bool aprobado = true, int version = 1)

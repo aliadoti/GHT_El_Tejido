@@ -352,7 +352,6 @@ public sealed class EvaluadorLlmTests
             "r_general",
             "Rubrica general",
             "Evalua ideas",
-            "# Rubrica\nClaridad e impacto.",
             EscalaRubrica.Crear(1, 5),
             new[] { CriterioRubrica.Crear("claridad", 0.5m), CriterioRubrica.Crear("impacto", 0.5m) },
             3,
