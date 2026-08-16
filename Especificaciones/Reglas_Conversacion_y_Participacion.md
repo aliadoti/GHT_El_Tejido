@@ -495,6 +495,36 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
 La precedencia queda: dedupe/identidad/autorización → consulta P-33 → afinidad P-33 → P-26/P-30 →
 controles P-27 → aporte normal. P-33 tiene gate propio y no depende de P-27 ni del umbral de P-31.
 
+### 2.14 Contrato visible en texto plano y versión de prompt en runtime (DT-I20-02, implementada)
+
+1. Lo que el LLM propone para que lo lea el participante —`retroalimentacion_usuario`,
+   `repregunta_sugerida` y los fragmentos `puente`/`pregunta` de I-20— es **texto plano
+   conversacional**: sin encabezados, viñetas, listas numeradas, citas, separadores, tablas ni bloques
+   de código al inicio de línea, y sin etiquetas internas de proceso (`ready_to_save`, `save now`,
+   `listo para guardar`) ni rótulos de sección (`Estado`, `Pregunta clave`, `Lo que ya queda claro`,
+   `Resumen`, y sus equivalentes en inglés) usados como título de línea.
+2. Un `#`, un guion o un `|` **dentro de una frase** no son estructura: `caja #3` es contenido válido.
+   La guarda mira estructura al inicio de línea, no caracteres sueltos.
+3. Una infracción se resuelve **por campo**: solo ese fragmento cae a su respaldo neutro. Los puntajes,
+   la recomendación, la idea y versión evaluadas (I-19), la madurez, el estado del hilo, el cierre y el
+   presupuesto de repreguntas (I-18) **no cambian** por un defecto de presentación.
+4. El turno visible conserva **como máximo una pregunta**: si el turno enviará repregunta por separado,
+   la retroalimentación no puede llevar otra.
+5. **No se sanea el mensaje final.** La idea consolidada (P-33), las respuestas del participante, el
+   catálogo P-32, los mensajes de campaña, las plantillas Meta y los artefactos Markdown quedan fuera
+   de esta guarda y se transportan tal cual; el gateway sigue siendo solo transporte.
+6. En I-20 la guarda corre **antes** del filtro de no duplicación de `DT-I20-01`, que sigue omitiendo
+   el puente que repita el cuerpo validado.
+7. Un texto visible demasiado largo se recorta en **frontera de oración**; si no hay ninguna dentro del
+   máximo se usa el respaldo. Nunca se envía ni se persiste una palabra partida.
+8. El `promptRef` de una campaña o pregunta identifica una **familia**. En runtime se usa la versión
+   más nueva que sea **activa y aprobada**: una versión activa sin aprobar no se usa, e inactivar la
+   más nueva devuelve el flujo a la anterior vigente. La consulta administrativa del portal sigue
+   mostrando la versión más nueva sea cual sea su estado. La misma regla aplica al prompt de voz de
+   I-20; sin versión vigente el redactor conserva solo sus reglas duras.
+9. La auditoría de estas guardas registra únicamente códigos fijos (componente, campo y motivo), nunca
+   el texto generado, la respuesta del participante ni el contenido del prompt.
+
 ## 3. Parámetros configurables
 
 | Parámetro | Dónde se configura | Default | Efecto |

@@ -417,6 +417,147 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             Arg.Any<CancellationToken>());
     }
 
+    // ----------------------------------------------------------------------------------------------
+    // DT-I20-02 §7.2: contrato visible de punta a punta, con el evaluador REAL sobre un LLM falso.
+    // ----------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// §1: forma exacta reportada por WhatsApp el 2026-08-13 (encabezados Markdown, etiquetas internas
+    /// y una pregunta incrustada además de la repregunta). Se usa como salida del LLM falso.
+    /// </summary>
+    private const string SalidaLlmDelCasoReportado =
+        "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":3,\"justificacion\":\"clara\"}],"
+        + "\"calificacion_total\":3,\"explicacion\":\"aporte concreto\","
+        + "\"retroalimentacion_usuario\":\"Ya quedó claro que quieres comparar el almacenamiento en racks.\\n"
+        + "### Lo que ya queda claro\\nEl objetivo y el punto de arribo.\\n"
+        + "### Lo que todavía falta\\nLa forma de comparar.\\n"
+        + "### Siguiente ajuste recomendado\\nDefinir la métrica. ready_to_save: false\\n"
+        + "¿Qué métrica usarías?\","
+        + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Con qué unidad compararías los dos puntos de arribo?\","
+        + "\"temas\":[\"almacenamiento\"],\"entidades\":[],\"anomalia_seguridad\":false}";
+
+    /// <summary>Misma evaluación de fondo, pero con los campos visibles ya en texto plano.</summary>
+    private const string SalidaLlmEquivalenteValida =
+        "{\"calificacion_por_criterio\":[{\"criterio\":\"claridad\",\"puntaje\":3,\"justificacion\":\"clara\"}],"
+        + "\"calificacion_total\":3,\"explicacion\":\"aporte concreto\","
+        + "\"retroalimentacion_usuario\":\"Tu idea sobre el almacenamiento en racks ya tiene objetivo y punto de arribo.\","
+        + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"¿Con qué unidad compararías los dos puntos de arribo?\","
+        + "\"temas\":[\"almacenamiento\"],\"entidades\":[],\"anomalia_seguridad\":false}";
+
+    [Fact]
+    public async Task DTI2002_CasoReportado_ElMensajeEnviadoNoLlevaEstructuraNiEtiquetasInternas()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+
+        using var fabrica = ConstruirConLlmFalso(gateway, conversaciones, respuestas, SalidaLlmDelCasoReportado);
+        using var client = fabrica.CreateClient();
+
+        // El aporte lleva `caja #3` a propósito: §7.2.6 exige que el contenido del participante viaje
+        // carácter por carácter aunque la salida del LLM sí se corrija.
+        const string aporte = "Comparar el almacenamiento en racks del primer punto de arribo, empezando por la caja #3";
+        await EnviarEntranteAsync(client, "wamid.DTI2002.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(client, "wamid.DTI2002.2", aporte);
+        await EsperarAsync(() => gateway.Enviados.Any(enviado => enviado.Tipo == TipoEnvioMensaje.Repregunta));
+
+        var visible = gateway.Enviados.First(enviado => enviado.Tipo == TipoEnvioMensaje.Repregunta).Texto;
+        // §7.2.1: ni estructura editorial ni etiquetas internas llegan al participante...
+        visible.Should().NotContain("###")
+            .And.NotContain("Lo que ya queda claro")
+            .And.NotContain("Lo que todavía falta")
+            .And.NotContain("Siguiente ajuste recomendado")
+            .And.NotContain("ready_to_save");
+        // ...y el turno conserva como máximo una pregunta (I-18).
+        visible.Count(caracter => caracter == '?').Should().BeLessThanOrEqualTo(1);
+        // §7.2.7: el gateway transporta el cuerpo ya compuesto; no limpia ni reinterpreta nada.
+        visible.Should().Contain(EvaluadorLlm.RetroNeutra);
+
+        // §7.2.6: la idea del participante conserva `caja #3` intacta; la guarda solo mira fragmentos
+        // generados por el LLM, nunca el contenido de la persona.
+        var idea = respuestas.Ideas.Values.Should().ContainSingle().Subject;
+        var versiones = await respuestas.ListarVersionesIdeaAsync("c_1", idea.Id, CancellationToken.None);
+        versiones.Should().NotBeEmpty();
+        versiones.Last().Texto.Should().Contain("caja #3");
+    }
+
+    [Fact]
+    public async Task DTI2002_CasoReportado_ConservaLaMismaDecisionQueConCamposVisiblesValidos()
+    {
+        // §7.2.2/§7.2.3: un defecto de presentación solo cambia el fragmento visible. Se corre el mismo
+        // escenario con la salida reportada y con su equivalente válida, y se comparan los efectos de
+        // negocio: puntaje, recomendación, estado del hilo y presupuesto de repreguntas.
+        var (visibleInvalida, evaluacionInvalida, conversacionInvalida, respuestasInvalida) =
+            await CorrerTurnoDeEvaluacionAsync(SalidaLlmDelCasoReportado, "INV");
+        var (visibleValida, evaluacionValida, conversacionValida, respuestasValida) =
+            await CorrerTurnoDeEvaluacionAsync(SalidaLlmEquivalenteValida, "VAL");
+
+        evaluacionInvalida.CalificacionTotal.Should().Be(evaluacionValida.CalificacionTotal);
+        evaluacionInvalida.CalificacionPorCriterio.Should().BeEquivalentTo(evaluacionValida.CalificacionPorCriterio);
+        evaluacionInvalida.Recomendacion.Should().Be(evaluacionValida.Recomendacion);
+        evaluacionInvalida.RepreguntaSugerida.Should().Be(evaluacionValida.RepreguntaSugerida);
+        conversacionInvalida.EstadoMaquina.Should().Be(conversacionValida.EstadoMaquina);
+        conversacionInvalida.RepreguntasUsadas.Should().Be(conversacionValida.RepreguntasUsadas);
+        // I-19: cada corrida evalúa la idea y la versión de su propio hilo (los ids son aleatorios);
+        // lo que se comprueba es que la trazabilidad quede igual de completa en ambos casos.
+        evaluacionInvalida.IdeaId.Should().Be(respuestasInvalida.Ideas.Values.Single().Id);
+        evaluacionValida.IdeaId.Should().Be(respuestasValida.Ideas.Values.Single().Id);
+        evaluacionInvalida.VersionIdeaId.Should().NotBeNullOrWhiteSpace();
+        evaluacionInvalida.OrigenTextoEvaluado.Should().Be(evaluacionValida.OrigenTextoEvaluado);
+
+        // Lo único que cambia es el fragmento visible: el válido se conserva carácter por carácter y el
+        // inválido se sustituye por el respaldo neutro.
+        evaluacionValida.RetroalimentacionEnviada.Should()
+            .Be("Tu idea sobre el almacenamiento en racks ya tiene objetivo y punto de arribo.");
+        evaluacionInvalida.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
+        visibleValida.Should().NotBe(visibleInvalida);
+    }
+
+    private static async Task<(string Visible, DominioEvaluacion Evaluacion, DominioConversacion Conversacion, RespuestasFake Respuestas)>
+        CorrerTurnoDeEvaluacionAsync(string salidaLlm, string sufijo)
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+
+        using var fabrica = ConstruirConLlmFalso(gateway, conversaciones, respuestas, salidaLlm);
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.DTI2002." + sufijo + ".1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(
+            client, "wamid.DTI2002." + sufijo + ".2", "Comparar el almacenamiento en racks del primer punto de arribo");
+        await EsperarAsync(() => !respuestas.Evaluaciones.IsEmpty
+            && gateway.Enviados.Any(enviado => enviado.Tipo == TipoEnvioMensaje.Repregunta));
+
+        return (
+            gateway.Enviados.First(enviado => enviado.Tipo == TipoEnvioMensaje.Repregunta).Texto,
+            respuestas.Evaluaciones.Single(),
+            conversaciones.Ultima!,
+            respuestas);
+    }
+
+    private static WebApplicationFactory<Program> ConstruirConLlmFalso(
+        GatewayDePrueba gateway,
+        ConversacionesFake conversaciones,
+        RespuestasFake respuestas,
+        string salidaLlm)
+    {
+        var cliente = Substitute.For<ILlmClient>();
+        cliente.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salidaLlm, UsoTokensLlm.Crear(120, 60)));
+
+        return Construir(
+            gateway,
+            conversaciones,
+            respuestas,
+            new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>(),
+            new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>(),
+            confirmacionExplicitaIdeas: false,
+            clienteLlm: cliente);
+    }
+
     private static async Task SembrarIdeaHistoricaAsync(
         ConversacionesFake conversaciones,
         RespuestasFake respuestas,
@@ -486,7 +627,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         bool clasificacionIntencionControl = false,
         bool retomarIdeas = false,
         DominioEvaluacion? evaluacion = null,
-        bool resumenConsolidacion = false)
+        bool resumenConsolidacion = false,
+        ILlmClient? clienteLlm = null)
     {
         var dedupe = Substitute.For<IRegistroWebhookDedupe>();
         dedupe.IntentarRegistrarMensajeAsync(Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
@@ -543,7 +685,18 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                 services.AddSingleton<IResolutorParticipante>(resolutor);
                 services.AddSingleton<IRepositorioConversaciones>(conversaciones);
                 services.AddSingleton(configuracion);
-                services.AddSingleton(evaluador);
+                if (clienteLlm is null)
+                {
+                    services.AddSingleton(evaluador);
+                }
+                else
+                {
+                    // DT-I20-02 §7.2: para ejercitar el contrato visible de punta a punta se cablea el
+                    // evaluador REAL sobre un ILlmClient falso; el resto del recorrido no cambia.
+                    services.AddSingleton(clienteLlm);
+                    services.AddScoped<IEvaluadorLlm, EvaluadorLlm>();
+                }
+
                 services.AddSingleton(consolidador);
                 services.AddSingleton<IRepositorioRespuestas>(respuestas);
                 services.AddSingleton(Substitute.For<IRepositorioParticipantes>());

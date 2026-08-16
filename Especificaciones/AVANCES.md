@@ -4,7 +4,30 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-15 (Claude Opus 5, Arquitecto/Backend/SDET):
+- Ultima actualizacion: 2026-08-15 (Claude Opus 5, Arquitecto/Backend/SDET/AppSec):
+  **`DT-I20-02` COMPLETA LOCAL 3/3 — corte 3/3: prompt candidato, integración de §7.2 y cierre
+  documental.** El **contenido candidato** del prompt de evaluación quedó redactado en
+  `planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`: texto listo para copiar, explicación de lo que el
+  backend ya inyecta —esquema JSON, idioma P-32, anti-inyección, pista de eje débil I-03, variación
+  DT-I20-01— para no duplicarlo, mapa de cómo corrige cada causa del reporte y lista de verificación
+  humana. **No se creó ni activó nada en Cosmos**: crear la familia **nueva**, aprobarla, asociarla a
+  la campaña aislada y migrar campañas sigue siendo acción humana autorizada del runbook. Las pruebas
+  de §7.2 corren ahora sobre el **evaluador real** con un `ILlmClient` falso dentro del recorrido
+  webhook → cola → orquestador → gateway: el caso reportado llega a WhatsApp sin `###`, sin
+  `Lo que ya queda claro` / `Lo que todavía falta` / `Siguiente ajuste recomendado`, sin
+  `ready_to_save` y con una sola pregunta; el aporte del participante conserva `caja #3` carácter por
+  carácter; y la misma corrida con campos visibles válidos produce **idéntica decisión de negocio**
+  (puntajes, calificación por criterio, recomendación, repregunta, estado del hilo, presupuesto de
+  repreguntas y trazabilidad idea/versión), cambiando solo el fragmento visible. Backend **925
+  unitarias + 112 de integración**; regresiones por iniciativa verdes (I-18 8, I-19 22+1, I-20 20+3,
+  DT-I20-01 6, P-27 18+2, P-32 16, P-33 4, DT-I20-02 9+2). Documentación cerrada en `05 §4.4.2`,
+  `08 §3.4`, `Reglas_Conversacion_y_Participacion.md §2.14`, la spec, el runbook y `QAS/21`. Build
+  Release `-warnaserror`, `dotnet format --verify-no-changes` y `git diff --check` verdes. Sin
+  frontend, push, despliegue, Cosmos ni configuración remota. **Pendiente explícito por costo,
+  credenciales y autorización humana:** `QAS/21` real y D5 en ambiente aislado. **Siguiente:
+  decisión del usuario** — desplegar `DT-I20-02` con autorización y ejecutar QAS/21, o retomar P-32
+  completa (QAS/17 y lote mixto real); `DT-P32-04` sigue como backlog post-green.
+- Actualizacion anterior: 2026-08-15 (Claude Opus 5, Arquitecto/Backend/SDET):
   **`DT-I20-02` CORTE 2/3 DONE LOCAL — gobierno de la versión de prompt en runtime.** El `promptRef`
   identifica una **familia**, no una versión: hasta ahora runtime tomaba la versión numéricamente
   mayor y solo después comprobaba su estado, así que inactivar la última dejaba la familia **sin
@@ -1150,16 +1173,20 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **`DT-I20-02` corte 3/3 — prompt candidato, calibración y continuidad.** Leer la iniciativa
-  (§5.5, §6 corte 3, §7.2, §9), `QAS/21` y el runbook. Preparar el **contenido candidato** del prompt
-  de evaluación **sin modificar Cosmos ni crear/activar nada remoto**: solo campos del JSON
-  contractual, texto plano conversacional en los campos visibles, prohibición de títulos/listas/estado
-  interno/órdenes de guardado y rúbrica como razonamiento interno. Agregar las pruebas de integración
-  de §7.2 (hoy las suites E2E sustituyen `IEvaluadorLlm`; hay que cablear el evaluador real con un
-  `ILlmClient` falso) y ejecutar las regresiones de I-18/I-19/I-20/P-27/P-32/P-33. Actualizar `05`,
-  reglas, `SUPUESTOS`, `TODO`, `AVANCES` y el prompt de arranque. La activación remota, D5 real y la
-  QAS humana quedan como acciones humanas separadas y aprobadas (familia **nueva** y campaña aislada,
-  según §9 y el runbook). No adelantar DT-P32-04.
+- [ ] **DECISIÓN DEL USUARIO: `DT-I20-02` está COMPLETA local (3/3); lo que sigue es operativo.** Dos
+  caminos, ambos con autorización expresa: (a) **desplegar `DT-I20-02`** —las guardias no dependen de
+  ningún flag, así que corrigen el defecto visible incluso antes de migrar prompts— y ejecutar `QAS/21`
+  pruebas 1 a 8 en ambiente aislado, con teléfonos de prueba autorizados; después crear la **familia
+  nueva** del prompt candidato (`planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`), aprobarla,
+  asociarla solo a la campaña de QA, correr D5 y migrar campañas una por una según el runbook; o
+  (b) **retomar P-32 completa** (`QAS/17` y la prueba 7 del lote mixto real), que quedó programada para
+  después de DT-I20-02. `DT-P32-04` sigue como backlog post-green y no bloquea ninguno de los dos.
+- [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 925 unitarias + 112 integración; build Release
+  `-warnaserror`, format y diff verdes) `DT-I20-02` corte 3/3.** Contenido candidato del prompt sin
+  tocar Cosmos, pruebas de §7.2 sobre el evaluador real con `ILlmClient` falso en el recorrido webhook
+  → gateway, regresiones por iniciativa verdes y cierre documental de `05 §4.4.2`, `08 §3.4` y
+  `Reglas_Conversacion_y_Participacion.md §2.14`. D5 y QAS reales quedan pendientes por costo,
+  credenciales y autorización.
 - [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 925 unitarias + 110 integración; build Release
   `-warnaserror`, format y diff verdes) `DT-I20-02` corte 2/3.** `ResolutorPromptRuntime` puro +
   `ObtenerPromptVigenteAsync` en el puerto (Cosmos y memoria): runtime usa la versión más nueva activa
@@ -1523,7 +1550,7 @@
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **DESPLEGADA 2/2 (`a9f4a6f`)** | cierres QAS/23 1–3 PASS | backend 854 + 105, portal 60 | Resolutor único sin fallback cruzado y readiness Meta. La semántica de borradores se cerró en DT-P32-03-01; no queda código pendiente. |
 | DT-P32-03-01 | Readiness solo con campañas activas | **CERRADA: DESPLEGADA 1/1 + SMOKE GREEN (2026-08-15)** | `60b520d` | backend 863 + 109, portal 62; QAS/23 1–6 PASS en Azure | Borradores visibles sin bloquear, guarda propia al activar con gate ON y evidencia Meta aceptada. Gate/simulación OFF y clave retirada. Reporte `Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. P-32 completa queda después de DT-I20-02. |
-| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **EN CURSO 2/3 — cortes 1 y 2 DONE local (2026-08-15)** | — | backend 925 unitarias + 110 integración (62 nuevas) | Corte 1: `ValidadorFragmentoVisibleLlm` puro con motivos fijos, regresión del encabezado reportado, respaldo por campo en el evaluador, guarda de I-20 previa a `DT-I20-01` y recorte en frontera de oración. Corte 2: `ResolutorPromptRuntime` + `ObtenerPromptVigenteAsync` (versión más nueva activa **y** aprobada), consulta administrativa intacta, motivos de diagnóstico conservados, rollback por inactivación verificado y misma regla para la voz de I-20; documentado en `08 §3.3`. Sin sanitización global, contratos REST, Cosmos ni configuración remota. **Siguiente: corte 3/3** (prompt candidato, integración §7.2 y cierre documental). |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **COMPLETA local 3/3 (2026-08-15)** | — | backend 925 unitarias + 112 integración (64 nuevas) | Corte 3: contenido candidato del prompt sin tocar Cosmos (`planes/DT-I20-02_Prompt_Candidato_*`), pruebas de §7.2 sobre el evaluador real con `ILlmClient` falso, regresiones por iniciativa verdes y cierre documental (`05 §4.4.2`, `08 §3.4`, reglas §2.14). D5/QAS reales pendientes por costo, credenciales y autorización. Corte 1: `ValidadorFragmentoVisibleLlm` puro con motivos fijos, regresión del encabezado reportado, respaldo por campo en el evaluador, guarda de I-20 previa a `DT-I20-01` y recorte en frontera de oración. Corte 2: `ResolutorPromptRuntime` + `ObtenerPromptVigenteAsync` (versión más nueva activa **y** aprobada), consulta administrativa intacta, motivos de diagnóstico conservados, rollback por inactivación verificado y misma regla para la voz de I-20; documentado en `08 §3.3`. Sin sanitización global, contratos REST, Cosmos ni configuración remota. **Siguiente (operativo, con autorización):** desplegar y ejecutar `QAS/21` 1–8, o retomar P-32 completa. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -2320,3 +2347,18 @@
   creó ni activó ningún prompt. Comportamiento efectivo en `08 §3.3`; decisión en
   `SUPUESTOS.md#version-de-prompt-en-runtime-dt-i20-02`. Handoff: **corte 3/3** (prompt candidato,
   integración conversacional de §7.2, regresiones y cierre documental).
+- 2026-08-15 - Claude Opus 5 - **DT-I20-02 corte 3/3 — COMPLETA local (3/3).** Rol: Arquitecto/
+  Backend/SDET/AppSec. Contenido candidato del prompt de evaluación redactado en
+  `planes/DT-I20-02_Prompt_Candidato_Evaluacion.md` **sin crear ni activar nada en Cosmos**, con lo que
+  el backend ya inyecta para no duplicarlo y la lista de verificación humana previa; el runbook apunta
+  a él. Pruebas de §7.2 sobre el **evaluador real** con `ILlmClient` falso en el recorrido webhook →
+  cola → orquestador → gateway: el caso reportado llega sin encabezados, sin etiquetas internas y con
+  una sola pregunta; `caja #3` del participante se conserva; y la corrida equivalente con campos
+  visibles válidos produce idéntica decisión de negocio. Regresiones por iniciativa verdes (I-18 8,
+  I-19 22+1, I-20 20+3, DT-I20-01 6, P-27 18+2, P-32 16, P-33 4, DT-I20-02 9+2). Cierre documental en
+  `05 §4.4.2`, `08 §3.4`, `Reglas_Conversacion_y_Participacion.md §2.14`, la spec, el runbook y
+  `QAS/21`. Verificado: build Release `-warnaserror`, **925 unitarias + 112 de integración**,
+  `dotnet format --verify-no-changes` y `git diff --check` verdes. Sin frontend, push, despliegue,
+  Cosmos ni configuración remota. Pendiente explícito: `QAS/21` y D5 reales, por costo, credenciales y
+  autorización humana. Handoff: **decisión del usuario** entre desplegar y ejecutar QAS/21 o retomar
+  P-32 completa.

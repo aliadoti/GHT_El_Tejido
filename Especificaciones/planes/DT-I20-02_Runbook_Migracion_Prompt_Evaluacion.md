@@ -20,6 +20,11 @@ Las campañas activas inspeccionadas el 2026-08-13 compartían la familia de pro
 
 ## Preparar el prompt candidato
 
+> **El contenido ya está redactado** en `DT-I20-02_Prompt_Candidato_Evaluacion.md` (corte 3/3,
+> 2026-08-15): incluye el texto para copiar tal cual, lo que el backend ya inyecta —esquema JSON,
+> idioma, anti-inyección, pista de eje débil— y la lista de verificación previa a crearlo. **No está
+> creado ni activado en Cosmos.**
+
 Crear una familia nueva para la prueba. No agregar la primera corrección como otra versión de la familia `1`.
 
 El contenido debe conservar:

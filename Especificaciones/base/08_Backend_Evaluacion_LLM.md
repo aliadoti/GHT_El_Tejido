@@ -238,6 +238,24 @@ Reglas duras:
   (`§6`) y la repregunta a un texto genérico y seguro (el dominio exige una repregunta no vacía
   cuando `recomendacion=repreguntar`) — y se registra `LogSeguridad(anomaliaLlm, resultado="fuga_rubrica")`
   sin texto de la fuga, solo qué campo(s) y el criterio esperado.
+- **DT-I20-02 — contrato visible en texto plano (capa 2, siempre activa):** después del filtro de fuga
+  de rúbrica y **antes de persistir**, `retroalimentacion_usuario` y —cuando `recomendacion=repreguntar`—
+  `repregunta_sugerida` pasan por `ValidadorFragmentoVisibleLlm`. Rechaza estructura editorial
+  **anclada al inicio de línea** (encabezado, viñeta, lista numerada, cita, separador, tabla y cerca de
+  código), etiquetas internas del contrato u órdenes de proceso (`ready_to_save`, `save now`,
+  `listo para guardar`) y títulos de sección (`Estado`, `Pregunta clave`, `Lo que ya queda claro`,
+  `Resumen`, y sus equivalentes en inglés) cuando ocupan la línea o la abren con dos puntos. También
+  exige exactamente una pregunta en la repregunta y **ninguna** en la retro cuando el turno ya enviará
+  la repregunta por separado (presupuesto de I-18). La infracción se resuelve **por campo**: solo ese
+  fragmento cae a su respaldo neutro y la evaluación de fondo —puntajes, recomendación, arbitraje,
+  `ideaId`/`versionIdeaId`, madurez, estados y cierre— **no cambia**. Se registra
+  `LogSeguridad(anomaliaLlm, resultado="contrato_visible")` con
+  `componente=evaluador;retroalimentacion=<motivo>;repregunta=<motivo>` y nunca el texto. Un `#`, un
+  guion o un `|` dentro de una frase no son estructura: `caja #3` se conserva. El exceso de longitud de
+  la retro se resuelve recortando en **frontera de oración** y, sin frontera dentro del máximo, con el
+  respaldo: nunca se persiste una palabra partida. **No** se sanea el mensaje final, ni la idea
+  consolidada (P-33), ni las respuestas del participante, ni el catálogo P-32, ni los mensajes de
+  campaña, ni las plantillas Meta.
 - **I-18 — contexto de coaching secuencial:** cuando el orquestador marca una idea activa bajo
   umbral y aún permite otra oportunidad, exige una `repregunta_sugerida` no vacía, con exactamente
   una pregunta enfocada en el criterio más débil calculado por I-03. El prompt ordena reconocer
@@ -247,7 +265,9 @@ Reglas duras:
   `repregunta_sugerida`, temas, entidades y explicación deben referirse a la misma versión consolidada
   completa. La evaluación persiste `ideaId`/`versionIdeaId`; sin ese vínculo no puede sellar madurez.
 - **I-20 — redacción de turno:** el redactor recibe el acto ya resuelto y devuelve solo `puente` y
-  `pregunta` en JSON estricto. Ambos pasan guardas de longitud y fuga de rúbrica; no agregan hechos,
+  `pregunta` en JSON estricto. Ambos pasan guardas de longitud, fuga de rúbrica y —DT-I20-02— el mismo
+  contrato visible en texto plano, **antes** de que `FiltroDuplicacionTurno` (DT-I20-01) componga el
+  turno; un fragmento con estructura o etiqueta interna degrada al respaldo de I-20. No agregan hechos,
   puntajes, criterios ni decisiones. Esta llamada no crea ni modifica una `Evaluacion`.
 - **P-27 — intención de control:** el clasificador recibe el texto como dato no confiable y devuelve
   un enum cerrado. No puede crear una `Evaluacion`, elegir ids ni ejecutar el cierre. La política

@@ -299,6 +299,19 @@ versión completa y acto ya decidido por el servidor. No puede decidir estado, c
 cierre. Cada turno expresa una sola intención y a lo sumo una pregunta; salida inválida, timeout o fuga
 cae a un respaldo breve y seguro. Ver `Iniciativas/I-20_Redaccion_Conversacional_Fluida_y_Markdown_Ejecutivo.md`.
 
+**DT-I20-02 — contrato visible en texto plano:** todo fragmento generado por el LLM que vaya a leer el
+participante (retroalimentación, repregunta y los `puente`/`pregunta` de I-20) se valida antes de
+componer el turno: se rechaza estructura editorial al inicio de línea, etiquetas internas de proceso y
+rótulos de sección, y se conserva como máximo una pregunta visible. La infracción sustituye **solo ese
+campo** por su respaldo neutro y no altera puntajes, idea/versión (I-19), madurez, estados, cierre ni el
+presupuesto de repreguntas (I-18). La guarda de I-20 corre **antes** del filtro de no duplicación de
+`DT-I20-01`. **El mensaje final no se sanea**: la idea consolidada (P-33), los textos del catálogo P-32
+y los mensajes de campaña se transportan tal cual, y el gateway sigue siendo solo transporte. El
+`promptRef` identifica una familia y runtime usa su versión más nueva **activa y aprobada** (`08 §3.3`),
+también para el prompt de voz. Ver
+`Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md` y
+`Reglas_Conversacion_y_Participacion.md §2.14`.
+
 ### 4.4.3 Participación continua y enrutamiento (P-26)
 
 `configConversacional.participacionContinua` permite abrir **otro ciclo** después de completar el

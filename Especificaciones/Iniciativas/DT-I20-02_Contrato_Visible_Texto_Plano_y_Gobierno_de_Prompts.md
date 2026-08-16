@@ -1,13 +1,16 @@
 # DT-I20-02 — Contrato visible en texto plano y gobierno seguro de prompts
 
-> **Estado:** **EN CURSO 2/3 — CORTES 1 Y 2 DONE LOCAL (2026-08-15)**. El P-32 smoke requerido quedó
-> green el 2026-08-15 (`DT-P32-03-01`, `60b520d`, QAS/23 1–6 PASS). El corte 1 entregó
-> `ValidadorFragmentoVisibleLlm` (Application, puro), el respaldo **por campo** en el evaluador, la
-> guarda de I-20 previa a `DT-I20-01` y la eliminación del truncamiento a mitad de palabra. El corte 2
-> entregó `ResolutorPromptRuntime` y `ObtenerPromptVigenteAsync`: runtime usa la versión más nueva
-> **activa y aprobada**, la consulta administrativa no cambia y el rollback por inactivación funciona.
-> **Siguiente:** corte 3/3 (prompt candidato, integración conversacional de §7.2, calibración y
-> continuidad documental).
+> **Estado:** **COMPLETA LOCAL 3/3 (2026-08-15)** — código, pruebas y documentación cerrados; sin
+> push, despliegue, Cosmos ni configuración remota. El corte 1 entregó `ValidadorFragmentoVisibleLlm`
+> (Application, puro), el respaldo **por campo** en el evaluador, la guarda de I-20 previa a
+> `DT-I20-01` y la eliminación del truncamiento a mitad de palabra. El corte 2 entregó
+> `ResolutorPromptRuntime` y `ObtenerPromptVigenteAsync`: runtime usa la versión más nueva **activa y
+> aprobada**, la consulta administrativa no cambia y el rollback por inactivación funciona. El corte 3
+> entregó el **contenido candidato del prompt** (`planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`, sin
+> crear ni activar nada), las pruebas de integración de §7.2 sobre el evaluador real y el cierre
+> documental de `05`, `08` y las reglas.
+> **Pendiente, y es acción humana autorizada:** crear la familia nueva, aprobarla, asociarla a la
+> campaña aislada, ejecutar `QAS/21` y D5 reales, y migrar campañas una por una según el runbook.
 > **Origen:** reporte real de WhatsApp con encabezados Markdown e instrucciones internas de presentación.  
 > **Alcance:** salida visible del evaluador, fragmentos de I-20 y selección segura del prompt de evaluación en runtime.  
 > **No cambia:** contratos API/Cosmos, puntajes, umbrales, estados, cierres, versión I-19, P-27, P-32, P-33 ni mensajes históricos.
@@ -245,13 +248,32 @@ No crear ni activar el prompt remoto durante la corrida de desarrollo. Su migrac
 > (I-20 §5 ya lo declara versionado/aprobado). Decisión en
 > `SUPUESTOS.md#version-de-prompt-en-runtime-dt-i20-02`.
 
-### Corte 3/3 — Prompt candidato, calibración y continuidad
+### Corte 3/3 — Prompt candidato, calibración y continuidad — **DONE local 2026-08-15**
 
-- preparar el contenido candidato sin modificar Cosmos;
-- ejecutar pruebas unitarias, integración y regresiones de I-18/I-19/I-20/P-27/P-32/P-33;
-- ejecutar D5 real y QAS humana en ambiente aislado cuando existan credenciales y autorización;
-- actualizar `05`, `08`, reglas, `SUPUESTOS`, `TODO`, `AVANCES` y el prompt de arranque con el estado real;
-- dejar la activación remota como acción humana separada y aprobada.
+- [x] preparar el contenido candidato sin modificar Cosmos —
+  `planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`: contenido listo para copiar, con lo que el
+  backend ya inyecta (no se duplica esquema ni idioma) y la lista de verificación humana previa;
+- [x] ejecutar pruebas unitarias, integración y regresiones de I-18/I-19/I-20/P-27/P-32/P-33 — suite
+  completa verde (ver §7.4);
+- [ ] ejecutar D5 real y QAS humana en ambiente aislado cuando existan credenciales y autorización —
+  **pendiente por costo, credenciales y autorización humana**; `QAS/21` queda ejecutable de 1 a 8;
+- [x] actualizar `05`, `08`, reglas, `SUPUESTOS`, `TODO`, `AVANCES` y el prompt de arranque con el
+  estado real — `05 §4.4.2`, `08 §3.3` y `§3.4`, `Reglas_Conversacion_y_Participacion.md §2.14`;
+- [x] dejar la activación remota como acción humana separada y aprobada — nada se creó ni activó;
+  la secuencia vive en el runbook y en la lista de verificación del prompt candidato.
+
+### 7.4 Estado real de la verificación automática (2026-08-15)
+
+Suite completa verde: **925 unitarias + 112 de integración**. Regresiones por iniciativa, ejecutadas
+por filtro: I-18 8, I-19 22 + 1, I-20 20 + 3, `DT-I20-01` 6, P-27 18 + 2, P-32 16, P-33 4
+(`DetectorConsultaIdea*`) y `DT-I20-02` 9 + 2. Build Release `-warnaserror`, `dotnet format
+--verify-no-changes` y `git diff --check` verdes.
+
+Las pruebas de §7.2 corren sobre el **evaluador real** con un `ILlmClient` falso dentro del recorrido
+webhook → cola → orquestador → gateway (`WebhookOrquestadorE2EIntegrationTests`). §7.2.4 (P-27) y
+§7.2.8 (versión de runtime) quedan cubiertas por las regresiones propias de P-27 y por las pruebas del
+corte 2/3, y §7.2.5 (`es`/`en`) por las regresiones P-32 más las etiquetas internas en ambos idiomas
+del validador puro.
 
 ---
 
@@ -324,18 +346,18 @@ El detalle operativo está en `Especificaciones/planes/DT-I20-02_Runbook_Migraci
 
 ## 10. Criterios de aceptación
 
-- [ ] El caso reportado tiene una prueba de regresión que falla antes y pasa después.
-- [ ] No se envía estructura Markdown ni etiquetas internas desde campos generados por LLM.
-- [ ] Un defecto de presentación sustituye solo el campo visible afectado.
-- [ ] Puntajes, umbrales, madurez, estados y cierre conservan sus reglas actuales.
-- [ ] La versión I-19 evaluada y mostrada permanece exacta.
-- [ ] Se conserva máximo una pregunta y el presupuesto I-18.
-- [ ] P-32 pasa en español e inglés.
-- [ ] P-27, P-33 y `DT-I20-01` tienen regresiones verdes.
-- [ ] Runtime selecciona la versión activa/aprobada más nueva y permite rollback verificable.
-- [ ] No hay cambios históricos, de API, portal, Cosmos ni configuración remota durante el desarrollo.
-- [ ] Build, pruebas no calibración, formato y `git diff --check` están verdes.
-- [ ] D5/QAS real queda ejecutado o explícitamente pendiente por costo, credenciales y autorización.
+- [x] El caso reportado tiene una prueba de regresión que falla antes y pasa después.
+- [x] No se envía estructura Markdown ni etiquetas internas desde campos generados por LLM.
+- [x] Un defecto de presentación sustituye solo el campo visible afectado.
+- [x] Puntajes, umbrales, madurez, estados y cierre conservan sus reglas actuales.
+- [x] La versión I-19 evaluada y mostrada permanece exacta.
+- [x] Se conserva máximo una pregunta y el presupuesto I-18.
+- [x] P-32 pasa en español e inglés.
+- [x] P-27, P-33 y `DT-I20-01` tienen regresiones verdes.
+- [x] Runtime selecciona la versión activa/aprobada más nueva y permite rollback verificable.
+- [x] No hay cambios históricos, de API, portal, Cosmos ni configuración remota durante el desarrollo.
+- [x] Build, pruebas no calibración, formato y `git diff --check` están verdes.
+- [x] D5/QAS real queda **explícitamente pendiente** por costo, credenciales y autorización humana.
 
 ---
 

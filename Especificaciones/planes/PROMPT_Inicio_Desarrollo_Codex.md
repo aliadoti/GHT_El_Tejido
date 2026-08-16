@@ -6,21 +6,20 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-15 — SIGUIENTE CÓDIGO `DT-I20-02` CORTE 3/3.** Los cortes 1/3 y 2/3 quedaron
-> **DONE local**: contrato visible en texto plano con respaldo por campo, guarda de I-20 antes de
-> `DT-I20-01`, recorte en frontera de oración, y `ResolutorPromptRuntime` /
-> `ObtenerPromptVigenteAsync` —runtime usa la versión más nueva **activa y aprobada**, la consulta
-> administrativa no cambia, los motivos de diagnóstico se conservan y el rollback por inactivación
-> funciona, también para la voz de I-20—. Backend **925 unitarias + 110 de integración**; build
-> Release `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin push, despliegue, Cosmos ni
-> configuración remota. Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa DT-I20-02 (§5.5, §6
-> corte 3, §7.2 y §9), bases `05`/`08`, reglas, QAS/21 y el runbook. Preparar el **contenido candidato**
-> del prompt de evaluación sin tocar Cosmos, agregar las pruebas de integración conversacional de §7.2
-> (cableando el evaluador real con un `ILlmClient` falso), ejecutar las regresiones de
-> I-18/I-19/I-20/P-27/P-32/P-33 y cerrar la documentación. **No crear ni activar prompts remotos, no
-> modificar Cosmos, API ni configuración remota y no alterar puntajes, idea/versionId, umbrales,
-> madurez, estados, cierre, repreguntas, idioma o texto P-33.** La migración usa familia nueva y
-> campaña aislada, como acción humana aprobada. No adelantar DT-P32-04.
+> **HANDOFF 2026-08-15 — `DT-I20-02` COMPLETA LOCAL 3/3; NO HAY CÓDIGO PENDIENTE.** Entregado:
+> contrato visible en texto plano con respaldo **por campo**, guarda de I-20 antes de `DT-I20-01`,
+> recorte en frontera de oración, `ResolutorPromptRuntime` / `ObtenerPromptVigenteAsync` —runtime usa
+> la versión más nueva **activa y aprobada**, la consulta administrativa no cambia y el rollback por
+> inactivación funciona, también para la voz de I-20—, el **contenido candidato** del prompt
+> (`planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`, sin crear ni activar nada en Cosmos) y las
+> pruebas de §7.2 sobre el evaluador real con un `ILlmClient` falso. Backend **925 unitarias + 112 de
+> integración**; build Release `-warnaserror`, `dotnet format` y `git diff --check` verdes; sin push,
+> despliegue, Cosmos ni configuración remota. **Lo siguiente es una decisión del usuario, con
+> autorización expresa:** (a) desplegar y ejecutar `QAS/21` 1–8 en ambiente aislado y luego la
+> migración por familia nueva y campaña de QA del runbook, o (b) retomar **P-32 completa** (`QAS/17` y
+> la prueba 7 del lote mixto real). Leer `AVANCES.md`, `Iniciativas/TODO.md`, la iniciativa DT-I20-02,
+> `QAS/21` y el runbook antes de actuar. **No crear ni activar prompts, flags ni configuración remota
+> sin acta humana.** No adelantar DT-P32-04.
 
 > **HANDOFF HISTÓRICO 2026-08-15 — `DT-P32-03` DESPLEGADA (2/2).** La corrida P-32
 > desplegada encontró un cierre español en hilos ingleses y mapeos Meta ausentes/invisibles para

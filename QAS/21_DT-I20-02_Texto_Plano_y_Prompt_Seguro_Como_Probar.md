@@ -1,9 +1,12 @@
 # QAS 21 — DT-I20-02: texto plano y prompt seguro
 
-> **Estado:** **las ocho pruebas son ejecutables** desde los cortes 1/3 y 2/3 de `DT-I20-02` (DONE
-> local 2026-08-15), en un ambiente aislado y con autorización. En la prueba 8, «activa y aprobada» es
-> ahora la condición exacta: una versión activa **sin aprobar** tampoco se usa, y el runtime cae a la
-> anterior vigente.  
+> **Estado:** `DT-I20-02` está **COMPLETA local 3/3** (2026-08-15) y **las ocho pruebas son
+> ejecutables** en un ambiente aislado y con autorización. Las guardias de código **no dependen de
+> ningún flag**: las pruebas 1 a 7 se pueden ejecutar con los prompts actuales, antes de migrar
+> ninguno. En la prueba 8, «activa y aprobada» es la condición exacta: una versión activa **sin
+> aprobar** tampoco se usa y el runtime cae a la anterior vigente. El contenido del prompt candidato
+> está listo en `Especificaciones/planes/DT-I20-02_Prompt_Candidato_Evaluacion.md`; crearlo como
+> **familia nueva** es parte del runbook, no de esta guía.  
 > **Objetivo:** comprobar que WhatsApp responde de forma natural, sin mostrar formato editorial ni instrucciones internas, y sin cambiar las reglas de evaluación y conversación.
 
 ## Antes de empezar
