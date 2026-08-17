@@ -1,5 +1,3 @@
-using ElTejido.Domain.Campanas;
-
 namespace ElTejido.Application.WhatsApp;
 
 /// <summary>
@@ -25,20 +23,6 @@ public sealed class OpcionesPlantillaEnvioInicial
     public Dictionary<string, Dictionary<string, PlantillaEnvioInicialConfigurada>> Mapeos { get; set; }
         = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool TryResolver(string plantillaRef, string idioma, out PlantillaWhatsApp plantilla)
-    {
-        plantilla = null!;
-        if (!Mapeos.TryGetValue(plantillaRef, out var porIdioma)
-            || !porIdioma.TryGetValue(idioma, out var configurada)
-            || string.IsNullOrWhiteSpace(configurada.Nombre)
-            || string.IsNullOrWhiteSpace(configurada.Idioma))
-        {
-            return false;
-        }
-
-        plantilla = PlantillaWhatsApp.Crear(configurada.Nombre, configurada.Idioma, configurada.Componentes);
-        return true;
-    }
 }
 
 public sealed class PlantillaEnvioInicialConfigurada

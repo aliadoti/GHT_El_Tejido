@@ -87,9 +87,9 @@ public sealed class ValidadorMapeosPlantillaMetaTests
     }
 
     [Fact]
-    public void Evaluar_ComponenteVacioODuplicado_SeReportaAunqueElParResuelva()
+    public void Evaluar_ComponenteVacioODuplicado_RuntimeYDiagnosticoRechazanElPar()
     {
-        // Criterio de aceptación 7: `TryResolver` acepta estos casos, el diagnóstico no.
+        // DT-P32-04: runtime y readiness comparten la misma política estructural.
         var opciones = Opciones(
             ("inicio_campania", "en", "el_tejido_inicio", "en_US", ["nombre", "  ", "nombre"]));
 
@@ -99,7 +99,7 @@ public sealed class ValidadorMapeosPlantillaMetaTests
             opciones);
 
         var mapeo = mapeos.Should().ContainSingle().Subject;
-        mapeo.Configurado.Should().BeTrue();
+        mapeo.Configurado.Should().BeFalse();
         mapeo.Problemas.Should().BeEquivalentTo(
             [ValidadorMapeosPlantillaMeta.ComponenteVacio, ValidadorMapeosPlantillaMeta.ComponenteDuplicado]);
         mapeo.Componentes.Should().Equal("nombre", "nombre");

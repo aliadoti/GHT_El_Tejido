@@ -22,7 +22,8 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
     private readonly TimeProvider _tiempo;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
     private readonly IDisponibilidadCatalogoTextos? _catalogosTextos;
-    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
+    private readonly IResolverPlantillaCanal _resolutorPlantillaCanal;
+    private readonly IResolutorContenidoCampania _resolutorContenidoCampania;
 
     public ServicioGestionCampanias(
         IRepositorioCampanias campanias,
@@ -31,7 +32,9 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         TimeProvider tiempo,
         OpcionesCatalogoTextos? opcionesCatalogoTextos = null,
         IDisponibilidadCatalogoTextos? catalogosTextos = null,
-        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
+        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null,
+        IResolverPlantillaCanal? resolutorPlantillaCanal = null,
+        IResolutorContenidoCampania? resolutorContenidoCampania = null)
     {
         _campanias = campanias;
         _usuarios = usuarios;
@@ -39,7 +42,9 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
         _tiempo = tiempo;
         _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
         _catalogosTextos = catalogosTextos;
-        _plantillaEnvioInicial = plantillaEnvioInicial ?? new OpcionesPlantillaEnvioInicial();
+        _resolutorPlantillaCanal = resolutorPlantillaCanal
+            ?? new ResolverPlantillaCanal(plantillaEnvioInicial ?? new OpcionesPlantillaEnvioInicial());
+        _resolutorContenidoCampania = resolutorContenidoCampania ?? new ResolutorContenidoCampania();
     }
 
     public Task<IReadOnlyCollection<Campania>> BuscarCampaniasAsync(
@@ -549,7 +554,11 @@ public sealed class ServicioGestionCampanias : IServicioGestionCampanias
             .Select(idioma => idioma.Trim().ToLowerInvariant())
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var errores = ValidadorMapeosPlantillaMeta.Evaluar([campania], idiomas, _plantillaEnvioInicial)
+        var errores = ValidadorMapeosPlantillaMeta.Evaluar(
+                [campania],
+                idiomas,
+                _resolutorPlantillaCanal,
+                _resolutorContenidoCampania)
             .Where(mapeo => !mapeo.Listo)
             .SelectMany(mapeo => mapeo.Campanias.SelectMany(requirente => mapeo.Problemas.Select(
                 problema => new DetalleError($"mapeosMeta.{requirente.MensajeInicialId}.{mapeo.Idioma}", problema))))

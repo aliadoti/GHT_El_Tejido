@@ -1,4 +1,5 @@
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Domain.Campanas;
 
@@ -19,7 +20,7 @@ public sealed class Campania
         ConfigConversacional configConversacional,
         LimitesSeguridad configSeguridad,
         IReadOnlyCollection<string> usuariosHabilitados,
-        IReadOnlyCollection<string> idiomasHabilitados,
+        IReadOnlyCollection<IdiomaConversacion> idiomasHabilitados,
         IReadOnlyDictionary<string, LocalizacionCampania> localizaciones,
         DateTimeOffset creadoEn,
         DateTimeOffset actualizadoEn)
@@ -38,7 +39,8 @@ public sealed class Campania
         ConfigConversacional = configConversacional;
         ConfigSeguridad = configSeguridad;
         UsuariosHabilitados = usuariosHabilitados;
-        IdiomasHabilitados = idiomasHabilitados;
+        IdiomasInternosHabilitados = idiomasHabilitados;
+        IdiomasHabilitados = idiomasHabilitados.Select(idioma => idioma.Codigo).ToArray();
         Localizaciones = localizaciones;
         CreadoEn = creadoEn;
         ActualizadoEn = actualizadoEn;
@@ -74,6 +76,8 @@ public sealed class Campania
 
     /// <summary>Idiomas editoriales admitidos por la campaña; un documento histórico equivale a <c>es</c>.</summary>
     public IReadOnlyCollection<string> IdiomasHabilitados { get; }
+
+    public IReadOnlyCollection<IdiomaConversacion> IdiomasInternosHabilitados { get; }
 
     /// <summary>Contenido editorial por idioma, indexado por código ISO corto.</summary>
     public IReadOnlyDictionary<string, LocalizacionCampania> Localizaciones { get; }
@@ -141,22 +145,22 @@ public sealed class Campania
     /// </summary>
     public bool TryObtenerLocalizacion(string idioma, out LocalizacionCampania localizacion)
     {
-        var normalizado = idioma.Trim().ToLowerInvariant();
-        if (!IdiomasHabilitados.Contains(normalizado, StringComparer.Ordinal))
+        if (!IdiomaConversacion.TryCrear(idioma, out var idiomaInterno)
+            || !IdiomasInternosHabilitados.Contains(idiomaInterno))
         {
             localizacion = null!;
             return false;
         }
 
-        if (Localizaciones.TryGetValue(normalizado, out localizacion!))
+        if (Localizaciones.TryGetValue(idiomaInterno.Codigo, out localizacion!))
         {
             return true;
         }
 
-        if (normalizado == "es")
+        if (idiomaInterno == IdiomaConversacion.Espanol)
         {
             localizacion = LocalizacionCampania.Crear(
-                "es",
+                IdiomaConversacion.CodigoEspanol,
                 Nombre,
                 Descripcion,
                 Objetivo,
@@ -195,19 +199,15 @@ public sealed class Campania
             .ToArray();
     }
 
-    private static IReadOnlyCollection<string> NormalizeIdiomas(IEnumerable<string>? values)
+    private static IReadOnlyCollection<IdiomaConversacion> NormalizeIdiomas(IEnumerable<string>? values)
     {
         var idiomas = NormalizeStrings(values)
-            .Select(idioma => idioma.ToLowerInvariant())
+            .Select(IdiomaConversacion.Crear)
+            .Distinct()
             .ToArray();
         if (idiomas.Length == 0)
         {
-            return new[] { "es" };
-        }
-
-        if (idiomas.Any(idioma => idioma is not ("es" or "en")))
-        {
-            throw new DomainValidationException("IDIOMA_NO_SOPORTADO", "Los idiomas de la campaña deben ser 'es' o 'en'.");
+            return new[] { IdiomaConversacion.Espanol };
         }
 
         return idiomas;
@@ -224,7 +224,7 @@ public sealed class Campania
         return values
             .Where(value => !string.IsNullOrWhiteSpace(value.Key))
             .ToDictionary(
-                value => value.Key.Trim().ToLowerInvariant(),
+                value => IdiomaConversacion.Crear(value.Key).Codigo,
                 value => value.Value,
                 StringComparer.Ordinal);
     }

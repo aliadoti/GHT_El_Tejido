@@ -6,26 +6,21 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-16 — `DT-RUB-01` COMPLETA LOCAL 4/4; NO HAY CÓDIGO PENDIENTE.** La estructura
-> versionada de la rúbrica es ya la fuente única: `contenidoMarkdown` es una proyección derivada por
-> el servidor, la salida del LLM se empareja por `criterio_id` exigiendo el conjunto exacto de la
-> versión efectiva, el total de negocio lo calcula el servidor
-> (`sum(puntaje*peso)/sum(peso)` en `decimal`, sin redondear) y eje débil, antifuga y snapshot usan
-> la misma lista canónica. El portal reemplazó el editor de Markdown por el editor estructurado con
-> preview del servidor. **Aviso importante para la validación desplegada:** con este cambio **todas
-> las rúbricas anteriores aparecen como «sin verificar»** (`legacy_no_verificada`), incluida la `2`.
-> Es el resultado buscado —ninguna fue compilada por el servidor, así que no se puede afirmar que su
-> estructura y su Markdown coincidan—: se siguen leyendo y las campañas ya configuradas evalúan
-> igual, pero no se pueden activar ni asignar a algo nuevo hasta crear una versión estructurada con
-> los criterios que apruebe **negocio** (no se deducen del Markdown). Validación local: build Release
-> `-warnaserror`, **992 unitarias + 120 de integración + 1 de calibración**, `dotnet format`,
-> `git diff --check`, portal **70 en 9 archivos**, `ng build` y Prettier verdes. Sin push,
-> despliegue, Cosmos, Azure, D5 ni migración. **Siguiente, todo con autorización humana:** desplegar,
-> ejecutar `QAS/24` en campaña aislada, levantar el inventario de
-> `planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md` y solo después un D5 comparable (`n=3`, misma
-> rúbrica/versión/modelo/parámetros/golden set en ambos brazos). Sigue pendiente el cierre operativo
-> de QAS/21: confirmar tras el reinicio `Simulacion__Habilitada=false` y
-> `Conversacion__CatalogoTextosHabilitado=false`, y retirar `GHT_DIAG_KEY`. `DT-P32-04` va después.
+> **HANDOFF 2026-08-16 — `DT-P32-04` IMPLEMENTACIÓN LOCAL 3/3 DONE; SIGUE QA CONTROLADO.**
+> `IdiomaConversacion`, `ContenidoCampaniaEfectivo`, `IResolutorTextosGlobales`,
+> `IResolverPlantillaCanal` e `IPoliticaIdiomaLlm` concentran las cuatro políticas. Runtime y
+> `IReadinessMultiidioma` comparten catálogo, campaña, Meta e idioma LLM; readiness no toca cache/LKG
+> ni reconstruye reglas. Guardas arquitectónicas fijan que las directivas LLM y los códigos Meta solo
+> se produzcan en sus fachadas. Cierre **1030 unitarias + 120 integración** sin Calibración, build
+> Release `-warnaserror`, formato y diff verdes. Strings DTO/Cosmos y frontend intactos; sin Azure,
+> flags, campañas reales ni DT-RUB-01. Siguiente, con autorización y ambiente aislado: repetir QAS/23
+> y QAS/17; no activar el gate fuera de esa ventana.
+>
+> **DECISIÓN DE CONTEXTO — `DT-RUB-01` COMPLETA LOCAL 4/4 Y ACEPTADA CONDICIONALMENTE.** El arranque
+> será desde cero: no se importan datos legacy, cada familia operativa tiene una sola versión activa
+> y no se crea una versión posterior —ni borrador— mientras esté en uso. Las deudas de selección
+> runtime, validación backend, transición legacy y advertencia prompt/rúbrica quedan después del green
+> de DT-P32-04. No ejecutar inventario/migración legacy ni ampliar el alcance multidioma con esos fixes.
 >
 > **HANDOFF HISTÓRICO 2026-08-16 — SIGUIENTE CÓDIGO `DT-RUB-01` (0/4).** QAS/21 preparación y pruebas 1–8
 > están PASS con LLM real; D5 quedó BLOCKED por credencial. Antes de D5 debe corregirse la deuda

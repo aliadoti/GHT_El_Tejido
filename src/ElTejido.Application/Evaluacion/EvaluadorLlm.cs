@@ -45,17 +45,20 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     private readonly IRepositorioLogSeguridad _logSeguridad;
     private readonly IProveedorCorrelacion _correlacion;
     private readonly TimeProvider _tiempo;
+    private readonly IPoliticaIdiomaLlm _politicaIdioma;
 
     public EvaluadorLlm(
         ILlmClient client,
         IRepositorioLogSeguridad logSeguridad,
         IProveedorCorrelacion correlacion,
-        TimeProvider tiempo)
+        TimeProvider tiempo,
+        IPoliticaIdiomaLlm? politicaIdioma = null)
     {
         _client = client;
         _logSeguridad = logSeguridad;
         _correlacion = correlacion;
         _tiempo = tiempo;
+        _politicaIdioma = politicaIdioma ?? new PoliticaIdiomaLlm();
     }
 
     public async Task<ResultadoEvaluacion> EvaluarAsync(ContextoEvaluacion contexto, CancellationToken cancellationToken)
@@ -229,7 +232,7 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             config.Endpoint,
             config.Modelo,
             config.ApiKeyRef,
-            ConstructorMensajesEvaluacion.Construir(contexto),
+            ConstructorMensajesEvaluacion.Construir(contexto, _politicaIdioma),
             config.Parametros,
             config.LimitesTokens.MaxCompletion,
             config.TimeoutSegundos,

@@ -1,4 +1,5 @@
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Domain.Conversaciones;
 
@@ -19,7 +20,7 @@ public sealed class EnrutamientoAporte
     private EnrutamientoAporte(
         string id,
         string usuarioId,
-        string idioma,
+        IdiomaConversacion idioma,
         string whatsappMessageId,
         string? phoneNumberIdDestino,
         string textoOriginal,
@@ -40,7 +41,7 @@ public sealed class EnrutamientoAporte
     {
         Id = id;
         UsuarioId = usuarioId;
-        Idioma = NormalizarIdioma(idioma);
+        IdiomaInterno = idioma;
         WhatsappMessageId = whatsappMessageId;
         PhoneNumberIdDestino = phoneNumberIdDestino;
         TextoOriginal = textoOriginal;
@@ -68,7 +69,9 @@ public sealed class EnrutamientoAporte
     /// P-32: idioma fijado al iniciar la selección. Evita que un cambio posterior en el maestro de
     /// usuarios altere un menú pendiente o la frase con la que se interpreta su respuesta.
     /// </summary>
-    public string Idioma { get; }
+    public IdiomaConversacion IdiomaInterno { get; }
+
+    public string Idioma => IdiomaInterno.Codigo;
 
     /// <summary>Id del mensaje entrante de Meta; junto al usuario hace determinista el Id (idempotencia ante reintentos).</summary>
     public string WhatsappMessageId { get; }
@@ -167,7 +170,7 @@ public sealed class EnrutamientoAporte
         return new EnrutamientoAporte(
             GenerarId(usuario, mensaje),
             usuario,
-            idioma,
+            IdiomaConversacion.DesdeFronteraHistorica(idioma),
             mensaje,
             string.IsNullOrWhiteSpace(phoneNumberIdDestino) ? null : phoneNumberIdDestino.Trim(),
             DomainGuards.Required(textoOriginal, nameof(textoOriginal)),
@@ -370,7 +373,7 @@ public sealed class EnrutamientoAporte
         => new(
             Id,
             UsuarioId,
-            Idioma,
+            IdiomaInterno,
             WhatsappMessageId,
             PhoneNumberIdDestino,
             TextoOriginal,
@@ -389,8 +392,6 @@ public sealed class EnrutamientoAporte
             VenceEn,
             (procesadoEn ?? ProcesadoEn)?.ToUniversalTime());
 
-    private static string NormalizarIdioma(string? idioma)
-        => string.Equals(idioma?.Trim(), "en", StringComparison.OrdinalIgnoreCase) ? "en" : "es";
 }
 
 /// <summary>Estados del enrutamiento (03 §3.6.1). El vencimiento y las transiciones son server-side.</summary>

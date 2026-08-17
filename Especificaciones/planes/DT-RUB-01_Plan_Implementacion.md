@@ -1,12 +1,15 @@
 # Plan de implementación — DT-RUB-01
 
-> **Estado:** **COMPLETA LOCAL — corte 0 + 4/4 (2026-08-16).** Contratos `03`, `04`, `07`, `08` y
+> **Estado:** **COMPLETA LOCAL 4/4 Y ACEPTADA CONDICIONALMENTE (2026-08-16).** Contratos `03`, `04`, `07`, `08` y
 > `11` declaran estructura canónica, Markdown derivado, salida exacta por `criterio_id` y total
 > server-side. Progresión del gate focalizado: baseline **925 unitarias + 111 de integración
 > (`Category!=Calibracion`) + 1 de calibración** → corte 1 **959 + 119 + 1** → corte 2
 > **985 + 119 + 1** → corte 4 **992 + 120 + 1**. Portal: **70 pruebas en 9 archivos**. Build Release
 > `-warnaserror`, `dotnet format`, `git diff --check`, `ng build` y Prettier verdes en cada corte.
 > **Sin push, despliegue, Cosmos, Azure, D5 ni migración real.**
+> La aceptación operativa vigente supone base limpia, sin datos legacy y una sola versión activa por
+> familia, sin borradores posteriores. Las deudas de DT-RUB-01 §16 quedan después del green de
+> `DT-P32-04`; este plan no es el siguiente trabajo de código.
 >
 > **Nota de entorno:** `npx ng test` es intermitente en esta máquina —el pool de vitest a veces no
 > arranca algún worker y reporta menos archivos de los que existen, nunca una aserción fallida—.
@@ -105,11 +108,14 @@ ejecutar las pruebas unitarias del cálculo ponderado. Un build Angular no susti
 
 - No inventar los criterios/pesos correctos de la rúbrica `2`.
 - No tocar Azure, Cosmos, ConfigLLM, prompts, campañas reales ni secretos durante implementación.
-- Tras despliegue autorizado, un administrador crea una versión corregida, la prueba en campaña
-  aislada y ejecuta QAS/24.
-- D5 se ejecuta después, con `n=3`, la misma versión de rúbrica, modelo, parámetros y golden set para
-  ambos prompts.
-- Solo un D5 comparable habilita congelar baseline y decidir migración real.
+- Para el arranque limpio, crear una familia estructurada nueva con una sola versión prevalidada y no
+  importar la rúbrica `2` ni otras familias legacy.
+- No crear una versión posterior mientras la familia esté en uso; el versionado operativo espera la
+  corrección del resolutor descrita en la spec §16.
+- El inventario/migración y el QAS/24 completo de versionado/legacy quedan suspendidos. Si se reabren,
+  requieren antes los fixes diferidos y una autorización humana nueva.
+- D5, cuando exista credencial/costo autorizado, usa una sola versión de rúbrica idéntica, el mismo
+  modelo, parámetros y golden set en ambos brazos.
 
 ## Rollback
 

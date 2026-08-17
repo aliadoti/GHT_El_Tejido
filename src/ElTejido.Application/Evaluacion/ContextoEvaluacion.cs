@@ -1,3 +1,4 @@
+using ElTejido.Application.Campanas;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Usuarios;
@@ -50,6 +51,9 @@ public sealed record ContextoEvaluacion(
     public string? IdeaId { get; init; }
 
     public string? VersionIdeaId { get; init; }
+
+    /// <summary>DT-P32-04: snapshot editorial atómico usado por el evaluador; no se reconstruye aquí.</summary>
+    public ContenidoCampaniaEfectivo? ContenidoCampaniaEfectivo { get; init; }
 
     /// <summary>Snapshot del hilo; el modelo recibe una instrucción de salida, pero nunca lo decide.</summary>
     public string Idioma { get; init; } = "es";

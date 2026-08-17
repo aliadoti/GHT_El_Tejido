@@ -1,5 +1,6 @@
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
+using ElTejido.Domain.Localizacion;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
 
@@ -156,7 +157,10 @@ public sealed class UsuarioTests
     [InlineData("en", "en")]
     public void Crear_AppliesSpanishAsDefaultLanguage(string? idioma, string esperado)
     {
-        Crear(idioma: idioma).Idioma.Should().Be(esperado);
+        var usuario = Crear(idioma: idioma);
+
+        usuario.Idioma.Should().Be(esperado);
+        usuario.IdiomaInterno.Should().Be(IdiomaConversacion.Crear(esperado));
     }
 
     [Fact]

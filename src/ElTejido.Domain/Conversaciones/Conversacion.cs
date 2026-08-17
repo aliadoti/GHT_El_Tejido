@@ -1,4 +1,5 @@
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Domain.Conversaciones;
 
@@ -31,7 +32,7 @@ public sealed class Conversacion
         string? origenAporteMessageId,
         string? enrutamientoAporteId,
         IntencionControlPendiente? intencionControlPendiente,
-        string idioma)
+        IdiomaConversacion idioma)
     {
         Id = id;
         CampaniaId = campaniaId;
@@ -50,7 +51,7 @@ public sealed class Conversacion
         OrigenAporteMessageId = origenAporteMessageId;
         EnrutamientoAporteId = enrutamientoAporteId;
         IntencionControlPendiente = intencionControlPendiente;
-        Idioma = idioma;
+        IdiomaInterno = idioma;
     }
 
     public string Id { get; }
@@ -92,7 +93,9 @@ public sealed class Conversacion
     /// <summary>P-27: aclaración pendiente de salida; ausente conserva el flujo histórico.</summary>
     public IntencionControlPendiente? IntencionControlPendiente { get; }
 
-    public string Idioma { get; }
+    public IdiomaConversacion IdiomaInterno { get; }
+
+    public string Idioma => IdiomaInterno.Codigo;
 
     /// <summary>¿La ventana de servicio de 24h sigue abierta? Decide texto libre vs plantilla (05 §2.2).</summary>
     public bool VentanaAbierta(DateTimeOffset ahora) => ahora < VentanaServicioVenceEn;
@@ -139,7 +142,7 @@ public sealed class Conversacion
                 "La aclaración de salida solo puede existir mientras se espera su confirmación.");
         }
 
-        var idiomaNormalizado = NormalizarIdioma(idioma);
+        var idiomaNormalizado = CrearIdioma(idioma);
 
         return new Conversacion(
             DomainGuards.Required(id, nameof(id)),
@@ -243,7 +246,7 @@ public sealed class Conversacion
             OrigenAporteMessageId,
             EnrutamientoAporteId,
             intencionControlPendiente: null,
-            idioma: Idioma);
+            idioma: IdiomaInterno);
 
     private Conversacion With(
         EstadoConversacion? estado = null,
@@ -281,19 +284,20 @@ public sealed class Conversacion
             OrigenAporteMessageId,
             EnrutamientoAporteId,
             pendienteDestino,
-            Idioma);
+            IdiomaInterno);
     }
 
-    private static string NormalizarIdioma(string? idioma)
+    private static IdiomaConversacion CrearIdioma(string? idioma)
     {
-        var normalizado = string.IsNullOrWhiteSpace(idioma) ? "es" : idioma.Trim().ToLowerInvariant();
-        if (normalizado is not ("es" or "en"))
+        try
+        {
+            return IdiomaConversacion.DesdeFronteraHistorica(idioma);
+        }
+        catch (DomainValidationException)
         {
             throw new DomainValidationException(
                 "IDIOMA_CONVERSACION_INVALIDO",
                 "El idioma de la conversacion debe ser 'es' o 'en'.");
         }
-
-        return normalizado;
     }
 }

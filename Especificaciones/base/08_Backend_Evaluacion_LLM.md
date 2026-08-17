@@ -211,9 +211,9 @@ Reglas duras:
   en `orden` con `criterio_id`, nombre, descripción y peso) más el esquema exacto de salida. **No hay
   que pedirle al autor del prompt que copie los nombres de los criterios**: el prompt define método,
   tono y restricciones, y la misma familia de prompt funciona con una rúbrica de uno, cinco u ocho
-  criterios. Si un prompt legacy los enumera a mano, la prevalidación del portal advierte
-  `prompt_contiene_criterios_fijos` (`04 §5.5`); **no** se intenta reconciliar una lista humana con la
-  rúbrica en runtime.
+  criterios. No se intenta reconciliar una lista humana con la rúbrica en runtime. La advertencia
+  `prompt_contiene_criterios_fijos` queda diferida hasta que exista una validación/readiness que
+  conozca conjuntamente la referencia de prompt y la versión de rúbrica (`04 §5.5`, DT-RUB-01 §16).
 
 ### 3.3 Llamada al proveedor — `REQ §19.1`
 - Lee `ConfigLLM` activa (proveedor, modelo, endpoint, parámetros) y resuelve la API key por `apiKeyRef` desde Key Vault (Managed Identity, caché corta). Si la `ConfigLLM` está inactiva, la rúbrica no está activa o el prompt de evaluación no está activo/aprobado, el orquestador no llama al LLM y aplica fallback seguro (`§6`).

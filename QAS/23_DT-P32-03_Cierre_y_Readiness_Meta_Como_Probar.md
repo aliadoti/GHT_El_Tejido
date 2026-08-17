@@ -1,14 +1,21 @@
 # QAS 23 — DT-P32-03/03-01: cierre localizado y readiness Meta
 
-> **Estado final (2026-08-15): P-32 SMOKE GREEN.** DT-P32-03 y DT-P32-03-01 están desplegadas
+> **Revalidación vigente (2026-08-16):** `DT-P32-04` corte 3/3 centralizó la resolución de contenido,
+> catálogo, plantillas Meta e idioma LLM. Por ese cambio deben repetirse las pruebas 1–7 de esta guía
+> sobre un despliegue autorizado del corte 3/3. Los PASS de 2026-08-15 son baseline, no evidencia del
+> nuevo artefacto. La prueba 7 puede quedar `BLOCKED` si no existe autorización de tráfico real; no se
+> reemplaza con un PASS histórico.
+
+> **Baseline histórico (2026-08-15): P-32 SMOKE GREEN.** DT-P32-03 y DT-P32-03-01 están desplegadas
 > (`a9f4a6f` y `60b520d`). Las pruebas 1–3 conservan PASS del primer smoke y la revalidación Azure
 > dejó 4–6 PASS, incluida la guarda con ventana ON y retorno verificado a OFF. La evidencia humana de
 > nombre, idioma y componentes Meta fue aceptada. Reporte:
 > `resultados/Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. Este green habilita DT-I20-02; no
 > cierra P-32, cuya QAS/17 completa y prueba 7 siguen para después de DT-I20-02.
 >
-> El reporte confirmó el gate OFF al terminar. Las pruebas 1 a 3 exigían encenderlo solo en el
-> ambiente autorizado y ya pasaron; no deben repetirse para este microajuste. Readiness de pruebas 4
+> El reporte confirmó el gate OFF al terminar. Para el microajuste DT-P32-03-01, las pruebas 1 a 3
+> ya habían pasado y no debían repetirse. Esa instrucción histórica no aplica a DT-P32-04: la
+> revalidación vigente de arriba exige repetir 1–7. Readiness de pruebas 4
 > y 5 no depende del gate. La guarda de activación añadida a la prueba 6 sí requiere una ventana ON
 > controlada y retorno a OFF. Las pruebas 1 a 3 tienen su
 > equivalente automatizado en la suite backend (matriz por ruta con gate OFF/ON, hilo `es`/`en` y
@@ -25,6 +32,8 @@
 - Catálogos `es/en` activos y válidos.
 - Campaña de prueba completa en `es/en` con `plantillaRef` real.
 - Plantillas Meta aprobadas y teléfonos de prueba si se ejecutará envío real.
+- Artefacto desplegado de DT-P32-04 corte 3/3 identificado por el operador; sin esa confirmación, la
+  regresión remota queda `BLOCKED` y el agente no despliega por cuenta propia.
 
 ## Prueba 1 — regresión gate OFF
 
@@ -65,6 +74,11 @@ La API confirma estructura, no devuelve ni certifica el nombre físico. Para cer
 acepta como evidencia externa la verificación del operador en Azure/Meta del nombre, código y orden de
 componentes; no se requiere ampliar el endpoint. Registrar la referencia sin secretos.
 
+Además, comprueba el readiness compuesto de DT-P32-04 con campañas activas: cada idioma solo puede
+quedar listo si están disponibles su catálogo global, contenido efectivo de campaña, mapeo Meta y
+política de idioma LLM. En un fixture o campaña aislada, retirar uno de los tres primeros requisitos
+debe cambiar la señal a no lista con causa concreta. Restaura los datos antes de seguir.
+
 ## Prueba 6 — componentes y límite de la comprobación
 
 - Un componente vacío o duplicado se reporta como inválido.
@@ -87,9 +101,9 @@ Registrar por prueba `PASS|FAIL|BLOCKED`, IDs sin teléfonos completos, estado f
 requeridos, cantidad/orden de componentes y referencia verificable a la plantilla aprobada. No
 registrar tokens ni secretos.
 
-El smoke acotado habilita el inicio de DT-I20-02 cuando 1–6 estén en PASS y la evidencia humana Meta
-esté aceptada. La corrida P-32 completa de QAS/17 se ejecutará después de DT-I20-02, según el orden
-acordado; la prueba 7 puede quedar BLOCKED únicamente por una restricción externa explícita aceptada.
+Para cerrar DT-P32-04, las pruebas 1–6 y el readiness compuesto deben quedar en PASS sobre el nuevo
+artefacto; después se ejecuta QAS/17. La prueba 7 puede quedar BLOCKED únicamente por una restricción
+externa explícita aceptada, pero ese bloqueo impide declarar P-32 lista para activación productiva.
 
 ## Revalidación acotada de DT-P32-03-01
 

@@ -96,6 +96,30 @@ public sealed class RepositorioParticipantesCosmosTests
         exists.Should().BeTrue();
     }
 
+    [Fact]
+    public void Envio_IdiomaRoundTripConservaStringYDocumentoHistoricoConservaAusencia()
+    {
+        var envio = EnvioMensaje.Crear(
+            "env_en", "c_2026conv", "u_8f3c", "mi_1",
+            NumeroWhatsApp.FromNormalized("573001112233"), EstadoEnvio.Enviado,
+            TipoEnvioMensaje.Inicial, "wamid.en", DateTimeOffset.UnixEpoch, null, " EN ");
+        var documento = EnvioMensajeCosmosDocument.FromDomain(envio);
+        var historico = new EnvioMensajeCosmosDocument
+        {
+            Id = "env_legacy",
+            CampaniaId = "c_2026conv",
+            UsuarioId = "u_8f3c",
+            Numero = "573001112233",
+            EstadoEnvio = "enviado",
+            Tipo = "Inicial",
+            FechaEnvio = DateTimeOffset.UnixEpoch,
+        };
+
+        documento.Idioma.Should().Be("en");
+        documento.ToDomain().Idioma.Should().Be("en");
+        historico.ToDomain().Idioma.Should().BeNull();
+    }
+
     private static ParticipanteCampania CrearParticipante()
     {
         return ParticipanteCampania.Crear(

@@ -22,8 +22,13 @@ public sealed class RedactorTurnoConversacional : IRedactorTurnoConversacional
     private const int MaxCompletionTokens = 300;
 
     private readonly ILlmClient _client;
+    private readonly IPoliticaIdiomaLlm _politicaIdioma;
 
-    public RedactorTurnoConversacional(ILlmClient client) => _client = client;
+    public RedactorTurnoConversacional(ILlmClient client, IPoliticaIdiomaLlm? politicaIdioma = null)
+    {
+        _client = client;
+        _politicaIdioma = politicaIdioma ?? new PoliticaIdiomaLlm();
+    }
 
     public async Task<ResultadoRedaccionTurno> RedactarAsync(
         ContextoRedaccionTurno contexto,
@@ -81,7 +86,7 @@ public sealed class RedactorTurnoConversacional : IRedactorTurnoConversacional
             : new ResultadoRedaccionTurno.Fallback(motivo, respuesta.Uso);
     }
 
-    private static IReadOnlyList<LlmMensaje> ConstruirMensajes(ContextoRedaccionTurno contexto)
+    private IReadOnlyList<LlmMensaje> ConstruirMensajes(ContextoRedaccionTurno contexto)
     {
         var sistema = new StringBuilder();
         if (contexto.PromptSnapshot is not null)
@@ -125,7 +130,10 @@ public sealed class RedactorTurnoConversacional : IRedactorTurnoConversacional
 
         sistema
             .AppendLine("Devuelve SOLO JSON válido: {\"puente\":\"string o null\",\"pregunta\":\"string o null\"}.")
-            .Append("IDIOMA_DE_SALIDA_OBLIGATORIO: ").AppendLine(contexto.Idioma)
+            .AppendLine(PoliticaIdiomaLlm.Requerir(
+                _politicaIdioma,
+                contexto.Idioma,
+                TipoDirectivaIdiomaLlm.SalidaObligatoria))
             .AppendLine("Los campos visibles para la persona deben salir exclusivamente en ese idioma.");
 
         var datos = new StringBuilder()

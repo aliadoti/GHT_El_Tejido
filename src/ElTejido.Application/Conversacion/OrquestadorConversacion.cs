@@ -14,6 +14,7 @@ using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Identidad;
+using ElTejido.Domain.Localizacion;
 using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Seguridad;
@@ -91,7 +92,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly PoliticaIntencionControl _politicaIntencionControl;
     private readonly bool _clasificacionIntencionControlHabilitada;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
-    private readonly IResolutorMensajeCierreCampania _resolutorCierre;
+    private readonly IResolutorContenidoCampania _resolutorContenidoCampania;
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -112,7 +113,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         IClasificadorIntencionControl? clasificadorIntencionControl = null,
         IResolutorTextosConversacion? resolutorTextos = null,
         OpcionesCatalogoTextos? opcionesCatalogoTextos = null,
-        IResolutorMensajeCierreCampania? resolutorCierre = null)
+        IResolutorContenidoCampania? resolutorContenidoCampania = null)
     {
         _conversaciones = conversaciones;
         _respuestas = respuestas;
@@ -124,9 +125,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _clasificadorIntencionControl = clasificadorIntencionControl;
         _resolutorTextos = resolutorTextos;
         _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
-        // DT-P32-03 §3.1: una sola política de cierre para todas las rutas. Sin registro explícito se
-        // construye sobre el mismo gate, para que nadie pueda quedarse con una segunda interpretación.
-        _resolutorCierre = resolutorCierre ?? new ResolutorMensajeCierreCampania(_opcionesCatalogoTextos);
+        _resolutorContenidoCampania = resolutorContenidoCampania ?? new ResolutorContenidoCampania();
         _segmentadorIdeas = segmentadorIdeas;
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
@@ -2288,8 +2287,13 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         VersionIdeaConsolidada? versionVigente, string aporteId, string aporteTexto,
         TipoAporteIdea tipoFallback, DateTimeOffset ahora, CancellationToken cancellationToken)
     {
-        var contenido = ResolverContenidoLlm(campania, pregunta, idioma);
-        if (contenido is null)
+        if (!IdiomaConversacion.TryCrear(idioma, out var idiomaConversacion))
+        {
+            idiomaConversacion = IdiomaConversacion.Espanol;
+        }
+
+        var contenido = ResolverContenidoCampania(campania, idiomaConversacion, preguntaId: pregunta.Id);
+        if (contenido is null || !contenido.Preguntas.TryGetValue(pregunta.Id, out var preguntaEfectiva))
         {
             var numeroFallback = (versionVigente?.NumeroVersion ?? 0) + 1;
             var versionFallback = VersionIdeaConsolidada.Crear(
@@ -2306,8 +2310,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 campania, pregunta, versionVigente?.Texto, aporteTexto, configLlm,
                 _maxCaracteresIdeaConsolidada, _maxIdeasPorMensaje)
             {
-                Idioma = contenido.Idioma,
-                TextoPreguntaEfectivo = contenido.TextoPregunta,
+                Idioma = contenido.Idioma.Codigo,
+                TextoPreguntaEfectivo = preguntaEfectiva.Texto,
             },
             cancellationToken);
         var (textoPropuesto, tipo) = TextoYTipoPropuesta(propuesta, aporteTexto, tipoFallback);
@@ -2511,18 +2515,23 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return respaldo;
         }
 
-        var contenido = ResolverContenidoLlm(campania, pregunta, idioma ?? "es");
-        if (contenido is null)
+        if (!IdiomaConversacion.TryCrear(idioma ?? "es", out var idiomaConversacion))
+        {
+            return respaldo;
+        }
+
+        var contenido = ResolverContenidoCampania(campania, idiomaConversacion, preguntaId: pregunta.Id);
+        if (contenido is null || !contenido.Preguntas.TryGetValue(pregunta.Id, out var preguntaEfectiva))
         {
             return respaldo;
         }
 
         var contexto = new ContextoRedaccionTurno(campania, pregunta, acto, configLlm, _redaccion.MaxCaracteres)
         {
-            Idioma = contenido.Idioma,
-            NombreCampaniaEfectivo = contenido.NombreCampania,
-            TextoPreguntaEfectivo = contenido.TextoPregunta,
-            InstruccionPreguntaEfectiva = contenido.InstruccionPregunta,
+            Idioma = contenido.Idioma.Codigo,
+            NombreCampaniaEfectivo = contenido.Nombre,
+            TextoPreguntaEfectivo = preguntaEfectiva.Texto,
+            InstruccionPreguntaEfectiva = preguntaEfectiva.Instruccion,
             VersionCompleta = versionCompleta,
             RetroalimentacionValidada = retroalimentacionValidada,
             PreguntaAprobada = preguntaAprobada,
@@ -4170,9 +4179,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
         await GuardarMensajeAsync(conversacion, DireccionMensaje.In, mensaje.Texto, mensaje.WhatsappMessageId, mensaje.Timestamp, cancellationToken);
 
+        var contenido = ResolverContenidoCampania(campania, conversacion.IdiomaInterno, preguntaId: pregunta.Id);
         var texto = Combinar(
-            await ResolverSaludoPrimerContactoAsync(campania, usuario, conversacion, cancellationToken),
-            ResolverTextoPreguntaVisible(campania, pregunta, conversacion.Idioma));
+            await ResolverSaludoPrimerContactoAsync(campania, usuario, conversacion, contenido, cancellationToken),
+            TextoPregunta(contenido, pregunta.Id));
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, mensaje.PhoneNumberIdDestino, ahora, cancellationToken);
 
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -4188,13 +4198,16 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         Campania campania,
         Usuario usuario,
         DominioConversacion conversacion,
+        ContenidoCampaniaEfectivo? contenido,
         CancellationToken cancellationToken)
     {
         var mensajeInicial = RenderizadorMensaje.MensajeInicialActivo(campania);
-        if (mensajeInicial is not null)
+        if (mensajeInicial is not null
+            && contenido?.MensajesIniciales.TryGetValue(mensajeInicial.Id, out var mensajeEfectivo) == true)
         {
-            var texto = ResolverTextoMensajeInicialVisible(campania, mensajeInicial, conversacion.Idioma);
-            texto = RenderizadorMensaje.Reemplazar(texto, RenderizadorMensaje.ConstruirVariables(usuario, campania));
+            var texto = RenderizadorMensaje.Reemplazar(
+                mensajeEfectivo.Texto,
+                RenderizadorMensaje.ConstruirVariables(usuario, campania, contenido.Nombre));
             if (!string.IsNullOrWhiteSpace(texto))
             {
                 return texto.Trim();
@@ -4233,13 +4246,14 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             null,
             ahora,
             idioma: usuario.Idioma);
+        var contenido = ResolverContenidoCampania(campania, conversacion.IdiomaInterno, preguntaId: siguiente.Id);
         var texto = Combinar(
             await TextoGlobalAsync(
                 conversacion,
                 "saludoSiguientePregunta",
                 TextoConfigurado(_mensajes.SaludoSiguientePregunta, OpcionesMensajesConversacion.SaludoSiguientePreguntaDefault),
                 cancellationToken),
-            ResolverTextoPreguntaVisible(campania, siguiente, conversacion.Idioma));
+            TextoPregunta(contenido, siguiente.Id));
 
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Inicial, emisor, ahora, cancellationToken);
         await _conversaciones.GuardarConversacionAsync(conversacion, cancellationToken);
@@ -4447,13 +4461,17 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
     {
-        var resultado = _resolutorCierre.Resolver(campania, conversacion.Idioma);
-        if (resultado is ResultadoMensajeCierreCampania.Disponible disponible)
+        var resultado = _resolutorContenidoCampania.Resolver(
+            new ContextoLocalizacion(campania, conversacion.IdiomaInterno, _opcionesCatalogoTextos.Habilitado)
+            {
+                CorrelationId = _correlacion.CorrelationIdActual,
+            });
+        if (resultado is ResultadoContenidoCampania.Disponible disponible)
         {
-            return disponible.Texto;
+            return disponible.Contenido.MensajeCierre;
         }
 
-        var noDisponible = (ResultadoMensajeCierreCampania.NoDisponible)resultado;
+        var noDisponible = (ResultadoContenidoCampania.NoDisponible)resultado;
         await RegistrarCierreLocalizadoNoDisponibleAsync(
             conversacion, numero, noDisponible, ruta, ahora, cancellationToken);
         await CerrarPorConfiguracionNoDisponibleAsync(conversacion, numero, emisor, ahora, cancellationToken);
@@ -4467,7 +4485,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private Task RegistrarCierreLocalizadoNoDisponibleAsync(
         DominioConversacion conversacion,
         NumeroWhatsApp numero,
-        ResultadoMensajeCierreCampania.NoDisponible resultado,
+        ResultadoContenidoCampania.NoDisponible resultado,
         string ruta,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
@@ -4478,7 +4496,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 conversacion.UsuarioId,
                 numero.Valor,
                 "fallback",
-                $"cierre_localizado:{resultado.Codigo}:idioma={resultado.Idioma}:ruta={ruta}",
+                // Conserva el contrato observable de DT-P32-03: cualquier ausencia de cierre para el
+                // hilo se registra como localización incompleta, aunque el resolutor transversal
+                // distinga internamente idioma no habilitado de contenido incompleto.
+                $"cierre_localizado:{ResolutorMensajeCierreCampania.CodigoLocalizacionIncompleta}:idioma={resultado.Idioma.Codigo}:ruta={ruta}",
                 _correlacion.CorrelationIdActual,
                 ahora,
                 conversacion.CampaniaId),
@@ -4578,20 +4599,27 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return ContextoDisponible.NoDisponible("config_llm_no_activa");
         }
 
-        var idiomaConversacion = "es";
+        var idiomaConversacion = IdiomaConversacion.Espanol;
         if (_opcionesCatalogoTextos.Habilitado)
         {
             var conversacion = await _conversaciones.ObtenerConversacionAsync(
                 campania.Id, conversacionId, cancellationToken);
-            idiomaConversacion = conversacion?.Idioma ?? usuario.Idioma;
+            idiomaConversacion = conversacion?.IdiomaInterno ?? usuario.IdiomaInterno;
         }
 
-        var contenido = ResolverContenidoLlm(campania, pregunta, idiomaConversacion);
-        if (contenido is null)
+        var resultadoContenido = _resolutorContenidoCampania.Resolver(
+            new ContextoLocalizacion(campania, idiomaConversacion, _opcionesCatalogoTextos.Habilitado)
+            {
+                PreguntaId = pregunta.Id,
+                CorrelationId = _correlacion.CorrelationIdActual,
+            });
+        if (resultadoContenido is not ResultadoContenidoCampania.Disponible contenidoDisponible
+            || !contenidoDisponible.Contenido.Preguntas.TryGetValue(pregunta.Id, out var preguntaEfectiva))
         {
             return ContextoDisponible.NoDisponible("localizacion_campania_incompleta");
         }
 
+        var contenido = contenidoDisponible.Contenido;
         var historial = await ConstruirHistorialAsync(campania.Id, conversacionId, cancellationToken);
 
         return ContextoDisponible.Disponible(
@@ -4606,57 +4634,37 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 prompt,
                 configLlm)
             {
-                Idioma = contenido.Idioma,
-                NombreCampaniaEfectivo = contenido.NombreCampania,
-                ObjetivoCampaniaEfectivo = contenido.ObjetivoCampania,
-                TextoPreguntaEfectivo = contenido.TextoPregunta,
-                InstruccionPreguntaEfectiva = contenido.InstruccionPregunta,
+                ContenidoCampaniaEfectivo = contenido,
+                Idioma = contenido.Idioma.Codigo,
+                NombreCampaniaEfectivo = contenido.Nombre,
+                ObjetivoCampaniaEfectivo = contenido.Objetivo,
+                TextoPreguntaEfectivo = preguntaEfectiva.Texto,
+                InstruccionPreguntaEfectiva = preguntaEfectiva.Instruccion,
             });
     }
 
-    private ContenidoLlmCampania? ResolverContenidoLlm(Campania campania, Pregunta pregunta, string idioma)
+    private ContenidoCampaniaEfectivo? ResolverContenidoCampania(
+        Campania campania,
+        IdiomaConversacion idioma,
+        string? preguntaId = null,
+        string? mensajeInicialId = null)
     {
-        if (!_opcionesCatalogoTextos.Habilitado)
-        {
-            return new ContenidoLlmCampania(
-                "es", campania.Nombre, campania.Objetivo, pregunta.Texto, pregunta.Instruccion);
-        }
-
-        var idiomaNormalizado = idioma.Trim().ToLowerInvariant();
-        if (!campania.TryObtenerLocalizacion(idiomaNormalizado, out var localizacion)
-            || string.IsNullOrWhiteSpace(localizacion.Nombre)
-            || string.IsNullOrWhiteSpace(localizacion.Objetivo)
-            || !localizacion.Preguntas.TryGetValue(pregunta.Id, out var preguntaLocalizada)
-            || string.IsNullOrWhiteSpace(preguntaLocalizada.Texto)
-            || string.IsNullOrWhiteSpace(preguntaLocalizada.Instruccion))
-        {
-            return null;
-        }
-
-        return new ContenidoLlmCampania(
-            idiomaNormalizado,
-            localizacion.Nombre,
-            localizacion.Objetivo,
-            preguntaLocalizada.Texto,
-            preguntaLocalizada.Instruccion);
+        var resultado = _resolutorContenidoCampania.Resolver(
+            new ContextoLocalizacion(campania, idioma, _opcionesCatalogoTextos.Habilitado)
+            {
+                PreguntaId = preguntaId,
+                MensajeInicialId = mensajeInicialId,
+                CorrelationId = _correlacion.CorrelationIdActual,
+            });
+        return resultado is ResultadoContenidoCampania.Disponible disponible
+            ? disponible.Contenido
+            : null;
     }
 
-    private string ResolverTextoPreguntaVisible(Campania campania, Pregunta pregunta, string idioma)
-        => ResolverContenidoLlm(campania, pregunta, idioma)?.TextoPregunta ?? pregunta.Texto;
-
-    private string ResolverTextoMensajeInicialVisible(Campania campania, MensajeInicial mensaje, string idioma)
-    {
-        if (!_opcionesCatalogoTextos.Habilitado)
-        {
-            return mensaje.Texto;
-        }
-
-        return campania.TryObtenerLocalizacion(idioma, out var localizacion)
-            && localizacion.MensajesIniciales.TryGetValue(mensaje.Id, out var localizado)
-            && !string.IsNullOrWhiteSpace(localizado.Texto)
-            ? localizado.Texto
+    private static string TextoPregunta(ContenidoCampaniaEfectivo? contenido, string preguntaId)
+        => contenido?.Preguntas.TryGetValue(preguntaId, out var pregunta) == true
+            ? pregunta.Texto
             : string.Empty;
-    }
 
     /// <summary>
     /// Historial reciente del hilo (turnos previos persistidos) para que el LLM vea la conversacion y
@@ -5307,10 +5315,4 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         public static ContextoDisponible NoDisponible(string motivo) => new(null, motivo);
     }
 
-    private sealed record ContenidoLlmCampania(
-        string Idioma,
-        string NombreCampania,
-        string ObjetivoCampania,
-        string TextoPregunta,
-        string InstruccionPregunta);
 }

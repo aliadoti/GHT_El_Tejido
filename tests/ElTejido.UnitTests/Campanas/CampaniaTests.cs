@@ -1,5 +1,6 @@
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 using FluentAssertions;
 
 namespace ElTejido.UnitTests.Campanas;
@@ -114,7 +115,20 @@ public sealed class CampaniaTests
             .Where(exception => exception.Code == "CAMPO_OBLIGATORIO");
     }
 
-    private static Campania CrearCampania(EstadoCampania estado)
+    [Fact]
+    public void Crear_IdiomasUsanLaPoliticaCentralYElHistoricoConservaEspanol()
+    {
+        var bilingue = CrearCampania(EstadoCampania.Borrador, [" EN ", "es", "en"]);
+        var historica = CrearCampania(EstadoCampania.Borrador);
+
+        bilingue.IdiomasHabilitados.Should().Equal("en", "es");
+        bilingue.IdiomasInternosHabilitados.Should().Equal(
+            IdiomaConversacion.Ingles,
+            IdiomaConversacion.Espanol);
+        historica.IdiomasHabilitados.Should().Equal("es");
+    }
+
+    private static Campania CrearCampania(EstadoCampania estado, IEnumerable<string>? idiomasHabilitados = null)
     {
         return Campania.Crear(
             "c_1",
@@ -132,7 +146,8 @@ public sealed class CampaniaTests
             LimitesSeguridad.Crear(1500, 10, 2),
             [],
             DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            idiomasHabilitados);
     }
 
     private static MensajeInicial CrearMensaje()

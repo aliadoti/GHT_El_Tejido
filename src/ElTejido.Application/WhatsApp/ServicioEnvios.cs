@@ -5,6 +5,7 @@ using ElTejido.Application.Participantes;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 using ElTejido.Domain.Participantes;
 
 namespace ElTejido.Application.WhatsApp;
@@ -22,8 +23,9 @@ public sealed class ServicioEnvios : IServicioEnvios
     private readonly IRepositorioUsuarios _usuarios;
     private readonly IColaEnvios _cola;
     private readonly IAlmacenJobs _jobs;
-    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
+    private readonly IResolverPlantillaCanal _resolutorPlantillaCanal;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
+    private readonly IResolutorContenidoCampania _resolutorContenidoCampania;
 
     public ServicioEnvios(
         IRepositorioCampanias campanias,
@@ -32,15 +34,18 @@ public sealed class ServicioEnvios : IServicioEnvios
         IColaEnvios cola,
         IAlmacenJobs jobs,
         OpcionesPlantillaEnvioInicial plantillaEnvioInicial,
-        OpcionesCatalogoTextos? opcionesCatalogoTextos = null)
+        OpcionesCatalogoTextos? opcionesCatalogoTextos = null,
+        IResolutorContenidoCampania? resolutorContenidoCampania = null,
+        IResolverPlantillaCanal? resolutorPlantillaCanal = null)
     {
         _campanias = campanias;
         _participantes = participantes;
         _usuarios = usuarios;
         _cola = cola;
         _jobs = jobs;
-        _plantillaEnvioInicial = plantillaEnvioInicial;
+        _resolutorPlantillaCanal = resolutorPlantillaCanal ?? new ResolverPlantillaCanal(plantillaEnvioInicial);
         _opcionesCatalogoTextos = opcionesCatalogoTextos ?? new OpcionesCatalogoTextos();
+        _resolutorContenidoCampania = resolutorContenidoCampania ?? new ResolutorContenidoCampania();
     }
 
     public Task<ResultadoEncolarEnvio> EncolarInicialesAsync(
@@ -150,7 +155,7 @@ public sealed class ServicioEnvios : IServicioEnvios
                 continue;
             }
 
-            var resolucion = ResolverContenidoParaParticipante(campania, mensaje, usuario.Idioma);
+            var resolucion = ResolverContenidoParaParticipante(campania, mensaje, usuario.IdiomaInterno);
             var variables = RenderizadorMensaje.ConstruirVariables(usuario, campania, resolucion.NombreCampania);
             var trabajo = new TrabajoEnvio(
                 job.Id,
@@ -175,85 +180,70 @@ public sealed class ServicioEnvios : IServicioEnvios
 
     private PlantillaWhatsApp ResolverPlantillaEnvioInicial(MensajeInicial mensaje)
     {
-        if (string.IsNullOrWhiteSpace(_plantillaEnvioInicial.Nombre))
+        var resultado = _resolutorPlantillaCanal.ResolverLegacy(mensaje.PlantillaWhatsApp);
+        if (resultado is ResultadoPlantillaCanal.Disponible disponible)
+        {
+            return disponible.Plantilla;
+        }
+
+        var problemas = ((ResultadoPlantillaCanal.NoDisponible)resultado).Problemas;
+        if (problemas.Contains(ProblemasPlantillaCanal.NombreFaltante, StringComparer.Ordinal))
         {
             throw new ErrorReglaNegocio(
                 "Configura WhatsApp__PlantillaEnvioInicial__Nombre con el nombre de una plantilla aprobada por Meta antes de enviar campanias.");
         }
 
-        var idioma = !string.IsNullOrWhiteSpace(_plantillaEnvioInicial.Idioma)
-            ? _plantillaEnvioInicial.Idioma.Trim()
-            : mensaje.PlantillaWhatsApp?.Idioma;
-        if (string.IsNullOrWhiteSpace(idioma))
-        {
-            throw new ErrorReglaNegocio(
-                "Configura WhatsApp__PlantillaEnvioInicial__Idioma con el codigo exacto de idioma aprobado por Meta.");
-        }
-
-        var componentes = _plantillaEnvioInicial.Componentes
-            .Select(componente => componente.Trim())
-            .Where(componente => componente.Length > 0)
-            .ToArray();
-
-        if (componentes.Length == 0 && mensaje.PlantillaWhatsApp is not null)
-        {
-            componentes = mensaje.PlantillaWhatsApp.Componentes.ToArray();
-        }
-
-        return PlantillaWhatsApp.Crear(_plantillaEnvioInicial.Nombre, idioma, componentes);
+        throw new ErrorReglaNegocio(
+            "Configura WhatsApp__PlantillaEnvioInicial__Idioma con el codigo exacto de idioma aprobado por Meta.");
     }
 
     private ResolucionContenidoEnvio ResolverContenidoParaParticipante(
         Campania campania,
         MensajeInicial mensaje,
-        string idiomaUsuario)
+        IdiomaConversacion idiomaUsuario)
     {
-        // Gate OFF: no se leen borradores multidioma y se conserva el envío histórico exacto.
-        if (!_opcionesCatalogoTextos.Habilitado)
+        var resultado = _resolutorContenidoCampania.Resolver(
+            new ContextoLocalizacion(campania, idiomaUsuario, _opcionesCatalogoTextos.Habilitado)
+            {
+                MensajeInicialId = mensaje.Id,
+            });
+        if (resultado is ResultadoContenidoCampania.NoDisponible noDisponible)
+        {
+            var error = noDisponible.CodigoPrincipal == ResolutorContenidoCampania.CodigoIdiomaNoHabilitado
+                ? "IDIOMA_CAMPANIA_NO_HABILITADO: el idioma del participante no esta habilitado en la campania."
+                : "LOCALIZACION_CAMPANIA_INCOMPLETA: falta contenido localizado obligatorio para el participante.";
+            return ResolucionContenidoEnvio.ConError(noDisponible.Idioma.Codigo, error);
+        }
+
+        var contenido = ((ResultadoContenidoCampania.Disponible)resultado).Contenido;
+        var mensajeEfectivo = contenido.MensajesIniciales[mensaje.Id];
+        if (contenido.Origen == OrigenContenidoCampania.Legacy)
         {
             return new ResolucionContenidoEnvio(
-                campania.Nombre,
-                mensaje.Texto,
+                contenido.Nombre,
+                mensajeEfectivo.Texto,
                 ResolverPlantillaEnvioInicial(mensaje),
                 null,
-                "es",
+                contenido.Idioma.Codigo,
                 null);
         }
 
-        var idioma = idiomaUsuario.Trim().ToLowerInvariant();
-        if (!campania.TryObtenerLocalizacion(idioma, out var localizacion))
+        var resultadoPlantilla = _resolutorPlantillaCanal.Resolver(
+            mensajeEfectivo.PlantillaRef,
+            contenido.Idioma);
+        if (resultadoPlantilla is not ResultadoPlantillaCanal.Disponible plantillaDisponible)
         {
             return ResolucionContenidoEnvio.ConError(
-                idioma,
-                "IDIOMA_CAMPANIA_NO_HABILITADO: el idioma del participante no esta habilitado en la campania.");
-        }
-
-        if (string.IsNullOrWhiteSpace(localizacion.Nombre)
-            || string.IsNullOrWhiteSpace(localizacion.Descripcion)
-            || string.IsNullOrWhiteSpace(localizacion.Objetivo)
-            || string.IsNullOrWhiteSpace(localizacion.MensajeCierre)
-            || !localizacion.MensajesIniciales.TryGetValue(mensaje.Id, out var mensajeLocalizado)
-            || string.IsNullOrWhiteSpace(mensajeLocalizado.Texto))
-        {
-            return ResolucionContenidoEnvio.ConError(
-                idioma,
-                "LOCALIZACION_CAMPANIA_INCOMPLETA: falta contenido localizado obligatorio para el participante.");
-        }
-
-        if (string.IsNullOrWhiteSpace(mensajeLocalizado.PlantillaRef)
-            || !_plantillaEnvioInicial.TryResolver(mensajeLocalizado.PlantillaRef, idioma, out var plantilla))
-        {
-            return ResolucionContenidoEnvio.ConError(
-                idioma,
+                contenido.Idioma.Codigo,
                 "PLANTILLA_CAMPANIA_NO_CONFIGURADA: no existe una plantilla Meta aprobada para el alias e idioma del participante.");
         }
 
         return new ResolucionContenidoEnvio(
-            localizacion.Nombre,
-            mensajeLocalizado.Texto,
-            plantilla,
-            mensajeLocalizado.PlantillaRef,
-            idioma,
+            contenido.Nombre,
+            mensajeEfectivo.Texto,
+            plantillaDisponible.Plantilla,
+            mensajeEfectivo.PlantillaRef,
+            contenido.Idioma.Codigo,
             null);
     }
 

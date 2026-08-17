@@ -1,9 +1,11 @@
 using ElTejido.Application.Campanas;
 using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
+using ElTejido.Application.Evaluacion;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Configuracion;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Application.Configuracion;
 
@@ -11,6 +13,11 @@ namespace ElTejido.Application.Configuracion;
 public interface IServicioReadinessCatalogosTextos
 {
     Task<ReadinessCatalogosTextos> ObtenerAsync(string? idioma, CancellationToken cancellationToken);
+}
+
+/// <summary>Composición diagnóstica de las mismas políticas usadas por runtime.</summary>
+public interface IReadinessMultiidioma : IServicioReadinessCatalogosTextos
+{
 }
 
 public sealed record ReadinessCatalogosTextos(
@@ -55,28 +62,37 @@ public sealed record ReadinessIdiomaCatalogoTextos(
 public sealed record CampaniaBloqueadaCatalogoTextos(string CampaniaId, string Nombre, string Estado, string Motivo);
 
 /// <inheritdoc />
-public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalogosTextos
+public sealed class ServicioReadinessCatalogosTextos : IReadinessMultiidioma
 {
-    private static readonly string[] IdiomasSoportados = ["es", "en"];
-
     private readonly IRepositorioCatalogosTextos _catalogos;
     private readonly IRepositorioCampanias _campanias;
     private readonly OpcionesCatalogoTextos _opciones;
     private readonly OpcionesConversacion _opcionesConversacion;
-    private readonly OpcionesPlantillaEnvioInicial _plantillaEnvioInicial;
+    private readonly IResolutorTextosGlobales? _textosGlobales;
+    private readonly IResolutorContenidoCampania _contenidoCampania;
+    private readonly IResolverPlantillaCanal _plantillaCanal;
+    private readonly IPoliticaIdiomaLlm _politicaIdiomaLlm;
 
     public ServicioReadinessCatalogosTextos(
         IRepositorioCatalogosTextos catalogos,
         IRepositorioCampanias campanias,
         OpcionesCatalogoTextos opciones,
         OpcionesConversacion opcionesConversacion,
-        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null)
+        OpcionesPlantillaEnvioInicial? plantillaEnvioInicial = null,
+        IResolutorTextosGlobales? textosGlobales = null,
+        IResolutorContenidoCampania? contenidoCampania = null,
+        IResolverPlantillaCanal? plantillaCanal = null,
+        IPoliticaIdiomaLlm? politicaIdiomaLlm = null)
     {
         _catalogos = catalogos;
         _campanias = campanias;
         _opciones = opciones;
         _opcionesConversacion = opcionesConversacion;
-        _plantillaEnvioInicial = plantillaEnvioInicial ?? new OpcionesPlantillaEnvioInicial();
+        _textosGlobales = textosGlobales;
+        _contenidoCampania = contenidoCampania ?? new ResolutorContenidoCampania();
+        _plantillaCanal = plantillaCanal
+            ?? new ResolverPlantillaCanal(plantillaEnvioInicial ?? new OpcionesPlantillaEnvioInicial());
+        _politicaIdiomaLlm = politicaIdiomaLlm ?? new PoliticaIdiomaLlm();
     }
 
     public async Task<ReadinessCatalogosTextos> ObtenerAsync(
@@ -98,7 +114,11 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
             _opciones.MaxBytesImportacionJson,
             detalle,
             // DT-P32-03 §3.2: los pares Meta que exigirian las campanias si el gate se encendiera.
-            ValidadorMapeosPlantillaMeta.Evaluar(campanias, idiomas, _plantillaEnvioInicial));
+            ValidadorMapeosPlantillaMeta.Evaluar(
+                campanias,
+                idiomas,
+                _plantillaCanal,
+                _contenidoCampania));
     }
 
     private async Task<ReadinessIdiomaCatalogoTextos> ConstruirAsync(
@@ -107,6 +127,7 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
         CancellationToken cancellationToken)
     {
         var versiones = await _catalogos.BuscarAsync(idioma, estado: null, cancellationToken);
+        var idiomaInterno = IdiomaConversacion.Crear(idioma);
         var activo = versiones.FirstOrDefault(x => x.Catalogo.Estado == EstadoCatalogoTextos.Activo);
         var problemasActiva = activo is null
             ? Array.Empty<DetalleError>()
@@ -120,11 +141,19 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
                     _opciones.Limites),
                 activo.Catalogo.Huella,
                 StringComparison.Ordinal);
-        var activaValida = activo is not null && huellaCoincide;
+        var catalogoDiagnosticado = _textosGlobales is null
+            ? null
+            : await _textosGlobales.ResolverAsync(
+                idiomaInterno,
+                ModoResolucionTextosGlobales.Diagnostico,
+                cancellationToken);
+        var activaValida = activo is not null
+            && huellaCoincide
+            && catalogoDiagnosticado is not ResultadoTextosGlobales.NoDisponible;
 
         var semillaBase = Revisar(idioma, opcionesLegacy: null);
         var legacy = Revisar(idioma, _opcionesConversacion);
-        var bloqueadas = activaValida
+        var bloqueadasCatalogo = activaValida
             ? Array.Empty<CampaniaBloqueadaCatalogoTextos>()
             : campanias
                 .Where(campania => campania.IdiomasHabilitados.Contains(idioma, StringComparer.OrdinalIgnoreCase))
@@ -134,10 +163,30 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
                     campania.Estado.ToString().ToLowerInvariant(),
                     "catalogo_activo_faltante"))
                 .ToArray();
+        var bloqueadasContenido = campanias
+            .Where(campania => campania.Estado == EstadoCampania.Activa
+                && campania.IdiomasInternosHabilitados.Contains(idiomaInterno))
+            .Select(campania => new
+            {
+                Campania = campania,
+                Resultado = _contenidoCampania.Resolver(
+                    new ContextoLocalizacion(campania, idiomaInterno, CatalogoTextosHabilitado: true)),
+            })
+            .Where(item => item.Resultado is ResultadoContenidoCampania.NoDisponible)
+            .Select(item => new CampaniaBloqueadaCatalogoTextos(
+                item.Campania.Id,
+                item.Campania.Nombre,
+                item.Campania.Estado.ToString().ToLowerInvariant(),
+                ((ResultadoContenidoCampania.NoDisponible)item.Resultado).CodigoPrincipal.ToLowerInvariant()))
+            .ToArray();
+        var directivaDisponible = _politicaIdiomaLlm.Resolver(
+            idioma,
+            TipoDirectivaIdiomaLlm.SalidaObligatoria) is ResultadoDirectivaIdiomaLlm.Disponible;
+        var bloqueadas = bloqueadasCatalogo.Concat(bloqueadasContenido).Distinct().ToArray();
 
         return new ReadinessIdiomaCatalogoTextos(
             idioma,
-            Listo: activaValida,
+            Listo: activaValida && bloqueadasContenido.Length == 0 && directivaDisponible,
             TieneActivo: activo is not null,
             VersionActiva: activo?.Catalogo.Version,
             HuellaActiva: activo?.Catalogo.Huella,
@@ -185,17 +234,16 @@ public sealed class ServicioReadinessCatalogosTextos : IServicioReadinessCatalog
     {
         if (string.IsNullOrWhiteSpace(idioma))
         {
-            return IdiomasSoportados;
+            return IdiomaConversacion.CodigosSoportados.ToArray();
         }
 
-        var valor = idioma.Trim().ToLowerInvariant();
-        if (!IdiomasSoportados.Contains(valor, StringComparer.Ordinal))
+        if (!IdiomaConversacion.TryCrear(idioma, out var valor))
         {
             throw new ErrorValidacion(
                 "El idioma debe ser 'es' o 'en'.",
                 new[] { new DetalleError("idioma", "valor_invalido") });
         }
 
-        return [valor];
+        return [valor.Codigo];
     }
 }

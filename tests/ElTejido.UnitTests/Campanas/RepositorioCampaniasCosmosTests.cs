@@ -156,6 +156,37 @@ public sealed class RepositorioCampaniasCosmosTests
     }
 
     [Fact]
+    public void Idiomas_RoundTripConservaStringsYDocumentoHistoricoEquivaleAEspanol()
+    {
+        var documento = CampaniaCosmosDocument.FromDomain(CrearCampania(idiomasHabilitados: [" EN ", "es"]));
+        var actual = CampaniaCosmosDocument.FromDomain(CrearCampania());
+        var historico = new CampaniaCosmosDocument
+        {
+            Id = actual.Id,
+            Nombre = actual.Nombre,
+            Descripcion = actual.Descripcion,
+            Objetivo = actual.Objetivo,
+            Estado = actual.Estado,
+            MensajesIniciales = actual.MensajesIniciales,
+            Preguntas = actual.Preguntas,
+            RubricaRef = actual.RubricaRef,
+            PromptRefs = actual.PromptRefs,
+            ConfigLlmRef = actual.ConfigLlmRef,
+            ConfigMarkdown = actual.ConfigMarkdown,
+            ConfigConversacional = actual.ConfigConversacional,
+            ConfigSeguridad = actual.ConfigSeguridad,
+            UsuariosHabilitados = actual.UsuariosHabilitados,
+            CreadoEn = actual.CreadoEn,
+            ActualizadoEn = actual.ActualizadoEn,
+            IdiomasHabilitados = null,
+        };
+
+        documento.IdiomasHabilitados.Should().Equal("en", "es");
+        documento.ToDomain().IdiomasHabilitados.Should().Equal("en", "es");
+        historico.ToDomain().IdiomasHabilitados.Should().Equal("es");
+    }
+
+    [Fact]
     public void ConfigConversacional_ClasificacionIntencionControlP27_SobreviveRoundTripYDocumentoAnteriorQuedaApagada()
     {
         var campania = CrearCampania(clasificacionIntencionControl: true);
@@ -196,7 +227,8 @@ public sealed class RepositorioCampaniasCosmosTests
         bool coachingSecuencialIdeas = false,
         int? minutosCoachingPorIdea = null,
         bool participacionContinua = false,
-        bool clasificacionIntencionControl = false)
+        bool clasificacionIntencionControl = false,
+        IEnumerable<string>? idiomasHabilitados = null)
     {
         return Campania.Crear(
             "c_2026conv",
@@ -224,7 +256,8 @@ public sealed class RepositorioCampaniasCosmosTests
             LimitesSeguridad.Crear(1500, 10, 2),
             ["u_1", "u_2"],
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 6, 11, 9, 0, 0, TimeSpan.Zero));
+            new DateTimeOffset(2026, 6, 11, 9, 0, 0, TimeSpan.Zero),
+            idiomasHabilitados);
     }
 
     private static MensajeInicial CrearMensaje()

@@ -16,6 +16,9 @@ ejecuta las pruebas; el humano controla el acceso temporal y los secretos.
    la prueba de envío real queda `BLOCKED`. Las simulaciones conversacionales solo continúan si el
    emisor está aislado o usa números de prueba autorizados; `Simulacion__Habilitada=true` por sí sola
    **no evita llamadas salientes reales a Meta**.
+5. Confirma qué artefacto contiene `DT-P32-04` corte 3/3 y autoriza expresamente su despliegue en el
+   ambiente aislado, o confirma que ya está desplegado. El agente de pruebas no hace push ni despliega;
+   si no puede identificar esa versión, la validación remota queda `BLOCKED`.
 
 ## Preparar la simulación
 
@@ -51,7 +54,7 @@ finally {
 5. Dentro del agente recién iniciado escribe solo:
 
 ```text
-Lee y ejecuta estrictamente QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md.
+Valida DT-P32-04 siguiendo estrictamente QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md. Ejecuta solo lo autorizado, no corrijas ni despliegues, y reporta cada caso como PASS, FAIL o BLOCKED con evidencia sin secretos ni datos sensibles.
 ```
 
 El archivo contiene las instrucciones para crear usuarios y campañas nuevos en cada corrida, reutilizar
@@ -73,7 +76,8 @@ Antes de abrir la ventana, el operador configura para cada par requerido por **P
 No inventes estos valores: cópialos de las plantillas aprobadas en Meta. Si el body usa, por ejemplo,
 nombre y campaña, el orden habitual del sistema es `Componentes__0=nombre` y
 `Componentes__1=campania`, pero manda el orden real de Meta. Guarda, espera el reinicio y exige
-`listoParaGateOn=true`. Readiness no reemplaza la revisión humana de aprobación/variables.
+`listoParaGateOn=true`. Para DT-P32-04, esta señal también debe reflejar contenido activo e idioma LLM
+válidos. Readiness no reemplaza la revisión humana de aprobación/variables.
 
 1. Empieza con el gate OFF. En Azure Portal abre **App Services** → el App Service de pruebas →
    **Settings** → **Environment variables** → **App settings**. Si
@@ -119,7 +123,7 @@ UAT, costo/latencia, plantillas Meta aplicables y acta de cambio puede dejarse e
 2. Cierra el agente. El bloque PowerShell elimina `GHT_DIAG_KEY` al salir; si interrumpes la sesión,
    ejecuta manualmente `Remove-Item Env:\GHT_DIAG_KEY` en esa misma terminal.
 3. En Azure Portal vuelve `Simulacion__Habilitada` a `false`, guarda y espera el reinicio. Este cierre
-   es obligatorio también después del smoke acotado DT-P32-03-01.
+   es obligatorio también después de la regresión DT-P32-04.
 4. Confirma que el reporte no contiene claves, teléfonos completos ni contenido confidencial.
 5. No actives P-32 en producción: solo puede decidirse después de PASS en las pruebas aplicables, D5,
    UAT, plantillas Meta, revisión de costo/latencia y acta de cambio.

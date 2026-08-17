@@ -118,10 +118,11 @@
   desde la estructura y se compara carácter a carácter con el `contenidoMarkdown` persistido.
   Estructura válida + Markdown idéntico al compilado ⇒ `valida`; estructura válida + Markdown que no
   produjo el compilador ⇒ `legacy_no_verificada`; estructura que rompe las reglas canónicas ⇒
-  `invalida`. La lectura **nunca muta** el documento y conserva el Markdown histórico, así que las
-  campañas ya configuradas siguen enviando al modelo exactamente el mismo texto que antes. Solo se
-  bloquean las acciones **nuevas**: activar una versión no verificada devuelve `400 VALIDATION_ERROR`
-  con `rubrica: integridad_invalida`.
+  `invalida`. La lectura **nunca muta** el documento y conserva el Markdown histórico. La revisión
+  posterior detectó que esto, por sí solo, no garantiza que una campaña legacy evalúe igual: el nuevo
+  contrato exacto también consume la estructura. Esa compatibilidad deja de asumirse y no forma parte
+  de la aceptación condicionada descrita a continuación. Activar una versión no verificada devuelve
+  `400 VALIDATION_ERROR` con `rubrica: integridad_invalida`.
 - Consecuencia esperada y aceptada: **toda** rúbrica anterior a este corte queda
   `legacy_no_verificada`, porque ninguna fue compilada por el servidor. Es el resultado buscado: es
   exactamente la condición de la rúbrica `2` (un criterio `Impacto` frente a un Markdown de cinco
@@ -133,6 +134,29 @@
   y cambiaría en silencio lo que recibe el LLM en campañas ya activas).
 - Impacto / reversibilidad: aditivo y reversible. No cambia contratos de escritura de campaña ni
   evaluaciones históricas; revertir el corte de código deja los campos nuevos como datos ignorados.
+
+### aceptacion-condicionada-rubrica-base-limpia-dt-rub-01 - Sin legacy y una versión operativa
+- Fecha: 2026-08-16 - Agente/Rol: Codex - Arquitecto/Tech Lead - decisión expresa del usuario.
+- Contexto: la revisión de los cuatro cortes encontró que el runtime toma la versión numéricamente
+  más reciente aunque sea borrador, no respeta de forma confiable una versión fijada y no ofrece una
+  ruta real de compatibilidad para rúbricas legacy contradictorias. Corregir todo ahora desplazaría
+  `DT-P32-04`, que es la prioridad funcional vigente.
+- Decisión: aceptar DT-RUB-01 localmente bajo una **inicialización limpia**. No se restauran ni
+  importan rúbricas, campañas o evaluaciones legacy. Cada familia que use una campaña conserva una
+  sola versión activa y no recibe versiones posteriores —incluidos borradores— hasta corregir el
+  resolutor runtime. Las rúbricas se crean y asignan por el portal, con prevalidación, sin edición
+  directa en Cosmos ni configuración directa por API.
+- Deuda diferida: selección de versión exacta/activa vigente; validación backend de asignaciones;
+  transición de estado inmutable para legacy; ubicación correcta o retiro contractual de
+  `prompt_contiene_criterios_fijos`; escenarios QAS de versionado e importación histórica.
+- Consecuencia: la compatibilidad legacy deja de ser un requisito del arranque y el plan de inventario
+  no se ejecuta. D5 solo puede usar una familia de una sola versión estructurada, con la misma versión,
+  modelo, parámetros y golden set en ambos brazos. Crear una versión nueva antes de cerrar la deuda
+  invalida esta excepción operativa.
+- Prioridad: `DT-P32-04` pasa a ser el siguiente trabajo de código en sus tres cortes. La deuda de
+  rúbricas se retoma después del green multidioma y antes de habilitar versionado operativo o importar
+  datos históricos.
+- Spec: `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md` §16.
 
 ### orden-y-suma-de-pesos-rubrica-dt-rub-01 - Orden implícito y tolerancia de la suma de pesos
 - Fecha: 2026-08-16 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend - Commit: corte 1/4 de `DT-RUB-01`.

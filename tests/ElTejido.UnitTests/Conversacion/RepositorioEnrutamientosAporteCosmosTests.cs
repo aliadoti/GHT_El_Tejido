@@ -78,6 +78,31 @@ public sealed class RepositorioEnrutamientosAporteCosmosTests
     }
 
     [Fact]
+    public void Documento_IdiomaHistoricoEquivaleAEspanolYValorInvalidoNoSeSilencia()
+    {
+        var historico = EnrutamientoAporteCosmosDocument.FromDomain(CrearEnrutamiento(EstadoEnrutamientoAporte.Listo));
+        historico = new EnrutamientoAporteCosmosDocument
+        {
+            Id = historico.Id,
+            CampaniaId = historico.CampaniaId,
+            UsuarioId = historico.UsuarioId,
+            WhatsappMessageId = historico.WhatsappMessageId,
+            TextoOriginal = historico.TextoOriginal,
+            Estado = historico.Estado,
+            CreadoEn = historico.CreadoEn,
+            ActualizadoEn = historico.ActualizadoEn,
+            VenceEn = historico.VenceEn,
+            Idioma = null,
+        };
+
+        historico.ToDomain().Idioma.Should().Be("es");
+        var acto = () => EnrutamientoAporte.Crear(
+            "u_1", "wamid.invalid", "aporte", EstadoEnrutamientoAporte.Listo, Ahora, idioma: "es_CO");
+        acto.Should().Throw<ElTejido.Domain.Common.DomainValidationException>()
+            .Which.Code.Should().Be("IDIOMA_NO_SOPORTADO");
+    }
+
+    [Fact]
     public void Documento_P30_ConservaModoOpcionesIdeaYSeleccion()
     {
         var opcion = new OpcionIdeaOfrecida("idea_1", "conv_1", "Mejorar el proceso", "pendiente", 1);

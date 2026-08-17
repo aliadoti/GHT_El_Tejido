@@ -6,10 +6,13 @@ using ElTejido.Api.Observabilidad;
 using ElTejido.Api.Seguridad;
 using ElTejido.Api.WhatsApp;
 using ElTejido.Application.Common;
+using ElTejido.Application.Campanas;
 using ElTejido.Application.Configuracion;
+using ElTejido.Application.Evaluacion;
 using ElTejido.Application.Mantenimiento;
 using ElTejido.Application.Reinicio;
 using ElTejido.Application.Usuarios.CargaMasiva;
+using ElTejido.Application.WhatsApp;
 using ElTejido.Infrastructure.Configuracion;
 using ElTejido.Infrastructure.Usuarios;
 
@@ -30,6 +33,8 @@ var opcionesCatalogoTextos = new OpcionesCatalogoTextos
         ?? PoliticaLimitesCatalogoTextos.MaxBytesImportacionJsonDefault,
 };
 builder.Services.AddSingleton(opcionesCatalogoTextos);
+builder.Services.AddSingleton<IResolutorContenidoCampania, ResolutorContenidoCampania>();
+builder.Services.AddSingleton<IPoliticaIdiomaLlm, PoliticaIdiomaLlm>();
 
 // Composition root: secretos (10 §4), persistencia Cosmos guardada (02 §6), autenticacion
 // admin/identidad (06) y rate limiter.
@@ -50,13 +55,19 @@ if (OpcionesPersistencia.HayAlmacen(builder.Configuration))
     builder.Services.AddSingleton<IInvalidacionCacheCatalogosTextos>(sp =>
         sp.GetRequiredService<ProveedorTextosConversacion>());
     builder.Services.AddSingleton<IResolutorTextosConversacion, ResolutorTextosConversacion>();
+    builder.Services.AddSingleton<IResolverPlantillaCanal, ResolverPlantillaCanal>();
     builder.Services.AddScoped<IServicioGestionUsuarios, ServicioGestionUsuarios>();
     builder.Services.AddScoped<IServicioGestionCampanias, ServicioGestionCampanias>();
     builder.Services.AddScoped<IServicioGestionConfiguracion, ServicioGestionConfiguracion>();
     builder.Services.AddScoped<IServicioGestionCatalogosTextos, ServicioGestionCatalogosTextos>();
     // DT-P32-02: disponibilidad por idioma para la activacion de campanias y readiness administrativo.
     builder.Services.AddScoped<IDisponibilidadCatalogoTextos, DisponibilidadCatalogoTextos>();
-    builder.Services.AddScoped<IServicioReadinessCatalogosTextos, ServicioReadinessCatalogosTextos>();
+    builder.Services.AddScoped<IResolutorTextosGlobales, ResolutorTextosGlobales>();
+    builder.Services.AddScoped<ServicioReadinessCatalogosTextos>();
+    builder.Services.AddScoped<IServicioReadinessCatalogosTextos>(sp =>
+        sp.GetRequiredService<ServicioReadinessCatalogosTextos>());
+    builder.Services.AddScoped<IReadinessMultiidioma>(sp =>
+        sp.GetRequiredService<ServicioReadinessCatalogosTextos>());
     builder.Services.AddScoped<IServicioReinicioDatos, ServicioReinicioDatos>();
     builder.Services.AddScoped<IServicioPurgaCampanias, ServicioPurgaCampanias>();
     // I-08 v2: carga masiva con la plantilla oficial de GHT. El .xlsx es el formato primario (es el

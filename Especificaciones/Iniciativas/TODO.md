@@ -9,20 +9,19 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **✅ `DT-RUB-01` RÚBRICA ESTRUCTURADA Y EVALUACIÓN DETERMINISTA — COMPLETA LOCAL 4/4 2026-08-16
-> (Claude Opus 5).** Corte 4: el **mismo prompt** evalúa rúbricas de **1, 3, 5 y 8 criterios**
-> exigiendo exactamente sus ids; el **snapshot de v1 sigue explicando el resultado** tras existir una
-> v2 con otro reparto; y un **E2E conversacional por el webhook real** prueba que la decisión usa el
-> total del servidor —el modelo califica 5 y declara total 1: la idea queda **madura** con
-> `calificacionTotal = 5`—. Entregado
-> `planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md` (inventario de solo lectura, migración por
-> versión nueva y rollback); **sin ninguna consulta ni escritura contra Cosmos, Azure o campañas
-> reales**. `QAS/24` actualizado, incluida la advertencia de que **todas las rúbricas previas
-> aparecerán «sin verificar»** —también la `2`—, que es lo buscado. Validación final: build Release
-> `-warnaserror`, **992 unitarias + 120 de integración + 1 de calibración**, `dotnet format` y
-> `git diff --check` verdes; portal **70 en 9 archivos**, `ng build` y Prettier verdes.
-> **Siguiente, y requiere autorización humana:** desplegar, ejecutar `QAS/24` en campaña aislada,
-> levantar el inventario y solo después un D5 comparable. `DT-P32-04` sigue después de eso.
+> **🟡 SIGUIENTE PASO REQUIERE AUTORIZACIÓN: VALIDACIÓN CONTROLADA `DT-P32-04`.**
+> La implementación local quedó DONE 3/3. Idioma, contenido de campaña, catálogo global, Meta,
+> directivas LLM y readiness comparten políticas; DTO/Cosmos siguen como cadenas. Cierre:
+> **1030 unitarias + 120 integración** sin Calibración, build Release, formato y diff verdes.
+> Siguiente: repetir QAS/23 y QAS/17 en ambiente aislado, manteniendo gate/simulación OFF fuera de
+> la ventana. **No iniciar otro código, no mezclar DT-RUB-01 y no tocar Azure, flags ni campañas
+> reales sin autorización expresa.**
+>
+> **✅ `DT-RUB-01` — COMPLETA LOCAL 4/4 Y ACEPTADA CONDICIONALMENTE 2026-08-16.** Validación local:
+> build Release `-warnaserror`, 992 unitarias + 120 de integración; portal 70 pruebas y build verde.
+> No se ejecutará el inventario/migración legacy bajo la inicialización limpia. Queda prohibido crear
+> una v2 —incluso borrador— para una familia en uso hasta resolver su deuda técnica. QAS/24 conserva
+> los escenarios diferidos para retomarlos después de `DT-P32-04`.
 >
 > **🟢 `DT-RUB-01` CORTE 3/4 PORTAL ESTRUCTURADO — DONE LOCAL 2026-08-16 (Claude Opus 5).**
 > **Rúbricas** deja de editar Markdown libre: ahora autoriza estructura —nombre, descripción,
@@ -98,7 +97,7 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > de integración** y **1 de calibración**. **Siguiente: corte 1/4** (dominio, validador/compilador,
 > persistencia aditiva y API).
 >
-> **🟡 EN CURSO: `DT-RUB-01` — RÚBRICA ESTRUCTURADA COMO FUENTE ÚNICA (0/4 de código).** QAS/21
+> **🔵 HISTÓRICO: `DT-RUB-01` — RÚBRICA ESTRUCTURADA COMO FUENTE ÚNICA (entonces 0/4 de código).** QAS/21
 > terminó con preparación y pruebas 1–8 PASS en Azure; D5 quedó BLOCKED por credencial. La corrida
 > descubrió una deuda previa: la rúbrica `2` persiste solo `Impacto`/peso `1`, mientras su Markdown y
 > el LLM usan cinco ejes. No se debe congelar un baseline con esa contradicción. Implementar primero
@@ -806,9 +805,9 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
 | **DT-P32-03** | **Cierre localizado único y readiness Meta** | **DESPLEGADA 2/2 — `a9f4a6f`** | **Claude** | Cierres QAS/23 1–3 PASS; la semántica posterior quedó cerrada en DT-P32-03-01. Sin código pendiente. |
 | **DT-P32-03-01** | **Readiness del gate solo con campañas activas** | **CERRADA — DESPLEGADA 1/1 + SMOKE GREEN** | **Claude/Codex** | `60b520d`; QAS/23 1–6 PASS en Azure, evidencia Meta aceptada, gate/simulación OFF y clave retirada. P-32 completa queda después de DT-I20-02. |
-| **DT-P32-04** | **Núcleo transversal multidioma** | **ESPECIFICADA 0/3 — BACKLOG POST-GREEN** | **Codex** | Idioma central, `ContenidoCampaniaEfectivo`, resolutores especializados y readiness compuesto. No cambia fuentes de contenido, DTO ni Cosmos; evita una clase dios. No bloquea DT-I20-02. |
-| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | **Claude/Codex** | Preparación autónoma y ocho pruebas PASS con LLM real; familia/campaña QA revertidas sin migrar campañas reales. D5 no se ejecuta hasta corregir DT-RUB-01 y disponer de credencial/costo: comparar prompts exige la misma rúbrica íntegra, modelo, parámetros y golden set. Reporte `QAS/resultados/Resultados_DT-I20-02_2026-08-16.md`. |
-| **DT-RUB-01** | **Rúbrica estructurada y evaluación determinista** | **ESPECIFICADA 0/4 — SIGUIENTE CÓDIGO** | **Por asignar** | Elimina `Impacto`/escala hardcodeados; la estructura versionada gobierna Markdown derivado, contrato exacto del LLM, total ponderado server-side, eje débil, antifuga y snapshots. Primero actualizar contratos base en corte documental separado; después dominio/API, evaluación, portal e integración. No inventar criterios/pesos ni migrar campañas reales. Spec `Iniciativas/DT-RUB-01_*`; plan `planes/DT-RUB-01_*`; QAS `QAS/24_*`. |
+| **DT-P32-04** | **Núcleo transversal multidioma** | **IMPLEMENTACIÓN LOCAL 3/3 DONE — QA CONTROLADO PENDIENTE** | **Codex** | Idioma, contenido efectivo, catálogo global, Meta, directivas LLM y readiness comparten políticas sin cambiar strings DTO/Cosmos. Focales 123/123; cierre 1030 + 120 sin Calibración, build/format/diff verdes. Siguiente: QAS/23 + QAS/17 con autorización y ambiente aislado. Sin Azure, remoto ni deuda de rúbricas en este cierre. Spec `Iniciativas/DT-P32-04_*`; plan `planes/DT-P32-04_*`. |
+| **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | **Claude/Codex** | Preparación autónoma y ocho pruebas PASS con LLM real; familia/campaña QA revertidas sin migrar campañas reales. D5 espera credencial/costo y debe usar una sola versión estructurada idéntica en ambos brazos; no bloquea DT-P32-04. Reporte `QAS/resultados/Resultados_DT-I20-02_2026-08-16.md`. |
+| **DT-RUB-01** | **Rúbrica estructurada y evaluación determinista** | **COMPLETA LOCAL 4/4 — ACEPTADA CONDICIONALMENTE** | **Claude/Codex** | Base limpia, sin datos legacy y una sola versión activa por familia; no crear borradores posteriores mientras esté en uso. Deudas de selección runtime, guardas backend, transición legacy y advertencia prompt/rúbrica quedan post-`DT-P32-04`. Spec §16 y supuesto `aceptacion-condicionada-rubrica-base-limpia-dt-rub-01`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
 | DT-QA-01 | **Inyección de webhook simulado de diagnóstico** | **DONE local 2026-08-05** | Codex | Endpoint con `X-Diag-Key` y gating de simulación que encola el payload mínimo ya autenticado; idempotencia por id explícito o derivado, auditoría sin PII y webhook real sin cambios. Integración focalizada 7/7 verde. Pendiente solo desplegar para E2E Azure. |
 | **DT-QA-02** | **`GET /api/admin/evaluaciones` — listado y detección de huérfanas** | **DONE local 2026-08-08** | **Codex** | Endpoint de solo lectura para `admin`/`visor`, con `campaniaId` obligatorio, filtros, paginación y resumen. `ListarEvaluacionesAsync` es obligatorio y está implementado en Cosmos/memoria con `fecha DESC`; el diagnóstico derivado distingue `enlazada`/`huerfana`/`superada`/`sin_version_idea` sin texto libre. Una evaluación superada por otra más reciente no se cuenta como huérfana (I-16). No repara documentos, no toca `03`, flags, configuración remota, despliegue ni portal. Backend: build, 814 pruebas no-Calibracion, formato y diff verdes. Spec: `Iniciativas/DT-QA-02_Listado_Evaluaciones_Y_Huerfanas.md`; `04 §5.8` actualizado. **DT-P32-02 quedó COMPLETA local 3/3 el 2026-08-14; sigue la corrida autorizada de `QAS/22` y `QAS/17`.** |
@@ -868,26 +867,22 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Cierre operativo humano inmediato:** confirmar después del reinicio que simulación y gate P-32
-   quedaron OFF y retirar `GHT_DIAG_KEY` de la sesión. No iniciar otra corrida Azure hasta completar
-   esta verificación. No es una tarea de código y no impide trabajar localmente.
+1. **NO HAY OTRO CORTE DE CÓDIGO AUTORIZADO.** `DT-P32-04` quedó 3/3 DONE local. El siguiente paso es
+   preparar y, solo con autorización expresa, ejecutar QAS/23 y QAS/17 en ambiente aislado.
 
-2. **ARRANCA CÓDIGO AQUÍ: `DT-RUB-01`, corte documental 0.** Leer la spec y el plan nuevos; actualizar en un
-   cambio separado `03`, `04`, `07`, `08` y `11` para que estructura/criterios/pesos/escala sean la
-   fuente única, el Markdown sea derivado, el LLM devuelva exactamente los `criterio_id` y el servidor
-   calcule el total. Después ejecutar los cuatro cortes de código. No inventar los cinco criterios ni
-   sus pesos, no tocar Cosmos/Azure y no modificar campañas reales.
+2. **En la validación controlada:** comprobar readiness, cierres y recorrido mixto `es/en`; al terminar,
+   restaurar gate/simulación OFF y retirar cualquier clave temporal según los runbooks. No tratar una
+   precondición humana faltante como FAIL.
 
-3. **Después del despliegue autorizado de DT-RUB-01:** un administrador crea una versión nueva y
-   correcta de la rúbrica `2`, la asocia primero a una campaña aislada y ejecuta `QAS/24`. Una rúbrica
-   activa o una evaluación histórica no se sobrescriben.
+3. **Los tres cortes están cerrados localmente.** No reabrirlos salvo regresión confirmada. Después del
+   QA green, registrar el cierre operativo y pedir prioridad humana para el siguiente código.
 
-4. **D5 de DT-I20-02 queda después de QAS/24 green y de la credencial/costo autorizados.** Comparar
-   familia `1` frente a la candidata con la misma rúbrica/version, modelo, parámetros y golden set,
-   `n=3` por caso. No congelar baseline ni migrar campañas reales con D5 BLOCKED.
+4. **Al cerrar 3/3:** repetir QAS/23 y QAS/17 según el plan, manteniendo gate/simulación OFF fuera de
+   la ventana autorizada. D5 sigue siendo una operación aparte con credencial y costo autorizados.
 
-5. **Luego retomar `DT-P32-04`**, salvo repriorización humana: es el refactor transversal
-   multidioma y no corrige la integridad de las evaluaciones.
+5. **DT-RUB-01 no se modifica durante DT-P32-04.** Base limpia, sin importar legacy y una sola versión
+   activa por familia. No crear una v2/borrador para una familia en uso. Después del green multidioma
+   se agenda la deuda descrita en DT-RUB-01 §16 antes de habilitar versionado operativo.
 
 6. **Operación previa ya ejecutada:** QAS/21 preparación y pruebas 1–8 PASS; campaña QA archivada y
    `promptRefs` restaurados. El cierre de flags/clave se controla en el paso 1.
@@ -902,9 +897,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    defecto; no desplegar ni modificar configuración remota sin orden.
 9. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 10. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-11. **La aprobación expresa del diseño de `DT-RUB-01` existe.** Implementa en el orden y cortes de la
-    spec. Solo vuelve a consultar al usuario para definir el contenido funcional de la rúbrica `2` o
-    si aparece una decisión de producto/contrato no resuelta.
+11. **La aprobación expresa y la prioridad de `DT-P32-04` existen.** Implementa únicamente el corte
+    vigente según la spec y el plan. Consulta solo si aparece una decisión de producto/contrato no
+    resuelta o si el refactor exigiría cambiar DTO, Cosmos, fuentes de contenido o comportamiento.
 12. **La aprobación expresa de P-26, P-27, P-33, `DT-P32-02` y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
     de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
     resuelta por esas specs o sus anclas en `SUPUESTOS.md`.

@@ -6,6 +6,9 @@
 > **revalidar en ambiente desplegado** y para las pruebas 4 y la preparación, que se hacen a mano.
 > **Objetivo:** demostrar que la rúbrica seleccionada es la única fuente de criterios y que el total
 > usado por negocio lo calcula el servidor.
+> **Alcance operativo vigente:** aceptación condicionada sobre una base inicializada desde cero, sin
+> importar rúbricas/campañas legacy y con una sola versión activa por familia. La prueba completa de
+> versionado runtime queda diferida; esta guía no bloquea el inicio de `DT-P32-04`.
 
 ## Lo que ya cambió en el producto (contexto para quien prueba)
 
@@ -24,7 +27,9 @@
 ## Antes de empezar
 
 - Usa un ambiente aislado y una campaña QA nueva; no edites campañas reales.
-- No modifiques una rúbrica activa. Crea una familia QA o una versión nueva en borrador.
+- Parte de una base limpia. Si existen documentos legacy, detén la corrida: esa compatibilidad no está
+  incluida en la aceptación condicionada.
+- No modifiques una rúbrica activa. Crea una familia QA nueva con una sola versión.
 - Usa nombres y pesos sintéticos; no copies información sensible.
 - Si habrá LLM real o tráfico, confirma antes costo, credencial y canal autorizado.
 - Registra ids/versiones, nunca secretos, teléfonos completos, aportes ni justificaciones del modelo.
@@ -37,8 +42,9 @@
    salvo que tú lo hayas escrito como criterio.
 3. Guarda como borrador, vuelve a abrir y confirma que estructura y preview son idénticos.
 4. Actívala y comprueba que ya no se puede editar en sitio.
-5. Crea una nueva versión, agrega un cuarto criterio, cambia el orden y déjala inicialmente en
-   borrador. La versión activa anterior debe permanecer intacta.
+5. **No crees v2 en la familia activa durante esta corrida.** La selección runtime ante una versión
+   posterior en borrador es deuda conocida. El editor/nueva versión se conserva cubierto localmente,
+   pero no se habilita operativamente hasta corregir el resolutor.
 6. Crea una campaña aislada y selecciona explícitamente familia y versión. La campaña no debe ofrecer
    controles para editar criterios.
 
@@ -125,9 +131,9 @@ No expongas los textos usados por el test en logs de ambiente.
 
 ## Prueba 8 — snapshot e historia
 
-Genera una evaluación con v1. Luego crea/activa v2 sin migrar la campaña. La evaluación histórica debe
-seguir mostrando id, versión, escala, criterios, pesos, puntajes y total de v1. La campaña debe seguir
-usando su versión fijada hasta cambiar la referencia explícitamente.
+La persistencia del snapshot de v1 frente a una v2 distinta se verifica únicamente con las pruebas
+automatizadas existentes. **No crear ni activar v2 en el ambiente desplegado** hasta resolver la
+deuda de selección runtime. La aceptación operativa actual solo permite una versión por familia.
 
 ## Prueba 9 — mismo prompt, dos rúbricas
 
@@ -137,16 +143,10 @@ rúbrica, sin editar ni duplicar el prompt.
 
 ## Prueba 10 — compatibilidad legacy
 
-Verifica con fixtures que un documento histórico se puede leer y que una evaluación histórica sin
-`criterioId` conserva su nombre snapshot. Una rúbrica legacy contradictoria debe aparecer como no
-verificada/inválida y no debe poder usarse para una nueva activación hasta crear una versión válida.
-
-> **Qué esperar en el ambiente desplegado.** **Todas** las rúbricas anteriores al despliegue van a
-> aparecer como «sin verificar», incluida la rúbrica `2`. Es lo correcto: ninguna fue compilada por
-> el servidor, así que no se puede afirmar que su estructura y su Markdown digan lo mismo. Siguen
-> leyéndose y las campañas ya configuradas siguen evaluando igual que antes; lo único bloqueado es
-> activarlas o asignarlas a algo nuevo. El procedimiento está en
-> `Especificaciones/planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md`.
+Conservar únicamente la cobertura local con fixtures que demuestra lectura y snapshot históricos.
+No se afirma compatibilidad funcional de evaluación legacy y no se prueba contra Azure, porque el
+arranque autorizado no importa esos documentos. Si en el futuro se requiere conservar datos, primero
+debe cerrarse DT-RUB-01 §16 y reabrirse el procedimiento de inventario/migración.
 
 ## Regresiones obligatorias
 
@@ -176,7 +176,7 @@ rúbrica entre brazos y no congeles baseline.
 - Registra cada prueba como `PASS|FAIL|BLOCKED`, los conteos de suites y cualquier limitación.
 - Guarda el reporte en `QAS/resultados/Resultados_DT-RUB-01_<fecha>.md`.
 
-DT-RUB-01 queda green solo con pruebas 1–10 y regresiones en PASS. D5 puede quedar BLOCKED únicamente
-por una dependencia externa explícita, pero en ese estado no se cierra el baseline ni se migra una
-campaña real.
-
+El **smoke de arranque limpio** puede quedar green con las pruebas aplicables, la evidencia automática
+y las restricciones anteriores. El green completo original de versionado/legacy permanece diferido
+hasta cerrar DT-RUB-01 §16. D5 puede quedar `BLOCKED` por una dependencia externa explícita; cuando se
+ejecute debe usar una única versión estructurada idéntica en ambos brazos.

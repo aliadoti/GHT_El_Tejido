@@ -3,8 +3,10 @@
 > **Objetivo:** validar El Tejido de punta a punta antes de producción (**Hito 12-ago-2026**), ejecutable por **1 tester manual**, con enfoque **risk-based** y foco en go-live sin fallas.
 > **Base:** `Especificaciones/base/13_Plan_de_Pruebas_y_Aceptacion.md`, `Iniciativas/00_Indice_y_Plan_de_Ejecucion.md`, `AVANCES.md`, `Reglas_Conversacion_y_Participacion.md`, `Guia_Prueba_E2E_Simulada_WhatsApp.md`.
 > **Última revisión del estado real:** 2026-08-16. DT-I20-02 está desplegada y QAS/21 preparación +
-> pruebas 1–8 están PASS; D5 quedó BLOCKED. Antes de congelar su baseline se implementa DT-RUB-01,
-> porque la rúbrica efectiva debe tener una sola lista de criterios y un total calculado por servidor.
+> pruebas 1–8 están PASS; D5 quedó BLOCKED. DT-RUB-01 está completa local 4/4 y aceptada bajo arranque
+> limpio, sin legacy y con una sola versión por familia. DT-P32-04 quedó implementada localmente
+> 3/3; la prioridad vigente es desplegarla solo con autorización en un ambiente aislado y repetir
+> QAS/23 + QAS/17 antes del cierre operativo.
 
 ---
 
@@ -37,7 +39,8 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 | I-12 seed thoughts | **BLOCKED** (insumo vencido) | No bloquea el Hito conversacional; validar solo "campaña sin seeds = comportamiento base". |
 | P-33 consulta/cierre visible | **DONE local 3/3; gate OFF** | Usar `QAS/20`: probar consulta pura sin aporte, activo→última sin menú, versión exacta, cierres, afinidad/reapertura, aislamiento y rollback `es/en`. Pendiente D5/UAT y acta de flags. |
 | DT-I20-02 texto plano visible | **DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | Conservar el reporte `Resultados_DT-I20-02_2026-08-16.md`; no migrar campañas reales ni congelar baseline hasta ejecutar D5 comparable. |
-| DT-RUB-01 rúbrica estructurada | **ESPECIFICADA 0/4; siguiente código** | Usar `QAS/24`: estructura única, cantidad variable, validaciones, total ponderado server-side, snapshots, compatibilidad y mismo prompt con dos rúbricas. D5 viene después del green. |
+| DT-RUB-01 rúbrica estructurada | **COMPLETA LOCAL 4/4; aceptación condicionada** | Arranque limpio, sin legacy y una versión activa por familia. QAS/24 completo de versionado/legacy queda diferido; no crear v2 en una familia en uso. |
+| DT-P32-04 núcleo multidioma | **IMPLEMENTACIÓN LOCAL 3/3 DONE; QA CONTROLADO PENDIENTE** | Repetir QAS/23 completo y luego QAS/17 sobre un despliegue autorizado del corte 3/3. El readiness debe bloquear si falla catálogo, contenido activo, mapeo Meta o política de idioma LLM. |
 
 > **Regla de ambigüedad:** ante duda sobre el estado real, asumir el **comportamiento documentado** en `Reglas_Conversacion_y_Participacion.md` y `AVANCES.md`, y **marcar el caso como "Verificar build"**.
 

@@ -4,7 +4,19 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Claude Opus 5, Arquitecto/SDET):
+- Ultima actualizacion: 2026-08-16 (Codex, Arquitecto/Backend/SDET):
+  **`DT-P32-04` IMPLEMENTACIÓN LOCAL 3/3 DONE — núcleo transversal completo.**
+  `IResolutorTextosGlobales` delega el runtime al catálogo vigente y diagnostica sin tocar cache/LKG;
+  `IResolverPlantillaCanal` es el único puente entre alias/idioma interno y nombre/código Meta;
+  `IPoliticaIdiomaLlm` produce todas las directivas de evaluación, redacción, clasificación,
+  segmentación y consolidación. `IReadinessMultiidioma` compone esas políticas con
+  `IResolutorContenidoCampania`: una campaña activa rechazada por runtime ya no puede aparecer lista.
+  Las guardas arquitectónicas impiden nuevas lecturas paralelas de localizaciones, mapeos Meta o
+  directivas. Focales: **123/123**; cierre: **1030 unitarias + 120 integración** sin Calibración,
+  build Release `-warnaserror`, formato y `git diff --check` verdes. DTO/Cosmos y frontend intactos;
+  sin Azure, remoto, flags, campañas reales ni cambios de DT-RUB-01. **Siguiente, con autorización:**
+  repetir QAS/23 y QAS/17 en ambiente aislado y restaurar gate/simulación OFF al terminar.
+- Actualizacion anterior: 2026-08-16 (Claude Opus 5, Arquitecto/SDET):
   **`DT-RUB-01` COMPLETA LOCAL 4/4 — integración, QAS/24 y preparación operativa.** El corte 4 cierra
   con pruebas cruzadas: el **mismo prompt** evalúa rúbricas de **1, 3, 5 y 8 criterios** exigiendo
   exactamente sus ids (y cae al fallback si falta uno, con 3 y con 8); el **snapshot de v1 sigue
@@ -1308,11 +1320,12 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **EJECUTAR `QAS/21` SOBRE `DT-I20-02` DESPLEGADA.** El agente crea como preparación puntuada la
-  familia `qa_dt_i20_02_*`, hasta dos versiones, una campaña aislada y participantes `es/en`; valida
-  los `promptRefs` de campaña y pregunta, ejecuta pruebas 1–8, D5 si hay autorización de costo,
-  rollback y reporte. No tocar familia `1`, campañas reales, configuración ni despliegue. Después del
-  resultado se decide migración controlada o P-32 completa; DT-P32-04 sigue post-green.
+- [ ] **IMPLEMENTAR `DT-P32-04` CORTE 2/3 — CONTENIDO EFECTIVO DE CAMPAÑA.** Leer la spec y el plan;
+  partir del `IdiomaConversacion` ya validado y crear en Application el resultado inmutable y el
+  puerto de resolución. Cubrir snapshot legacy con gate OFF y localización completa con gate ON sin
+  mezclar fuentes; migrar primero `ServicioEnvios`, luego contexto LLM y finalmente las salidas del
+  orquestador. No implementar todavía fachadas especializadas, política LLM ni readiness compuesto
+  del corte 3/3; no tocar Azure, Cosmos remoto, flags, campañas reales ni deuda de DT-RUB-01.
 - [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 925 unitarias + 112 integración; build Release
   `-warnaserror`, format y diff verdes) `DT-I20-02` corte 3/3.** Contenido candidato del prompt sin
   tocar Cosmos, pruebas de §7.2 sobre el evaluador real con `ILlmClient` falso en el recorrido webhook
@@ -1682,8 +1695,9 @@
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **DESPLEGADA 2/2 (`a9f4a6f`)** | cierres QAS/23 1–3 PASS | backend 854 + 105, portal 60 | Resolutor único sin fallback cruzado y readiness Meta. La semántica de borradores se cerró en DT-P32-03-01; no queda código pendiente. |
 | DT-P32-03-01 | Readiness solo con campañas activas | **CERRADA: DESPLEGADA 1/1 + SMOKE GREEN (2026-08-15)** | `60b520d` | backend 863 + 109, portal 62; QAS/23 1–6 PASS en Azure | Borradores visibles sin bloquear, guarda propia al activar con gate ON y evidencia Meta aceptada. Gate/simulación OFF y clave retirada. Reporte `Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. P-32 completa queda después de DT-I20-02. |
-| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED (2026-08-16)** | `3be6118`/`efe0a99`/`f7c2da3` | backend 925 + 112 al cierre; Azure: 24 mensajes/11 evaluaciones sin hallazgos visibles | Familia y campaña QA creadas/revertidas; gobierno v1/v2 probado. D5 espera credencial y DT-RUB-01 para comparar con una rúbrica íntegra. Sin migración real. Reporte `Resultados_DT-I20-02_2026-08-16.md`. |
-| DT-RUB-01 | Rúbrica estructurada y evaluación determinista | **ESPECIFICADA 0/4 — SIGUIENTE CÓDIGO (2026-08-16)** | n/a, documentación | `git diff --check` verde | Corrige la contradicción `Impacto` vs. cinco ejes antes de D5: estructura versionada canónica, Markdown derivado, ids exactos, total server-side, eje débil/antifuga/snapshots coherentes y portal sin hardcodes. Plan `planes/DT-RUB-01_*`; QAS `24_*`. |
+| DT-P32-04 | Núcleo transversal multidioma | **IMPLEMENTACIÓN LOCAL 3/3 DONE; QA CONTROLADO PENDIENTE (2026-08-16)** | pendiente | focales 123/123; cierre 1030 + 120 sin Calibración; build/format/diff verdes | `IdiomaConversacion`, contenido efectivo, catálogo global, Meta, directivas LLM y readiness comparten políticas; strings Cosmos/API intactos. Siguiente: QAS/23 + QAS/17 con autorización, luego cierre operativo. Sin Azure, remoto ni DT-RUB-01 en este corte. Spec `Iniciativas/DT-P32-04_*`; plan `planes/DT-P32-04_*`. |
+| DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED (2026-08-16)** | `3be6118`/`efe0a99`/`f7c2da3` | backend 925 + 112 al cierre; Azure: 24 mensajes/11 evaluaciones sin hallazgos visibles | Familia y campaña QA creadas/revertidas; gobierno v1/v2 probado. D5 espera credencial/costo y debe usar una sola versión estructurada idéntica en ambos brazos. Sin migración real. Reporte `Resultados_DT-I20-02_2026-08-16.md`. |
+| DT-RUB-01 | Rúbrica estructurada y evaluación determinista | **COMPLETA LOCAL 4/4 — ACEPTADA CONDICIONALMENTE (2026-08-16)** | `551051c`/`b2b1120`/`5b13ebf`/`71043e3`/`20ee675` | build y suites locales verdes; revisión arquitectónica documentada | Arranque limpio, sin legacy, una sola versión activa por familia y sin borradores posteriores. Deudas post-`DT-P32-04` en spec §16; no bloquea el corte 1/3 multidioma. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
 | 2 | I-14 segmentación por tags | BLOCKED | — | n/a | Datos/configuración: falta catálogo consolidado de GHT (nombre, tipo, descripción opcional y estado). CRUD y carga masiva existentes; no inventar ni hardcodear tags. |
 | 11 | UX portal: nombres legibles, pestanias en detalle de campania, revisiones en preview | DONE | pendiente | verde | Frontend-only, sin cambio de contratos `03`/`04`. (1) Campanias>Asociados ([campanias.page.ts](../src/ElTejido.Web/src/app/features/campanias/campanias.page.ts)) y Envios>Estado por participante ([envios.page.ts](../src/ElTejido.Web/src/app/features/envios/envios.page.ts)) muestran nombre(+area) en vez del `usuarioId` tecnico, via mapa `/usuarios` con fallback al id (mismo patron que Resultados). (2) El detalle de campania pasa de grilla de 3 columnas (`.tabs-layout`) a **pestanias reales** (Configuracion/Mensajes/Preguntas/Participantes, una a la vez, ancho completo); nuevas clases `.tab-nav`/`.tab-button`/`.tab-panels` en `styles.scss`. (3) El preview de preguntas muestra `Revisiones: N` (`maxRepreguntas`). Frontend lint/test (9)/build produccion verde. |
@@ -2507,3 +2521,28 @@
   pregunta solo seleccionan; Markdown y contrato LLM se derivan; el servidor valida ids exactos y
   calcula el total; snapshots históricos no se reescriben. Entregados spec, plan en cuatro cortes y
   QAS/24. Sin código, datos remotos, despliegue ni migración. Handoff: corte documental 0 de DT-RUB-01.
+- 2026-08-16 - Codex - **DT-RUB-01 aceptada condicionalmente y DT-P32-04 priorizada (solo
+  documentación).** Rol: Arquitecto/Tech Lead. Tras revisar los cuatro cortes se registraron deudas
+  de selección de versión runtime, guardas backend, transición de estado legacy y validación conjunta
+  prompt/rúbrica. El usuario decidió no corregirlas ahora porque el sistema se inicializará sin datos
+  legacy. La excepción exige una sola versión activa por familia, sin borradores posteriores y sin
+  edición directa por API/Cosmos. `TODO`, índice, prompt de arranque, spec, plan, QAS/24, inventario y
+  `SUPUESTOS` quedan alineados. Handoff: `DT-P32-04` corte 1/3; sin código, remoto ni despliegue.
+- 2026-08-16 - Codex - **DT-P32-04 corte 1/3 DONE local.** Rol: Arquitecto/Backend/SDET.
+  `IdiomaConversacion` es la política única `es|en`; las cinco entidades conservan el value object
+  internamente y proyectan strings sin cambiar DTO/Cosmos. Se probaron normalización, rechazo de
+  códigos Meta, default histórico y round-trip. Baseline 992 + 120; cierre 1011 + 120 sin Calibración,
+  build Release, formato y diff verdes. Sin Azure, remoto, frontend, DT-RUB-01 ni corte 2/3. Handoff:
+  `ContenidoCampaniaEfectivo` en corte 2/3.
+- 2026-08-16 - Codex - **DT-P32-04 corte 2/3 DONE local.** Rol: Arquitecto/Backend/SDET.
+  `ContenidoCampaniaEfectivo` y su puerto producen un único snapshot legacy/localizado; envíos,
+  contexto LLM/evaluador y orquestador ya no reconstruyen localizaciones. Incompletitud devuelve
+  `NoDisponible` y detiene el flujo sin mezclar ni llamar al LLM. Focales 151/151; cierre 1018 + 120
+  sin Calibración, build Release, formato y diff verdes. DTO/Cosmos intactos; sin frontend, Azure,
+  remoto, DT-RUB-01 ni corte 3/3. Handoff: fachadas catálogo/Meta, política LLM y readiness compuesto.
+- 2026-08-16 - Codex - **DT-P32-04 corte 3/3 DONE local.** Rol: Arquitecto/Backend/SDET.
+  Se encapsularon catálogo global, mapeo Meta y directivas LLM; readiness usa esas mismas políticas
+  junto con el contenido efectivo de campaña y no produce efectos sobre cache/LKG. Guardas de código
+  impiden reintroducir resoluciones paralelas. Focales 123/123; cierre 1030 + 120 sin Calibración,
+  build Release, formato y diff verdes. DTO/Cosmos intactos; sin frontend, Azure, remoto, DT-RUB-01
+  ni QA controlado. Handoff: repetir QAS/23 y QAS/17 con autorización antes del cierre operativo.

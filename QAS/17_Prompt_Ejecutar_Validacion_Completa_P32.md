@@ -3,6 +3,10 @@
 > Copia el bloque entre INICIO y FIN en el agente que ejecutará la prueba. Sirve para Codex, Claude
 > Code u otro agente con acceso autorizado al ambiente de pruebas. No presupone acceso a Azure ni
 > autoriza cambios remotos.
+>
+> **Estado 2026-08-16:** actualizado para validar `DT-P32-04` corte 3/3. La implementación está local;
+> la parte remota solo aplica cuando un humano confirme que ese artefacto fue desplegado en el ambiente
+> aislado y autorice la ventana.
 
 ## Antes de enviarlo
 
@@ -30,7 +34,7 @@ de simulación contra Azure.
 Con el agente iniciado desde la misma sesión que contiene `GHT_DIAG_KEY`, basta pedirle:
 
 ```text
-Lee y ejecuta estrictamente QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md.
+Valida DT-P32-04 siguiendo estrictamente QAS/17_Prompt_Ejecutar_Validacion_Completa_P32.md. Ejecuta solo lo autorizado, no corrijas ni despliegues, y reporta cada caso como PASS, FAIL o BLOCKED con evidencia sin secretos ni datos sensibles.
 ```
 
 No copies la clave ni el contenido del documento al chat. El archivo contiene el procedimiento
@@ -44,6 +48,9 @@ conversación español/inglés y catálogo de textos** en el ambiente de pruebas
 Primero lee `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`,
 `QAS/23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md`,
 `QAS/16_P32_Multidioma_Catalogo_Textos_Como_Probar.md`,
+`QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md`,
+`Especificaciones/Iniciativas/DT-P32-04_Nucleo_Transversal_Multidioma.md`,
+`Especificaciones/planes/DT-P32-04_Plan_Refactor_Multidioma.md`,
 `Especificaciones/Iniciativas/DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md`,
 `Especificaciones/Iniciativas/DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md`,
 `Especificaciones/Iniciativas/P-32_Conversacion_Multidioma_y_Catalogo_Textos.md` §§10, 12, 14 y 15,
@@ -51,9 +58,11 @@ Primero lee `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`,
 
 Reglas obligatorias:
 
-1. Antes de hacer nada, informa el ambiente, la autorización disponible, los datos de prueba que usarás
-   y un plan corto. Si no hay autorización explícita para activar temporalmente el catálogo o para D5
-   real, no hagas ese cambio: marca el caso BLOCKED y continúa solo con lo permitido.
+1. Antes de hacer nada, informa el ambiente, el artefacto o revisión desplegada, la autorización
+   disponible, los datos de prueba que usarás y un plan corto. Si no puedes confirmar que el ambiente
+   contiene DT-P32-04 corte 3/3, marca la validación remota como BLOCKED. Si no hay autorización
+   explícita para desplegar, activar temporalmente el catálogo o ejecutar D5 real, no hagas ese cambio:
+   marca el caso BLOCKED y continúa solo con lo permitido.
 2. No hagas push, despliegue, cambio de secretos, modificación de rúbricas/prompts/configuraciones LLM
    existentes ni carga de datos reales. Sí estás autorizado a crear los usuarios, catálogos borrador y
    campañas de prueba definidos abajo. No uses el App Secret de Meta. No inventes URLs, credenciales,
@@ -69,7 +78,13 @@ Reglas obligatorias:
    Antes de cualquier conversación confirma que el ambiente saliente está aislado o que todos los
    números son de prueba autorizados: la simulación entrante no desactiva automáticamente el emisor
    real. Sin esa garantía, marca el recorrido `BLOCKED` y no envíes mensajes.
-5. Prepara una corrida nueva antes de puntuar. Conserva los datos para auditoría; no borres campañas,
+5. Antes de la prueba remota, ejecuta secuencialmente el gate local del checkout:
+   `dotnet build -c Release -warnaserror`,
+   `dotnet test -c Release --no-build --filter "Category!=Calibracion"`,
+   `dotnet format --verify-no-changes --no-restore` y `git diff --check`. Registra conteos y resultado;
+   no modifiques código para corregir fallos durante esta corrida. Un fallo local detiene la validación
+   remota como FAIL.
+6. Prepara una corrida nueva antes de puntuar. Conserva los datos para auditoría; no borres campañas,
    usuarios ni evidencia al terminar.
 
    a. Crea o entra con el administrador de diagnóstico y autentícate. Contra Azure usa
@@ -115,11 +130,12 @@ Reglas obligatorias:
       úsala exclusivamente para la Prueba 6, que debe demostrar el rechazo al activar y asociar el
       tercer usuario.
 
-6. Ejecuta primero `QAS/23` y después evidencia las pruebas 0 a 8 de `QAS/16`: snapshot, recorrido completo es/en, menú y
+7. Ejecuta primero `QAS/23` completo, incluida la revalidación DT-P32-04 y el readiness compuesto, y
+   después evidencia las pruebas 0 a 8 de `QAS/16`: snapshot, recorrido completo es/en, menú y
    comandos, lote mixto, edición de borrador, activación, rollback, campaña incompleta, D5 real y UAT.
    Para D5 compara pares equivalentes es/en: idea fuerte, débil, inyección y salida. El modelo puede
    redactar distinto, pero no puede cambiar estados, revelar información protegida ni mezclar idiomas.
-7. No marques PASS sin evidencia. Si una precondición falta, usa BLOCKED; si el resultado observado
+8. No marques PASS sin evidencia. Si una precondición falta, usa BLOCKED; si el resultado observado
    contradice el esperado, usa FAIL, describe qué ocurrió y conserva identificadores/capturas/reportes.
    No intentes corregir el sistema durante la ejecución.
 
@@ -135,7 +151,7 @@ Al finalizar crea `QAS/resultados/Resultados_P32_Multidioma_<AAAA-MM-DD>.md` con
   OpenBrain Thought-Scoring` y `OpenRouter-Terra`, o el bloqueo concreto si alguno no estaba disponible;
 - versiones/huellas de catálogo y plantillas Meta usadas, sin secretos;
 - resultado de semilla base, edición masiva JSON, prevalidación y readiness de `QAS/22`;
-- resultado de la matriz de cierres y mapeos Meta de `QAS/23`;
+- resultado de la matriz de cierres, mapeos Meta y readiness compuesto de `QAS/23`;
 - tabla `Prueba | es | en | Estado | Evidencia | Observación`;
 - resultado del lote mixto, activación/rollback y campaña incompleta;
 - reporte D5, costo/tokens/latencia observados y comparación de equivalencia;

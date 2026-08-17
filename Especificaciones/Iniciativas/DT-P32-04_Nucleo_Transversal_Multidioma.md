@@ -1,7 +1,11 @@
 # DT-P32-04 — Núcleo transversal multidioma y resolutores especializados
 
-> **Estado:** ESPECIFICADA — 0/3, posterior al green de DT-P32-03/P-32 y no bloqueante para DT-I20-02.
+> **Estado:** IMPLEMENTACIÓN LOCAL 3/3 DONE desde 2026-08-16; pendiente repetir QAS/23 y QAS/17
+> en ambiente aislado autorizado antes del cierre operativo.
 > **Naturaleza:** refactor incremental sin cambio funcional ni migración de datos.
+> **Precondiciones cumplidas:** DT-P32-03-01 tiene smoke green; DT-I20-02 está desplegada con QAS/21
+> pruebas 1–8 PASS; DT-RUB-01 fue aceptada condicionalmente para una inicialización limpia. Las deudas
+> de rúbricas no amplían ni bloquean este alcance.
 
 ## 1. Decisión arquitectónica
 
@@ -142,10 +146,18 @@ resolución paralela. Debe poder explicar, sin contenido sensible:
 
 ## 8. Orden de implementación
 
-1. **Corte 1/3:** `IdiomaConversacion` y migración interna de validaciones, sin cambiar DTO/Cosmos.
-2. **Corte 2/3:** `ContenidoCampaniaEfectivo` y migración de orquestador/envíos.
-3. **Corte 3/3:** fachadas especializadas, política LLM y readiness compuesto; eliminar duplicaciones.
+1. **Corte 1/3 — DONE local 2026-08-16:** `IdiomaConversacion` y migración interna de validaciones,
+   sin cambiar DTO/Cosmos. Cierre: 1011 unitarias + 120 integración sin Calibración; build, formato y
+   diff verdes.
+2. **Corte 2/3 — DONE local 2026-08-16:** `ContenidoCampaniaEfectivo` y migración de
+   orquestador/envíos. El snapshot atómico cubre nombre, descripción, objetivo, cierre, mensajes y
+   preguntas; gate OFF conserva legacy y gate ON rechaza toda localización incompleta sin mezclar.
+   Cierre: 1018 unitarias + 120 integración sin Calibración; build, formato y diff verdes.
+3. **Corte 3/3 — DONE local 2026-08-16:** fachadas especializadas, política LLM y readiness
+   compuesto; duplicaciones protegidas con guarda arquitectónica. Cierre: 1030 unitarias + 120
+   integración sin Calibración; build, formato y diff verdes.
 
-Cada corte debe quedar compilable, probado y reversible. DT-P32-03 debe estar green antes de iniciar.
-La prioridad vigente después de recuperar P-32 green continúa siendo DT-I20-02; este refactor se toma
-después o en una ventana separada, salvo repriorización humana expresa.
+Cada corte debe quedar compilable, probado y reversible. La precondición de DT-P32-03 green ya está
+cumplida. La repriorización humana expresa del 2026-08-16 convierte este refactor en el siguiente
+trabajo de código. Los tres cortes locales terminaron sin mezclar correcciones de DT-RUB-01. El paso
+siguiente es validación controlada QAS/23 + QAS/17, no otro corte de código.

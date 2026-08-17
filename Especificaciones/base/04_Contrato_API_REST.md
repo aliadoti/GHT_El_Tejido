@@ -452,8 +452,9 @@ resultante con `contenidoMarkdown`, `hashEstructura` e `integridadEstructural`.
 - `criterios` es una lista ordenada de longitud variable (1..techo técnico, valor inicial 50). No hay
   un número funcional fijo de criterios.
 - `prevalidar` responde `200` con `{ "valido": false, "errores": [...] }` cuando el cuerpo es legible
-  pero incumple reglas; no escribe nada y **no es prueba de activación**. Con un prompt de evaluación
-  que enumera criterios a mano, agrega la advertencia `prompt_contiene_criterios_fijos`.
+  pero incumple reglas; no escribe nada y **no es prueba de activación**. Este endpoint recibe solo la
+  rúbrica y no inspecciona prompts. La advertencia conjunta `prompt_contiene_criterios_fijos` queda
+  diferida hasta definir una validación/readiness que reciba ambas referencias (DT-RUB-01 §16).
 - Editar una versión `activa`/`archivada` responde `409 CONFLICT`: la corrección se hace creando una
   versión nueva en `borrador`, inicialmente clonada. Activar la nueva versión **no** cambia campañas
   o preguntas que fijaron otra versión.

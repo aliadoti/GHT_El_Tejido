@@ -390,7 +390,18 @@ public sealed class CatalogosTextosEdicionMasivaTests
             null,
             DateTimeOffset.UnixEpoch,
             DateTimeOffset.UnixEpoch,
-            idiomasHabilitados: ["es", "en"]);
+            idiomasHabilitados: ["es", "en"],
+            localizaciones: new Dictionary<string, LocalizacionCampania>(StringComparer.Ordinal)
+            {
+                ["en"] = LocalizacionCampania.Crear(
+                    "en",
+                    "Campaign",
+                    "Description",
+                    "Objective",
+                    "Thanks.",
+                    mensajesIniciales: null,
+                    preguntas: null),
+            });
 
     /// <summary>Mapeo Meta completo en ingles para el alias dado.</summary>
     private static OpcionesPlantillaEnvioInicial PlantillasIngles(string plantillaRef)

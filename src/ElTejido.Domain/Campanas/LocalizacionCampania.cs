@@ -1,4 +1,5 @@
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Domain.Campanas;
 
@@ -11,7 +12,7 @@ namespace ElTejido.Domain.Campanas;
 public sealed class LocalizacionCampania
 {
     private LocalizacionCampania(
-        string idioma,
+        IdiomaConversacion idioma,
         string? nombre,
         string? descripcion,
         string? objetivo,
@@ -19,7 +20,7 @@ public sealed class LocalizacionCampania
         IReadOnlyDictionary<string, LocalizacionMensajeInicial> mensajesIniciales,
         IReadOnlyDictionary<string, LocalizacionPregunta> preguntas)
     {
-        Idioma = idioma;
+        IdiomaInterno = idioma;
         Nombre = nombre;
         Descripcion = descripcion;
         Objetivo = objetivo;
@@ -28,7 +29,8 @@ public sealed class LocalizacionCampania
         Preguntas = preguntas;
     }
 
-    public string Idioma { get; }
+    public IdiomaConversacion IdiomaInterno { get; }
+    public string Idioma => IdiomaInterno.Codigo;
     public string? Nombre { get; }
     public string? Descripcion { get; }
     public string? Objetivo { get; }
@@ -45,24 +47,13 @@ public sealed class LocalizacionCampania
         IReadOnlyDictionary<string, LocalizacionMensajeInicial>? mensajesIniciales,
         IReadOnlyDictionary<string, LocalizacionPregunta>? preguntas)
         => new(
-            NormalizarIdioma(idioma),
+            IdiomaConversacion.Crear(idioma),
             Opcional(nombre),
             Opcional(descripcion),
             Opcional(objetivo),
             Opcional(mensajeCierre),
             NormalizarMapa(mensajesIniciales),
             NormalizarMapa(preguntas));
-
-    private static string NormalizarIdioma(string idioma)
-    {
-        var normalizado = DomainGuards.Required(idioma, nameof(idioma)).ToLowerInvariant();
-        if (normalizado is not ("es" or "en"))
-        {
-            throw new DomainValidationException("IDIOMA_NO_SOPORTADO", "El idioma de la localizacion debe ser 'es' o 'en'.");
-        }
-
-        return normalizado;
-    }
 
     private static string? Opcional(string? valor)
         => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

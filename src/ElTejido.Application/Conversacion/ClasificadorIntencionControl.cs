@@ -15,11 +15,16 @@ public sealed class ClasificadorIntencionControl : IClasificadorIntencionControl
 
     private readonly ILlmClient _client;
     private readonly OpcionesConversacion _opciones;
+    private readonly IPoliticaIdiomaLlm _politicaIdioma;
 
-    public ClasificadorIntencionControl(ILlmClient client, OpcionesConversacion opciones)
+    public ClasificadorIntencionControl(
+        ILlmClient client,
+        OpcionesConversacion opciones,
+        IPoliticaIdiomaLlm? politicaIdioma = null)
     {
         _client = client;
         _opciones = opciones;
+        _politicaIdioma = politicaIdioma ?? new PoliticaIdiomaLlm();
     }
 
     public async Task<ResultadoClasificacionIntencionControl> ClasificarAsync(
@@ -115,7 +120,7 @@ public sealed class ClasificadorIntencionControl : IClasificadorIntencionControl
         }
     }
 
-    private static IReadOnlyList<LlmMensaje> ConstruirMensajes(ContextoClasificacionIntencionControl contexto)
+    private IReadOnlyList<LlmMensaje> ConstruirMensajes(ContextoClasificacionIntencionControl contexto)
     {
         const string sistema = """
             Clasifica exclusivamente la intención del participante en este turno de coaching.
@@ -135,7 +140,10 @@ public sealed class ClasificadorIntencionControl : IClasificadorIntencionControl
 
         if (!string.IsNullOrWhiteSpace(contexto.Idioma))
         {
-            datos.Append("IDIOMA_ORIENTATIVO: ").AppendLine(contexto.Idioma.Trim());
+            datos.AppendLine(PoliticaIdiomaLlm.Requerir(
+                _politicaIdioma,
+                contexto.Idioma,
+                TipoDirectivaIdiomaLlm.Orientativo));
         }
 
         datos.Append("MENSAJE_PARTICIPANTE: ").AppendLine(contexto.TextoEntrante)

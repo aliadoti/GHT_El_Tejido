@@ -1,5 +1,7 @@
+using ElTejido.Application.Campanas;
 using ElTejido.Application.Configuracion;
 using ElTejido.Domain.Campanas;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Application.Conversacion;
 
@@ -54,36 +56,38 @@ public sealed class ResolutorMensajeCierreCampania : IResolutorMensajeCierreCamp
     private const string IdiomaLegacy = "es";
 
     private readonly OpcionesCatalogoTextos _opciones;
+    private readonly IResolutorContenidoCampania _contenido;
 
-    public ResolutorMensajeCierreCampania(OpcionesCatalogoTextos opciones)
-        => _opciones = opciones;
+    public ResolutorMensajeCierreCampania(
+        OpcionesCatalogoTextos opciones,
+        IResolutorContenidoCampania? contenido = null)
+    {
+        _opciones = opciones;
+        _contenido = contenido ?? new ResolutorContenidoCampania();
+    }
 
     public ResultadoMensajeCierreCampania Resolver(Campania campania, string? idiomaConversacion)
     {
-        // Gate OFF: comportamiento legacy exacto, sin consultar localizaciones ni normalizar idioma.
-        if (!_opciones.Habilitado)
+        var codigo = string.IsNullOrWhiteSpace(idiomaConversacion) ? IdiomaLegacy : idiomaConversacion;
+        if (!IdiomaConversacion.TryCrear(codigo, out var idioma))
         {
-            return new ResultadoMensajeCierreCampania.Disponible(
-                campania.ConfigConversacional.MensajeCierre,
-                IdiomaLegacy,
-                OrigenMensajeCierreCampania.Legacy);
+            return new ResultadoMensajeCierreCampania.NoDisponible(
+                CodigoLocalizacionIncompleta,
+                codigo.Trim().ToLowerInvariant());
         }
 
-        var idioma = string.IsNullOrWhiteSpace(idiomaConversacion)
-            ? IdiomaLegacy
-            : idiomaConversacion.Trim().ToLowerInvariant();
-
-        // `es` conserva su respaldo histórico dentro de la propia campaña (Campania.TryObtenerLocalizacion);
-        // los demás idiomas exigen contenido propio.
-        if (!campania.TryObtenerLocalizacion(idioma, out var localizacion)
-            || string.IsNullOrWhiteSpace(localizacion.MensajeCierre))
+        var resultado = _contenido.Resolver(new ContextoLocalizacion(campania, idioma, _opciones.Habilitado));
+        if (resultado is ResultadoContenidoCampania.NoDisponible)
         {
-            return new ResultadoMensajeCierreCampania.NoDisponible(CodigoLocalizacionIncompleta, idioma);
+            return new ResultadoMensajeCierreCampania.NoDisponible(CodigoLocalizacionIncompleta, idioma.Codigo);
         }
 
+        var contenido = ((ResultadoContenidoCampania.Disponible)resultado).Contenido;
         return new ResultadoMensajeCierreCampania.Disponible(
-            localizacion.MensajeCierre.Trim(),
-            idioma,
-            OrigenMensajeCierreCampania.LocalizacionCampania);
+            contenido.MensajeCierre,
+            contenido.Idioma.Codigo,
+            contenido.Origen == OrigenContenidoCampania.Legacy
+                ? OrigenMensajeCierreCampania.Legacy
+                : OrigenMensajeCierreCampania.LocalizacionCampania);
     }
 }

@@ -5,8 +5,10 @@ mensajes globales, enrutamiento, detectores, localizaciones de campaña, envío 
 contextos LLM están implementados. `DT-P32-02` quedó **3/3 DONE local (2026-08-14)**: la semilla base
 `es/en` ya no depende de la configuración anterior, la edición masiva JSON descargar→revisar→confirmar
 crea siempre una versión nueva en borrador, el readiness informa el gate real y la activación bilingüe
-exige catálogo activo por idioma. El gate sigue OFF. Esta
-guía se ejecuta después de implementar y pasar `QAS/22`; la activación productiva requiere además una
+exige catálogo activo por idioma. `DT-P32-04` quedó **3/3 DONE local (2026-08-16)**: idioma, contenido
+efectivo, catálogo, plantillas Meta y directivas LLM comparten políticas internas, conservando strings
+en DTO/Cosmos. El gate sigue OFF. Esta guía se ejecuta después de implementar y pasar `QAS/22`; la
+activación productiva requiere además una
 prueba controlada de ambos idiomas, plantillas Meta aprobadas, D5, UAT, costo/latencia y acta.
 
 ## Qué se quiere comprobar
@@ -35,6 +37,10 @@ cambiar un texto, publicarlo y revertirlo sin pedir una compilación o un despli
 9. La simulación entrante observada el 2026-08-13 no desactiva por sí sola el emisor WhatsApp. Confirma
    ambiente aislado o números de prueba autorizados antes de conversar. Sin esa garantía, marca los
    pasos conversacionales `BLOCKED`; no envíes a participantes reales.
+10. Confirma que el ambiente ejecuta un artefacto que contiene `DT-P32-04` corte 3/3. Si el corte solo
+    existe en el checkout local o no puede identificarse el artefacto desplegado, ejecuta únicamente
+    los gates locales permitidos y marca la validación remota como `BLOCKED`; no despliegues por cuenta
+    propia.
 
 ## Orden de ejecución completo
 
@@ -86,6 +92,18 @@ texto español heredado como regresión segura.
 **Deberías ver:** `stop now` termina el recorrido sin evaluar ese texto como una idea. La aclaración
 pregunta en inglés qué hacer y las opciones 1, 2 y 3 conservan el mismo efecto que en español. Con el
 gate OFF, el sistema mantiene el texto y la interpretación heredados en español.
+
+## Prueba 0.4 — readiness compuesto de DT-P32-04
+
+1. Con una campaña activa completa `es/en`, consulta **Preparación** y conserva la evidencia de
+   readiness lista para ambos idiomas.
+2. En datos aislados, deja incompleto por turnos un requisito: catálogo global, contenido inglés de la
+   campaña o mapeo Meta. No alteres campañas compartidas.
+3. Refresca readiness después de cada cambio y restaura la configuración antes de continuar.
+
+**Deberías ver:** un idioma solo aparece listo cuando catálogo, contenido activo, plantilla Meta y
+política de idioma LLM son aceptados por las mismas reglas que usa runtime. Cada ausencia debe bloquear
+con una causa concreta; nunca debe aparecer `listoParaGateOn=true` con una campaña activa incompleta.
 
 ## Prueba 1 — mismo recorrido, dos idiomas
 

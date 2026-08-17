@@ -1,5 +1,6 @@
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Domain.Participantes;
 
@@ -20,7 +21,7 @@ public sealed class EnvioMensaje
         string? whatsappMessageId,
         DateTimeOffset fechaEnvio,
         string? error,
-        string? idioma,
+        IdiomaConversacion? idioma,
         string? plantillaRef)
     {
         Id = id;
@@ -33,7 +34,7 @@ public sealed class EnvioMensaje
         WhatsappMessageId = whatsappMessageId;
         FechaEnvio = fechaEnvio;
         Error = error;
-        Idioma = idioma;
+        IdiomaInterno = idioma;
         PlantillaRef = plantillaRef;
     }
 
@@ -58,7 +59,9 @@ public sealed class EnvioMensaje
     public string? Error { get; }
 
     /// <summary>Snapshot del idioma del usuario al preparar el envío; no contiene contenido del participante.</summary>
-    public string? Idioma { get; }
+    public IdiomaConversacion? IdiomaInterno { get; }
+
+    public string? Idioma => IdiomaInterno?.Codigo;
 
     /// <summary>Alias lógico de plantilla resuelto para el envío, sin identificador físico de Meta.</summary>
     public string? PlantillaRef { get; }
@@ -88,7 +91,7 @@ public sealed class EnvioMensaje
             string.IsNullOrWhiteSpace(whatsappMessageId) ? null : whatsappMessageId.Trim(),
             fechaEnvio.ToUniversalTime(),
             string.IsNullOrWhiteSpace(error) ? null : error.Trim(),
-            string.IsNullOrWhiteSpace(idioma) ? null : idioma.Trim().ToLowerInvariant(),
+            string.IsNullOrWhiteSpace(idioma) ? null : IdiomaConversacion.Crear(idioma),
             string.IsNullOrWhiteSpace(plantillaRef) ? null : plantillaRef.Trim());
     }
 }

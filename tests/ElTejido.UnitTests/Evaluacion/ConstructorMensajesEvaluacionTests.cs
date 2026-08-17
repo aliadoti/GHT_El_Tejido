@@ -1,4 +1,6 @@
+using ElTejido.Application.Campanas;
 using ElTejido.Application.Evaluacion;
+using ElTejido.Domain.Localizacion;
 using ElTejido.Domain.Configuracion;
 using ElTejido.UnitTests.Soporte;
 using FluentAssertions;
@@ -45,6 +47,38 @@ public sealed class ConstructorMensajesEvaluacionTests
         mensajes[0].Contenido.Should().Contain("IDIOMA_DE_SALIDA_OBLIGATORIO: en");
         mensajes[1].Contenido.Should().Contain("Neighbourhood ideas").And.Contain("Improve public spaces");
         mensajes[2].Contenido.Should().Contain("What would you improve?").And.Contain("Describe one concrete action.");
+    }
+
+    [Fact]
+    public void Construir_ContenidoAtomicoPrevaleceSobreCamposEfectivosSeparados()
+    {
+        var contextoBase = CrearContexto();
+        var contenido = new ContenidoCampaniaEfectivo(
+            IdiomaConversacion.Ingles,
+            OrigenContenidoCampania.Localizacion,
+            "Atomic campaign",
+            "Atomic description",
+            "Atomic objective",
+            "Atomic close",
+            new Dictionary<string, ContenidoMensajeInicialEfectivo>(StringComparer.Ordinal),
+            new Dictionary<string, ContenidoPreguntaEfectiva>(StringComparer.Ordinal)
+            {
+                [contextoBase.Pregunta.Id] = new("Atomic question", "Atomic instruction"),
+            });
+        var mensajes = ConstructorMensajesEvaluacion.Construir(contextoBase with
+        {
+            Idioma = "en",
+            ContenidoCampaniaEfectivo = contenido,
+            NombreCampaniaEfectivo = "Mixed campaign",
+            ObjetivoCampaniaEfectivo = "Mixed objective",
+            TextoPreguntaEfectivo = "Mixed question",
+            InstruccionPreguntaEfectiva = "Mixed instruction",
+        });
+
+        mensajes[1].Contenido.Should().Contain("Atomic campaign").And.Contain("Atomic objective");
+        mensajes[^1].Contenido.Should().Contain("Atomic question").And.Contain("Atomic instruction");
+        mensajes.Select(mensaje => mensaje.Contenido).Should().NotContain(
+            texto => texto.Contains("Mixed", StringComparison.Ordinal));
     }
 
     [Fact]

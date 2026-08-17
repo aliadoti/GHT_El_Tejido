@@ -3249,8 +3249,9 @@ public sealed class OrquestadorConversacionTests
     }
 
     /// <summary>
-    /// Localización incompleta: se usa el manejo tipificado de configuración no disponible, queda el
-    /// rastro con campaña/idioma/ruta/código y ningún envío lleva el cierre español.
+    /// Localización incompleta: se usa el manejo tipificado de configuración no disponible y ningún
+    /// envío lleva el cierre español. Desde DT-P32-04 el snapshot atómico puede rechazar el contexto
+    /// antes de alcanzar el cierre; la ruta directa de agradecimiento conserva el rastro de cierre.
     /// </summary>
     private async Task EsperarCierreIncompletoAsync(string ruta)
     {
@@ -3266,13 +3267,20 @@ public sealed class OrquestadorConversacionTests
             Arg.Any<TipoEnvioMensaje>(),
             Arg.Any<CancellationToken>(),
             Arg.Any<string?>());
-        await _logSeguridad.Received(1).RegistrarAsync(
-            Arg.Is<LogSeguridad>(log =>
-                log.TipoEvento == TipoEventoSeguridad.AnomaliaLlm
-                && log.Resultado == "fallback"
-                && log.CampaniaId == "c_1"
-                && log.Detalle == $"cierre_localizado:LOCALIZACION_CAMPANIA_INCOMPLETA:idioma=en:ruta={ruta}"),
-            Arg.Any<CancellationToken>());
+        var log = _logSeguridad.ReceivedCalls()
+            .Select(llamada => llamada.GetArguments().FirstOrDefault())
+            .OfType<LogSeguridad>()
+            .Should().ContainSingle().Subject;
+        var detalleEsperado = ruta == "cierreConAgradecimiento"
+            ? $"cierre_localizado:LOCALIZACION_CAMPANIA_INCOMPLETA:idioma=en:ruta={ruta}"
+            : "localizacion_campania_incompleta";
+        log.Should().BeEquivalentTo(new
+        {
+            TipoEvento = TipoEventoSeguridad.AnomaliaLlm,
+            Resultado = "fallback",
+            CampaniaId = ruta == "cierreConAgradecimiento" ? "c_1" : null,
+            Detalle = detalleEsperado,
+        });
         _conversaciones.Ultima!.Estado.Should().Be(EstadoConversacion.Cerrada);
     }
 

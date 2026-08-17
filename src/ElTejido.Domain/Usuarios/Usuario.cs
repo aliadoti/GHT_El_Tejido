@@ -1,15 +1,14 @@
 using System.Globalization;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Identidad;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Domain.Usuarios;
 
 public sealed class Usuario
 {
     /// <summary>Idioma por defecto del participante cuando la plantilla no lo trae (I-08 §3, columna H).</summary>
-    public const string IdiomaPorDefecto = "es";
-
-    private static readonly string[] IdiomasSoportados = ["es", "en"];
+    public const string IdiomaPorDefecto = IdiomaConversacion.CodigoEspanol;
 
     private Usuario(
         string id,
@@ -26,7 +25,7 @@ public sealed class Usuario
         string? cargo,
         string? email,
         decimal? antiguedadAnios,
-        string idioma,
+        IdiomaConversacion idioma,
         IReadOnlyCollection<string> tags,
         IReadOnlyDictionary<string, object?> propiedadesDinamicas,
         DateTimeOffset creadoEn,
@@ -46,7 +45,7 @@ public sealed class Usuario
         Cargo = cargo;
         Email = email;
         AntiguedadAnios = antiguedadAnios;
-        Idioma = idioma;
+        IdiomaInterno = idioma;
         Tags = tags;
         PropiedadesDinamicas = propiedadesDinamicas;
         CreadoEn = creadoEn;
@@ -94,7 +93,9 @@ public sealed class Usuario
     public decimal? AntiguedadAnios { get; }
 
     /// <summary>Idioma del participante (<c>es</c> | <c>en</c>), con <c>es</c> por defecto.</summary>
-    public string Idioma { get; }
+    public IdiomaConversacion IdiomaInterno { get; }
+
+    public string Idioma => IdiomaInterno.Codigo;
 
     public IReadOnlyCollection<string> Tags { get; }
 
@@ -164,7 +165,7 @@ public sealed class Usuario
             Opcional(cargo),
             NormalizarEmail(email),
             antiguedadAnios,
-            NormalizarIdioma(idioma),
+            CrearIdioma(idioma),
             NormalizeTags(tags),
             NormalizeProperties(propiedadesDinamicas),
             fechaCreacionUtc,
@@ -176,25 +177,21 @@ public sealed class Usuario
         => "U-" + codigoUsuario.ToString("D6", CultureInfo.InvariantCulture);
 
     /// <summary>Indica si el idioma es uno de los soportados por la plantilla oficial (<c>es</c> | <c>en</c>).</summary>
-    public static bool EsIdiomaSoportado(string idioma)
-        => IdiomasSoportados.Contains(idioma.Trim().ToLowerInvariant(), StringComparer.Ordinal);
+    public static bool EsIdiomaSoportado(string? idioma)
+        => IdiomaConversacion.TryCrear(idioma, out _);
 
-    private static string NormalizarIdioma(string? idioma)
+    private static IdiomaConversacion CrearIdioma(string? idioma)
     {
-        if (string.IsNullOrWhiteSpace(idioma))
+        try
         {
-            return IdiomaPorDefecto;
+            return IdiomaConversacion.DesdeFronteraHistorica(idioma);
         }
-
-        var normalizado = idioma.Trim().ToLowerInvariant();
-        if (!IdiomasSoportados.Contains(normalizado, StringComparer.Ordinal))
+        catch (DomainValidationException)
         {
             throw new DomainValidationException(
                 "IDIOMA_NO_SOPORTADO",
                 "El idioma del usuario debe ser 'es' o 'en'.");
         }
-
-        return normalizado;
     }
 
     private static string NormalizarNombre(string nombre)

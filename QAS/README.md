@@ -22,7 +22,7 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 13 | [Prompt para Claude Code — pruebas conversacionales](13_Prompt_ClaudeCode_Pruebas_Conversacionales.md) | Variante centrada en el flujo del coach por WhatsApp simulado. |
 | 14 | [P-31 · Resumen de la consolidación](14_P31_Resumen_Consolidacion_Como_Probar.md) | Cómo comprobar que el participante ve su idea acumulada antes de terminarla. |
 | 15 | [I-08 v2 · Carga masiva](15_I08v2_Carga_Masiva_Como_Probar.md) | Guía ejecutable de la carga por Excel/CSV: datos sucios, idempotencia, modos, **conflicto de titular y reasignación**, y el guardarraíl de un solo activo por teléfono. |
-| 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | P-32 4/4 DONE local. Guía de regresión, E2E bilingüe, lote mixto, catálogo, rollback, D5 y UAT antes de una activación. |
+| 16 | [P-32 · Español/English y textos editables](16_P32_Multidioma_Catalogo_Textos_Como_Probar.md) | P-32 4/4 y DT-P32-04 3/3 DONE local. Guía de regresión, E2E bilingüe, readiness compuesto, lote mixto, catálogo, rollback, D5 y UAT antes de una activación. |
 | 17 | [Prompt · validación completa P-32](17_Prompt_Ejecutar_Validacion_Completa_P32.md) | Prompt listo para delegar D5, E2E bilingüe, lote mixto, catálogo, rollback, UAT y pendientes operativos de P-32. |
 | 18 | [Runbook humano · lanzar P-32](18_Runbook_Humano_Lanzar_Prueba_P32.md) | Pasos seguros para habilitar la simulación, inyectar `GHT_DIAG_KEY`, lanzar el agente y cerrar la ventana. |
 | 19 | [DT-I20-01 · Variación y no duplicación](19_DT-I20-01_Variacion_Redaccion_Como_Probar.md) | D5 para comprobar variedad de aperturas y ausencia de reconocimientos duplicados antes de desplegar. |
@@ -73,6 +73,11 @@ JSON. Después se ejecuta nuevamente **17** completo; `DT-I20-02` solo se retoma
 la evidencia Meta fue aceptada y el cierre operativo dejó gate/simulación OFF. **P-32 SMOKE GREEN**
 habilita DT-I20-02 corte 1/3. P-32 continúa abierta para QAS/17 completa y la prueba 7 del lote mixto
 real después de DT-I20-02.
+
+**Actualización 2026-08-16:** `DT-P32-04` quedó implementada localmente 3/3. Como centralizó las rutas
+de catálogo, campaña, Meta e idioma del LLM, su cierre exige desplegar ese corte únicamente con
+autorización, repetir **QAS/23 completo** y después **QAS/17**. Los PASS históricos sirven como
+baseline, pero no sustituyen esta regresión. El gate y la simulación permanecen OFF fuera de la ventana.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

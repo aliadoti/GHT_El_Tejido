@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using ElTejido.Application.Common;
 using ElTejido.Application.Seguridad;
 using ElTejido.Domain.Configuracion;
+using ElTejido.Domain.Localizacion;
 using ElTejido.Domain.Seguridad;
 
 namespace ElTejido.Application.Configuracion;
@@ -167,15 +168,14 @@ public sealed class ProveedorTextosConversacion : IProveedorTextosConversacion, 
 
     private static string ValidarIdioma(string idioma)
     {
-        var valor = idioma?.Trim().ToLowerInvariant();
-        if (valor is not ("es" or "en"))
+        if (!IdiomaConversacion.TryCrear(idioma, out var valor))
         {
             throw new ErrorValidacion(
                 "El idioma debe ser 'es' o 'en'.",
                 new[] { new DetalleError("idioma", "valor_invalido") });
         }
 
-        return valor;
+        return valor.Codigo;
     }
 
     private sealed record EntradaCache(VersionCatalogoTextos Version, DateTimeOffset ExpiraEn);

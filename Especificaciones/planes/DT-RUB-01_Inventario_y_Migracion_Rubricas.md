@@ -1,17 +1,18 @@
 # DT-RUB-01 — Inventario y migración de rúbricas
 
-> **Estado:** preparado 2026-08-16 (Claude Opus 5). **No se ejecutó ninguna consulta ni escritura
-> contra Cosmos, Azure o campañas reales**; este documento es el procedimiento para que un humano
-> autorizado lo haga después del despliegue.
+> **Estado:** CONSERVADO COMO REFERENCIA, **NO EJECUTAR EN EL ARRANQUE LIMPIO**. El 2026-08-16 el
+> usuario decidió inicializar el sistema desde cero y no importar datos legacy; por tanto no existe
+> migración operativa en el alcance vigente. Antes de reutilizar este procedimiento se deben cerrar
+> las deudas de DT-RUB-01 §16 y obtener una autorización nueva.
 > **Spec:** `../Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md` §10.
 > **QAS:** `../../QAS/24_DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista_Como_Probar.md`.
 
 ## 1. Qué cambia para los datos que ya existen
 
-Ninguna rúbrica existente se modifica al desplegar. El código nuevo **lee** los documentos actuales
-sin mutarlos: deriva el `id` de cada criterio desde su `nombre` y el `orden` desde la posición del
-arreglo, y conserva el `contenidoMarkdown` tal cual, de modo que las campañas ya configuradas siguen
-enviando al modelo exactamente el mismo texto que antes.
+El código nuevo puede leer documentos actuales sin mutarlos: deriva el `id` desde `nombre`, el orden
+desde la posición y conserva `contenidoMarkdown`. Esto **no garantiza** que una campaña legacy evalúe
+igual, porque el nuevo contrato exacto también consume la estructura. Por esa razón el arranque limpio
+no restaura esos documentos y este procedimiento queda suspendido.
 
 Lo que sí cambia es la **integridad estructural** derivada en lectura (`03 §3.11`):
 
@@ -26,7 +27,7 @@ Lo que sí cambia es la **integridad estructural** derivada en lectura (`03 §3.
 > exactamente la condición de la rúbrica `2` — y obliga a crear una versión estructurada antes de
 > volver a comprometerla. Ver `SUPUESTOS.md#integridad-estructural-rubrica-dt-rub-01`.
 
-## 2. Inventario (solo lectura, sin modificar nada)
+## 2. Inventario futuro (suspendido; requiere cerrar DT-RUB-01 §16)
 
 Ejecutar con una identidad de solo lectura y guardar la salida junto al reporte de QAS/24. Registrar
 **ids, versiones, estados y cantidades**; nunca aportes, justificaciones ni secretos.
@@ -47,7 +48,7 @@ Plantilla de la tabla a llenar:
 |---|---|---|---|---|---|---|---|
 | | | | | | | | |
 
-## 3. Migración (requiere autorización humana separada)
+## 3. Migración futura (no autorizada; requiere fixes y autorización separada)
 
 No se deduce nada de un Markdown existente. **Los criterios, descripciones y pesos correctos los
 define negocio**, no el agente ni una inferencia sobre el texto.

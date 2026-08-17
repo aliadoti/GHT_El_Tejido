@@ -1,9 +1,10 @@
 # DT-RUB-01 — Rúbrica estructurada como fuente única y evaluación determinista
 
-> **Estado:** ESPECIFICADA — 0/4, siguiente prioridad de código.
+> **Estado:** IMPLEMENTADA LOCAL 4/4 — ACEPTADA CONDICIONALMENTE EL 2026-08-16.
 > **Origen:** `QAS/resultados/Resultados_DT-I20-02_2026-08-16.md` §9.4.
-> **Bloquea:** D5 confiable, el cierre funcional de DT-I20-02 y la congelación de un baseline de
-> evaluación. No bloquea los ocho PASS funcionales ya obtenidos en QAS/21.
+> **Condición de aceptación:** el ambiente se inicializará desde cero, sin restaurar rúbricas ni
+> campañas legacy, y cada familia operativa tendrá una sola versión activa sin borradores posteriores
+> hasta resolver la deuda de selección runtime. Bajo estas condiciones no bloquea `DT-P32-04`.
 > **No es:** una reapertura del contrato visible de DT-I20-02 ni el refactor multidioma DT-P32-04.
 
 ## 1. Problema confirmado
@@ -190,9 +191,9 @@ Ejemplo conceptual para una rúbrica de dos criterios:
 ```
 
 El prompt administrable define método, tono y restricciones, pero no enumera criterios funcionales.
-Si un prompt legacy los nombra manualmente, la prevalidación/preview debe advertir
-`prompt_contiene_criterios_fijos`; no se intenta reconciliar una lista humana con la rúbrica en
-runtime.
+No se intenta reconciliar una lista humana con la rúbrica en runtime. La advertencia
+`prompt_contiene_criterios_fijos` requiere una validación que conozca prompt y rúbrica a la vez; queda
+diferida en §16 y no forma parte del endpoint de prevalidación de una rúbrica aislada.
 
 ## 7. Validación y cálculo server-side
 
@@ -358,3 +359,33 @@ compilación o la validación en portal, API y evaluador.
 - Portal: Prettier, pruebas y build de producción verdes.
 - QAS/24 actualizado en lenguaje simple.
 - Sin push, despliegue, Cosmos, Azure, D5 ni migración real salvo nueva autorización expresa.
+
+## 16. Aceptación condicionada y deuda técnica diferida
+
+Decisión del usuario del 2026-08-16: se prioriza terminar el núcleo multidioma y se acepta esta
+implementación local sin corregir ahora los hallazgos posteriores de revisión, porque el sistema se
+inicializará con una base limpia.
+
+Condiciones operativas obligatorias hasta cerrar la deuda:
+
+1. no restaurar ni importar rúbricas, campañas o evaluaciones legacy;
+2. crear las semillas iniciales como estructura válida y prevalidada;
+3. mantener **una sola versión activa por familia operativa** y no crear una versión posterior, ni
+   siquiera en borrador, mientras esa familia esté en uso;
+4. crear y asignar rúbricas únicamente desde el portal y mediante el procedimiento controlado; no
+   editar Cosmos ni configurar referencias directamente por API;
+5. no ejecutar el inventario/migración legacy: queda conservado solo como procedimiento futuro.
+
+Deuda técnica diferida, no bloqueante para `DT-P32-04` bajo esas condiciones:
+
+- resolver en runtime la versión exacta configurada o, si no existe fijación, la versión activa
+  vigente; un borrador posterior nunca debe desplazar a la activa;
+- validar en backend toda asignación de rúbrica/versión a campaña o pregunta;
+- preservar byte a byte el contenido y la integridad al cambiar el estado de documentos legacy;
+- ubicar la advertencia `prompt_contiene_criterios_fijos` en una validación que conozca conjuntamente
+  prompt y rúbrica, o retirarla expresamente del contrato;
+- ampliar QAS/24 con los escenarios diferidos antes de permitir versionado operativo o importar datos
+  históricos.
+
+La deuda se retomará después de completar y poner en green `DT-P32-04`. Hasta entonces no se declara
+soportado el versionado concurrente de rúbricas ni la compatibilidad runtime con datos legacy.

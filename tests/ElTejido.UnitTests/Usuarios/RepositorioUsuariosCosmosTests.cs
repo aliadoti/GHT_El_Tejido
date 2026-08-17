@@ -54,6 +54,33 @@ public sealed class RepositorioUsuariosCosmosTests
     }
 
     [Fact]
+    public void Idioma_RoundTripConservaStringYDocumentoHistoricoEquivaleAEspanol()
+    {
+        var documento = UsuarioCosmosDocument.FromDomain(CrearUsuario(" EN "));
+        var historico = UsuarioCosmosDocument.FromDomain(CrearUsuario());
+        historico = new UsuarioCosmosDocument
+        {
+            Id = historico.Id,
+            Pk = historico.Pk,
+            ClaveUnicidad = historico.ClaveUnicidad,
+            CodigoUsuario = historico.CodigoUsuario,
+            Nombre = historico.Nombre,
+            WhatsappNormalizado = historico.WhatsappNormalizado,
+            Rol = historico.Rol,
+            Estado = historico.Estado,
+            Tags = historico.Tags,
+            PropiedadesDinamicas = historico.PropiedadesDinamicas,
+            CreadoEn = historico.CreadoEn,
+            ActualizadoEn = historico.ActualizadoEn,
+            Idioma = null,
+        };
+
+        documento.Idioma.Should().Be("en");
+        documento.ToDomain().Idioma.Should().Be("en");
+        historico.ToDomain().Idioma.Should().Be("es");
+    }
+
+    [Fact]
     public async Task ObtenerUsuarioPorIdAsync_MapsCosmosDocumentToDomain()
     {
         var container = new FakeUsersCosmosContainer
@@ -284,7 +311,7 @@ public sealed class RepositorioUsuariosCosmosTests
         result.Should().ContainSingle().Which.Nombre.Should().Be("Operaciones");
     }
 
-    private static Usuario CrearUsuario()
+    private static Usuario CrearUsuario(string? idioma = null)
     {
         return Usuario.Crear(
             "u_1",
@@ -298,7 +325,8 @@ public sealed class RepositorioUsuariosCosmosTests
             ["t_area_oper", "t_emp_ght"],
             new Dictionary<string, object?> { ["cargo"] = "Coordinadora" },
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),
-            new DateTimeOffset(2026, 6, 11, 9, 0, 0, TimeSpan.Zero));
+            new DateTimeOffset(2026, 6, 11, 9, 0, 0, TimeSpan.Zero),
+            idioma: idioma);
     }
 
     private static SecuenciaCosmosDocument CrearSecuencia(int ultimoValor, string etag)

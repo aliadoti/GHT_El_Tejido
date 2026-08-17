@@ -2,31 +2,53 @@
 
 ## Precondición
 
-DT-P32-03 y la nueva corrida P-32 están en green. Capturar antes una línea base de pruebas y de
-comportamiento gate OFF/ON; este refactor no corrige resultados funcionales nuevos.
-No bloquea DT-I20-02, que conserva la prioridad acordada inmediatamente después del green de P-32.
+**Cumplida el 2026-08-16:** DT-P32-03-01 tiene smoke green y DT-I20-02 quedó desplegada con QAS/21
+pruebas 1–8 PASS. La decisión humana vigente prioriza este refactor sobre las deudas diferidas de
+DT-RUB-01. Antes del primer cambio, capturar una línea base local de pruebas y conservar como evidencia
+los reportes P-32 existentes; el refactor no corrige resultados funcionales nuevos.
 
-## Corte 1/3 — idioma central
+No implementar en estos cortes selección/versionado de rúbricas, compatibilidad legacy ni validaciones
+de asignación de DT-RUB-01.
+
+## Corte 1/3 — idioma central — DONE local 2026-08-16
 
 1. Crear `IdiomaConversacion` con pruebas exhaustivas de normalización, soportados y default histórico.
 2. Adaptar una frontera por vez: Usuario, Campania, Conversacion, EnrutamientoAporte y EnvioMensaje.
 3. Mantener strings en DTO y Cosmos; agregar pruebas de round-trip histórico.
 4. Sustituir listas `es/en` y normalizadores duplicados.
 
-## Corte 2/3 — contenido efectivo de campaña
+Evidencia: baseline 992 unitarias + 120 integración; cierre 1011 + 120 sin Calibración, build Release
+`-warnaserror`, formato y `git diff --check` verdes. Sin cambio de DTO/Cosmos ni operación remota.
+
+## Corte 2/3 — contenido efectivo de campaña — DONE local 2026-08-16
 
 1. Crear el resultado inmutable y el puerto en Application.
 2. Cubrir snapshot legacy y localización completa sin mezcla de fuentes.
 3. Migrar primero `ServicioEnvios`, luego contexto LLM y finalmente salidas visibles del orquestador.
 4. Eliminar helpers privados duplicados solo cuando no queden consumidores.
 
-## Corte 3/3 — resolutores y readiness compuesto
+Evidencia: `ContenidoCampaniaEfectivo`, `ContextoLocalizacion` e `IResolutorContenidoCampania`
+registrados en Application/composition root; `ServicioEnvios`, contexto LLM y salidas visibles del
+orquestador consumen el snapshot único. Gate OFF conserva legacy; gate ON devuelve
+`NoDisponible` tipificado ante cualquier faltante, sin fallback cruzado. Pruebas focales 151/151;
+cierre 1018 unitarias + 120 integración sin Calibración, build Release `-warnaserror`, formato y
+`git diff --check` verdes. Sin DTO/Cosmos, frontend ni operación remota.
+
+## Corte 3/3 — resolutores y readiness compuesto — DONE local 2026-08-16
 
 1. Encapsular catálogo global existente tras la interfaz acordada, sin reescribir cache/LKG.
 2. Encapsular mapeos Meta y directiva LLM.
 3. Hacer que readiness consulte los mismos resolutores en modo diagnóstico sin efectos.
 4. Añadir prueba arquitectónica contra nuevas resoluciones directas.
 5. Actualizar la tabla multidioma y el checklist de tercer idioma.
+
+Evidencia: `IResolutorTextosGlobales` delega el runtime al catálogo existente y diagnostica sin
+alterar cache/LKG; `IResolverPlantillaCanal` es el único puente a códigos Meta;
+`IPoliticaIdiomaLlm` produce las directivas de evaluación, redacción, clasificación, segmentación y
+consolidación. `IReadinessMultiidioma` compone catálogo, contenido de campaña, Meta e idioma LLM con
+las mismas políticas. Guardas arquitectónicas impiden reconstrucciones directas. Focales 123/123;
+cierre 1030 unitarias + 120 integración sin Calibración, build Release `-warnaserror`, formato y
+`git diff --check` verdes. Sin frontend, DTO/Cosmos ni operación remota.
 
 ## Verificación por corte
 
@@ -37,4 +59,5 @@ No bloquea DT-I20-02, que conserva la prioridad acordada inmediatamente después
 - portal solo si cambia la proyección de readiness;
 - `git diff --check`.
 
-Después del corte 3, repetir QAS/23 y QAS/17 antes de considerar el refactor cerrado.
+Después del corte 3, repetir QAS/23 y QAS/17 en una ventana autorizada antes de considerar el
+refactor cerrado operativamente.

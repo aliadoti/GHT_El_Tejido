@@ -45,7 +45,7 @@ public sealed class ResolutorMensajeCierreCampaniaTests
         var disponible = resultado.Should().BeOfType<ResultadoMensajeCierreCampania.Disponible>().Subject;
         disponible.Texto.Should().Be(CierreLegacy);
         disponible.Idioma.Should().Be("es");
-        disponible.Origen.Should().Be(OrigenMensajeCierreCampania.LocalizacionCampania);
+        disponible.Origen.Should().Be(OrigenMensajeCierreCampania.Legacy);
     }
 
     [Fact]

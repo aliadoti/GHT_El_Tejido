@@ -1,11 +1,13 @@
+using ElTejido.Application.Campanas;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Localizacion;
 
 namespace ElTejido.Application.WhatsApp;
 
 /// <summary>
 /// DT-P32-03 §3.2: revisión **estructural** de los mapeos `plantillaRef + idioma` que exigirían las
-/// campañas si el gate P-32 se encendiera. Reutiliza <see cref="OpcionesPlantillaEnvioInicial.TryResolver"/>
+/// campañas si el gate P-32 se encendiera. Reutiliza <see cref="IResolverPlantillaCanal"/>
 /// —la misma política que aplica <c>ServicioEnvios</c> en el envío real— para que no exista una
 /// segunda interpretación de "configurado".
 /// <para>
@@ -15,11 +17,11 @@ namespace ElTejido.Application.WhatsApp;
 /// </summary>
 public static class ValidadorMapeosPlantillaMeta
 {
-    public const string PlantillaRefFaltante = "plantilla_ref_faltante";
-    public const string NombreFaltante = "nombre_faltante";
-    public const string IdiomaMetaFaltante = "idioma_meta_faltante";
-    public const string ComponenteVacio = "componente_vacio";
-    public const string ComponenteDuplicado = "componente_duplicado";
+    public const string PlantillaRefFaltante = ProblemasPlantillaCanal.PlantillaRefFaltante;
+    public const string NombreFaltante = ProblemasPlantillaCanal.NombreFaltante;
+    public const string IdiomaMetaFaltante = ProblemasPlantillaCanal.IdiomaMetaFaltante;
+    public const string ComponenteVacio = ProblemasPlantillaCanal.ComponenteVacio;
+    public const string ComponenteDuplicado = ProblemasPlantillaCanal.ComponenteDuplicado;
 
     /// <summary>Etiqueta con la que viaja <see cref="EstadoCampania.Activa"/> en el diagnóstico.</summary>
     internal static readonly string EstadoActiva = EstadoCampania.Activa.ToString().ToLowerInvariant();
@@ -32,6 +34,17 @@ public static class ValidadorMapeosPlantillaMeta
         IEnumerable<Campania> campanias,
         IReadOnlyCollection<string> idiomas,
         OpcionesPlantillaEnvioInicial opciones)
+        => Evaluar(
+            campanias,
+            idiomas,
+            new ResolverPlantillaCanal(opciones),
+            new ResolutorContenidoCampania());
+
+    public static IReadOnlyList<MapeoPlantillaMetaEvaluado> Evaluar(
+        IEnumerable<Campania> campanias,
+        IReadOnlyCollection<string> idiomas,
+        IResolverPlantillaCanal resolutor,
+        IResolutorContenidoCampania contenidoCampania)
     {
         var acumulado = new Dictionary<(string PlantillaRef, string Idioma), List<CampaniaRequierePlantillaMeta>>();
         var orden = new List<(string PlantillaRef, string Idioma)>();
@@ -40,11 +53,14 @@ public static class ValidadorMapeosPlantillaMeta
         {
             foreach (var idioma in IdiomasEnAlcance(campania, idiomas))
             {
-                var hayLocalizacion = campania.TryObtenerLocalizacion(idioma, out var localizacion);
+                var idiomaInterno = IdiomaConversacion.Crear(idioma);
+                var contenido = contenidoCampania.Resolver(
+                    new ContextoLocalizacion(campania, idiomaInterno, CatalogoTextosHabilitado: true));
+                var contenidoDisponible = contenido as ResultadoContenidoCampania.Disponible;
                 foreach (var mensaje in campania.MensajesIniciales.Where(x => x.Estado == EstadoRegistro.Activo))
                 {
-                    var plantillaRef = hayLocalizacion
-                        && localizacion.MensajesIniciales.TryGetValue(mensaje.Id, out var localizado)
+                    var plantillaRef = contenidoDisponible?.Contenido.MensajesIniciales
+                        .TryGetValue(mensaje.Id, out var localizado) == true
                         ? localizado.PlantillaRef
                         : null;
                     var clave = (plantillaRef?.Trim() ?? string.Empty, idioma);
@@ -69,7 +85,7 @@ public static class ValidadorMapeosPlantillaMeta
         }
 
         return orden
-            .Select(clave => Evaluar(clave.PlantillaRef, clave.Idioma, acumulado[clave], opciones))
+            .Select(clave => Evaluar(clave.PlantillaRef, clave.Idioma, acumulado[clave], resolutor))
             .ToArray();
     }
 
@@ -83,7 +99,7 @@ public static class ValidadorMapeosPlantillaMeta
         string plantillaRef,
         string idioma,
         IReadOnlyList<CampaniaRequierePlantillaMeta> campanias,
-        OpcionesPlantillaEnvioInicial opciones)
+        IResolverPlantillaCanal resolutor)
     {
         if (plantillaRef.Length == 0)
         {
@@ -94,55 +110,21 @@ public static class ValidadorMapeosPlantillaMeta
                 Componentes: [], Problemas: [PlantillaRefFaltante], campanias);
         }
 
-        var configurada = ObtenerConfigurada(opciones, plantillaRef, idioma);
-        var nombreConfigurado = !string.IsNullOrWhiteSpace(configurada?.Nombre);
-        var idiomaMetaConfigurado = !string.IsNullOrWhiteSpace(configurada?.Idioma);
-        var componentes = configurada?.Componentes ?? [];
-
-        var problemas = new List<string>();
-        if (!nombreConfigurado)
-        {
-            problemas.Add(NombreFaltante);
-        }
-
-        if (!idiomaMetaConfigurado)
-        {
-            problemas.Add(IdiomaMetaFaltante);
-        }
-
-        // Una lista vacía es válida para una plantilla sin variables; lo que no puede haber es un
-        // componente en blanco o repetido dentro de una lista ya configurada.
-        if (componentes.Any(string.IsNullOrWhiteSpace))
-        {
-            problemas.Add(ComponenteVacio);
-        }
-
-        var declarados = componentes.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).ToArray();
-        if (declarados.Distinct(StringComparer.Ordinal).Count() != declarados.Length)
-        {
-            problemas.Add(ComponenteDuplicado);
-        }
+        var idiomaInterno = IdiomaConversacion.Crear(idioma);
+        var resultado = resolutor.Resolver(plantillaRef, idiomaInterno);
+        var disponible = resultado as ResultadoPlantillaCanal.Disponible;
+        var noDisponible = resultado as ResultadoPlantillaCanal.NoDisponible;
 
         return new MapeoPlantillaMetaEvaluado(
             plantillaRef,
             idioma,
-            // Misma política que el envío real: el par resuelve o no resuelve.
-            Configurado: opciones.TryResolver(plantillaRef, idioma, out _),
-            nombreConfigurado,
-            idiomaMetaConfigurado,
-            declarados,
-            problemas,
+            Configurado: disponible is not null,
+            disponible is not null || noDisponible!.NombreConfigurado,
+            disponible is not null || noDisponible!.IdiomaMetaConfigurado,
+            disponible?.Componentes ?? noDisponible!.Componentes,
+            noDisponible?.Problemas ?? [],
             campanias);
     }
-
-    private static PlantillaEnvioInicialConfigurada? ObtenerConfigurada(
-        OpcionesPlantillaEnvioInicial opciones,
-        string plantillaRef,
-        string idioma)
-        => opciones.Mapeos.TryGetValue(plantillaRef, out var porIdioma)
-            && porIdioma.TryGetValue(idioma, out var configurada)
-            ? configurada
-            : null;
 }
 
 /// <summary>Par `plantillaRef + idioma` requerido, con su diagnóstico estructural.</summary>
