@@ -6,15 +6,30 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF 2026-08-16 — `DT-P32-04` IMPLEMENTACIÓN LOCAL 3/3 DONE; SIGUE QA CONTROLADO.**
+> **HANDOFF VIGENTE 2026-08-16 — CÓDIGO CONGELADO CONDICIONADAMENTE PARA CONVENCIÓN 2026.**
+> El artefacto objetivo es `28c3cb1`. Alcance aprobado: ambiente nuevo/exclusivo, base y configuración
+> limpias, una sola campaña parametrizada completa antes de activar, sin edición después del primer
+> envío, WhatsApp real y plantillas Meta aprobadas asociadas en la parametrización. No implementar
+> `DT-P32-05` ni `DT-QA-03` antes de la convención: quedan como deuda post-convención. El siguiente
+> trabajo es operativo, no código: desplegar el artefacto exacto, parametrizar, cargar usuarios,
+> ejecutar D5 y smoke/UAT real, revisar costo/latencia/readiness y cerrar el acta de flags. Si una
+> puerta falla, detener y pedir decisión explícita para descongelar. Leer
+> `Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md`.
+>
+> **HANDOFF HISTÓRICO 2026-08-16 — `DT-P32-04` QA CONTROLADO EJECUTADO: BLOCKED — NO ACTIVAR.**
 > `IdiomaConversacion`, `ContenidoCampaniaEfectivo`, `IResolutorTextosGlobales`,
 > `IResolverPlantillaCanal` e `IPoliticaIdiomaLlm` concentran las cuatro políticas. Runtime y
 > `IReadinessMultiidioma` comparten catálogo, campaña, Meta e idioma LLM; readiness no toca cache/LKG
 > ni reconstruye reglas. Guardas arquitectónicas fijan que las directivas LLM y los códigos Meta solo
 > se produzcan en sus fachadas. Cierre **1030 unitarias + 120 integración** sin Calibración, build
-> Release `-warnaserror`, formato y diff verdes. Strings DTO/Cosmos y frontend intactos; sin Azure,
-> flags, campañas reales ni DT-RUB-01. Siguiente, con autorización y ambiente aislado: repetir QAS/23
-> y QAS/17; no activar el gate fuera de esa ventana.
+> Release `-warnaserror`, formato y diff verdes. El reporte
+> `QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md` comprobó el
+> artefacto desplegado `28c3cb1`, pero dejó el cierre operativo **BLOCKED — NO ACTIVAR**: no hubo
+> aislamiento de salida WhatsApp, D5/UAT/Meta siguen pendientes y se confirmó el defecto P1
+> `DEF-P32-04-01` (archivo creado: `EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md.md`).
+> **Siguiente código: `DT-P32-05`**, rechazar antes de guardar una edición que deje incompleta una
+> campaña activa. Después, `DT-QA-03` incorpora una salida WhatsApp simulada para QA; no repetir a
+> ciegas los PASS actuales ni tocar Azure, flags, campañas reales o DT-RUB-01.
 >
 > **DECISIÓN DE CONTEXTO — `DT-RUB-01` COMPLETA LOCAL 4/4 Y ACEPTADA CONDICIONALMENTE.** El arranque
 > será desde cero: no se importan datos legacy, cada familia operativa tiene una sola versión activa

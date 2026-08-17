@@ -1,5 +1,11 @@
 # 16 — P-32: conversación en español/inglés y textos editables
 
+> **Alcance Convención 2026:** el código `28c3cb1` está congelado condicionadamente para una campaña
+> inmutable en ambiente limpio y con WhatsApp real. Esta guía completa de QA simulada no es la ruta de
+> la convención. Antes del primer envío se ejecutan D5 y smoke/UAT real con teléfonos autorizados,
+> además de parametrización/readiness y acta de flags. Ver
+> `../Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md`.
+
 **Estado:** cortes 1 a 4 DONE local. La API, semillas, caché/LKG, emergencia, snapshot de idioma,
 mensajes globales, enrutamiento, detectores, localizaciones de campaña, envío inicial mixto y los
 contextos LLM están implementados. `DT-P32-02` quedó **3/3 DONE local (2026-08-14)**: la semilla base
@@ -7,8 +13,10 @@ contextos LLM están implementados. `DT-P32-02` quedó **3/3 DONE local (2026-08
 crea siempre una versión nueva en borrador, el readiness informa el gate real y la activación bilingüe
 exige catálogo activo por idioma. `DT-P32-04` quedó **3/3 DONE local (2026-08-16)**: idioma, contenido
 efectivo, catálogo, plantillas Meta y directivas LLM comparten políticas internas, conservando strings
-en DTO/Cosmos. El gate sigue OFF. Esta guía se ejecuta después de implementar y pasar `QAS/22`; la
-activación productiva requiere además una
+en DTO/Cosmos. **Actualización 2026-08-16:** la corrida del artefacto real quedó `BLOCKED — NO ACTIVAR`
+(reporte `Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md`). No se repite ahora: la
+salida WhatsApp aún es real y existe `DEF-P32-04-01`. Esta guía se retoma, de forma selectiva, después
+de `DT-P32-05` y `DT-QA-03`; la activación general requiere además una
 prueba controlada de ambos idiomas, plantillas Meta aprobadas, D5, UAT, costo/latencia y acta.
 
 ## Qué se quiere comprobar
@@ -34,9 +42,9 @@ cambiar un texto, publicarlo y revertirlo sin pedir una compilación o un despli
    la sesión. El procedimiento humano completo está en `QAS/18_Runbook_Humano_Lanzar_Prueba_P32.md`.
 8. Ejecuta primero `QAS/22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md`. Deben existir
    borradores base válidos y readiness debe explicar cualquier idioma faltante.
-9. La simulación entrante observada el 2026-08-13 no desactiva por sí sola el emisor WhatsApp. Confirma
-   ambiente aislado o números de prueba autorizados antes de conversar. Sin esa garantía, marca los
-   pasos conversacionales `BLOCKED`; no envíes a participantes reales.
+9. La simulación entrante no desactiva por sí sola el emisor WhatsApp. No uses teléfonos reales como
+   alternativa: los pasos conversacionales permanecen `BLOCKED` hasta que `DT-QA-03` habilite salida
+   simulada y observable, sin llamadas a Meta.
 10. Confirma que el ambiente ejecuta un artefacto que contiene `DT-P32-04` corte 3/3. Si el corte solo
     existe en el checkout local o no puede identificarse el artefacto desplegado, ejecuta únicamente
     los gates locales permitidos y marca la validación remota como `BLOCKED`; no despliegues por cuenta

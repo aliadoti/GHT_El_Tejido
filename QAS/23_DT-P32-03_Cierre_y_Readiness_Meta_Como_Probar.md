@@ -1,10 +1,17 @@
 # QAS 23 — DT-P32-03/03-01: cierre localizado y readiness Meta
 
-> **Revalidación vigente (2026-08-16):** `DT-P32-04` corte 3/3 centralizó la resolución de contenido,
-> catálogo, plantillas Meta e idioma LLM. Por ese cambio deben repetirse las pruebas 1–7 de esta guía
-> sobre un despliegue autorizado del corte 3/3. Los PASS de 2026-08-15 son baseline, no evidencia del
-> nuevo artefacto. La prueba 7 puede quedar `BLOCKED` si no existe autorización de tráfico real; no se
-> reemplaza con un PASS histórico.
+> **Decisión Convención 2026:** `28c3cb1` queda congelado condicionadamente para una sola campaña
+> inmutable en ambiente limpio y WhatsApp real. La corrida simulada BLOCKED de abajo se conserva como
+> evidencia histórica; no obliga a implementar `DT-P32-05`/`DT-QA-03` antes del evento. D5 y
+> smoke/UAT real sí permanecen obligatorios. Ver
+> `../Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md`.
+
+> **Estado vigente (2026-08-16):** la revalidación de `DT-P32-04` sí se ejecutó contra el artefacto
+> `28c3cb1` y quedó **BLOCKED — NO ACTIVAR**; ver
+> `resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md`. No se repiten ahora
+> las pruebas 1–7: se conserva la evidencia PASS ya obtenida. Primero `DT-P32-05` corrige
+> `DEF-P32-04-01` y `DT-QA-03` aporta salida simulada; después se retoman solo la regresión afectada y
+> los recorridos que quedaron BLOCKED, sin tráfico real hacia Meta.
 
 > **Baseline histórico (2026-08-15): P-32 SMOKE GREEN.** DT-P32-03 y DT-P32-03-01 están desplegadas
 > (`a9f4a6f` y `60b520d`). Las pruebas 1–3 conservan PASS del primer smoke y la revalidación Azure

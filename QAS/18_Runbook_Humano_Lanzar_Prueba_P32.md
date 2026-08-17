@@ -1,21 +1,23 @@
 # 18 — Runbook humano para lanzar la prueba P-32 en Azure
 
+> **No aplica a la operación de Convención 2026.** Este runbook gobierna QA simulada. Para la
+> convención, `Simulacion__Habilitada=false`, no se usa `GHT_DIAG_KEY` y el smoke/UAT autorizado usa
+> WhatsApp real según `../Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md`.
+
 Esta guía la sigue el humano que autoriza y lanza al agente. El agente crea los datos de prueba y
 ejecuta las pruebas; el humano controla el acceso temporal y los secretos.
 
 ## Antes de iniciar
 
-1. Confirma que usarás un **ambiente aislado de pruebas**, nunca producción. Verifica además el canal
-   saliente: la simulación entrante no reemplaza el `WhatsAppGateway` real. Debe existir aislamiento
-   del emisor o todos los números deben ser de prueba y estar autorizados.
+1. Confirma que usarás un **ambiente aislado de pruebas**, nunca producción. La simulación entrante no
+   reemplaza el `WhatsAppGateway` real: no lances recorridos conversacionales hasta disponer de la
+   salida simulada y observable de `DT-QA-03`. No se sustituye este requisito con teléfonos reales.
 2. Ten la URL del ambiente y permiso administrativo para el portal y para cambiar su configuración.
 3. Confirma que existen y están activos, sin modificarlos: rúbrica **`rúbrica OpenBrain v3.4`**,
    prompt **`Evaluación con rubrica OpenBrain Thought-Scoring`** y configuración LLM
    **`OpenRouter-Terra`**. El agente los reutiliza; no necesita ni debe recibir la key de OpenRouter.
-4. Si se probará envío real, confirma que las plantillas Meta en inglés están aprobadas. Si no lo están,
-   la prueba de envío real queda `BLOCKED`. Las simulaciones conversacionales solo continúan si el
-   emisor está aislado o usa números de prueba autorizados; `Simulacion__Habilitada=true` por sí sola
-   **no evita llamadas salientes reales a Meta**.
+4. `Simulacion__Habilitada=true` por sí sola **no evita llamadas salientes reales a Meta**. Mientras
+   `DT-QA-03` no esté disponible, registra la conversación como `BLOCKED` y no intentes envío real.
 5. Confirma qué artefacto contiene `DT-P32-04` corte 3/3 y autoriza expresamente su despliegue en el
    ambiente aislado, o confirma que ya está desplegado. El agente de pruebas no hace push ni despliega;
    si no puede identificar esa versión, la validación remota queda `BLOCKED`.

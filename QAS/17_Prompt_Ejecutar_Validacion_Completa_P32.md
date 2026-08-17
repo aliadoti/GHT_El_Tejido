@@ -1,19 +1,25 @@
 # 17 — Prompt para ejecutar la validación completa de P-32
 
+> **Convención 2026:** no usar este prompt de simulación como prerrequisito del freeze. El ambiente
+> exclusivo utilizará WhatsApp real y una campaña inmutable. Aplicar el checklist de
+> `../Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md` y realizar smoke/UAT con
+> teléfonos autorizados. Este prompt queda para QA simulada post-convención.
+
 > Copia el bloque entre INICIO y FIN en el agente que ejecutará la prueba. Sirve para Codex, Claude
 > Code u otro agente con acceso autorizado al ambiente de pruebas. No presupone acceso a Azure ni
 > autoriza cambios remotos.
 >
-> **Estado 2026-08-16:** actualizado para validar `DT-P32-04` corte 3/3. La implementación está local;
-> la parte remota solo aplica cuando un humano confirme que ese artefacto fue desplegado en el ambiente
-> aislado y autorice la ventana.
+> **Estado 2026-08-16:** la validación contra el artefacto desplegado ya ocurrió y quedó **BLOCKED — NO
+> ACTIVAR** (reporte `Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md`). No envíes
+> este prompt para repetirla ahora. Se actualiza después de `DT-P32-05` y `DT-QA-03` para ejecutar solo
+> la regresión afectada y los escenarios antes BLOCKED con salida WhatsApp simulada.
 
 ## Antes de enviarlo
 
-El responsable humano debe confirmar: ambiente aislado, URL, acceso administrativo, plantillas Meta
-inglesas aprobadas si se probará WhatsApp real, presupuesto D5 y la ventana autorizada para encender
-temporalmente el catálogo. El agente crea en cada ejecución los usuarios y campañas de prueba; no
-reutiliza datos de una corrida anterior. Si falta algo, debe dejarlo como BLOCKED.
+El responsable humano debe confirmar: ambiente aislado, URL, acceso administrativo, el modo de salida
+simulada de `DT-QA-03`, presupuesto D5 y la ventana autorizada para encender temporalmente el catálogo.
+No se prueba WhatsApp real. El agente crea datos de prueba solo cuando corresponda a un escenario aún
+BLOCKED; los PASS de la corrida P32-20260816-1955 no se repiten sin una ruta afectada.
 
 ### Acceso seguro para simulación en Azure
 

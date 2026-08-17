@@ -9,13 +9,13 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 SIGUIENTE PASO REQUIERE AUTORIZACIÓN: VALIDACIÓN CONTROLADA `DT-P32-04`.**
-> La implementación local quedó DONE 3/3. Idioma, contenido de campaña, catálogo global, Meta,
-> directivas LLM y readiness comparten políticas; DTO/Cosmos siguen como cadenas. Cierre:
-> **1030 unitarias + 120 integración** sin Calibración, build Release, formato y diff verdes.
-> Siguiente: repetir QAS/23 y QAS/17 en ambiente aislado, manteniendo gate/simulación OFF fuera de
-> la ventana. **No iniciar otro código, no mezclar DT-RUB-01 y no tocar Azure, flags ni campañas
-> reales sin autorización expresa.**
+> **🟢 CONVENCIÓN 2026 — CÓDIGO APROBADO CONDICIONADAMENTE PARA CONGELAMIENTO.** Se desplegará
+> `28c3cb1` en un ambiente nuevo y exclusivo, con base/configuración limpias y una sola campaña que
+> se completa antes de activar y no se edita después del primer envío. La operación usa WhatsApp real
+> y las plantillas Meta ya aprobadas se asocian durante la parametrización. Bajo este alcance,
+> `DT-P32-05` y `DT-QA-03` quedan post-convención y no bloquean el freeze. Antes del envío siguen
+> siendo obligatorios: parametrización completa, usuarios reales, D5, smoke/UAT bilingüe real,
+> costo/latencia, readiness y acta de flags. Ver `../Decision_Congelamiento_Codigo_Convencion_2026.md`.
 >
 > **✅ `DT-RUB-01` — COMPLETA LOCAL 4/4 Y ACEPTADA CONDICIONALMENTE 2026-08-16.** Validación local:
 > build Release `-warnaserror`, 992 unitarias + 120 de integración; portal 70 pruebas y build verde.
@@ -805,7 +805,9 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
 | **DT-P32-03** | **Cierre localizado único y readiness Meta** | **DESPLEGADA 2/2 — `a9f4a6f`** | **Claude** | Cierres QAS/23 1–3 PASS; la semántica posterior quedó cerrada en DT-P32-03-01. Sin código pendiente. |
 | **DT-P32-03-01** | **Readiness del gate solo con campañas activas** | **CERRADA — DESPLEGADA 1/1 + SMOKE GREEN** | **Claude/Codex** | `60b520d`; QAS/23 1–6 PASS en Azure, evidencia Meta aceptada, gate/simulación OFF y clave retirada. P-32 completa queda después de DT-I20-02. |
-| **DT-P32-04** | **Núcleo transversal multidioma** | **IMPLEMENTACIÓN LOCAL 3/3 DONE — QA CONTROLADO PENDIENTE** | **Codex** | Idioma, contenido efectivo, catálogo global, Meta, directivas LLM y readiness comparten políticas sin cambiar strings DTO/Cosmos. Focales 123/123; cierre 1030 + 120 sin Calibración, build/format/diff verdes. Siguiente: QAS/23 + QAS/17 con autorización y ambiente aislado. Sin Azure, remoto ni deuda de rúbricas en este cierre. Spec `Iniciativas/DT-P32-04_*`; plan `planes/DT-P32-04_*`. |
+| **DT-P32-04** | **Núcleo transversal multidioma** | **3/3 DONE; FREEZE CONVENCIÓN APROBADO CON CONDICIONES** | **Codex** | Artefacto `28c3cb1`, gate local 1030 + 120. Alcance: una campaña inmutable, ambiente limpio, WhatsApp real. Parametrización/D5/UAT/acta siguen operativos. |
+| **DT-P32-05** | **Guarda de edición de campaña activa** | **DEUDA POST-CONVENCIÓN — NO BLOQUEA FREEZE** | **Pendiente** | `DEF-P32-04-01` queda fuera del recorrido autorizado porque la campaña no se edita tras activar/enviar. Retomar antes de permitir edición operativa continua. |
+| **DT-QA-03** | **Simulación de salida WhatsApp** | **DIFERIDA POST-CONVENCIÓN — NO BLOQUEA FREEZE** | **Pendiente** | La convención usa WhatsApp real. Retomar para QA aislado posterior. |
 | **DT-I20-02** | **Contrato visible en texto plano y gobierno seguro de prompts** | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | **Claude/Codex** | Preparación autónoma y ocho pruebas PASS con LLM real; familia/campaña QA revertidas sin migrar campañas reales. D5 espera credencial/costo y debe usar una sola versión estructurada idéntica en ambos brazos; no bloquea DT-P32-04. Reporte `QAS/resultados/Resultados_DT-I20-02_2026-08-16.md`. |
 | **DT-RUB-01** | **Rúbrica estructurada y evaluación determinista** | **COMPLETA LOCAL 4/4 — ACEPTADA CONDICIONALMENTE** | **Claude/Codex** | Base limpia, sin datos legacy y una sola versión activa por familia; no crear borradores posteriores mientras esté en uso. Deudas de selección runtime, guardas backend, transición legacy y advertencia prompt/rúbrica quedan post-`DT-P32-04`. Spec §16 y supuesto `aceptacion-condicionada-rubrica-base-limpia-dt-rub-01`. |
 | DT-P27-01 | **Configuración versionada de expresiones determinísticas P-27** | **DONE local — 2/2 (2026-08-08)** | Codex | Validación de vacío/duplicado/límite tras normalizar, descarte completo con fallback y registro seguro; historial append-only de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Backend 821/821 (736+85) y build verdes. Sin edición por campaña, alias nuevos, activación P-27 ni cambio remoto. Spec: `Iniciativas/DT-P27-01_Config_Versionada_Frases_Finalizacion.md`. |
@@ -867,42 +869,40 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **NO HAY OTRO CORTE DE CÓDIGO AUTORIZADO.** `DT-P32-04` quedó 3/3 DONE local. El siguiente paso es
-   preparar y, solo con autorización expresa, ejecutar QAS/23 y QAS/17 en ambiente aislado.
+1. **Congelar código en `28c3cb1`.** No implementar cambios antes de la convención salvo que falle una
+   puerta operativa y exista una decisión explícita de descongelar.
 
-2. **En la validación controlada:** comprobar readiness, cierres y recorrido mixto `es/en`; al terminar,
-   restaurar gate/simulación OFF y retirar cualquier clave temporal según los runbooks. No tratar una
-   precondición humana faltante como FAIL.
+2. **Preparar el ambiente exclusivo desde cero.** Desplegar el artefacto congelado y parametrizar una
+   sola campaña completa, catálogos, rúbrica, prompts, ConfigLLM, mapeos Meta y flags aprobados.
 
-3. **Los tres cortes están cerrados localmente.** No reabrirlos salvo regresión confirmada. Después del
-   QA green, registrar el cierre operativo y pedir prioridad humana para el siguiente código.
+3. **Prohibición operativa:** después de activar o realizar el primer envío no editar campaña,
+   localizaciones, mensajes, preguntas, rúbrica, prompts ni catálogos. `DT-P32-05` queda post-convención.
 
-4. **Al cerrar 3/3:** repetir QAS/23 y QAS/17 según el plan, manteniendo gate/simulación OFF fuera de
-   la ventana autorizada. D5 sigue siendo una operación aparte con credencial y costo autorizados.
+4. **WhatsApp real:** mantener `Simulacion__Habilitada=false`, no usar `GHT_DIAG_KEY` y ejecutar el
+   smoke/UAT con teléfonos autorizados. `DT-QA-03` queda post-convención.
 
 5. **DT-RUB-01 no se modifica durante DT-P32-04.** Base limpia, sin importar legacy y una sola versión
    activa por familia. No crear una v2/borrador para una familia en uso. Después del green multidioma
    se agenda la deuda descrita en DT-RUB-01 §16 antes de habilitar versionado operativo.
 
 6. **Operación previa ya ejecutada:** QAS/21 preparación y pruebas 1–8 PASS; campaña QA archivada y
-   `promptRefs` restaurados. El cierre de flags/clave se controla en el paso 1.
+   `promptRefs` restaurados. La configuración del nuevo ambiente se controla en los pasos 2, 4 y 8.
 
 7. **Pendiente del usuario (no bloquea código):** verificar el `409` a mano en Data Explorer y
    rehacer la prueba de humo de P-31 antes de encender sus flags. **No cargar datos reales** hasta
    que GHT entregue el archivo con `Telefono` diligenciado (`§9`). `I-08 v2` ya está desplegada y
    validada contra Azure (2026-08-08, 13 casos PASS).
 
-8. **En paralelo (operativo, no de código):** validación D5 real, UAT, costo/latencia y acta de flags
+8. **Antes del primer envío (operativo, no de código):** carga de usuarios, D5 real, UAT por WhatsApp,
+   readiness, costo/latencia y acta de flags
    de I-19/I-20/P-24/P-25/P-26/P-27/P-28/P-29/P-30. Todos los flags nuevos permanecen apagados por
    defecto; no desplegar ni modificar configuración remota sin orden.
 9. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 10. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-11. **La aprobación expresa y la prioridad de `DT-P32-04` existen.** Implementa únicamente el corte
-    vigente según la spec y el plan. Consulta solo si aparece una decisión de producto/contrato no
-    resuelta o si el refactor exigiría cambiar DTO, Cosmos, fuentes de contenido o comportamiento.
-12. **La aprobación expresa de P-26, P-27, P-33, `DT-P32-02` y del diseño de `DT-I20-02` ya existe.** Implementa cada iniciativa en el orden y cortes
-    de su spec. Solo vuelve a consultar al usuario si aparece una decisión de producto o contrato no
-    resuelta por esas specs o sus anclas en `SUPUESTOS.md`.
+11. **El código está congelado para la convención.** No implementar iniciativas ni deudas aunque sus
+    specs históricas las describan como siguientes; solo una decisión explícita puede descongelarlo.
+12. Las aprobaciones históricas de P-26, P-27, P-33, `DT-P32-02`, `DT-I20-02` y `DT-P32-04` quedan
+    como trazabilidad, no como autorización para modificar el artefacto congelado.
 13. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.
 14. **Al terminar CADA implementación, escribe una explicación de "Cómo probarlo" clara, natural y en lenguaje humano, para una persona con conocimientos técnicos BAJOS.** Va en el mensaje/chat con el que cierras el trabajo (y, si la iniciativa tiene sección "Cómo probarlo", coincídela). Reglas de ese texto: **resumido** (máx. ~5–8 pasos numerados), sin jerga (nada de nombres de clase, endpoints, flags técnicos ni rutas de código; si hay que nombrar algo, descríbelo por lo que el usuario ve: "la pantalla de Rúbricas", "el botón Ver"); di **qué abrir, qué hacer y qué debería verse** (resultado esperado en palabras simples) y qué significaría que **algo salió mal**. Objetivo: que Jason o alguien de GHT pueda **verificar el cambio sin ayuda técnica**.
 15. Commits atómicos (Conventional Commits, con ID-iniciativa y REQ §/ARQ §; terminando con el trailer de coautoría que el repo exija). **Push a `main` solo cuando el usuario lo pida.** Continúa el bucle.

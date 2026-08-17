@@ -40,7 +40,7 @@ Flujo conversacional completo del coach (cold-start → evaluación → revisió
 | P-33 consulta/cierre visible | **DONE local 3/3; gate OFF** | Usar `QAS/20`: probar consulta pura sin aporte, activo→última sin menú, versión exacta, cierres, afinidad/reapertura, aislamiento y rollback `es/en`. Pendiente D5/UAT y acta de flags. |
 | DT-I20-02 texto plano visible | **DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | Conservar el reporte `Resultados_DT-I20-02_2026-08-16.md`; no migrar campañas reales ni congelar baseline hasta ejecutar D5 comparable. |
 | DT-RUB-01 rúbrica estructurada | **COMPLETA LOCAL 4/4; aceptación condicionada** | Arranque limpio, sin legacy y una versión activa por familia. QAS/24 completo de versionado/legacy queda diferido; no crear v2 en una familia en uso. |
-| DT-P32-04 núcleo multidioma | **IMPLEMENTACIÓN LOCAL 3/3 DONE; QA CONTROLADO PENDIENTE** | Repetir QAS/23 completo y luego QAS/17 sobre un despliegue autorizado del corte 3/3. El readiness debe bloquear si falla catálogo, contenido activo, mapeo Meta o política de idioma LLM. |
+| DT-P32-04 núcleo multidioma | **FREEZE CONVENCIÓN APROBADO CON CONDICIONES** | `28c3cb1` para una campaña inmutable en ambiente limpio usando WhatsApp real. `DT-P32-05` y `DT-QA-03` quedan post-convención. Antes del envío: D5, smoke/UAT real, parametrización/readiness y acta de flags. |
 
 > **Regla de ambigüedad:** ante duda sobre el estado real, asumir el **comportamiento documentado** en `Reglas_Conversacion_y_Participacion.md` y `AVANCES.md`, y **marcar el caso como "Verificar build"**.
 

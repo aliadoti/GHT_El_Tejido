@@ -1,7 +1,12 @@
 # DT-P32-04 — Núcleo transversal multidioma y resolutores especializados
 
-> **Estado:** IMPLEMENTACIÓN LOCAL 3/3 DONE desde 2026-08-16; pendiente repetir QAS/23 y QAS/17
-> en ambiente aislado autorizado antes del cierre operativo.
+> **Estado vigente:** IMPLEMENTACIÓN 3/3 DONE; **freeze de Convención 2026 aprobado con condiciones**
+> para `28c3cb1`, una sola campaña inmutable, ambiente limpio y WhatsApp real. `DT-P32-05` y
+> `DT-QA-03` quedan post-convención. Parametrización, D5, smoke/UAT real y acta de flags son gates
+> operativos. Ver `../Decision_Congelamiento_Codigo_Convencion_2026.md`.
+>
+> **Evidencia histórica:** la QA controlada del 2026-08-16 quedó **BLOCKED — NO ACTIVAR** bajo su
+> alcance de simulación. El reporte confirmó el artefacto y registró `DEF-P32-04-01`.
 > **Naturaleza:** refactor incremental sin cambio funcional ni migración de datos.
 > **Precondiciones cumplidas:** DT-P32-03-01 tiene smoke green; DT-I20-02 está desplegada con QAS/21
 > pruebas 1–8 PASS; DT-RUB-01 fue aceptada condicionalmente para una inicialización limpia. Las deudas
@@ -159,5 +164,6 @@ resolución paralela. Debe poder explicar, sin contenido sensible:
 
 Cada corte debe quedar compilable, probado y reversible. La precondición de DT-P32-03 green ya está
 cumplida. La repriorización humana expresa del 2026-08-16 convierte este refactor en el siguiente
-trabajo de código. Los tres cortes locales terminaron sin mezclar correcciones de DT-RUB-01. El paso
-siguiente es validación controlada QAS/23 + QAS/17, no otro corte de código.
+trabajo de código. Los tres cortes locales terminaron sin mezclar correcciones de DT-RUB-01. La
+validación controlada ya ocurrió contra el artefacto real y descubrió el defecto P1. El paso siguiente
+es `DT-P32-05`; después `DT-QA-03` habilita la salida simulada. No se repite ahora la corrida completa.

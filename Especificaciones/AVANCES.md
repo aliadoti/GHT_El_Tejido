@@ -4,7 +4,27 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Codex, Arquitecto/Backend/SDET):
+- Ultima actualizacion: 2026-08-16 (Codex, Arquitecto/Tech Lead/SDET):
+  **CÓDIGO APROBADO CONDICIONADAMENTE PARA CONGELAMIENTO — CONVENCIÓN 2026.** El alcance confirmado
+  es una sola campaña en un ambiente nuevo y exclusivo, con base/configuración limpias, plantillas
+  Meta aprobadas, WhatsApp real y prohibición operativa de editar después de activar o enviar.
+  Bajo ese alcance, `DT-P32-05` y `DT-QA-03` pasan a deuda post-convención y no bloquean el freeze.
+  El artefacto conserva el gate local verde de **1030 unitarias + 120 integración** sin Calibración.
+  Siguen siendo puertas de operación, no código pendiente: despliegue del artefacto congelado,
+  parametrización completa, usuarios reales, D5, smoke/UAT por WhatsApp real, costo/latencia y acta
+  de flags. Decisión completa en `Decision_Congelamiento_Codigo_Convencion_2026.md`.
+- Actualizacion anterior: 2026-08-16 (Codex, Arquitecto/Backend/SDET):
+  **`DT-P32-04` QA CONTROLADO EJECUTADO — BLOCKED, NO ACTIVAR.** El reporte
+  `QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md` verificó por
+  GET de Kudu VFS que el artefacto desplegado contiene el corte 3/3 de `28c3cb1`; conserva como PASS
+  el gate local (1030 unitarias + 120 integración sin Calibración). No se logró una conversación
+  segura: `Simulacion__Habilitada` simula solo entrada y el emisor saliente sigue siendo real. D5,
+  UAT y confirmación manual de Meta continúan BLOCKED. Se registró P1 `DEF-P32-04-01` en
+  `EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md.md`: una edición puede dejar activa una
+  campaña bilingüe incompleta. **Siguiente código: `DT-P32-05`**; después, `DT-QA-03` para simular
+  también la salida. No repetir ahora la corrida completa, no activar gate y el operador debe
+  confirmar gate/simulación OFF y retiro de `GHT_DIAG_KEY`.
+- Actualizacion anterior: 2026-08-16 (Codex, Arquitecto/Backend/SDET):
   **`DT-P32-04` IMPLEMENTACIÓN LOCAL 3/3 DONE — núcleo transversal completo.**
   `IResolutorTextosGlobales` delega el runtime al catálogo vigente y diagnostica sin tocar cache/LKG;
   `IResolverPlantillaCanal` es el único puente entre alias/idioma interno y nombre/código Meta;
@@ -1695,7 +1715,9 @@
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
 | DT-P32-03 | Cierre localizado único y readiness de plantillas Meta | **DESPLEGADA 2/2 (`a9f4a6f`)** | cierres QAS/23 1–3 PASS | backend 854 + 105, portal 60 | Resolutor único sin fallback cruzado y readiness Meta. La semántica de borradores se cerró en DT-P32-03-01; no queda código pendiente. |
 | DT-P32-03-01 | Readiness solo con campañas activas | **CERRADA: DESPLEGADA 1/1 + SMOKE GREEN (2026-08-15)** | `60b520d` | backend 863 + 109, portal 62; QAS/23 1–6 PASS en Azure | Borradores visibles sin bloquear, guarda propia al activar con gate ON y evidencia Meta aceptada. Gate/simulación OFF y clave retirada. Reporte `Resultados_P32_Smoke_DT-P32-03-01_2026-08-15.md`. P-32 completa queda después de DT-I20-02. |
-| DT-P32-04 | Núcleo transversal multidioma | **IMPLEMENTACIÓN LOCAL 3/3 DONE; QA CONTROLADO PENDIENTE (2026-08-16)** | pendiente | focales 123/123; cierre 1030 + 120 sin Calibración; build/format/diff verdes | `IdiomaConversacion`, contenido efectivo, catálogo global, Meta, directivas LLM y readiness comparten políticas; strings Cosmos/API intactos. Siguiente: QAS/23 + QAS/17 con autorización, luego cierre operativo. Sin Azure, remoto ni DT-RUB-01 en este corte. Spec `Iniciativas/DT-P32-04_*`; plan `planes/DT-P32-04_*`. |
+| DT-P32-04 | Núcleo transversal multidioma | **3/3 DONE; APROBADO CONDICIONALMENTE PARA CONVENCIÓN (2026-08-16)** | artefacto `28c3cb1` confirmado | focales 123/123; cierre 1030 + 120 sin Calibración; build/format/diff verdes | Freeze para una campaña inmutable en ambiente limpio y exclusivo, usando WhatsApp real. D5/UAT/parametrización siguen como gates operativos. Ver `Decision_Congelamiento_Codigo_Convencion_2026.md`. |
+| DT-P32-05 | Guarda de edición de campaña activa | **DEUDA ACEPTADA POST-CONVENCIÓN — NO BLOQUEA FREEZE** | pendiente | pendiente | El defecto existe, pero queda fuera del recorrido autorizado: la única campaña se completa antes de activar y no se edita después del primer envío. |
+| DT-QA-03 | Simulación de salida WhatsApp | **DIFERIDA POST-CONVENCIÓN — NO BLOQUEA FREEZE** | pendiente | pendiente | La convención usa entrada y salida reales de WhatsApp; la simulación observable queda para QA posterior. |
 | DT-I20-02 | Contrato visible en texto plano y gobierno seguro de prompts | **IMPLEMENTADA/DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED (2026-08-16)** | `3be6118`/`efe0a99`/`f7c2da3` | backend 925 + 112 al cierre; Azure: 24 mensajes/11 evaluaciones sin hallazgos visibles | Familia y campaña QA creadas/revertidas; gobierno v1/v2 probado. D5 espera credencial/costo y debe usar una sola versión estructurada idéntica en ambos brazos. Sin migración real. Reporte `Resultados_DT-I20-02_2026-08-16.md`. |
 | DT-RUB-01 | Rúbrica estructurada y evaluación determinista | **COMPLETA LOCAL 4/4 — ACEPTADA CONDICIONALMENTE (2026-08-16)** | `551051c`/`b2b1120`/`5b13ebf`/`71043e3`/`20ee675` | build y suites locales verdes; revisión arquitectónica documentada | Arranque limpio, sin legacy, una sola versión activa por familia y sin borradores posteriores. Deudas post-`DT-P32-04` en spec §16; no bloquea el corte 1/3 multidioma. |
 | DT-QA-01 | Inyección de webhook simulado de diagnóstico | DONE local; despliegue pendiente | pendiente | 7 integraciones focalizadas verdes | `X-Diag-Key` + gating de simulación, payload estándar a `IColaWebhook`, id derivado para dedupe y `LogSeguridad` sin PII. Firma real intacta. |
@@ -2546,3 +2568,16 @@
   impiden reintroducir resoluciones paralelas. Focales 123/123; cierre 1030 + 120 sin Calibración,
   build Release, formato y diff verdes. DTO/Cosmos intactos; sin frontend, Azure, remoto, DT-RUB-01
   ni QA controlado. Handoff: repetir QAS/23 y QAS/17 con autorización antes del cierre operativo.
+- 2026-08-16 - Codex - **QA controlado de DT-P32-04 consolidado — BLOCKED, NO ACTIVAR.** Rol:
+  Arquitecto/Backend/SDET. El reporte `Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md`
+  confirma el artefacto desplegado `28c3cb1` y conserva la evidencia local verde (1030 + 120). La
+  simulación disponible solo inyecta entrada; no sustituye el `WhatsAppGateway` real, por lo que no
+  se enviaron mensajes. D5/UAT/Meta quedaron BLOCKED. Se registró `DEF-P32-04-01` por edición
+  inválida de campaña activa. Handoff: implementar primero `DT-P32-05`; luego especificar/implementar
+  `DT-QA-03` para salida simulada y reejecutar solo casos afectados o antes BLOCKED, no los PASS
+  ajenos. Sin cambio Azure, flags, secretos ni DT-RUB-01.
+- 2026-08-16 - Codex - **Decisión de congelamiento para Convención 2026: APROBADA CONDICIONADAMENTE.**
+  Rol: Arquitecto/Tech Lead/SDET. El usuario acotó el uso a una campaña inmutable, ambiente nuevo y
+  limpio, WhatsApp real y plantillas Meta aprobadas. `DT-P32-05` y `DT-QA-03` quedan post-convención;
+  no bloquean código. Parametrización, usuarios, D5, smoke/UAT real, costo/latencia y acta de flags
+  siguen siendo puertas obligatorias antes del primer envío. Sin cambios de código ni remoto.

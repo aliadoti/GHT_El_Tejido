@@ -108,6 +108,19 @@
 
 ## Supuestos registrados
 
+### freeze-convencion-2026 - Una campaña inmutable en ambiente limpio
+- Contexto: la convención usará un ambiente nuevo y exclusivo, base/configuración desde cero, una
+  sola campaña, servicios reales de WhatsApp y plantillas Meta ya aprobadas. Usuarios y contenido
+  definitivo se entregan durante la parametrización.
+- Decisión: el código `28c3cb1` queda aprobado condicionadamente para congelamiento. `DT-P32-05` no
+  bloquea porque está prohibido editar la campaña después de activarla o del primer envío;
+  `DT-QA-03` no bloquea porque la simulación no se usa en la convención.
+- Consecuencia: parametrización, carga de usuarios, D5, smoke/UAT real, costo/latencia, readiness y
+  acta de flags son gates obligatorios de operación, no trabajo de código. Un cambio posterior a la
+  activación o un gate fallido exige detenerse y decidir si se descongela.
+- Trazabilidad: `Decision_Congelamiento_Codigo_Convencion_2026.md`, `DT-P32-04`, `DT-P32-05`,
+  `DT-QA-03`, QAS/16–18 y QAS/23.
+
 ### integridad-estructural-rubrica-dt-rub-01 - Cómo se decide que una rúbrica legacy no está verificada
 - Fecha: 2026-08-16 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/SDET - Commit: corte 1/4 de `DT-RUB-01`.
 - Contexto: `DT-RUB-01 §3.2` exige marcar `legacy_no_verificada` o `invalida` cuando «las
@@ -1497,3 +1510,16 @@
   borra versiones/evaluaciones.
 - Spec: `Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md`; plan:
   `planes/DT-RUB-01_Plan_Implementacion.md`; QAS: `QAS/24_*`.
+
+### simulacion-salida-whatsapp-dt-qa-03 - La QA conversacional no usa WhatsApp real
+- Fecha: 2026-08-16 - Agente/Rol: Usuario/Codex - Arquitecto/SDET/AppSec - Commit: pendiente.
+- Contexto: la corrida P32-20260816-1955 demostró que `Simulacion__Habilitada` inyecta solo entrada;
+  el envío saliente mantiene `WhatsAppGateway` real. El ambiente desplegado es de pruebas y el
+  usuario indicó que las pruebas deben simular la interacción WhatsApp.
+- Decisión: antes de reintentar recorridos conversacionales P-32 se implementa una salida simulada,
+  observable y explícitamente autorizada (`DT-QA-03`). No se usan teléfonos reales ni Meta como
+  sustituto de esa simulación. Fuera de QA el gateway real conserva su comportamiento.
+- Alternativa(s) descartada(s): aislar el emisor o autorizar teléfonos de prueba para esta corrida;
+  seguir solo con simulación entrante (no evita tráfico saliente); cambiar App Settings remotos ahora.
+- Impacto / reversibilidad: gateado por configuración futura fail-closed y sin secretos/PII en la
+  evidencia. No modifica los mapeos existentes de plantillas `es/en`, DTO/Cosmos ni Azure en este paso.

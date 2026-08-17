@@ -6,7 +6,17 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 12-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> **Última revisión: 2026-08-16 — `DT-P32-04` implementación local 3/3 DONE.** `DT-P32-03-01` tiene smoke
+> **Última revisión: 2026-08-16 — freeze de código aprobado condicionadamente para Convención 2026.**
+> Se usará `28c3cb1` en un ambiente nuevo/exclusivo, con una sola campaña inmutable y WhatsApp real.
+> `DT-P32-05` y `DT-QA-03` quedan post-convención; parametrización, usuarios, D5, smoke/UAT y acta de
+> flags siguen siendo gates operativos. Decisión: `../Decision_Congelamiento_Codigo_Convencion_2026.md`.
+>
+> **Revisión histórica 2026-08-16 — `DT-P32-04` QA controlado BLOCKED, NO ACTIVAR.** El reporte
+> `QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md` confirmó el
+> artefacto 3/3 de `28c3cb1`, pero no habilita operación: la salida WhatsApp no está simulada,
+> D5/UAT/Meta siguen pendientes y `DEF-P32-04-01` confirma que una campaña activa puede quedar
+> bilingüe incompleta. Sigue como próximo código `DT-P32-05`; luego `DT-QA-03` para simular salida.
+> `DT-P32-03-01` tiene smoke
 > green y `DT-I20-02` está desplegada con QAS/21 pruebas 1–8 PASS. `DT-RUB-01` quedó completa local
 > 4/4 y fue aceptada condicionalmente para una inicialización sin datos legacy y con una sola versión
 > activa por familia, sin borradores posteriores. Sus deudas se retoman después del green multidioma.
@@ -131,7 +141,9 @@
 | **DT-P32-02** | [DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md](DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md) | **DONE/DESPLEGADA — 3/3** | Base `es/en`, edición masiva JSON, límites, readiness editorial y bloqueo de campaña bilingüe implementados; QAS/22 pasó en Azure. La corrida posterior abrió DT-P32-03. |
 | **DT-P32-03** | [DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md](DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md) | **DESPLEGADA — 2/2** | Cierre bilingüe demostrado; smoke 1–4 y 6 PASS. La semántica descubierta en prueba 5 se corrige aparte en DT-P32-03-01. |
 | **DT-P32-03-01** | [DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md](DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md) | **CERRADA — 1/1 + SMOKE GREEN** | `60b520d` desplegado; QAS/23 1–6 PASS y evidencia Meta aceptada. Gate/simulación OFF. |
-| **DT-P32-04** | [DT-P32-04_Nucleo_Transversal_Multidioma.md](DT-P32-04_Nucleo_Transversal_Multidioma.md) | **IMPLEMENTACIÓN LOCAL 3/3 DONE — QA CONTROLADO PENDIENTE** | Idioma, contenido efectivo, catálogo global, Meta, directivas LLM y readiness comparten políticas sin cambiar DTO/Cosmos. Cierre 1030 + 120 sin Calibración. Sigue QAS/23 + QAS/17 con autorización; sin remoto ni DT-RUB-01 en este cierre. |
+| **DT-P32-04** | [DT-P32-04_Nucleo_Transversal_Multidioma.md](DT-P32-04_Nucleo_Transversal_Multidioma.md) | **3/3 DONE; FREEZE CONVENCIÓN APROBADO CON CONDICIONES** | `28c3cb1`, cierre local 1030 + 120. Una campaña inmutable, ambiente limpio y WhatsApp real; D5/UAT/parametrización son gates operativos. |
+| **DT-P32-05** | [DT-P32-05_Guarda_Edicion_Campana_Activa.md](DT-P32-05_Guarda_Edicion_Campana_Activa.md) | **DEUDA POST-CONVENCIÓN — NO BLOQUEA FREEZE** | Mitigada por prohibición de editar después de activar/enviar; necesaria antes de permitir edición continua. |
+| **DT-QA-03** | [DT-QA-03_Simulacion_Salida_WhatsApp.md](DT-QA-03_Simulacion_Salida_WhatsApp.md) | **DIFERIDA POST-CONVENCIÓN — NO BLOQUEA FREEZE** | La convención usa WhatsApp real; simulación observable queda para QA posterior. |
 | **DT-I20-02** | [DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md](DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md) | **DESPLEGADA 3/3; QAS/21 1–8 PASS; D5 BLOCKED** | Contrato visible, gobierno runtime y prompt candidato demostrados con LLM real. D5 espera credencial y una rúbrica íntegra; no migrar campañas reales. |
 | **DT-RUB-01** | [DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md](DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md) | **COMPLETA LOCAL 4/4 — ACEPTADA CONDICIONALMENTE** | Estructura canónica y evaluación determinista implementadas. La aceptación exige base limpia, sin legacy y una sola versión activa por familia; no crear borradores posteriores. Deudas de selección runtime, guardas backend, transición legacy y advertencia prompt/rúbrica quedan post-`DT-P32-04` en §16. El inventario/migración no se ejecuta en este arranque. |
 | DT-P27-01 | [DT-P27-01_Config_Versionada_Frases_Finalizacion.md](DT-P27-01_Config_Versionada_Frases_Finalizacion.md) | **DONE local 2/2 — 2026-08-08** | Validación tras normalizar (vacío/duplicado/límite) con descarte completo y fallback; historial append-only seguro de versión aplicada/default/descartada y rollback desde el origen de configuración o al default. Sin alias nuevos, flags, edición por campaña ni configuración remota. |

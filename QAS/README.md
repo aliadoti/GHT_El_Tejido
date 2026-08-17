@@ -74,10 +74,18 @@ la evidencia Meta fue aceptada y el cierre operativo dejó gate/simulación OFF.
 habilita DT-I20-02 corte 1/3. P-32 continúa abierta para QAS/17 completa y la prueba 7 del lote mixto
 real después de DT-I20-02.
 
-**Actualización 2026-08-16:** `DT-P32-04` quedó implementada localmente 3/3. Como centralizó las rutas
-de catálogo, campaña, Meta e idioma del LLM, su cierre exige desplegar ese corte únicamente con
-autorización, repetir **QAS/23 completo** y después **QAS/17**. Los PASS históricos sirven como
-baseline, pero no sustituyen esta regresión. El gate y la simulación permanecen OFF fuera de la ventana.
+**Actualización 2026-08-16:** la corrida contra el artefacto real de `DT-P32-04` quedó registrada en
+`resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md`: **BLOCKED — NO
+ACTIVAR**. No se repite ahora; los PASS ya obtenidos permanecen como evidencia. Antes de reintentar
+los recorridos BLOCKED se corrige `DEF-P32-04-01` (`DT-P32-05`) y se implementa una salida WhatsApp
+simulada (`DT-QA-03`), porque la simulación actual solo cubre entrada. D5, UAT y plantillas Meta son
+puertas separadas. Gate y simulación deben permanecer OFF hasta confirmación humana.
+
+**Decisión posterior 2026-08-16:** para la Convención 2026 se congela condicionadamente `28c3cb1`
+con una sola campaña inmutable, ambiente limpio y WhatsApp real. Por ese alcance, `DT-P32-05` y
+`DT-QA-03` se difieren post-convención. D5, smoke/UAT con teléfonos autorizados, parametrización,
+readiness y acta de flags continúan como gates antes del primer envío. Ver
+`../Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md`.
 
 **`I-08 v2` (carga masiva con la plantilla oficial de GHT) está completa** y es lo último que entró.
 Cambia cosas que afectan a varias pruebas, así que conviene leerlo antes de ejecutar:

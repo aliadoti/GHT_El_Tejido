@@ -1,5 +1,10 @@
 # Plan de implementación — DT-P32-04
 
+> **Estado vigente:** 3/3 DONE y congelado condicionadamente para Convención 2026. La instrucción
+> histórica de implementar `DT-P32-05`/`DT-QA-03` antes de otra QA simulada no aplica al camino de
+> convención, que usa una campaña inmutable y WhatsApp real. Ver
+> `../Decision_Congelamiento_Codigo_Convencion_2026.md`.
+
 ## Precondición
 
 **Cumplida el 2026-08-16:** DT-P32-03-01 tiene smoke green y DT-I20-02 quedó desplegada con QAS/21
@@ -59,5 +64,7 @@ cierre 1030 unitarias + 120 integración sin Calibración, build Release `-warna
 - portal solo si cambia la proyección de readiness;
 - `git diff --check`.
 
-Después del corte 3, repetir QAS/23 y QAS/17 en una ventana autorizada antes de considerar el
-refactor cerrado operativamente.
+Históricamente, la corrida controlada posterior se ejecutó contra `28c3cb1` y quedó **BLOCKED — NO
+ACTIVAR** (reporte `QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md`).
+Para una futura QA simulada, primero `DT-P32-05` corrige `DEF-P32-04-01` y luego `DT-QA-03` aporta
+salida observable. Para la convención ambos quedan post-evento; D5 y smoke/UAT real permanecen gates.
