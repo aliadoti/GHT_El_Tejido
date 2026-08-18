@@ -1,0 +1,121 @@
+name: Deploy Producción
+
+# CD de PRODUCCIÓN. Se dispara SOLO con un tag de release (v*) y exige aprobación humana
+# a través del GitHub Environment "production". Publica exactamente el commit etiquetado.
+# El workflow de dev/QAS (deploy.yml) NO se ve afectado: está atado a push sobre main.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag de release a desplegar (ej. v1.0.0-convencion)'
+        required: true
+
+permissions:
+  id-token: write   # requerido para OIDC
+  contents: read
+
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    # El environment aporta tres cosas:
+    #   (a) el gate de aprobación humana (required reviewers),
+    #   (b) las Variables propias de producción, que tienen precedencia sobre las del repo,
+    #   (c) el subject OIDC `repo:<org>/<repo>:environment:production`, que debe coincidir
+    #       con la credencial federada de tipo Environment creada en Entra ID.
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      # Evidencia auditable de qué se publicó exactamente.
+      - name: Registrar el commit que se despliega
+        run: |
+          echo "Ref:    ${{ github.event.inputs.tag || github.ref_name }}"
+          echo "Commit: $(git rev-parse HEAD)"
+
+      # 1) Build del SPA Angular. outputPath ya apunta a src/ElTejido.Api/wwwroot.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: src/ElTejido.Web/package-lock.json
+      - working-directory: src/ElTejido.Web
+        run: npm ci
+      - working-directory: src/ElTejido.Web
+        run: npm run build -- --configuration production
+
+      # 2) Build + publish del backend (incluye wwwroot con el SPA).
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet publish src/ElTejido.Api/ElTejido.Api.csproj -c Release -o ./publish
+
+      # 3) GUARDA DE DESTINO. Las variables de Environment tienen precedencia sobre las de
+      #    repositorio; si el Environment `production` no las define, `vars.*` cae silenciosamente
+      #    a los valores de repo, que apuntan al App Service de dev/QAS (app-eltejido-mvp).
+      #    Esta guarda convierte ese fallo silencioso en un fallo ruidoso ANTES de tocar Azure.
+      - name: Verificar que el destino es producción
+        run: |
+          destino="${{ vars.AZURE_WEBAPP_NAME }}"
+          grupo="${{ vars.AZURE_RESOURCE_GROUP }}"
+          cliente="${{ vars.AZURE_CLIENT_ID }}"
+          fallo=0
+          if [ -z "$cliente" ]; then
+            echo "::error::AZURE_CLIENT_ID no está definida."; fallo=1
+          fi
+          if [ "$destino" != "app-eltejido-prod-eus2" ]; then
+            echo "::error::Destino '$destino' no es el App Service de producción."
+            echo "::error::Revisa las Environment variables de 'production' (guía §10.4.1)."
+            fallo=1
+          fi
+          if [ "$grupo" != "rg-eltejido-prod-eus2" ]; then
+            echo "::error::Grupo '$grupo' no es el resource group de producción."; fallo=1
+          fi
+          [ "$fallo" -eq 0 ] || exit 1
+          echo "Destino verificado: $destino en $grupo"
+
+      # 4) Login a Azure por OIDC y despliegue al App Service de producción.
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: azure/webapps-deploy@v3
+        id: deploy
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: ./publish
+
+      # 5) Smoke test: /health debe responder 200 tras el despliegue.
+      #    El fallback usa `az webapp show -g` (no `az webapp list`) porque el service principal
+      #    solo tiene permisos sobre el resource group de producción.
+      - name: Smoke test /health
+        run: |
+          url="${{ steps.deploy.outputs.webapp-url }}"
+          if [ -z "$url" ]; then
+            host=$(az webapp show \
+              -g "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              -n "${{ vars.AZURE_WEBAPP_NAME }}" \
+              --query defaultHostName -o tsv)
+            [ -n "$host" ] && url="https://$host"
+          fi
+          url="${url%/}"
+          echo "Smoke test contra: $url/health"
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS "$url/health"; then echo; echo "health OK"; exit 0; fi
+            echo "reintento $i..."; sleep 10
+          done
+          echo "El smoke test de /health falló"; exit 1

@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md.md",
+                "file": "Guias_Implementacion/Plan_Ambiente_Produccion_El_Tejido.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md"
+              "title": "Plan_Ambiente_Produccion_El_Tejido"
             }
           }
         ],
@@ -95,7 +95,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 354.3000183105469
+    "width": 354.3000183105469,
+    "collapsed": true
   },
   "right": {
     "id": "1e371abced1fb1bf",
@@ -202,13 +203,19 @@
   },
   "active": "f83ad7aa300cd713",
   "lastOpenFiles": [
+    "EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md.md",
+    "Guias_Implementacion/Plan_Ambiente_Produccion_El_Tejido.md",
+    "Guias_Implementacion/Manual_Tecnico_Alto_Nivel_El_Tejido.md.tmp.24032.40d04e19cbf6",
+    "Guias_Implementacion/Manual_Tecnico_Alto_Nivel_El_Tejido.md.tmp.24032.067415b6ae2c",
+    "Guias_Implementacion/Manual_Tecnico_Alto_Nivel_El_Tejido.md",
+    "Guias_Implementacion/Manual_Tecnico_Alto_Nivel_El_Tejido.md.tmp.24032.7741ce01e31f",
+    "Guias_Implementacion/Manual_Administrador_Parametrizar_Campania.md",
     "Especificaciones/Decision_Congelamiento_Codigo_Convencion_2026.md",
     "Especificaciones/planes/DT-QA-03_Plan_Simulacion_Salida_WhatsApp.md",
     "Especificaciones/Iniciativas/DT-QA-03_Simulacion_Salida_WhatsApp.md",
     "Especificaciones/planes/DT-P32-05_Plan_Guarda_Edicion_Campana_Activa.md",
     "Especificaciones/Iniciativas/DT-P32-05_Guarda_Edicion_Campana_Activa.md",
     "Especificaciones/Iniciativas/DT-P32-04_Nucleo_Transversal_Multidioma.md",
-    "EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md.md",
     "QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md",
     "QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md.tmp.24032.1828ebd15547",
     "QAS/resultados/Resultados_P32_Multidioma_2026-08-16.md",
@@ -218,9 +225,6 @@
     "tests/ElTejido.UnitTests/WhatsApp/ResolverPlantillaCanalTests.cs",
     "tests/ElTejido.UnitTests/Evaluacion/PoliticaIdiomaLlmTests.cs",
     "src/ElTejido.Application/Evaluacion/PoliticaIdiomaLlm.cs",
-    "src/ElTejido.Application/WhatsApp/ResolverPlantillaCanal.cs",
-    "src/ElTejido.Application/Configuracion/ResolutorTextosGlobales.cs",
-    "tests/ElTejido.UnitTests/Campanas/ResolutorContenidoCampaniaTests.cs",
     "Especificaciones/planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md",
     "Especificaciones/Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md",
     "Especificaciones/Iniciativas/D5_Banco_Calibracion.md",
@@ -235,9 +239,6 @@
     "Especificaciones/Iniciativas/DT-P32-03-01_Readiness_Gate_Solo_Campanias_Activas.md",
     "QAS/resultados/Resultados_P32_Smoke_DT-P32-03_2026-08-15.md",
     "Guias_Implementacion/20260814_Tabla_multiidioma.md",
-    "Guias_Implementacion/20260814_Acciones_Operativas_Plantillas_Meta_P32.md",
-    "QAS/23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md",
-    "Especificaciones/planes/DT-P32-04_Plan_Refactor_Multidioma.md",
     "Client_partner/flujo_participante_tejido.png",
     "QAS/resultados/2026-08-06/portal_login.png",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",
