@@ -6,7 +6,14 @@
 > `Presentacion/20260711_Plan_Desarrollo_Mitigacion_Riesgos.md` (riesgos RL/RO y decisiones D1–D9).
 > **Hito inamovible:** 12-ago-2026, envío del mensaje de inicio de campaña.
 > **Convención: ≈24-sep-2026 (confirmada por GHT).**
-> **Última revisión: 2026-08-16 — freeze de código aprobado condicionadamente para Convención 2026.**
+> **Última revisión: 2026-08-20 — hotfix determinista DT-P33-01 listo localmente.** `ff54bb0` ya está
+> desplegado con clasificación semántica y visibilidad de idea ON. El caso real de conformidad inglesa
+> posterior a consulta abrió un hotfix acotado: afinidad P-33 + alias exacto se resuelven antes del LLM.
+> La semilla y el catálogo inglés se ampliaron; la v3 fue importada como borrador y aún no está activa.
+> Gate local: 1053 unitarias + 121 integración, build/formato/diff verdes. Siguiente: commit, despliegue,
+> activar v3, smoke dirigido y completar QAS/25+D5+acta.
+>
+> **Revisión anterior: 2026-08-16 — freeze de código aprobado condicionadamente para Convención 2026.**
 > Se usará `28c3cb1` en un ambiente nuevo/exclusivo, con una sola campaña inmutable y WhatsApp real.
 > `DT-P32-05` y `DT-QA-03` quedan post-convención; parametrización, usuarios, D5, smoke/UAT y acta de
 > flags siguen siendo gates operativos. Decisión: `../Decision_Congelamiento_Codigo_Convencion_2026.md`.
@@ -137,6 +144,7 @@
 | P-31 | [P-31_Resumen_Consolidacion_Por_Umbral.md](P-31_Resumen_Consolidacion_Por_Umbral.md) | 2026-08-06/07 | **DONE 3/3 y DESPLEGADO (2026-08-07)** — commits `6ba6ce0`/`32794fb`/`6d02492`; build Release, 664 unitarias + 77 integración, formato y `git diff --check` verdes; E2E simulada y guía `QAS/14_*`. **Flags OFF**: encenderlos exige D5 real, UAT, costo y acta de flags, y elegir el umbral (rango útil 0.40–0.55 con base 0.6). La consulta bajo demanda se resolvió como P-33 y no cambia este alcance. Umbral de resumen propio (`umbralResumenConsolidacion`, global/campaña/pregunta) **independiente** del umbral de madurez: al cruzarlo con la idea **abierta**, el turno de coaching lleva la consolidación vigente insertada server-side y una pregunta de continuidad. Sin estado conversacional nuevo, sin consumir repreguntas, idempotente por idea y sin dependencia de los flags de P-27. Kill-switch `Conversacion:ResumenConsolidacionHabilitado` OFF. |
 | P-32 | [P-32_Conversacion_Multidioma_y_Catalogo_Textos.md](P-32_Conversacion_Multidioma_y_Catalogo_Textos.md) | **DONE local 2026-08-11** | **4/4 cortes locales completos.** Catálogo versionado y portal, snapshots, textos globales, localizaciones de campaña, envío mixto y contextos LLM bilingües. Backend: 768 unitarias + 87 integración; Prettier verde. Gate OFF; no hubo despliegue, push ni cambio remoto. Activar exige D5/UAT, plantillas Meta inglesas aprobadas y revisión de costo. |
 | P-33 | [P-33_Consulta_y_Cierre_Visible_de_la_Idea.md](P-33_Consulta_y_Cierre_Visible_de_la_Idea.md) | **DONE local 3/3 — 2026-08-13** | Consulta pura de la idea activa/última sin menú, aporte ni evaluación; versión exacta I-19 por demanda y en cierres normales; afinidad de 24 h y reapertura de la misma cerrada ante corrección sustantiva. Gate global OFF, opt-outs por campaña, catálogo `es/en`, telemetría sin contenido y QAS `20_*`. Build `-warnaserror`: 789 unitarias + 87 integración. Pendiente D5/UAT y acta de flags; sin activación remota. |
+| **DT-P33-01** | [DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md](DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md) | **BASE DESPLEGADA; HOTFIX LOCAL — 2026-08-20** | `ff54bb0` desplegado y gates semántico/visibilidad ON. Hotfix: afinidad P-33 + `frases.confirmar` exacta prevalecen sin LLM/tokens; mixto/fallback = aporte. Siete alias en semilla y catálogo inglés v3 borrador. Gate local: 1053 unitarias + 121 integración. Pendiente commit/deploy, activar v3, smoke, QAS/25, D5 y acta. |
 | **DT-I20-01** | [DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md](DT-I20-01_Variacion_y_No_Duplicacion_Redaccion_Conversacional.md) | **DONE local 5/5 — 2026-08-13** | I-20: permite ocasionalmente `Queda claro que...`, pero elimina su uso sistemático y descarta de forma determinista el puente duplicado frente al cuerpo insertado por el servidor. Todas las campañas reciben la corrección en mensajes nuevos; sin flag, migración, API, portal ni cambios históricos. QAS: `QAS/19_*`. |
 | **DT-P32-02** | [DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md](DT-P32-02_Semillas_Edicion_Masiva_y_Readiness_Catalogo_Textos.md) | **DONE/DESPLEGADA — 3/3** | Base `es/en`, edición masiva JSON, límites, readiness editorial y bloqueo de campaña bilingüe implementados; QAS/22 pasó en Azure. La corrida posterior abrió DT-P32-03. |
 | **DT-P32-03** | [DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md](DT-P32-03_Cierre_Localizado_y_Readiness_Plantillas_Meta.md) | **DESPLEGADA — 2/2** | Cierre bilingüe demostrado; smoke 1–4 y 6 PASS. La semántica descubierta en prueba 5 se corrige aparte en DT-P32-03-01. |
@@ -371,6 +379,7 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | P-02 plantilla de inicio | `MensajeInicial.PlantillaWhatsApp` ya existe en el dominio | Alternativa descartada en su momento (invariante crítico en operación manual); retomar solo si ARMA exige plantillas distintas |
 | Textos conversacionales (P-32) | Catálogo global versionado por idioma + `Campania.localizaciones` | **Corte 1/4 DONE local 2026-08-10.** Catálogo/API/caché/semillas listos con gate OFF; runtime y campañas pendientes. |
 | Visibilidad de idea (P-33) | `consultaIdea` + `mostrarIdeaAlCerrar` | Defaults `true`, gobernados por kill-switch global OFF; permiten opt-out independiente sin ampliar autorización. |
+| Clasificación semántica de consulta (DT-P33-01) | Reutiliza `consultaIdea`; no agrega campo de campaña | Default global `false`; en el ambiente revisado está ON. El catálogo determinista sigue disponible, prevalece tras afinidad exacta y el LLM solo propone la intención. |
 
 ### 4.4 Deliberadamente GLOBALES (no por campaña)
 
@@ -384,6 +393,7 @@ panel `P-09`. **Insumos externos en rojo: seeds de Felipe (I-12) y variables dem
 | `Conversacion:DespertarProactivoHabilitado` (P-28) | Kill-switch global; default `false`. Apagado, el sistema no responde a saludo/inicio no sustantivo sin flujo; P-26 conserva aportes sustantivos elegibles. |
 | `Conversacion:CierrePorTiempoHabilitado` (P-29) | Kill-switch global; default `false`. Gobierna **solo el mensaje de pausa humano**; apagado, el cierre por inactividad de I-17 sigue operando. El umbral es el existente `MinutosInactividadSesion` (por campaña ?? global), no uno nuevo. |
 | `Conversacion:RetomarIdeasHabilitado` (P-30) | Kill-switch global; default `false`. Apagado, no hay selector histórico; se conserva la reapertura reciente vigente de I-19/P-26. |
+| `Conversacion:ClasificacionSemanticaConsultaIdeaHabilitada` (DT-P33-01) | Kill-switch global, default `false`; habilita una única clasificación semántica P-27/P-33. Requiere P-33 ON y respeta `consultaIdea` de campaña. |
 | `Seguridad:PermitirReinicioDatos` (P-03) | Protección de datos en producción; se apaga en el acta del freeze |
 | Rate por número / presupuesto-alerta de costo (P-10 restante) | Protección transversal de la plataforma |
 | `Conversacion:RecuperacionSemantica` (I-09 opción B) | Capacidad de infraestructura (embeddings), no comportamiento de campaña |

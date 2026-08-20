@@ -125,3 +125,5 @@ $RECYCLE.BIN/
 
 # D5 banco de calibración: salida de corridos (reportes por timestamp; el baseline SÍ se versiona)
 tests/Calibracion/salida/
+
+.obsidian/workspace.json

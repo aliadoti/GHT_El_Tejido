@@ -1523,3 +1523,61 @@
   seguir solo con simulación entrante (no evita tráfico saliente); cambiar App Settings remotos ahora.
 - Impacto / reversibilidad: gateado por configuración futura fail-closed y sin secretos/PII en la
   evidencia. No modifica los mapeos existentes de plantillas `es/en`, DTO/Cosmos ni Azure en este paso.
+
+### clasificacion-semantica-consulta-idea-dt-p33-01 - Una intención, una llamada, autoridad del servidor
+
+- Fecha: 2026-08-20 - Agente/Rol: Usuario/Codex - Producto/Arquitecto/Backend/SDET/AppSec.
+- Contexto: `How is my idea coming along so far?` no estaba en `frases.consultarIdea`; P-33 no la
+  reconoció y el clasificador P-27, cuyo contrato no contiene `consultarIdea`, produjo la aclaración
+  1/2/3. Después de mostrar la idea, `I'm satisfied with this` tampoco coincidió con una frase exacta
+  y el coach continuó preguntando. Enumerar cada paráfrasis o agregar patrones no resuelve la causa.
+- Decisión:
+  - el catálogo conserva frases inequívocas como fast path sin costo;
+  - `IClasificadorIntencionControl` se amplía aditivamente con `ConsultarIdea|ConfirmarIdea` y se
+    reutiliza: no se crea un segundo clasificador ni se permiten dos llamadas por mensaje;
+  - la clasificación puede ocurrir antes del routing y su candidato efímero viaja al orquestador;
+    P-27 no vuelve a invocar el modelo;
+  - el LLM solo propone `aportar|consultarIdea|confirmarIdea|finalizarIdea|finalizarParticipacion|ambigua`;
+    no recibe la versión ni decide ids, campaña, pregunta, idea, estado o transición;
+  - todo envío P-33 exitoso, de idea abierta o cerrada, deja afinidad temporal reutilizando
+    `EnrutamientoAporte`; `confirmarIdea` solo produce efecto contra esa referencia server-side vigente;
+  - con afinidad válida, la conformidad pura confirma/evalúa una versión pendiente, cierra/avanza una
+    idea abierta confirmada o acusa una cerrada, sin otra repregunta; P-27 puede estar OFF;
+  - un mensaje mixto o cualquier fallback es `aportar`; `ambigua` solo abre menú si la política P-27
+    lo acepta en un estado elegible y con sus gates ON;
+  - un gate global nuevo, default OFF, separa la activación semántica de la consulta P-33 determinista;
+    los cupos/tokens de clasificación se comparten y contabilizan una vez.
+- Alternativas descartadas: añadir frases indefinidamente (deuda recurrente); patrón hardcodeado por
+  hallazgo (solo tapa un ejemplo); segundo clasificador P-33 (duplica costo e interpretaciones); dejar
+  que el modelo elija/resuma la idea (rompe autorización y fidelidad I-19/P-33); confianza numérica
+  autorreportada (no es una garantía server-side).
+- Impacto/reversibilidad: contrato interno aditivo y candidato no persistido; se reutiliza la afinidad
+  Cosmos P-33 existente sin campo, entidad ni migración nueva. Sin REST, DTO o portal. Rollback: gate
+  semántico OFF; P-33 determinista y P-27 quedan como antes.
+- Spec: `Iniciativas/DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md`; plan:
+  `planes/DT-P33-01_Plan_Clasificacion_Semantica_Consulta_Idea.md`; QAS: `QAS/25_*`.
+- Cierre base 2026-08-20: decisión implementada 2/2 y validada con 1043 unitarias + 121 de
+  integración sin Calibración. Posteriormente `ff54bb0` fue desplegado y el usuario confirmó ambos
+  App Settings semántico/visibilidad en `true`; esto no prueba el valor de `configConversacional.consultaIdea`
+  porque pertenece a la configuración de campaña persistida, no a App Settings.
+
+### conformidad-determinista-tras-consulta-p33 - Precedencia sobre clasificación semántica
+
+- Fecha: 2026-08-20 - Agente/Rol: Usuario/Codex - Producto/Arquitecto/Backend/SDET.
+- Hallazgo: con la base desplegada y gates ON, `How is my idea going?` mostró la idea, pero `No is all
+  right for me` fue tratado como aporte y produjo otra pregunta. La frase no estaba en el catálogo
+  inglés activo y una etiqueta LLM puede variar; por eso DT-P33-01 podía estar correctamente desplegado
+  y aun fallar en ciertas redacciones.
+- Decisión: si existe una afinidad P-33 exacta y vigente, resolver primero una coincidencia del mensaje
+  completo contra `frases.confirmar`. Solo entonces transportar `ConfirmarIdea` con
+  `LlmInvocado=false`; la transición sigue bajo las validaciones de idea/estado/autorización existentes.
+- Límite: la coincidencia es del mensaje completo normalizado. `It is all right for me, but change the
+  loading order` no activa el fast path y conserva la ruta semántica como aporte. Sin afinidad, un alias
+  no gana autoridad para cerrar o confirmar.
+- Catálogo: se agregaron siete variantes inglesas a `continuar`, `confirmar` y `acuseConsultaIdea` en
+  la semilla y en la descarga de la activa inglesa v2. El archivo fue importado como v3 borrador; la
+  activa española v3 se descargó para comparar claves y quedó intacta.
+- Evidencia local: 1053 unitarias + 121 integración sin Calibración, build Release `-warnaserror`,
+  formato y diff verdes. Pendiente commit/deploy, activación inglesa v3 y smoke dirigido.
+- Rollback: volver la activa inglesa a v2 y apagar el gate semántico; no requiere borrar afinidades,
+  ideas, evaluaciones ni historial.

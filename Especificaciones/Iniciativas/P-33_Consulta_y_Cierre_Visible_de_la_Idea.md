@@ -1,9 +1,20 @@
 # P-33 — Consulta y cierre visible de la idea
 
-> Estado: **ESPECIFICADA Y APROBADA — lista para implementación inmediata (2026-08-13)**  
+> Estado: **P-33 base desplegada; hotfix determinista DT-P33-01 listo localmente (2026-08-20)**
 > Origen: retroalimentación de usuario de la convención + REQ-054  
 > Dependencias: I-19, I-20, P-26, P-29, P-30, P-31 y P-32  
-> Alcance de esta entrega: especificación y contratos; **sin código, despliegue ni configuración remota**
+> Alcance operativo: `ff54bb0` desplegado; gates semántico y de visibilidad confirmados ON. Catálogo
+> inglés v3 importado como borrador, pendiente de activación después de desplegar el hotfix.
+
+> **Extensión cerrada 2026-08-20:** `DT-P33-01` reemplazó el patrón puntual por una clasificación
+> semántica única compartida con P-27, manteniendo el catálogo como camino rápido y al servidor como
+> autoridad. Consulta y conformidad posterior quedan vinculadas al mismo `ideaId`, sin nueva
+> repregunta ni reevaluación. Ver `DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md`.
+>
+> **Corrección determinista 2026-08-20:** una afinidad P-33 vigente y una coincidencia exacta con
+> `frases.confirmar` producen `ConfirmarIdea` antes de invocar el clasificador. Esto evita que una
+> conformidad catalogada dependa del no determinismo del LLM; no cambia la autoridad server-side y no
+> captura mensajes mixtos, porque la coincidencia exige el mensaje completo normalizado.
 
 ---
 
@@ -43,7 +54,7 @@ breve, pero no elegir ni modificar la idea.
 | Madurez | Consultar o mostrar al cierre es independiente del umbral, de `nivelMadurez` y de P-31. |
 | Cierre | En un cierre normal se muestra la idea antes del agradecimiento o de avanzar. Una idea rechazada explícitamente no se presenta como «así quedó». |
 | Varias campañas | Se consideran únicamente campañas activas y asociaciones vigentes del usuario; entre ellas gana la idea con trabajo más reciente. No hay menú implícito. |
-| Activación | Kill-switch global OFF y controles por campaña; sin activación remota en el cambio de código. |
+| Activación | Default global OFF y controles por campaña. En el ambiente revisado, visibilidad y semántica están ON; el hotfix local no modificó configuración remota. |
 
 ---
 
@@ -79,7 +90,8 @@ breve, pero no elegir ni modificar la idea.
 
 Una consulta pura pide leer la idea y no aporta información nueva. El detector normaliza mayúsculas,
 acentos, puntuación y espacios, aplica `MaxCaracteresConsultaIdea`, y reconoce las frases del catálogo
-`consultarIdea` y patrones inequívocos equivalentes.
+`consultarIdea` como camino rápido. `DT-P33-01` agrega comprensión semántica para equivalentes no
+enumerados mediante el clasificador único P-27/P-33; no se agregan patrones especiales por cada frase.
 
 Ejemplos incluidos:
 
@@ -134,8 +146,9 @@ recortar la versión.
 3. Resuelve la idea y la versión con §4.
 4. Compone: puente natural breve → versión íntegra → invitación opcional, sin pregunta obligatoria.
 5. Envía y registra solo ids internos, estado y resultado.
-6. Si la idea estaba cerrada, persiste afinidad `consultarIdea` durante un máximo de 24 horas y hasta
-   el primer mensaje significativo.
+6. Si el envío fue exitoso, persiste afinidad `consultarIdea` para la idea abierta o cerrada durante
+   un máximo de 24 horas y hasta el primer mensaje significativo. La afinidad identifica qué idea se
+   acaba de mostrar; no concede por sí sola autorización para mutarla.
 
 Ejemplo de respaldo:
 
@@ -146,12 +159,16 @@ Ejemplo de respaldo:
 Una consulta repetida vuelve a mostrar la versión: no comparte la idempotencia «una vez por idea» de
 P-31. El dedupe del webhook sí evita responder dos veces al mismo `whatsappMessageId`.
 
-### 5.2 Respuesta después de consultar una idea cerrada
+### 5.2 Respuesta después de consultar una idea
 
 La afinidad es contextual, no una reapertura anticipada:
 
 | Respuesta siguiente | Resultado |
 |---|---|
+| Conformidad pura y la idea está abierta esperando confirmación | Confirmar la versión por la ruta existente y evaluarla una sola vez; no volver a preguntar. |
+| Conformidad pura y la idea está abierta con versión confirmada | Cerrar esa idea por conformidad, no repetir la versión recién mostrada y avanzar; no volver a preguntar. |
+| Conformidad pura y la idea ya está cerrada | Acuse localizado como máximo; completar afinidad; no reabrir ni reevaluar. |
+| Conformidad más corrección o dato nuevo | Tratar todo el mensaje como aporte; no cerrar ni perder contenido. |
 | Corrección o complemento sustantivo | Revalidar y reabrir la misma idea; conservar `ideaId`, versiones e historial; procesar el texto como corrección. |
 | «Gracias», «ok», saludo u otro acuse sin contenido | Agradecer o degradar al flujo neutral; completar la afinidad; no reabrir. |
 | «Otra idea», «la anterior», «cambiar de campaña» | Completar/suspender afinidad y entregar a P-30/P-26. |
@@ -163,6 +180,17 @@ Tras descartar intenciones explícitas de consulta, acuse, saludo, cambio, nueva
 primer mensaje sustantivo se interpreta como respuesta al contexto mostrado y reabre la idea. La
 afinidad se consume una sola vez. La nueva versión usa origen `reapertura`/`correccion` de I-19 y se
 evalúa completa como siempre; una idea madura reabierta suspende su curaduría hasta reevaluar.
+
+La conformidad semántica se clasifica como `confirmarIdea` bajo DT-P33-01. El servidor solo la acepta
+contra la afinidad vigente del mismo usuario/campaña/pregunta/idea/conversación. Esta finalización
+contextual pertenece a la interacción P-33 y funciona aunque P-27 esté OFF; fuera de la afinidad se
+mantienen intactas las reglas y gates P-27.
+
+Antes de recurrir a esa clasificación semántica, el servidor resuelve un camino rápido adicional:
+si la afinidad P-33 exacta está vigente y el mensaje completo coincide con una frase localizada de
+`frases.confirmar`, transporta `ConfirmarIdea` con `LlmInvocado=false`. La afinidad por sí sola no basta
+y la frase por sí sola tampoco: se requieren ambas. Una conformidad con corrección o contenido nuevo
+no coincide exactamente, continúa al clasificador y debe conservarse como `aportar`.
 
 ### 5.3 Idea visible al cerrar
 

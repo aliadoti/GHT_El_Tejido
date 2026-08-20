@@ -715,6 +715,117 @@ public sealed class ServicioEnrutamientoParticipacionTests
     }
 
     [Fact]
+    public async Task P33_ConformidadCatalogadaTrasMostrarIdeaCerrada_NoDependeDelClasificadorSemantico()
+    {
+        var usuarioIngles = FabricasDominio.CrearUsuario(
+            "u_1", Numero, RolUsuario.Participante, idioma: "en");
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        var idea = IdeaHistorica("idea_1", "conv_c_1_p_1", "Current consolidated version", cerrada: true);
+        ConfigurarIdeasConsolidadas([idea]);
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverParaIdiomaAsync("en", Arg.Any<CancellationToken>()).Returns(TextosCatalogo("en"));
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        var servicio = Servicio(
+            semanticaConsultaIdea: true,
+            resolutorTextos: resolutor,
+            clasificador: clasificador,
+            configuracion: ConfiguracionLlm());
+
+        var consulta = await servicio.ResolverAsync(
+            usuarioIngles, [candidato], Mensaje("wamid.consulta", "How is my idea so far?"),
+            CancellationToken.None);
+        var contexto = consulta.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>().Which.Contexto;
+        await servicio.ConfirmarConsultaIdeaAsync(
+            usuarioIngles.Id, "wamid.consulta", contexto.IdeaId!, contexto.ConversacionId!, CancellationToken.None);
+
+        var conformidad = await servicio.ResolverAsync(
+            usuarioIngles, [candidato], Mensaje("wamid.conforme", "No is all right for me"),
+            CancellationToken.None);
+
+        conformidad.Should().BeOfType<ResultadoEnrutamiento.SinElegibles>();
+        _enrutamientos.Documentos.Single().Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
+        _conversaciones.Todas.Single().Estado.Should().Be(EstadoConversacion.Cerrada);
+        await clasificador.DidNotReceiveWithAnyArgs().ClasificarAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task P33_ConformidadCatalogadaTrasMostrarIdeaAbierta_TransportaConfirmacionSinLlm()
+    {
+        var usuarioIngles = FabricasDominio.CrearUsuario(
+            "u_1", Numero, RolUsuario.Participante, idioma: "en");
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_1"));
+        var idea = IdeaHistorica("idea_1", "conv_1", "Current consolidated version", cerrada: false);
+        ConfigurarIdeasConsolidadas([idea]);
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverParaIdiomaAsync("en", Arg.Any<CancellationToken>()).Returns(TextosCatalogo("en"));
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        var servicio = Servicio(
+            semanticaConsultaIdea: true,
+            resolutorTextos: resolutor,
+            clasificador: clasificador,
+            configuracion: ConfiguracionLlm());
+
+        var consulta = await servicio.ResolverAsync(
+            usuarioIngles, [candidato], Mensaje("wamid.consulta", "How is my idea so far?"),
+            CancellationToken.None);
+        var contexto = consulta.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>().Which.Contexto;
+        await servicio.ConfirmarConsultaIdeaAsync(
+            usuarioIngles.Id, "wamid.consulta", contexto.IdeaId!, contexto.ConversacionId!, CancellationToken.None);
+
+        var conformidad = await servicio.ResolverAsync(
+            usuarioIngles, [candidato], Mensaje("wamid.conforme", "No is all right for me"),
+            CancellationToken.None);
+
+        var continuar = conformidad.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.ClasificacionPrevia!.Intencion.Should().Be(IntencionControl.ConfirmarIdea);
+        continuar.ClasificacionPrevia.LlmInvocado.Should().BeFalse();
+        continuar.Contexto!.IdeaIdConsultada.Should().Be("idea_1");
+        await clasificador.DidNotReceiveWithAnyArgs().ClasificarAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task P33_ConformidadConCambioExplicito_NoActivaFastPathDeterminista()
+    {
+        var usuarioIngles = FabricasDominio.CrearUsuario(
+            "u_1", Numero, RolUsuario.Participante, idioma: "en");
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_1"));
+        var idea = IdeaHistorica("idea_1", "conv_1", "Current consolidated version", cerrada: false);
+        ConfigurarIdeasConsolidadas([idea]);
+        var resolutor = Substitute.For<IResolutorTextosConversacion>();
+        resolutor.ResolverParaIdiomaAsync("en", Arg.Any<CancellationToken>()).Returns(TextosCatalogo("en"));
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Aportar, null));
+        var servicio = Servicio(
+            semanticaConsultaIdea: true,
+            resolutorTextos: resolutor,
+            clasificador: clasificador,
+            configuracion: ConfiguracionLlm());
+
+        var consulta = await servicio.ResolverAsync(
+            usuarioIngles, [candidato], Mensaje("wamid.consulta", "How is my idea so far?"),
+            CancellationToken.None);
+        var contexto = consulta.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>().Which.Contexto;
+        await servicio.ConfirmarConsultaIdeaAsync(
+            usuarioIngles.Id, "wamid.consulta", contexto.IdeaId!, contexto.ConversacionId!, CancellationToken.None);
+
+        var aporte = await servicio.ResolverAsync(
+            usuarioIngles,
+            [candidato],
+            Mensaje("wamid.aporte", "It is all right for me, but change the loading order"),
+            CancellationToken.None);
+
+        var continuar = aporte.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.ClasificacionPrevia!.Intencion.Should().Be(IntencionControl.Aportar);
+        continuar.Contexto!.IdeaIdConsultada.Should().BeNull();
+        await clasificador.Received(1).ClasificarAsync(
+            Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task DtP3301_ConformidadConContenidoNuevo_SeMantieneComoAporte()
     {
         var candidato = Candidato("c_1");

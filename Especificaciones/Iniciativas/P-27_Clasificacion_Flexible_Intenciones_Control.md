@@ -8,6 +8,11 @@ opt-ins permanecen apagados hasta D5, UAT, revisión de costo/latencia y decisi�
 seguridad, observabilidad y pruebas.  
 **Referencias:** REQ §9, §20, §21, §25, §26, §27 y §30; ARQ §4.2, §6, §7, §12 y §13.
 
+> **Extensión implementada localmente 2026-08-20:** `DT-P33-01` amplía este mismo clasificador con
+> `consultarIdea|confirmarIdea` y transporta una única clasificación desde routing. No crea un segundo
+> LLM ni concede autoridad de transición al modelo. Gate semántico OFF; QAS/D5 pendientes. Ver
+> `DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md`.
+
 ---
 
 ## 1. Problema confirmado

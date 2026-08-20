@@ -27,6 +27,23 @@ public sealed class CatalogosTextosSemillaBaseYLimitesTests
         acto.Should().NotThrow();
     }
 
+    [Theory]
+    [InlineData("no is all right for me")]
+    [InlineData("it's all right for me")]
+    [InlineData("it is all right for me")]
+    [InlineData("no, it's all right for me")]
+    [InlineData("no, it is all right for me")]
+    [InlineData("I'm fine with it as is")]
+    [InlineData("I am fine with it as is")]
+    public void BaseIngles_ConformidadTrasConsulta_CubreVariantesDeterministas(string frase)
+    {
+        var semilla = CatalogosTextosSemilla.CrearBase("en");
+
+        semilla.Frases["continuar"].Should().Contain(frase);
+        semilla.Frases["confirmar"].Should().Contain(frase);
+        semilla.Frases["acuseConsultaIdea"].Should().Contain(frase);
+    }
+
     [Fact]
     public void Base_IgnoraLaConfiguracionLegacyAunqueSeaInvalida()
     {

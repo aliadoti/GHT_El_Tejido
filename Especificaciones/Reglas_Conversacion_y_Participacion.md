@@ -481,9 +481,10 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
    defecto; «otra idea» o «la anterior» conserva la selección explícita de P-30.
 3. Se muestra carácter a carácter la versión vigente de I-19. El LLM solo puede proponer un puente
    breve; nunca elige la idea, la versión ni una transición, y no resume ni traduce el contenido.
-4. Una consulta sobre una idea cerrada crea afinidad por un mensaje significativo y máximo 24 horas.
-   Una corrección o complemento claro reabre esa misma idea; «gracias», un saludo, otra consulta o una
-   intención de cambio/control consume o desvía la afinidad sin reabrir.
+4. Un envío de consulta exitoso sobre una idea abierta o cerrada crea afinidad por un mensaje
+   significativo y máximo 24 horas. Una corrección o complemento claro reabre la cerrada o continúa la
+   abierta; «gracias», un saludo, otra consulta o una intención de cambio/control consume o desvía la
+   afinidad sin reabrir.
 5. Un mensaje mixto («muéstrame mi idea y agrega…») no se intercepta como consulta pura: se procesa
    como aporte para no perder la corrección.
 6. Antes de los cierres normales se muestra la última versión disponible. El rechazo explícito y el
@@ -491,6 +492,9 @@ neutral. El LLM puede redactar un saludo o una pausa, pero no decide cuál de es
    última y reconoce que las demás quedaron guardadas.
 7. Fuera de la ventana de servicio no se fuerza texto libre ni plantilla. Usuario, asociación y
    campaña se revalidan tanto al consultar como al reabrir.
+8. DT-P33-01 amplía el clasificador único P-27/P-33 con `consultarIdea|confirmarIdea`. Después de una
+   consulta, afinidad vigente + coincidencia exacta con `frases.confirmar` prevalecen de forma
+   determinista y transportan `ConfirmarIdea` sin LLM; una frase mixta no coincide y sigue como aporte.
 
 La precedencia queda: dedupe/identidad/autorización → consulta P-33 → afinidad P-33 → P-26/P-30 →
 controles P-27 → aporte normal. P-33 tiene gate propio y no depende de P-27 ni del umbral de P-31.
@@ -561,6 +565,7 @@ controles P-27 → aporte normal. P-33 tiene gate propio y no depende de P-27 ni
 | `Conversacion:RetomarIdeasHabilitado` | App config / env `Conversacion__RetomarIdeasHabilitado` | `false` | **P-30** — habilita el selector histórico. OFF conserva la reapertura reciente I-19/P-26. |
 | `Conversacion:Mensajes:InstruccionSeleccionIdea` / `:SinIdeasHistoricas` | App config / env `Conversacion__Mensajes__…` | textos de respaldo | **P-30** — instrucción de número/resumen exacto y respuesta neutral cuando no hay candidatas. |
 | `Conversacion:VisibilidadIdeaParticipanteHabilitada` | App config / env `Conversacion__VisibilidadIdeaParticipanteHabilitada` | `false` | **P-33** — kill-switch de consulta bajo demanda y visibilidad al cierre; OFF conserva el flujo anterior. |
+| `Conversacion:ClasificacionSemanticaConsultaIdeaHabilitada` | App config / env `Conversacion__ClasificacionSemanticaConsultaIdeaHabilitada` | `false` | **DT-P33-01** — habilita el clasificador único para paráfrasis P-33; requiere visibilidad ON y respeta `configConversacional.consultaIdea`. No gobierna el fast path de alias exactos. |
 | `configConversacional.consultaIdea` / `mostrarIdeaAlCerrar` | Portal admin (campaña) | `true` / `true` | **P-33** — opt-out independiente por campaña para consulta y cierre; solo tienen efecto con el gate global ON. |
 | `Conversacion:MaxCaracteresConsultaIdea` / catálogo `frases.consultarIdea` | App config + catálogo P-32 | `220` / lista `es|en` | **P-33** — límite y vocabulario de consulta pura; un mensaje mixto conserva la ruta de aporte. |
 | Catálogo P-32: `encabezadoConsultaIdea`, `invitacionConsultaIdea`, `encabezadoCierreIdea`, `otrasIdeasGuardadas`, `sinIdeaDisponible`; frases `consultarIdea`, `acuseConsultaIdea`, `nuevaIdea` | Portal/API, Cosmos `config` | respaldo compilado `es/en` | **P-33** — amplía el registro a 29 mensajes y 16 listas sin mutar versiones históricas. |

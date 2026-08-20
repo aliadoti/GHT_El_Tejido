@@ -4,7 +4,21 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-16 (Codex, Arquitecto/Tech Lead/SDET):
+- Ultima actualizacion: 2026-08-20 (usuario + Codex, Producto/Arquitecto/Backend/SDET): **HOTFIX
+  DETERMINISTA `DT-P33-01` LISTO LOCALMENTE.** El código base `ff54bb0` está desplegado y se confirmaron
+  en el ambiente los App Settings `Conversacion__ClasificacionSemanticaConsultaIdeaHabilitada=true` y
+  `Conversacion__VisibilidadIdeaParticipanteHabilitada=true`. El caso real `How is my idea going?` →
+  `No is all right for me` mostró una brecha: la consulta sí dejó afinidad P-33, pero la conformidad no
+  catalogada podía ser propuesta como `aportar` por el clasificador y producir otra repregunta. El
+  hotfix resuelve antes del LLM la afinidad exacta + una coincidencia en `frases.confirmar`, transporta
+  `ConfirmarIdea` con `LlmInvocado=false` y conserva los mensajes mixtos en el clasificador. Se añadieron
+  siete alias ingleses a `continuar`, `confirmar` y `acuseConsultaIdea`, tanto en la semilla como en el
+  JSON descargado de la activa inglesa v2; ese JSON fue importado en el portal como **v3 borrador** y no
+  se ha activado. El catálogo español v3 activo se descargó solo para double check y no se modificó.
+  Validación local: build Release `-warnaserror`, **1053 unitarias + 121 de integración** sin Calibración,
+  formato y diff verdes. **Pendiente:** commit único, despliegue del hotfix, activación explícita del
+  catálogo inglés v3 y smoke dirigido; QAS/25, D5 `n=3`, costo/latencia y acta siguen como gates de salida.
+- Actualizacion anterior: 2026-08-16 (Codex, Arquitecto/Tech Lead/SDET):
   **CÓDIGO APROBADO CONDICIONADAMENTE PARA CONGELAMIENTO — CONVENCIÓN 2026.** El alcance confirmado
   es una sola campaña en un ambiente nuevo y exclusivo, con base/configuración limpias, plantillas
   Meta aprobadas, WhatsApp real y prohibición operativa de editar después de activar o enviar.
@@ -1340,12 +1354,14 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **IMPLEMENTAR `DT-P32-04` CORTE 2/3 — CONTENIDO EFECTIVO DE CAMPAÑA.** Leer la spec y el plan;
-  partir del `IdiomaConversacion` ya validado y crear en Application el resultado inmutable y el
-  puerto de resolución. Cubrir snapshot legacy con gate OFF y localización completa con gate ON sin
-  mezclar fuentes; migrar primero `ServicioEnvios`, luego contexto LLM y finalmente las salidas del
-  orquestador. No implementar todavía fachadas especializadas, política LLM ni readiness compuesto
-  del corte 3/3; no tocar Azure, Cosmos remoto, flags, campañas reales ni deuda de DT-RUB-01.
+- [ ] **PUBLICAR Y PROBAR EL HOTFIX DETERMINISTA `DT-P33-01`.** Crear un único commit con código,
+  regresiones, documentación y los dos JSON de evidencia; desplegarlo por el flujo autorizado; después
+  activar explícitamente el catálogo inglés **v3** ya creado como borrador. Ejecutar el recorrido
+  `How is my idea going?` → `No is all right for me` sobre una idea abierta y una cerrada: no debe haber
+  otra repregunta, reapertura ni reevaluación. Probar además `It is all right for me, but change the
+  loading order`: debe seguir como aporte. Registrar versión activa/ids y resultado sin contenido ni
+  PII. No activar la v3 antes de desplegar el hotfix; si falla el smoke, revertir la activa a v2 y
+  deshabilitar `Conversacion__ClasificacionSemanticaConsultaIdeaHabilitada` mientras se diagnostica.
 - [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 925 unitarias + 112 integración; build Release
   `-warnaserror`, format y diff verdes) `DT-I20-02` corte 3/3.** Contenido candidato del prompt sin
   tocar Cosmos, pruebas de §7.2 sobre el evaluador real con `ILlmClient` falso en el recorrido webhook
@@ -1710,6 +1726,7 @@
 | P-31 | Resumen consolidado por umbral | DONE 3/3 y desplegado; flags OFF | `6ba6ce0`, `32794fb`, `6d02492` | backend 664 unitarias + 77 integración al cierre | Resumen proactivo e idempotente por umbral propio. La consulta bajo demanda quedó resuelta separadamente en P-33. |
 | P-32 | Conversación multidioma y catálogo | DONE local 4/4; D5/UAT/Meta/costo pendientes | cambios locales | backend 858 no-Calibración tras correcciones; portal 43/43 previo | Runtime `es/en`, catálogo Cosmos/portal, localizaciones, envío mixto y rollback; gate OFF. P-33 extiende de forma compatible el registro 24/13 a 29/16. |
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
+| DT-P33-01 | Clasificación semántica de consulta de idea | BASE DESPLEGADA; hotfix determinista listo local; catálogo en v3 borrador | `ff54bb0` + cambios locales | build Release, 1053 unitarias + 121 integración, formato/diff verdes | Los gates semántico y de visibilidad están ON en el ambiente. El hotfix hace prevalecer afinidad P-33 + alias exacto antes del LLM; v3 inglesa aún no activa. Siguiente: commit, deploy, activar v3 y smoke abierto/cerrado/mixto; después QAS/25, D5 y acta. |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
@@ -1756,6 +1773,13 @@
 - **Aceptacion:** unit tests del cliente con `HttpMessageHandler` fake para la forma Anthropic (auth header correcto, ruta `/v1/messages`, parseo de `content[0].text`); el evaluador valida JSON. Build/test/format verde.
 
 ## Decisiones tomadas (con porque)
+- 2026-08-20 - Producto/Arquitectura/Backend (usuario + Codex) - **La conformidad catalogada posterior
+  a una consulta P-33 tiene precedencia determinista sobre el clasificador semántico.** La activación de
+  DT-P33-01 no garantiza por sí sola que el modelo clasifique correctamente toda frase; si existe la
+  afinidad exacta creada por el envío P-33 y el texto completo coincide con `frases.confirmar`, el
+  servidor propone `ConfirmarIdea` sin LLM. Una frase mixta no coincide de forma exacta y conserva la
+  ruta semántica/aporte. Se evita depender del no determinismo para una transición ya autorizable por
+  estado y catálogo, sin ampliar autoridad ni cerrar fuera de la afinidad.
 - 2026-08-13 - Producto/Arquitectura (usuario + Codex) - **P-33 conserva el contexto humano por
   defecto.** «Mi idea» refiere a la activa o última trabajada, sin menú. Tras consultar una idea
   cerrada, una corrección sustantiva reabre automáticamente esa misma idea; un acuse no. La consulta

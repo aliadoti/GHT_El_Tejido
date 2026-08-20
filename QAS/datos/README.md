@@ -1,5 +1,17 @@
 # Datos de prueba de carga masiva (`I-08 v2`)
 
+## Catálogos de conversación — evidencia DT-P33-01
+
+| Archivo | Estado de origen | Uso |
+|---|---|---|
+| `catalogo-catalogo_conversacion-en-v2-editable.json` | Descargado de inglés v2 activo; editado localmente e importado en portal como v3 borrador | Contiene los siete alias de conformidad del hotfix en `continuar`, `confirmar` y `acuseConsultaIdea`. La copia local conserva `metadatos.version=2` porque los metadatos de descarga son informativos y el importador crea siempre una versión nueva en borrador. |
+| `catalogo-catalogo_conversacion-es-v3-editable.json` | Descargado de español v3 activo, sin modificaciones | Double check de las 29 claves de mensajes y 16 grupos de frases; no se debe reimportar para este hotfix. |
+
+El inglés v3 remoto seguía en borrador al cerrar la preparación. Activarlo únicamente después de
+desplegar el hotfix y antes del smoke dirigido de `QAS/25 § Prueba 9a`.
+
+---
+
 Archivos listos para ejecutar `ADM-08`, `ADM-08a`, `ADM-08b`, `ADM-08c`, `ADM-09` y `ADM-09a`
 (`02_Casos_de_Prueba_E2E.md`). El detalle de qué debe pasar con cada fila está en
 `04_Datos_de_Prueba_y_Reinicio.md §5`.

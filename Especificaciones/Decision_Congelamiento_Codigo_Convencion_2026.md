@@ -1,5 +1,11 @@
 # Decisión de congelamiento de código — Convención 2026
 
+> ⚠️ **Este documento fue modificado por una adenda.** Ver
+> [`Adenda_Congelamiento_Convencion_2026.md`](./Adenda_Congelamiento_Convencion_2026.md) (2026-08-20).
+> El artefacto en producción **ya no es `28c3cb1`** sino `v1.0.2-convencion`, y cuatro de las
+> condiciones de este acta fueron modificadas durante el montaje del ambiente y el piloto controlado.
+> No leer este documento de forma aislada.
+
 > **Decisión:** APROBADO CONDICIONADO — congelar el código en `28c3cb1` para la convención.
 > **Fecha:** 2026-08-16.
 > **Alcance:** una sola campaña en un ambiente nuevo y exclusivo, con base de datos y configuración

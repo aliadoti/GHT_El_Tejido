@@ -393,13 +393,20 @@ idea?» se resuelve antes de selecciones pendientes, afinidad, P-30, P-27 y apor
 4. el servidor inserta el texto íntegro entre un puente I-20/fallback y una invitación localizada;
 5. la consulta no crea aporte, versión, evaluación o Markdown, no consume repregunta ni cambia
    madurez/curaduría/estado;
-6. si la idea estaba cerrada, `EnrutamientoAporte(modo=consultarIdea)` conserva por hasta 24 h una
-   afinidad de un solo mensaje con esa idea.
+6. si el envío fue exitoso, `EnrutamientoAporte(modo=consultarIdea)` conserva por hasta 24 h una
+   afinidad de un solo mensaje con esa idea, abierta o cerrada.
 
 Después de mostrar una cerrada, el primer mensaje sustantivo —tras descartar agradecimiento, saludo,
 consulta, nueva/otra idea, cambio de campaña y controles— reabre el mismo `ideaId` y se procesa como
 corrección I-19. «Gracias» completa la afinidad sin reabrir; «otra idea» entrega a P-30. Un mensaje que
 mezcla consulta e información nueva no se intercepta como consulta pura, para no perder contenido.
+
+DT-P33-01 usa el clasificador único P-27/P-33 para paráfrasis `consultarIdea|confirmarIdea`, con una
+sola llamada máxima y autoridad server-side. Después de mostrar una idea, si la afinidad exacta sigue
+vigente y el mensaje completo coincide con `frases.confirmar`, el routing transporta
+`ConfirmarIdea(LlmInvocado=false)` antes del clasificador. La idea abierta se confirma/cierra por sus
+rutas existentes; la cerrada solo completa la afinidad. Una frase mixta no activa este fast path y se
+conserva como aporte.
 
 Al cerrar normalmente por umbral, participante, tope o fallback se antepone la versión vigente al
 cierre/transición. Rechazo explícito y cierre administrativo no la muestran. En finalización masiva o

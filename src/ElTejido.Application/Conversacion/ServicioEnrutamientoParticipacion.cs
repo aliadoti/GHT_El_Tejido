@@ -235,8 +235,20 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             return await ResolverConsultaIdeaAsync(usuario, candidatos, mensaje, ahora, cancellationToken);
         }
 
-        var clasificacionPrevia = await ClasificarIntencionSemanticaAsync(
-            usuario, candidatos, mensaje, pendiente is not null, ahora, cancellationToken);
+        // P-33: una conformidad inequívoca inmediatamente posterior a mostrar la idea es un fast path
+        // determinista. No necesita que el clasificador semántico entienda una variante lingüística ni
+        // consume cupo/tokens. La autoridad sigue siendo server-side: solo se propone ConfirmarIdea si
+        // existe la afinidad exacta creada por un envío P-33 exitoso; las ramas de abajo deciden según
+        // el estado real de la conversación y de la idea.
+        var afinidadConsultaDeterminista = _visibilidadIdeaParticipanteHabilitada
+            ? await ObtenerAfinidadConsultaVigenteAsync(usuario.Id, candidatos, ahora, cancellationToken)
+            : null;
+        var clasificacionPrevia = afinidadConsultaDeterminista is not null
+            && await CoincideConformidadConsultaIdeaAsync(
+                afinidadConsultaDeterminista.Enrutamiento.Idioma, mensaje.Texto, cancellationToken)
+                ? new ClasificacionIntencionPrevia(IntencionControl.ConfirmarIdea, false)
+                : await ClasificarIntencionSemanticaAsync(
+                    usuario, candidatos, mensaje, pendiente is not null, ahora, cancellationToken);
         if (clasificacionPrevia?.Intencion == IntencionControl.ConsultarIdea)
         {
             if (pendiente is not null)
@@ -1775,6 +1787,26 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
 
         var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
         return DetectorConsultaIdea.EsAcuse(texto, textos.Frases["acuseConsultaIdea"]);
+    }
+
+    private async Task<bool> CoincideConformidadConsultaIdeaAsync(
+        string idioma,
+        string texto,
+        CancellationToken cancellationToken)
+    {
+        if (_resolutorTextos is null)
+        {
+            return new DetectorIntencionContinuar(
+                    DetectorIntencionContinuar.FrasesPorDefecto,
+                    _maxCaracteresIntencionContinuar)
+                .Coincide(texto);
+        }
+
+        var textos = await _resolutorTextos.ResolverParaIdiomaAsync(idioma, cancellationToken);
+        return new DetectorIntencionContinuar(
+                textos.Frases["confirmar"],
+                _maxCaracteresIntencionContinuar)
+            .Coincide(texto);
     }
 
     private async Task<bool> CoincideRetomarIdeaAsync(

@@ -8,31 +8,17 @@
         "type": "tabs",
         "children": [
           {
-            "id": "9b6a542bf4acce9c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Guias_Implementacion/Plan_Ambiente_Produccion_El_Tejido.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Plan_Ambiente_Produccion_El_Tejido"
-            }
-          },
-          {
             "id": "f83ad7aa300cd713",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Rubricas/20260818Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826.md",
+                "file": "Especificaciones/Iniciativas/DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "20260818Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826"
+              "title": "DT-P33-01_Clasificacion_Semantica_Consulta_Idea"
             }
           },
           {
@@ -213,8 +199,21 @@
       "bases:Create new base": false
     }
   },
-  "active": "9b6a542bf4acce9c",
+  "active": "f83ad7aa300cd713",
   "lastOpenFiles": [
+    "QAS/datos/catalogo-catalogo_conversacion-es-v3-editable.json",
+    "QAS/datos/catalogo-catalogo_conversacion-en-v2-editable.json",
+    "Rubricas/20260818Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826.md",
+    "Prompts/prompt_evaluacion_convencion_2026_v2.json",
+    "Prompts/prompt_evaluacion_convencion_2026_v2.txt",
+    "Especificaciones/Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md",
+    "Especificaciones/Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md",
+    "Guias_Implementacion/Plan_Ambiente_Produccion_El_Tejido.md",
+    "Especificaciones/Adenda_Congelamiento_Convencion_2026.md",
+    "src/ElTejido.Application/Conversacion/GuardaCuposLlm.cs",
+    "QAS/25_DT-P33-01_Clasificacion_Semantica_Consulta_Idea_Como_Probar.md",
+    "Especificaciones/planes/DT-P33-01_Plan_Clasificacion_Semantica_Consulta_Idea.md",
+    "Especificaciones/Iniciativas/DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md",
     "tests/ElTejido.UnitTests/Conversacion/sedro6RAy",
     "src/ElTejido.Application/Conversacion/sed42IsaV",
     "override.json",
@@ -223,14 +222,7 @@
     "Prompts/20260623_Evaluación con rubrica OpenBrain Thought-Scoring.md",
     "Prompts/prompt_evaluacion_convencion_2026.txt",
     "EF-P32-04-01_Campania_Activa_Localizacion_Incompleta.md.md",
-    "Rubricas/20260818Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826.md",
-    "Prompts",
-    "Guias_Implementacion/Plan_Ambiente_Produccion_El_Tejido.md",
     "Especificaciones/Iniciativas/DT-P32-04_Nucleo_Transversal_Multidioma.md",
-    "QAS/datos/catalogo-catalogo_conversacion-en-v2-corregido.json",
-    "QAS/datos/catalogo-catalogo_conversacion-es-v3-variantes.json",
-    "QAS/datos/catalogo-catalogo_conversacion-en-v1-editable.json",
-    "QAS/datos/catalogo-catalogo_conversacion-es-v2-corregido.json",
     "Rubricas/Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826 1.md",
     "jdocs/20260819_datos_campania_convencion/Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826.md",
     "Guias_Implementacion/Manual_Tecnico_Alto_Nivel_El_Tejido.md",
@@ -245,12 +237,6 @@
     "Especificaciones/planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md",
     "Especificaciones/Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md",
     "Especificaciones/Iniciativas/D5_Banco_Calibracion.md",
-    "QAS/24_DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista_Como_Probar.md",
-    "Especificaciones/planes/DT-RUB-01_Plan_Implementacion.md",
-    "Especificaciones/Iniciativas/DT-RUB-01_Rubrica_Estructurada_y_Evaluacion_Determinista.md",
-    "QAS/resultados/Resultados_DT-I20-02_2026-08-16.md",
-    "Especificaciones/Iniciativas/TODO.md",
-    "Especificaciones/planes/DT-I20-02_Prompt_Candidato_Evaluacion.md",
     "Client_partner/flujo_participante_tejido.png",
     "QAS/resultados/2026-08-06/portal_login.png",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",

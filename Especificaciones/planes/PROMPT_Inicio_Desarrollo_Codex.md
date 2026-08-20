@@ -6,6 +6,19 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
+> **HANDOFF VIGENTE 2026-08-20 — HOTFIX DETERMINISTA `DT-P33-01` LISTO LOCALMENTE.** El commit base
+> `ff54bb0` ya está desplegado y los App Settings
+> `Conversacion__ClasificacionSemanticaConsultaIdeaHabilitada=true` y
+> `Conversacion__VisibilidadIdeaParticipanteHabilitada=true` fueron confirmados. El caso real
+> `How is my idea going?` → `No is all right for me` demostró que una conformidad inequívoca podía
+> caer en `aportar` si no estaba en el catálogo y el clasificador semántico no la reconocía. El hotfix
+> resuelve primero la afinidad P-33 y los alias exactos de `confirmar`, sin LLM ni tokens; el mensaje
+> mixto conserva la clasificación semántica y sigue como aporte. Se añadieron siete alias a la semilla
+> inglesa y al JSON v3 ya importado como **borrador**, todavía no activo. Validación local: build Release
+> `-warnaserror`, **1053 unitarias + 121 integración** sin Calibración, formato y diff verdes.
+> **Siguiente:** desplegar este commit, activar el catálogo inglés v3 y ejecutar el smoke dirigido
+> abierto/cerrado/mixto; después completar QAS/25, D5 `n=3`, costo/latencia y acta.
+
 > **HANDOFF VIGENTE 2026-08-16 — CÓDIGO CONGELADO CONDICIONADAMENTE PARA CONVENCIÓN 2026.**
 > El artefacto objetivo es `28c3cb1`. Alcance aprobado: ambiente nuevo/exclusivo, base y configuración
 > limpias, una sola campaña parametrizada completa antes de activar, sin edición después del primer

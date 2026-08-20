@@ -238,12 +238,18 @@ public static class CatalogosTextosSemilla
             {
                 "done", "let's continue", "continue", "next question", "it is fine as is",
                 "it is good as is", "leave it as is", "I am satisfied", "I don't want to improve it",
+                "no is all right for me", "it's all right for me", "it is all right for me",
+                "no, it's all right for me", "no, it is all right for me",
+                "I'm fine with it as is", "I am fine with it as is",
             },
             ["confirmar"] = new[]
             {
                 "done", "let's continue", "continue", "next question", "it is fine as is",
                 "it is good as is", "leave it as is", "I am satisfied", "I don't want to improve it",
                 "yes", "correct", "that's right", "exactly", "I confirm",
+                "no is all right for me", "it's all right for me", "it is all right for me",
+                "no, it's all right for me", "no, it is all right for me",
+                "I'm fine with it as is", "I am fine with it as is",
             },
             ["finalizarIdea"] = new[]
             {
@@ -288,7 +294,13 @@ public static class CatalogosTextosSemilla
                 "show me my idea", "how is my idea written", "how is my idea so far",
                 "how is my idea coming along so far", "show my idea",
             },
-            ["acuseConsultaIdea"] = new[] { "thanks", "thank you", "got it" },
+            ["acuseConsultaIdea"] = new[]
+            {
+                "thanks", "thank you", "got it",
+                "no is all right for me", "it's all right for me", "it is all right for me",
+                "no, it's all right for me", "no, it is all right for me",
+                "I'm fine with it as is", "I am fine with it as is",
+            },
             ["nuevaIdea"] = new[] { "new idea", "another idea", "I have a new idea" },
         };
 }

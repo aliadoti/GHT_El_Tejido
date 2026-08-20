@@ -30,7 +30,8 @@ Paquete completo de pruebas E2E para validar **El Tejido** antes de producción 
 | 21 | [DT-I20-02 · Texto plano y prompt seguro](21_DT-I20-02_Texto_Plano_y_Prompt_Seguro_Como_Probar.md) | Comprueba que WhatsApp no exponga encabezados ni etiquetas internas y que la corrección preserve evaluación, versión, estados, idioma y una sola pregunta. |
 | 22 | [DT-P32-02 · Semillas, JSON masivo y readiness](22_DT-P32-02_Semillas_JSON_y_Readiness_Como_Probar.md) | Comprueba base `es/en`, descarga/prevalidación/reimportación masiva como borrador, límites, permisos, readiness y bloqueo de campañas sin catálogo activo. |
 | 23 | [DT-P32-03/03-01 · Cierre y readiness Meta](23_DT-P32-03_Cierre_y_Readiness_Meta_Como_Probar.md) | Comprueba cierres por idioma, mapeos de campañas activas frente a borradores y la guarda de activación con gate ON. |
-| — | [`datos/`](datos/README.md) | **Archivos de prueba listos para usar** (carga masiva). No hay que transcribirlos del documento. |
+| 25 | [DT-P33-01 · Clasificación semántica de consulta](25_DT-P33-01_Clasificacion_Semantica_Consulta_Idea_Como_Probar.md) | Comprueba paráfrasis `es/en`, mensajes mixtos, una sola llamada LLM y el hotfix determinista `How is my idea going?` → `No is all right for me`, además de P-27, fallback, seguridad y dedupe. |
+| — | [`datos/`](datos/README.md) | Archivos de carga masiva y JSON de evidencia/editorial del catálogo DT-P33-01. |
 
 ## Cómo empezar (tester)
 
