@@ -689,6 +689,64 @@ public sealed class OrquestadorConversacionTests
     }
 
     [Fact]
+    public async Task DtP3301_ConformidadContextualConfirmaVersionPendienteSinSegundaClasificacion()
+    {
+        var consolidador = Substitute.For<IConsolidadorIdeas>();
+        consolidador.ConsolidarAsync(Arg.Any<ContextoConsolidacionIdeas>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsolidacionIdeas.Exito(
+                "Idea consolidada completa.", TipoAporteIdea.Inicial, [], false, null, false, null));
+        IdeaConsolidada? ideaGuardada = null;
+        VersionIdeaConsolidada? versionGuardada = null;
+        _respuestas.GuardarIdeaConsolidadaAsync(
+                Arg.Do<IdeaConsolidada>(idea => ideaGuardada = idea), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.GuardarVersionIdeaAsync(
+                Arg.Do<VersionIdeaConsolidada>(version => versionGuardada = version), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>())
+            .Returns(_ => ideaGuardada is null ? Array.Empty<IdeaConsolidada>() : new[] { ideaGuardada });
+        _respuestas.ObtenerVersionIdeaAsync("c_1", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => versionGuardada);
+        _evaluador.EvaluarAsync(Arg.Any<ContextoEvaluacion>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEvaluacion.Exito(
+                CrearEvaluacion(RecomendacionEvaluacion.Cerrar, null, calificacionTotal: 4m)));
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        await PrepararConversacionAsync();
+        var orquestador = Construir(
+            new OpcionesConversacion
+            {
+                ConsolidacionProgresivaHabilitada = true,
+                ConfirmacionExplicitaIdeasHabilitada = true,
+                ClasificacionIntencionControl = false,
+            },
+            consolidador,
+            clasificador: clasificador);
+
+        await orquestador.ProcesarMensajeEntranteAsync(
+            Participante(), Mensaje("Aporte inicial"), CancellationToken.None);
+        ideaGuardada.Should().NotBeNull();
+        ideaGuardada!.EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.PendienteConfirmacion);
+
+        await orquestador.ProcesarAporteEnrutadoAsync(
+            Participante(),
+            Mensaje("I'm satisfied with this"),
+            new ContextoAporteEnrutado(
+                "p_1",
+                null,
+                "conv_c_1_u_1_p_1",
+                ClasificacionPrevia: new ClasificacionIntencionPrevia(IntencionControl.ConfirmarIdea, true),
+                IdeaIdConsultada: ideaGuardada.Id),
+            CancellationToken.None);
+
+        await _evaluador.Received(1).EvaluarAsync(
+            Arg.Is<ContextoEvaluacion>(contexto => contexto.RespuestaTexto == "Idea consolidada completa."),
+            Arg.Any<CancellationToken>());
+        ideaGuardada.EstadoFlujo.Should().Be(EstadoFlujoIdeaConsolidada.Cerrada);
+        await clasificador.DidNotReceive().ClasificarAsync(
+            Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task I19_CorreccionAntesDeConfirmar_AcumulaElAporteInicialYEncadenaLaVersion()
     {
         var almacen = ConfigurarAlmacenIdeas();

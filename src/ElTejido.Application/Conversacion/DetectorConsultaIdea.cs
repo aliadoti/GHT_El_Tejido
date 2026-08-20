@@ -40,16 +40,8 @@ public sealed class DetectorConsultaIdea
         return _maxCaracteres > 0
             && normalizado.Length > 0
             && normalizado.Length <= _maxCaracteres
-            && (_frases.Contains(normalizado) || EsPatronInequivoco(normalizado));
+            && _frases.Contains(normalizado);
     }
-
-    /// <summary>
-    /// P-33 §4.1: reconoce equivalentes inequívocos aunque una versión de catálogo activa todavía no
-    /// enumere cada variante natural. Se conserva coincidencia de mensaje completo para que una
-    /// corrección que además diga "mi idea" nunca se pierda como consulta de solo lectura.
-    /// </summary>
-    private static bool EsPatronInequivoco(string normalizado)
-        => normalizado is "how is my idea coming along so far";
 
     public static bool EsAcuse(string? texto, IEnumerable<string> frases)
         => CoincideExacto(texto, frases);

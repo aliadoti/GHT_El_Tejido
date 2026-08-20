@@ -11,7 +11,6 @@ public sealed class DetectorConsultaIdeaTests
     [Theory]
     [InlineData("Dime cómo va escrita mi idea hasta ahora")]
     [InlineData("MUÉSTRAME MI IDEA!")]
-    [InlineData("How is my idea coming along so far?")]
     public void ConsultaPura_SeReconoceSinImportarAcentosNiPuntuacion(string texto)
         => _detector.Coincide(texto).Should().BeTrue();
 

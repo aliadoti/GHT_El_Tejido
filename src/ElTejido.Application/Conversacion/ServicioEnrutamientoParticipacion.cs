@@ -78,7 +78,8 @@ public abstract record ResultadoEnrutamiento
         CandidatoCampania Candidato,
         MensajeEntrante Mensaje,
         string? EnrutamientoAporteId,
-        ContextoAporteEnrutado? Contexto = null) : ResultadoEnrutamiento;
+        ContextoAporteEnrutado? Contexto = null,
+        ClasificacionIntencionPrevia? ClasificacionPrevia = null) : ResultadoEnrutamiento;
 
     /// <summary>El aporte quedo conservado y un menu (campania o pregunta) fue enviado u ofrecido de nuevo.</summary>
     public sealed record SeleccionPendiente(string EnrutamientoAporteId) : ResultadoEnrutamiento;
@@ -138,6 +139,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     private readonly int _maxCaracteresDespertarProactivo;
     private readonly DetectorIntencionContinuar _retomarIdea;
     private readonly IResolutorTextosConversacion? _resolutorTextos;
+    private readonly IRepositorioConfiguracion? _configuracion;
+    private readonly IClasificadorIntencionControl? _clasificadorIntencion;
+    private readonly bool _clasificacionSemanticaConsultaIdeaHabilitada;
+    private readonly bool _cuposHabilitados;
+    private readonly bool _consolidacionProgresivaHabilitada;
+    private readonly GuardaCuposLlm? _guardaCuposLlm;
     private readonly TimeProvider _tiempo;
 
     public ServicioEnrutamientoParticipacion(
@@ -149,7 +156,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         OpcionesConversacion opciones,
         TimeProvider tiempo,
         IRepositorioRespuestas? respuestas = null,
-        IResolutorTextosConversacion? resolutorTextos = null)
+        IResolutorTextosConversacion? resolutorTextos = null,
+        IRepositorioConfiguracion? configuracion = null,
+        IClasificadorIntencionControl? clasificadorIntencion = null)
     {
         _enrutamientos = enrutamientos;
         _conversaciones = conversaciones;
@@ -185,6 +194,12 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 : DetectorIntencionContinuar.FrasesRevisitarIdeaPorDefecto,
             opciones.MaxCaracteresIntencionContinuar);
         _resolutorTextos = resolutorTextos;
+        _configuracion = configuracion;
+        _clasificadorIntencion = clasificadorIntencion;
+        _clasificacionSemanticaConsultaIdeaHabilitada = opciones.ClasificacionSemanticaConsultaIdeaHabilitada;
+        _cuposHabilitados = opciones.CuposHabilitados;
+        _consolidacionProgresivaHabilitada = opciones.ConsolidacionProgresivaHabilitada;
+        _guardaCuposLlm = respuestas is null ? null : new GuardaCuposLlm(respuestas, logSeguridad);
         _tiempo = tiempo;
     }
 
@@ -210,6 +225,19 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         if (_visibilidadIdeaParticipanteHabilitada
             && _respuestas is not null
             && await CoincideConsultaIdeaAsync(usuario.Idioma, mensaje.Texto, cancellationToken))
+        {
+            if (pendiente is not null)
+            {
+                await _enrutamientos.GuardarAsync(pendiente.Cancelar(ahora), cancellationToken);
+                await RegistrarAsync(usuario, "consultaCancelaSeleccion", Detalle(pendiente), ahora, cancellationToken);
+            }
+
+            return await ResolverConsultaIdeaAsync(usuario, candidatos, mensaje, ahora, cancellationToken);
+        }
+
+        var clasificacionPrevia = await ClasificarIntencionSemanticaAsync(
+            usuario, candidatos, mensaje, pendiente is not null, ahora, cancellationToken);
+        if (clasificacionPrevia?.Intencion == IntencionControl.ConsultarIdea)
         {
             if (pendiente is not null)
             {
@@ -247,7 +275,10 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
 
         // §5.6: una afinidad vigente enruta las respuestas de coaching sin volver a listar campanias,
         // salvo que el participante pida explicitamente cambiar de campania (§5.1 paso 3).
-        var afinidad = await ObtenerAfinidadVigenteAsync(usuario.Id, candidatos, ahora, cancellationToken);
+        var afinidad = clasificacionPrevia?.Intencion == IntencionControl.ConfirmarIdea
+            ? await ObtenerAfinidadConsultaVigenteAsync(usuario.Id, candidatos, ahora, cancellationToken)
+            : null;
+        afinidad ??= await ObtenerAfinidadVigenteAsync(usuario.Id, candidatos, ahora, cancellationToken);
         if (afinidad is not null)
         {
             if (await CoincideCambioCampaniaAsync(afinidad.Enrutamiento.Idioma, mensaje.Texto, cancellationToken))
@@ -255,10 +286,36 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                 return await SuspenderAfinidadYReofrecerAsync(usuario, candidatos, afinidad, mensaje, ahora, cancellationToken);
             }
 
+            if (afinidad.Enrutamiento.EsConsultarIdea
+                && clasificacionPrevia?.Intencion == IntencionControl.ConfirmarIdea)
+            {
+                if (afinidad.Conversacion?.Estado == EstadoConversacion.Cerrada)
+                {
+                    await _enrutamientos.GuardarAsync(afinidad.Enrutamiento.Completar(ahora), cancellationToken);
+                    return new ResultadoEnrutamiento.SinElegibles();
+                }
+
+                if (afinidad.Conversacion is not null && afinidad.Enrutamiento.IdeaSeleccionadaId is not null)
+                {
+                    return new ResultadoEnrutamiento.ContinuarConversacion(
+                        afinidad.Candidato,
+                        mensaje,
+                        null,
+                        new ContextoAporteEnrutado(
+                            afinidad.Conversacion.PreguntaId,
+                            null,
+                            afinidad.Conversacion.Id,
+                            ClasificacionPrevia: clasificacionPrevia,
+                            IdeaIdConsultada: afinidad.Enrutamiento.IdeaSeleccionadaId),
+                        clasificacionPrevia);
+                }
+            }
+
             if (afinidad.Enrutamiento.EsConsultarIdea && afinidad.Conversacion?.Estado == EstadoConversacion.Cerrada)
             {
                 if (await EsAcuseConsultaIdeaAsync(afinidad.Enrutamiento.Idioma, mensaje.Texto, cancellationToken))
                 {
+                    await _enrutamientos.GuardarAsync(afinidad.Enrutamiento.Completar(ahora), cancellationToken);
                     return new ResultadoEnrutamiento.SinElegibles();
                 }
 
@@ -266,7 +323,9 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                     afinidad.Candidato, mensaje, null,
                     new ContextoAporteEnrutado(
                         afinidad.Conversacion.PreguntaId, null, afinidad.Conversacion.Id,
-                        afinidad.Enrutamiento.IdeaSeleccionadaId));
+                        afinidad.Enrutamiento.IdeaSeleccionadaId,
+                        ClasificacionPrevia: clasificacionPrevia),
+                    clasificacionPrevia);
             }
 
             if (afinidad.Conversacion is not null)
@@ -276,7 +335,11 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
                     mensaje,
                     null,
                     new ContextoAporteEnrutado(
-                        afinidad.Conversacion.PreguntaId, null, afinidad.Conversacion.Id));
+                        afinidad.Conversacion.PreguntaId,
+                        null,
+                        afinidad.Conversacion.Id,
+                        ClasificacionPrevia: clasificacionPrevia),
+                    clasificacionPrevia);
             }
 
             // Afinidad hacia una campania sin conversacion todavia (cambio de campania reciente): el
@@ -308,7 +371,8 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             {
                 // Comportamiento actual intacto: una sola opcion con recorrido en curso se entrega al
                 // orquestador secuencial de siempre (criterio de compatibilidad 1 de P-26).
-                return new ResultadoEnrutamiento.ContinuarConversacion(unico.Candidato, mensaje, null);
+                return new ResultadoEnrutamiento.ContinuarConversacion(
+                    unico.Candidato, mensaje, null, ClasificacionPrevia: clasificacionPrevia);
             }
 
             // Elegible solo por participacion continua: el aporte abre un ciclo nuevo (§5.7) y la
@@ -344,6 +408,200 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             "procesado",
             $"{Detalle(enrutamiento)};latenciaMs={latenciaMs}",
             ahora,
+            cancellationToken);
+    }
+
+    private async Task<ClasificacionIntencionPrevia?> ClasificarIntencionSemanticaAsync(
+        Usuario usuario,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        MensajeEntrante mensaje,
+        bool haySeleccionPendiente,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        if (!_clasificacionSemanticaConsultaIdeaHabilitada
+            || !_visibilidadIdeaParticipanteHabilitada
+            || _respuestas is null
+            || _configuracion is null
+            || _clasificadorIntencion is null
+            || _maxCaracteresConsultaIdea <= 0
+            || string.IsNullOrWhiteSpace(mensaje.Texto)
+            || mensaje.Texto.Trim().Length > _maxCaracteresConsultaIdea)
+        {
+            return null;
+        }
+
+        var contexto = await ResolverContextoClasificacionSemanticaAsync(
+            usuario.Id, candidatos, ahora, cancellationToken);
+        if (contexto is null
+            || !contexto.Candidato.Campania.ConfigConversacional.ConsultaIdea
+            || string.IsNullOrWhiteSpace(contexto.Candidato.Campania.ConfigLlmRef))
+        {
+            return null;
+        }
+
+        var config = await _configuracion.ObtenerConfigLlmAsync(
+            contexto.Candidato.Campania.ConfigLlmRef, cancellationToken);
+        if (config is null || config.Estado != EstadoRegistro.Activo)
+        {
+            return new ClasificacionIntencionPrevia(null, false);
+        }
+
+        var motivoCupo = _cuposHabilitados && _guardaCuposLlm is not null
+            ? await _guardaCuposLlm.MotivoAsync(
+                contexto.Candidato.Campania,
+                usuario.Id,
+                ahora,
+                _consolidacionProgresivaHabilitada,
+                cancellationToken)
+            : null;
+        if (motivoCupo is not null)
+        {
+            await RegistrarClasificacionSemanticaAsync(
+                usuario, contexto.Candidato.Campania.Id, contexto.Estado, "omitida", null, null,
+                motivoCupo, false, ahora, cancellationToken);
+            return new ClasificacionIntencionPrevia(null, false);
+        }
+
+        var actoPrevio = contexto.Estado == EstadoMaquinaConversacion.EsperandoConfirmacionSalida
+            ? ActoPrevioIntencionControl.Confirmar
+            : ActoPrevioIntencionControl.Mejorar;
+        var resultado = await _clasificadorIntencion.ClasificarAsync(
+            new ContextoClasificacionIntencionControl(
+                contexto.Estado,
+                actoPrevio,
+                contexto.HayIdeaDisponible,
+                QuedanUnidadesPendientes: false,
+                usuario.Idioma,
+                mensaje.Texto,
+                config,
+                contexto.HayIdeaDisponible,
+                haySeleccionPendiente,
+                contexto.HayAfinidadConsultaIdea,
+                _maxCaracteresConsultaIdea),
+            cancellationToken);
+
+        if (resultado is ResultadoClasificacionIntencionControl.Exito exito)
+        {
+            await RegistrarClasificacionSemanticaAsync(
+                usuario, contexto.Candidato.Campania.Id, contexto.Estado,
+                exito.Intencion == IntencionControl.Ambigua ? "ambigua" : "clasificada",
+                exito.Intencion, exito.Uso, "ninguno", true, ahora, cancellationToken);
+            return new ClasificacionIntencionPrevia(exito.Intencion, true);
+        }
+
+        var fallback = (ResultadoClasificacionIntencionControl.Fallback)resultado;
+        await RegistrarClasificacionSemanticaAsync(
+            usuario, contexto.Candidato.Campania.Id, contexto.Estado, "fallback", null, fallback.Uso,
+            fallback.Motivo, true, ahora, cancellationToken);
+        return new ClasificacionIntencionPrevia(null, true);
+    }
+
+    private async Task<ContextoSemantico?> ResolverContextoClasificacionSemanticaAsync(
+        string usuarioId,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var afinidadConsulta = await ObtenerAfinidadConsultaVigenteAsync(
+            usuarioId, candidatos, ahora, cancellationToken);
+        if (afinidadConsulta is not null)
+        {
+            return new ContextoSemantico(
+                afinidadConsulta.Candidato,
+                afinidadConsulta.Conversacion!.EstadoMaquina,
+                HayIdeaDisponible: afinidadConsulta.Enrutamiento.IdeaSeleccionadaId is not null,
+                HayAfinidadConsultaIdea: true,
+                IdeaAbierta: afinidadConsulta.Conversacion.Estado == EstadoConversacion.Abierta,
+                IdeaActualizadaEn: afinidadConsulta.Enrutamiento.ActualizadoEn,
+                IdeaIndice: 0,
+                IdeaId: afinidadConsulta.Enrutamiento.IdeaSeleccionadaId);
+        }
+
+        var contextos = new List<ContextoSemantico>();
+        foreach (var candidato in candidatos.Where(c => c.Campania.ConfigConversacional.ConsultaIdea))
+        {
+            var idea = (await _respuestas!.ListarIdeasConsolidadasAsync(candidato.Campania.Id, cancellationToken))
+                .Where(x => x.UsuarioId == usuarioId
+                    && x.EstadoResultado != ElTejido.Domain.Respuestas.EstadoResultadoIdeaConsolidada.Rechazada
+                    && (!string.IsNullOrWhiteSpace(x.VersionConfirmadaRef) || !string.IsNullOrWhiteSpace(x.VersionPropuestaRef)))
+                .OrderBy(x => x.EstadoFlujo == ElTejido.Domain.Respuestas.EstadoFlujoIdeaConsolidada.Cerrada)
+                .ThenByDescending(x => x.ActualizadaEn)
+                .FirstOrDefault();
+            if (idea is null)
+            {
+                continue;
+            }
+
+            var conversacion = await _conversaciones.ObtenerConversacionAsync(
+                candidato.Campania.Id, idea.ConversacionId, cancellationToken);
+            contextos.Add(new ContextoSemantico(
+                candidato,
+                conversacion?.EstadoMaquina ?? EstadoMaquinaConversacion.EsperandoRespuestaInicial,
+                HayIdeaDisponible: true,
+                HayAfinidadConsultaIdea: false,
+                IdeaAbierta: idea.EstadoFlujo != ElTejido.Domain.Respuestas.EstadoFlujoIdeaConsolidada.Cerrada,
+                IdeaActualizadaEn: idea.ActualizadaEn,
+                IdeaIndice: idea.IdeaIndice,
+                IdeaId: idea.Id));
+        }
+
+        if (contextos.Count > 0)
+        {
+            return contextos
+                .OrderByDescending(contexto => contexto.IdeaAbierta)
+                .ThenByDescending(contexto => contexto.IdeaActualizadaEn)
+                .ThenByDescending(contexto => contexto.IdeaIndice)
+                .ThenBy(contexto => contexto.IdeaId, StringComparer.Ordinal)
+                .First();
+        }
+
+        var sinIdea = candidatos.Where(c => c.Campania.ConfigConversacional.ConsultaIdea).ToArray();
+        return sinIdea.Length == 1
+            ? new ContextoSemantico(
+                sinIdea[0], EstadoMaquinaConversacion.EsperandoRespuestaInicial,
+                HayIdeaDisponible: false, HayAfinidadConsultaIdea: false,
+                IdeaAbierta: false, IdeaActualizadaEn: null, IdeaIndice: 0, IdeaId: null)
+            : null;
+    }
+
+    private Task RegistrarClasificacionSemanticaAsync(
+        Usuario usuario,
+        string campaniaId,
+        EstadoMaquinaConversacion estado,
+        string resultado,
+        IntencionControl? intencion,
+        ElTejido.Domain.Evaluacion.UsoTokensLlm? uso,
+        string motivo,
+        bool esLlamadaLlm,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var valorIntencion = intencion switch
+        {
+            IntencionControl.Aportar => "aportar",
+            IntencionControl.ConsultarIdea => "consultarIdea",
+            IntencionControl.ConfirmarIdea => "confirmarIdea",
+            IntencionControl.FinalizarIdea => "finalizarIdea",
+            IntencionControl.FinalizarParticipacion => "finalizarParticipacion",
+            _ => "ninguna",
+        };
+        var detalle = FormattableString.Invariant(
+            $"componente:consultaIdea;origen:llm;resultado:{resultado};intencion:{valorIntencion};estado:{estado};promptTokens:{uso?.PromptTokens ?? 0};completionTokens:{uso?.CompletionTokens ?? 0};motivo:{motivo}");
+        return _logSeguridad.RegistrarAsync(
+            LogSeguridad.Crear(
+                "log_" + Guid.NewGuid().ToString("N"),
+                TipoEventoSeguridad.ClasificacionIntencionControl,
+                usuario.Id,
+                usuario.WhatsappNormalizado.Valor,
+                resultado,
+                detalle,
+                _correlacion.CorrelationIdActual,
+                ahora,
+                campaniaId,
+                uso?.PromptTokens ?? 0,
+                uso?.CompletionTokens ?? 0,
+                esLlamadaLlm),
             cancellationToken);
     }
 
@@ -699,7 +957,7 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
             elegida.Candidato.Campania.Id, elegida.Idea.ConversacionId, cancellationToken);
         string? rutaId = null;
         var cerrada = conversacion?.Estado == EstadoConversacion.Cerrada;
-        if (cerrada)
+        if (conversacion is not null)
         {
             var ruta = EnrutamientoAporte.Crear(
                 usuario.Id, mensaje.WhatsappMessageId, mensaje.Texto, EstadoEnrutamientoAporte.Listo, ahora,
@@ -1007,6 +1265,42 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
     /// abierta. Una conversacion ya cerrada marca el enrutamiento <c>completado</c>. Un enrutamiento
     /// sin conversacion (cambio de campania) mantiene la afinidad a la campania por 24 h.
     /// </summary>
+    private async Task<AfinidadVigente?> ObtenerAfinidadConsultaVigenteAsync(
+        string usuarioId,
+        IReadOnlyList<CandidatoCampania> candidatos,
+        DateTimeOffset ahora,
+        CancellationToken cancellationToken)
+    {
+        var rutas = await _enrutamientos.ListarPorUsuarioAsync(usuarioId, cancellationToken);
+        foreach (var ruta in rutas
+                     .Where(candidata => candidata.Estado == EstadoEnrutamientoAporte.EnIdea
+                         && candidata.EsConsultarIdea
+                         && ahora < candidata.ActualizadoEn + VigenciaAfinidad)
+                     .OrderByDescending(candidata => candidata.ActualizadoEn))
+        {
+            if (ruta.CampaniaSeleccionadaId is null || ruta.ConversacionId is null)
+            {
+                continue;
+            }
+
+            var candidato = candidatos.FirstOrDefault(
+                actual => actual.Campania.Id == ruta.CampaniaSeleccionadaId);
+            if (candidato is null)
+            {
+                continue;
+            }
+
+            var conversacion = await _conversaciones.ObtenerConversacionAsync(
+                candidato.Campania.Id, ruta.ConversacionId, cancellationToken);
+            if (conversacion is not null && conversacion.UsuarioId == usuarioId)
+            {
+                return new AfinidadVigente(ruta, candidato, conversacion);
+            }
+        }
+
+        return null;
+    }
+
     private async Task<AfinidadVigente?> ObtenerAfinidadVigenteAsync(
         string usuarioId,
         IReadOnlyList<CandidatoCampania> candidatos,
@@ -1661,6 +1955,16 @@ public sealed class ServicioEnrutamientoParticipacion : IServicioEnrutamientoPar
         EnrutamientoAporte Enrutamiento,
         CandidatoCampania Candidato,
         DominioConversacion? Conversacion);
+
+    private sealed record ContextoSemantico(
+        CandidatoCampania Candidato,
+        EstadoMaquinaConversacion Estado,
+        bool HayIdeaDisponible,
+        bool HayAfinidadConsultaIdea,
+        bool IdeaAbierta,
+        DateTimeOffset? IdeaActualizadaEn,
+        int IdeaIndice,
+        string? IdeaId);
 }
 
 /// <summary>P-30: seleccion historica ya resuelta; solo contiene ids internos auditables.</summary>

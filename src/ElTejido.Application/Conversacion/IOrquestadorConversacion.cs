@@ -21,6 +21,14 @@ public interface IOrquestadorConversacion
         MensajeEntrante mensaje,
         CancellationToken cancellationToken);
 
+    /// <summary>DT-P33-01: entrega normal con una clasificación ya resuelta antes del routing.</summary>
+    Task ProcesarMensajeEntranteClasificadoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ClasificacionIntencionPrevia clasificacion,
+        CancellationToken cancellationToken)
+        => ProcesarMensajeEntranteAsync(participante, mensaje, cancellationToken);
+
     /// <summary>
     /// P-26 corte 3 (05 §4.4.3): entrega un aporte cuya campania y pregunta ya fueron resueltas por el
     /// enrutamiento determinista. Con la conversacion mas reciente de esa pregunta abierta se procesa
@@ -54,11 +62,11 @@ public interface IOrquestadorConversacion
         CancellationToken cancellationToken) => Task.FromResult(false);
 
     /// <summary>P-33: muestra una versión propia ya validada sin alterar el estado de la conversación.</summary>
-    Task MostrarIdeaConsultadaAsync(
+    Task<ResultadoConsultaIdeaMostrada> MostrarIdeaConsultadaAsync(
         ParticipanteResuelto participante,
         MensajeEntrante mensaje,
         ContextoConsultaIdea contexto,
-        CancellationToken cancellationToken) => Task.CompletedTask;
+        CancellationToken cancellationToken) => Task.FromResult(default(ResultadoConsultaIdeaMostrada));
 
     /// <summary>
     /// P-29 §5.2: avisa la pausa del hilo que el barrido de inactividad (I-17 §7) <b>ya cerro</b>. No
@@ -88,4 +96,9 @@ public sealed record ContextoAporteEnrutado(
     string PreguntaId,
     string? EnrutamientoAporteId,
     string? ConversacionIdAfinidad = null,
-    string? IdeaIdReabrir = null);
+    string? IdeaIdReabrir = null,
+    ClasificacionIntencionPrevia? ClasificacionPrevia = null,
+    string? IdeaIdConsultada = null);
+
+/// <summary>Resultado tipado del envío P-33; solo un envío visible y exitoso crea afinidad.</summary>
+public readonly record struct ResultadoConsultaIdeaMostrada(bool Visible, bool EnvioExitoso);

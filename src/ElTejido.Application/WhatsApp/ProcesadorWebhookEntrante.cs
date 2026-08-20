@@ -182,9 +182,10 @@ public sealed class ProcesadorWebhookEntrante
                     consulta.Candidato.Campania,
                     consulta.Candidato.Participante,
                     consulta.Candidato.PreguntaVigente);
-                await _orquestador.MostrarIdeaConsultadaAsync(
+                var mostrada = await _orquestador.MostrarIdeaConsultadaAsync(
                     participanteConsulta, consulta.Mensaje, consulta.Contexto, cancellationToken);
-                if (consulta.Contexto.IdeaCerrada
+                if (mostrada.Visible
+                    && mostrada.EnvioExitoso
                     && consulta.Contexto.IdeaId is not null
                     && consulta.Contexto.ConversacionId is not null)
                 {
@@ -210,8 +211,16 @@ public sealed class ProcesadorWebhookEntrante
                 // nuevo); sin contexto se conserva la resolucion secuencial actual.
                 if (continuar.Contexto is not null)
                 {
+                    var contexto = continuar.Contexto.ClasificacionPrevia is null
+                        ? continuar.Contexto with { ClasificacionPrevia = continuar.ClasificacionPrevia }
+                        : continuar.Contexto;
                     await _orquestador.ProcesarAporteEnrutadoAsync(
-                        participante, mensajeAcotado, continuar.Contexto, cancellationToken);
+                        participante, mensajeAcotado, contexto, cancellationToken);
+                }
+                else if (continuar.ClasificacionPrevia is not null)
+                {
+                    await _orquestador.ProcesarMensajeEntranteClasificadoAsync(
+                        participante, mensajeAcotado, continuar.ClasificacionPrevia, cancellationToken);
                 }
                 else
                 {

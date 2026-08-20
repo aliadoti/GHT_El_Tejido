@@ -92,6 +92,26 @@ public sealed class ProcesadorWebhookEntranteTests
     }
 
     [Fact]
+    public async Task DtP3301_ClasificacionPreviaSinContexto_UsaEntregaClasificada()
+    {
+        var candidato = AutorizarConCandidato("I'm satisfied with this");
+        var clasificacion = new ClasificacionIntencionPrevia(IntencionControl.ConfirmarIdea, true);
+        _enrutamiento.ResolverAsync(
+                Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(),
+                Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ResultadoEnrutamiento.ContinuarConversacion(
+                candidato, ci.Arg<MensajeEntrante>(), null, ClasificacionPrevia: clasificacion));
+
+        await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        await _orquestador.Received(1).ProcesarMensajeEntranteClasificadoAsync(
+            Arg.Any<ParticipanteResuelto>(), Arg.Any<MensajeEntrante>(), clasificacion,
+            Arg.Any<CancellationToken>());
+        await _orquestador.DidNotReceiveWithAnyArgs()
+            .ProcesarMensajeEntranteAsync(default!, default!, default);
+    }
+
+    [Fact]
     public async Task P28_DespertarResuelto_EnviaEntradaAlOrquestadorSinProcesarAporte()
     {
         var candidato = AutorizarConCandidato("Hola");
@@ -170,6 +190,47 @@ public sealed class ProcesadorWebhookEntranteTests
 
         entregado.Should().NotBeNull();
         entregado!.Texto.Length.Should().Be(1500);
+    }
+
+    [Fact]
+    public async Task DtP3301_ConsultaAbiertaVisibleYEnviada_ConfirmaAfinidad()
+    {
+        var candidato = AutorizarConCandidato("How is my idea coming along so far?");
+        var contexto = new ContextoConsultaIdea("p_1", "idea_1", "conv_1", "route_1", false);
+        _enrutamiento.ResolverAsync(
+                Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(),
+                Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEnrutamiento.ConsultarIdea(candidato, _mensaje, contexto));
+        _orquestador.MostrarIdeaConsultadaAsync(
+                Arg.Any<ParticipanteResuelto>(), Arg.Any<MensajeEntrante>(), contexto,
+                Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsultaIdeaMostrada(Visible: true, EnvioExitoso: true));
+
+        var resultado = await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        resultado.Estado.Should().Be(ResultadoProcesoEntrante.Procesado);
+        await _enrutamiento.Received(1).ConfirmarConsultaIdeaAsync(
+            "u_1", "wamid.ABC", "idea_1", "conv_1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DtP3301_ConsultaNoVisible_NoCreaAfinidad()
+    {
+        var candidato = AutorizarConCandidato("How is my idea coming along so far?");
+        var contexto = new ContextoConsultaIdea("p_1", "idea_1", "conv_1", "route_1", false);
+        _enrutamiento.ResolverAsync(
+                Arg.Any<Usuario>(), Arg.Any<IReadOnlyList<CandidatoCampania>>(),
+                Arg.Any<MensajeEntrante>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoEnrutamiento.ConsultarIdea(candidato, _mensaje, contexto));
+        _orquestador.MostrarIdeaConsultadaAsync(
+                Arg.Any<ParticipanteResuelto>(), Arg.Any<MensajeEntrante>(), contexto,
+                Arg.Any<CancellationToken>())
+            .Returns(new ResultadoConsultaIdeaMostrada(Visible: false, EnvioExitoso: true));
+
+        await Construir().ProcesarAsync(new WhatsAppWebhookPayload(), CancellationToken.None);
+
+        await _enrutamiento.DidNotReceiveWithAnyArgs()
+            .ConfirmarConsultaIdeaAsync(default!, default!, default!, default!, default);
     }
 
     [Fact]

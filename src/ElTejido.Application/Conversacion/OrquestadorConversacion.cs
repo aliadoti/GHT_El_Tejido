@@ -93,6 +93,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private readonly bool _clasificacionIntencionControlHabilitada;
     private readonly OpcionesCatalogoTextos _opcionesCatalogoTextos;
     private readonly IResolutorContenidoCampania _resolutorContenidoCampania;
+    private readonly GuardaCuposLlm _guardaCuposLlm;
 
     public OrquestadorConversacion(
         IRepositorioConversaciones conversaciones,
@@ -130,6 +131,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         _baseConocimiento = baseConocimiento;
         _gateway = gateway;
         _logSeguridad = logSeguridad;
+        _guardaCuposLlm = new GuardaCuposLlm(respuestas, logSeguridad);
         _correlacion = correlacion;
         _mensajes = opciones.Mensajes;
         _limites = new PoliticaLimitesConversacion(
@@ -356,6 +358,20 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         ParticipanteResuelto participante,
         MensajeEntrante mensaje,
         CancellationToken cancellationToken)
+        => await ProcesarMensajeEntranteInternoAsync(participante, mensaje, null, cancellationToken);
+
+    public async Task ProcesarMensajeEntranteClasificadoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ClasificacionIntencionPrevia clasificacion,
+        CancellationToken cancellationToken)
+        => await ProcesarMensajeEntranteInternoAsync(participante, mensaje, clasificacion, cancellationToken);
+
+    private async Task ProcesarMensajeEntranteInternoAsync(
+        ParticipanteResuelto participante,
+        MensajeEntrante mensaje,
+        ClasificacionIntencionPrevia? clasificacionPrevia,
+        CancellationToken cancellationToken)
     {
         var usuario = participante.Usuario;
         var campania = participante.Campania;
@@ -379,7 +395,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, cancellationToken);
+        await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, clasificacionPrevia, null, cancellationToken);
     }
 
     /// <summary>
@@ -497,7 +513,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             hilo = new HiloTrabajo(pregunta, cicloId, conversacionCiclo);
         }
 
-        await ProcesarEnHiloAsync(hilo, participante, mensaje, ahora, cancellationToken);
+        await ProcesarEnHiloAsync(
+            hilo, participante, mensaje, ahora, contexto.ClasificacionPrevia, contexto.IdeaIdConsultada,
+            cancellationToken);
     }
 
     /// <summary>
@@ -617,7 +635,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         await RegistrarDespertarProactivoAsync(usuario, resultado.Exito ? "reactivacion" : "errorEnvio", ahora, cancellationToken);
     }
 
-    public async Task MostrarIdeaConsultadaAsync(
+    public async Task<ResultadoConsultaIdeaMostrada> MostrarIdeaConsultadaAsync(
         ParticipanteResuelto participante,
         MensajeEntrante mensaje,
         ContextoConsultaIdea contexto,
@@ -673,6 +691,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             visible ? "consultaMostrada" : "consultaSinIdea",
             $"campania={campania.Id};idea={contexto.IdeaId ?? "ninguna"};envio={(resultado.Exito ? "ok" : "error")}",
             _correlacion.CorrelationIdActual, ahora, campaniaId: campania.Id), cancellationToken);
+        return new ResultadoConsultaIdeaMostrada(visible, resultado.Exito);
     }
 
     private async Task ProcesarEnHiloAsync(
@@ -680,6 +699,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         ParticipanteResuelto participante,
         MensajeEntrante mensaje,
         DateTimeOffset ahora,
+        ClasificacionIntencionPrevia? clasificacionPrevia,
+        string? ideaIdConsultada,
         CancellationToken cancellationToken)
     {
         var usuario = participante.Usuario;
@@ -722,6 +743,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 emisor,
                 mensaje,
                 ahora,
+                clasificacionPrevia,
+                ideaIdConsultada,
                 cancellationToken);
             return;
         }
@@ -734,7 +757,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         {
             await ProcesarIdeaConsolidadaAsync(
                 conversacion, campania, usuario, participante, pregunta, numero, emisor, mensaje, ahora,
-                cancellationToken);
+                clasificacionPrevia, ideaIdConsultada, cancellationToken);
             return;
         }
         // Interpretacion determinista de la situacion (05 §4.4 salida conversacional; I-17 §5.4 rechazo del
@@ -797,7 +820,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
 
             var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
                 campania, usuario, conversacion, conversacion.EstadoMaquina, esRepregunta,
-                quedanUnidadesPendientes: false, mensaje.Texto, ahora, cancellationToken);
+                quedanUnidadesPendientes: false, mensaje.Texto, ahora, clasificacionPrevia,
+                permitirConfirmarIdea: false, cancellationToken);
             if (decisionControl == DecisionIntencionControl.FinalizarParticipacion)
             {
                 await CerrarConAgradecimientoAsync(conversacion.RegistrarEntrante(mensaje.Timestamp), numero, campania, null, emisor, ahora, cancellationToken);
@@ -1021,6 +1045,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string? emisor,
         MensajeEntrante mensaje,
         DateTimeOffset ahora,
+        ClasificacionIntencionPrevia? clasificacionPrevia,
+        string? ideaIdConsultada,
         CancellationToken cancellationToken)
     {
         var estadoPrevio = conversacion.EstadoMaquina;
@@ -1074,7 +1100,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
             campania, usuario, conversacion, estadoPrevio, hayUnidadActiva: true,
             quedanUnidadesPendientes: await HayOtraIdeaAbiertaAsync(campania.Id, conversacion.Id, idea.Id, cancellationToken),
-            mensaje.Texto, ahora, cancellationToken);
+            mensaje.Texto, ahora, clasificacionPrevia,
+            permitirConfirmarIdea: string.Equals(ideaIdConsultada, idea.Id, StringComparison.Ordinal), cancellationToken);
         if (await EjecutarControlSimpleAsync(
                 decisionControl, conversacion, campania, usuario, pregunta, numero, emisor, idea, ahora,
                 cancellationToken))
@@ -1082,9 +1109,29 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
+        if (decisionControl == DecisionIntencionControl.ConfirmarIdea
+            && idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.PendienteConfirmacion)
+        {
+            await CerrarIdeaPorControlAsync(idea, campania, usuario, "participante", ahora, cancellationToken);
+            var acuse = await SeleccionarAcuseContinuarAsync(conversacion, cancellationToken);
+            if (!await ContinuarConIdeaEnEsperaAsync(
+                    conversacion, campania, usuario, pregunta, numero, emisor, acuse, ahora, cancellationToken))
+            {
+                await CerrarConAgradecimientoAsync(
+                    conversacion, numero, campania, acuse, emisor, ahora, cancellationToken,
+                    omitirIdeaVisible: true);
+                await EnviarSiguientePreguntaPendienteAsync(
+                    campania, usuario, pregunta, numero, emisor, ahora, cancellationToken);
+            }
+
+            return;
+        }
+
         if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion)
         {
-            await ConfirmarOCorregirIdeaAsync(conversacion, campania, usuario, pregunta, numero, emisor, idea, mensaje.Texto, ahora, cancellationToken);
+            await ConfirmarOCorregirIdeaAsync(
+                conversacion, campania, usuario, pregunta, numero, emisor, idea, mensaje.Texto, ahora,
+                cancellationToken, confirmacionSemantica: decisionControl == DecisionIntencionControl.ConfirmarIdea);
             return;
         }
 
@@ -1428,6 +1475,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         bool quedanUnidadesPendientes,
         string texto,
         DateTimeOffset ahora,
+        ClasificacionIntencionPrevia? clasificacionPrevia,
+        bool permitirConfirmarIdea,
         CancellationToken cancellationToken)
     {
         var politica = (await ResolverDetectoresAsync(conversacion, cancellationToken)).PoliticaIntencionControl;
@@ -1438,6 +1487,21 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 campania.Id, usuario, estadoPrevio, "determinista", "clasificada", determinista, null, "ninguno", false, ahora,
                 cancellationToken);
             return determinista;
+        }
+
+        if (clasificacionPrevia is not null)
+        {
+            if (permitirConfirmarIdea && clasificacionPrevia.Intencion == IntencionControl.ConfirmarIdea)
+            {
+                return DecisionIntencionControl.ConfirmarIdea;
+            }
+
+            if (!ClasificacionIntencionControlEfectiva(campania))
+            {
+                return DecisionIntencionControl.Aportar;
+            }
+
+            return politica.Resolver(estadoPrevio, hayUnidadActiva, texto, clasificacionPrevia.Intencion);
         }
 
         if (!_clasificacionIntencionControlHabilitada
@@ -1906,7 +1970,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     private async Task ConfirmarOCorregirIdeaAsync(
         DominioConversacion conversacion, Campania campania, Usuario usuario, Pregunta pregunta,
         NumeroWhatsApp numero, string? emisor, IdeaConsolidada idea, string texto, DateTimeOffset ahora,
-        CancellationToken cancellationToken, bool confirmacionAutomatica = false)
+        CancellationToken cancellationToken, bool confirmacionAutomatica = false, bool confirmacionSemantica = false)
     {
         var detectores = await ResolverDetectoresAsync(conversacion, cancellationToken);
         if (!confirmacionAutomatica && detectores.RechazoIdea.Coincide(texto))
@@ -1934,7 +1998,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var confirmacionExplicita = confirmacionAutomatica || detectores.Confirmacion.Coincide(texto);
+        var confirmacionExplicita = confirmacionAutomatica || confirmacionSemantica || detectores.Confirmacion.Coincide(texto);
         var confirmacionImplicitaMejora = !confirmacionAutomatica && detectores.SolicitarMejora.Coincide(texto);
         if (!confirmacionExplicita && !confirmacionImplicitaMejora)
         {
@@ -3039,6 +3103,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         bool cupoLlamadasExcedido,
         bool presupuestoExcedido,
         DateTimeOffset ahora,
+        ClasificacionIntencionPrevia? clasificacionPrevia,
+        string? ideaIdConsultada,
         CancellationToken cancellationToken)
     {
         // I-19 §4.7: la respuesta a una lista de selección ya ofrecida se resuelve antes que nada; si no
@@ -3101,7 +3167,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
             campania, usuario, conversacion, estadoPrevio, hayUnidadActiva: true,
             quedanUnidadesPendientes: conversacion.CoachingIdeas!.Ideas.Any(entrada => entrada.Estado == EstadoIdeaCoaching.Pendiente),
-            texto, ahora, cancellationToken);
+            texto, ahora, clasificacionPrevia,
+            permitirConfirmarIdea: string.Equals(ideaIdConsultada, idea.Id, StringComparison.Ordinal), cancellationToken);
         if (await EjecutarControlColaAsync(
                 decisionControl, conversacion, campania, usuario, pregunta, numero, emisor, idea, ahora,
                 cancellationToken))
@@ -3112,9 +3179,12 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var intencion = detectores.Transicion.Interpretar(
             EstadoMaquinaConversacion.EsperandoRepregunta, activa.RepreguntasUsadas, pregunta.MaxRepreguntas, texto);
 
+        var confirmacionSemantica = decisionControl == DecisionIntencionControl.ConfirmarIdea;
+
         // §4.2: en pendienteConfirmacion "así está bien" primero confirma la versión y se evalúa una vez;
         // con una versión ya confirmada, la misma frase cierra la idea como pendiente.
-        if (intencion.DeseaContinuar && idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.PendienteConfirmacion)
+        if ((intencion.DeseaContinuar || confirmacionSemantica)
+            && idea.EstadoFlujo != EstadoFlujoIdeaConsolidada.PendienteConfirmacion)
         {
             await CerrarIdeaActivaYContinuarAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea,
@@ -3146,7 +3216,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion && detectores.Confirmacion.Coincide(texto))
+        if (idea.EstadoFlujo == EstadoFlujoIdeaConsolidada.PendienteConfirmacion
+            && (confirmacionSemantica || detectores.Confirmacion.Coincide(texto)))
         {
             await ConfirmarYEvaluarIdeaActivaAsync(
                 conversacion, campania, usuario, pregunta, numero, emisor, idea, intencion.DeseaContinuar,
@@ -3480,6 +3551,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string? emisor,
         MensajeEntrante mensaje,
         DateTimeOffset ahora,
+        ClasificacionIntencionPrevia? clasificacionPrevia,
+        string? ideaIdConsultada,
         CancellationToken cancellationToken)
     {
         var cola = conversacion.CoachingIdeas!;
@@ -3611,6 +3684,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
                 cupoLlamadasExcedido,
                 presupuestoExcedido,
                 ahora,
+                clasificacionPrevia,
+                ideaIdConsultada,
                 cancellationToken);
             return;
         }
@@ -3634,7 +3709,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             var decisionControl = salidaPendiente.Decision ?? await ResolverIntencionControlAsync(
                 campania, usuario, conversacion, estadoPrevio, hayUnidadActiva: true,
                 quedanUnidadesPendientes: cola.Ideas.Any(entrada => entrada.Estado == EstadoIdeaCoaching.Pendiente),
-                mensaje.Texto, ahora, cancellationToken);
+                mensaje.Texto, ahora, clasificacionPrevia, permitirConfirmarIdea: false, cancellationToken);
             if (await EjecutarControlColaAsync(
                     decisionControl, conversacion, campania, usuario, pregunta, numero, emisor, idea: null, ahora,
                     cancellationToken))
@@ -4290,7 +4365,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string? acusePrevio,
         string? emisor,
         DateTimeOffset ahora,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool omitirIdeaVisible = false)
     {
         var cierreCampania = await ResolverMensajeCierreAsync(
             conversacion, campania, numero, emisor, "cierreConAgradecimiento", ahora, cancellationToken);
@@ -4302,7 +4378,10 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         var texto = string.IsNullOrWhiteSpace(acusePrevio)
             ? cierreCampania
             : Combinar(acusePrevio, cierreCampania);
-        texto = await AgregarIdeaVisibleAlCierreAsync(conversacion, campania, texto, cancellationToken);
+        if (!omitirIdeaVisible)
+        {
+            texto = await AgregarIdeaVisibleAlCierreAsync(conversacion, campania, texto, cancellationToken);
+        }
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);
@@ -4766,31 +4845,8 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
         string usuarioId,
         DateTimeOffset ahora,
         CancellationToken cancellationToken)
-    {
-        var maximo = campania.ConfigSeguridad.MaxLlamadasLlmPorUsuario;
-        if (maximo <= 0)
-        {
-            return false;
-        }
-
-        // P-26 §9: misma ventana movil que el cupo de mensajes cuando la campania es continua; las
-        // clases de llamada contabilizadas (evaluacion, consolidacion y clasificacion P-27) no cambian.
-        var desde = VentanaCuposDesde(campania, ahora);
-        var evaluaciones = desde is null
-            ? await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
-            : await _respuestas.ContarEvaluacionesUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken);
-        // I-19 §12.3: la consolidacion tambien gasta LLM. Una correccion repetida antes de confirmar
-        // consume llamadas sin producir evaluacion, asi que el cupo cuenta ambas clases.
-        var consolidaciones = ConsolidacionIdeasActiva
-            ? desde is null
-                ? await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, cancellationToken)
-                : await _respuestas.ContarConsolidacionesUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken)
-            : 0;
-        var clasificaciones = desde is null
-            ? await _logSeguridad.ContarClasificacionesIntencionControlUsuarioAsync(campania.Id, usuarioId, cancellationToken)
-            : await _logSeguridad.ContarClasificacionesIntencionControlUsuarioAsync(campania.Id, usuarioId, desde.Value, cancellationToken);
-        return evaluaciones + consolidaciones + clasificaciones >= maximo;
-    }
+        => await _guardaCuposLlm.CupoLlamadasExcedidoAsync(
+            campania, usuarioId, ahora, ConsolidacionIdeasActiva, cancellationToken);
 
     /// <summary>
     /// P-26 §9 — inicio de la ventana movil de cupos por participante: 24 h atras en campañas con
@@ -4810,17 +4866,7 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
     /// 0 = desactivado.
     /// </summary>
     private async Task<bool> PresupuestoTokensExcedidoAsync(Campania campania, CancellationToken cancellationToken)
-    {
-        var presupuesto = campania.ConfigSeguridad.PresupuestoTokensCampania;
-        if (presupuesto <= 0)
-        {
-            return false;
-        }
-
-        var consumidos = await _respuestas.SumarTokensCampaniaAsync(campania.Id, cancellationToken)
-                         + await _logSeguridad.SumarTokensClasificacionesIntencionControlCampaniaAsync(campania.Id, cancellationToken);
-        return consumidos >= presupuesto;
-    }
+        => await _guardaCuposLlm.PresupuestoTokensExcedidoAsync(campania, cancellationToken);
 
     private Task RegistrarRateLimitAsync(
         Usuario usuario,

@@ -89,6 +89,9 @@ public sealed class OpcionesConversacion
     /// <summary>P-33: kill-switch global para consultar y mostrar la idea propia. Nace apagado.</summary>
     public bool VisibilidadIdeaParticipanteHabilitada { get; set; }
 
+    /// <summary>DT-P33-01: kill-switch de clasificación semántica P-33; nace apagado.</summary>
+    public bool ClasificacionSemanticaConsultaIdeaHabilitada { get; set; }
+
     /// <summary>P-33: límite de una consulta pura de la idea; 0 o negativo desactiva su reconocimiento.</summary>
     public int MaxCaracteresConsultaIdea { get; set; } = 220;
 

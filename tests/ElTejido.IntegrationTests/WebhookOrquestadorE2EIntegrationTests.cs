@@ -417,6 +417,82 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task DtP3301_WebhookConsultaNaturalYConformidad_CierraLaIdeaSinOtraRepregunta()
+    {
+        var gateway = new GatewayDePrueba();
+        var conversaciones = new ConversacionesFake();
+        var respuestas = new RespuestasFake();
+        var contextos = new System.Collections.Concurrent.ConcurrentQueue<ContextoEvaluacion>();
+        var compilaciones = new System.Collections.Concurrent.ConcurrentQueue<SolicitudCompilacion>();
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(
+                Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(llamada =>
+            {
+                var texto = llamada.Arg<ContextoClasificacionIntencionControl>().TextoEntrante;
+                var intencion = texto switch
+                {
+                    "How is my idea coming along so far?" => IntencionControl.ConsultarIdea,
+                    "I'm satisfied with this" => IntencionControl.ConfirmarIdea,
+                    _ => IntencionControl.Aportar,
+                };
+                return new ResultadoClasificacionIntencionControl.Exito(intencion, UsoTokensLlm.Crear(8, 2));
+            });
+
+        using var fabrica = Construir(
+            gateway,
+            conversaciones,
+            respuestas,
+            contextos,
+            compilaciones,
+            confirmacionExplicitaIdeas: false,
+            clasificador: clasificador,
+            clasificacionSemanticaConsultaIdea: true,
+            visibilidadIdeaParticipante: true,
+            evaluacion: CrearEvaluacion(
+                RecomendacionEvaluacion.Repreguntar, "What is the first operational step?", calificacionTotal: 1m));
+        using var client = fabrica.CreateClient();
+
+        await EnviarEntranteAsync(client, "wamid.DTP33.1", "Hola");
+        await EsperarAsync(() => gateway.Enviados.Count >= 1);
+        await EnviarEntranteAsync(client, "wamid.DTP33.2", "AI-driven predictive logistics");
+        await EsperarAsync(() => respuestas.Ideas.Values.Any()
+            && respuestas.Ideas.Values.Single().EstadoFlujo == EstadoFlujoIdeaConsolidada.EnMejora);
+        var enviosAntesDeConsulta = gateway.Enviados.Count;
+        await EnviarEntranteAsync(client, "wamid.DTP33.3", "How is my idea coming along so far?");
+        await EsperarAsync(() => gateway.Enviados.Count > enviosAntesDeConsulta
+            && gateway.Enviados.Last().Texto.Contains("AI-driven predictive logistics", StringComparison.Ordinal));
+        using (var scope = fabrica.Services.CreateScope())
+        {
+            var rutas = await scope.ServiceProvider.GetRequiredService<IRepositorioEnrutamientosAporte>()
+                .ListarPorUsuarioAsync("u_1", CancellationToken.None);
+            rutas.Should().Contain(ruta => ruta.EsConsultarIdea
+                && ruta.Estado == EstadoEnrutamientoAporte.EnIdea
+                && ruta.IdeaSeleccionadaId == respuestas.Ideas.Values.Single().Id);
+        }
+
+        var enviosAntesDeConformidad = gateway.Enviados.Count;
+        await EnviarEntranteAsync(client, "wamid.DTP33.4", "I'm satisfied with this");
+        await EsperarAsync(() => clasificador.ReceivedCalls().Any(llamada =>
+            llamada.GetArguments().FirstOrDefault() is ContextoClasificacionIntencionControl contexto
+            && contexto.TextoEntrante == "I'm satisfied with this"));
+        await clasificador.Received().ClasificarAsync(
+            Arg.Is<ContextoClasificacionIntencionControl>(contexto =>
+                contexto.TextoEntrante == "I'm satisfied with this" && contexto.HayAfinidadConsultaIdea),
+            Arg.Any<CancellationToken>());
+        await EsperarAsync(() => respuestas.Ideas.Values.Any()
+            && respuestas.Ideas.Values.Single().EstadoFlujo == EstadoFlujoIdeaConsolidada.Cerrada);
+
+        respuestas.Ideas.Values.Should().ContainSingle().Which.EstadoFlujo
+            .Should().Be(EstadoFlujoIdeaConsolidada.Cerrada);
+        gateway.Enviados.Skip(enviosAntesDeConformidad).Should().NotContain(enviado =>
+            enviado.Texto.Contains("What is the first operational step?", StringComparison.Ordinal));
+        gateway.Enviados.Skip(enviosAntesDeConformidad).Should().NotContain(enviado =>
+            enviado.Texto.Contains("AI-driven predictive logistics", StringComparison.Ordinal));
+        contextos.Should().ContainSingle("la conformidad no consolida ni evalúa otra vez");
+    }
+
     // ----------------------------------------------------------------------------------------------
     // DT-I20-02 §7.2: contrato visible de punta a punta, con el evaluador REAL sobre un LLM falso.
     // ----------------------------------------------------------------------------------------------
@@ -684,6 +760,8 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
         IClasificadorIntencionControl? clasificador = null,
         IRepositorioLogSeguridad? logSeguridad = null,
         bool clasificacionIntencionControl = false,
+        bool clasificacionSemanticaConsultaIdea = false,
+        bool visibilidadIdeaParticipante = false,
         bool retomarIdeas = false,
         DominioEvaluacion? evaluacion = null,
         bool resumenConsolidacion = false,
@@ -732,6 +810,10 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
                     ["Conversacion:ConfirmacionExplicitaIdeasHabilitada"] =
                         confirmacionExplicitaIdeas.ToString(),
                     ["Conversacion:ClasificacionIntencionControl"] = clasificacionIntencionControl.ToString(),
+                    ["Conversacion:ClasificacionSemanticaConsultaIdeaHabilitada"] =
+                        clasificacionSemanticaConsultaIdea.ToString(),
+                    ["Conversacion:VisibilidadIdeaParticipanteHabilitada"] =
+                        visibilidadIdeaParticipante.ToString(),
                     ["Conversacion:RetomarIdeasHabilitado"] = retomarIdeas.ToString(),
                     ["Conversacion:ResumenConsolidacionHabilitado"] = resumenConsolidacion.ToString(),
                     ["Conversacion:UmbralResumenConsolidacion"] = "0.4",

@@ -7,7 +7,9 @@ using ElTejido.Application.Seguridad;
 using ElTejido.Application.WhatsApp;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Configuracion;
 using ElTejido.Domain.Conversaciones;
+using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Seguridad;
@@ -617,6 +619,137 @@ public sealed class ServicioEnrutamientoParticipacionTests
         _logs.Should().OnlyContain(log => !log.Detalle!.Contains("Idea pendiente"));
     }
 
+    [Fact]
+    public async Task DtP3301_ConsultaNoCatalogada_UsaClasificadorUnicoYResuelveP33()
+    {
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_1"));
+        var idea = IdeaHistorica("idea_1", "conv_1", "Versión consolidada", cerrada: false);
+        ConfigurarIdeasConsolidadas([idea]);
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(new ResultadoClasificacionIntencionControl.Exito(IntencionControl.ConsultarIdea, null));
+
+        var resultado = await Servicio(
+                semanticaConsultaIdea: true,
+                clasificador: clasificador,
+                configuracion: ConfiguracionLlm())
+            .ResolverAsync(
+                _usuario, [candidato], Mensaje("wamid.consulta", "How is my idea coming along so far?"),
+                CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>()
+            .Which.Contexto.IdeaId.Should().Be("idea_1");
+        await clasificador.Received(1).ClasificarAsync(
+            Arg.Is<ContextoClasificacionIntencionControl>(contexto =>
+                contexto.HayIdeaDisponible && !contexto.HayAfinidadConsultaIdea),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DtP3301_ConformidadTrasMostrarIdeaAbierta_TransportaCandidatoVinculadoALaMismaIdea()
+    {
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_1"));
+        var idea = IdeaHistorica("idea_1", "conv_1", "Versión consolidada", cerrada: false);
+        ConfigurarIdeasConsolidadas([idea]);
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new ResultadoClasificacionIntencionControl.Exito(IntencionControl.ConsultarIdea, null),
+                new ResultadoClasificacionIntencionControl.Exito(IntencionControl.ConfirmarIdea, null));
+        var servicio = Servicio(
+            semanticaConsultaIdea: true,
+            clasificador: clasificador,
+            configuracion: ConfiguracionLlm());
+
+        var consulta = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.consulta", "How is my idea coming along so far?"),
+            CancellationToken.None);
+        var contextoConsulta = consulta.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>().Which.Contexto;
+        await servicio.ConfirmarConsultaIdeaAsync(
+            _usuario.Id, "wamid.consulta", contextoConsulta.IdeaId!, contextoConsulta.ConversacionId!,
+            CancellationToken.None);
+
+        var conformidad = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.conforme", "I'm satisfied with this"), CancellationToken.None);
+
+        var continuar = conformidad.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.ClasificacionPrevia!.Intencion.Should().Be(IntencionControl.ConfirmarIdea);
+        continuar.Contexto!.IdeaIdConsultada.Should().Be("idea_1");
+        continuar.Contexto.ConversacionIdAfinidad.Should().Be("conv_1");
+        await clasificador.Received(2).ClasificarAsync(
+            Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DtP3301_ConformidadTrasMostrarIdeaCerrada_ConsumeAfinidadSinReabrir()
+    {
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionCerrada("c_1", "p_1"));
+        var idea = IdeaHistorica("idea_1", "conv_c_1_p_1", "Versión consolidada", cerrada: true);
+        ConfigurarIdeasConsolidadas([idea]);
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new ResultadoClasificacionIntencionControl.Exito(IntencionControl.ConsultarIdea, null),
+                new ResultadoClasificacionIntencionControl.Exito(IntencionControl.ConfirmarIdea, null));
+        var servicio = Servicio(
+            semanticaConsultaIdea: true,
+            clasificador: clasificador,
+            configuracion: ConfiguracionLlm());
+
+        var consulta = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.consulta", "Can you remind me where my proposal stands?"),
+            CancellationToken.None);
+        var contexto = consulta.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>().Which.Contexto;
+        await servicio.ConfirmarConsultaIdeaAsync(
+            _usuario.Id, "wamid.consulta", contexto.IdeaId!, contexto.ConversacionId!, CancellationToken.None);
+
+        var conformidad = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.conforme", "I'm satisfied with this"), CancellationToken.None);
+
+        conformidad.Should().BeOfType<ResultadoEnrutamiento.SinElegibles>();
+        _enrutamientos.Documentos.Single().Estado.Should().Be(EstadoEnrutamientoAporte.Completado);
+        _conversaciones.Todas.Single().Estado.Should().Be(EstadoConversacion.Cerrada);
+    }
+
+    [Fact]
+    public async Task DtP3301_ConformidadConContenidoNuevo_SeMantieneComoAporte()
+    {
+        var candidato = Candidato("c_1");
+        _conversaciones.Agregar(ConversacionAbierta("c_1", "p_1", "conv_1"));
+        var idea = IdeaHistorica("idea_1", "conv_1", "Version consolidada", cerrada: false);
+        ConfigurarIdeasConsolidadas([idea]);
+        var clasificador = Substitute.For<IClasificadorIntencionControl>();
+        clasificador.ClasificarAsync(Arg.Any<ContextoClasificacionIntencionControl>(), Arg.Any<CancellationToken>())
+            .Returns(
+                new ResultadoClasificacionIntencionControl.Exito(IntencionControl.ConsultarIdea, null),
+                new ResultadoClasificacionIntencionControl.Exito(IntencionControl.Aportar, null));
+        var servicio = Servicio(
+            semanticaConsultaIdea: true,
+            clasificador: clasificador,
+            configuracion: ConfiguracionLlm());
+
+        var consulta = await servicio.ResolverAsync(
+            _usuario, [candidato], Mensaje("wamid.consulta", "How is my idea coming along so far?"),
+            CancellationToken.None);
+        var contexto = consulta.Should().BeOfType<ResultadoEnrutamiento.ConsultarIdea>().Which.Contexto;
+        await servicio.ConfirmarConsultaIdeaAsync(
+            _usuario.Id, "wamid.consulta", contexto.IdeaId!, contexto.ConversacionId!, CancellationToken.None);
+
+        var resultado = await servicio.ResolverAsync(
+            _usuario,
+            [candidato],
+            Mensaje("wamid.aporte", "I'm satisfied, and add route-level sensors"),
+            CancellationToken.None);
+
+        var continuar = resultado.Should().BeOfType<ResultadoEnrutamiento.ContinuarConversacion>().Which;
+        continuar.ClasificacionPrevia!.Intencion.Should().Be(IntencionControl.Aportar);
+        continuar.Contexto!.IdeaIdConsultada.Should().BeNull();
+        _enrutamientos.Documentos.Single().Estado.Should().Be(EstadoEnrutamientoAporte.EnIdea);
+    }
+
     /// <summary>Deja un enrutamiento en <c>enIdea</c> apuntando a una conversación (afinidad vigente §5.6).</summary>
     private Task SembrarAfinidadAsync(string campaniaId, string conversacionId)
         => _enrutamientos.GuardarAsync(
@@ -635,7 +768,10 @@ public sealed class ServicioEnrutamientoParticipacionTests
         TimeProvider? reloj = null,
         bool despertarProactivo = false,
         bool retomarIdeas = false,
-        IResolutorTextosConversacion? resolutorTextos = null)
+        IResolutorTextosConversacion? resolutorTextos = null,
+        bool semanticaConsultaIdea = false,
+        IClasificadorIntencionControl? clasificador = null,
+        IRepositorioConfiguracion? configuracion = null)
     {
         var logSeguridad = Substitute.For<IRepositorioLogSeguridad>();
         logSeguridad.RegistrarAsync(Arg.Do<LogSeguridad>(_logs.Add), Arg.Any<CancellationToken>())
@@ -650,10 +786,15 @@ public sealed class ServicioEnrutamientoParticipacionTests
             {
                 DespertarProactivoHabilitado = despertarProactivo,
                 RetomarIdeasHabilitado = retomarIdeas,
+                VisibilidadIdeaParticipanteHabilitada = semanticaConsultaIdea,
+                ClasificacionSemanticaConsultaIdeaHabilitada = semanticaConsultaIdea,
+                ConsolidacionProgresivaHabilitada = true,
             },
             reloj ?? new RelojFijo(Ahora),
             _respuestas,
-            resolutorTextos);
+            resolutorTextos,
+            configuracion,
+            clasificador);
     }
 
     private static TextosConversacionResueltos TextosCatalogo(string idioma)
@@ -714,6 +855,19 @@ public sealed class ServicioEnrutamientoParticipacionTests
     {
         _respuestas.ListarIdeasHistoricasAsync("c_1", _usuario.Id, "p_1", Arg.Any<CancellationToken>())
             .Returns(ideas);
+    }
+
+    private void ConfigurarIdeasConsolidadas(IReadOnlyCollection<IdeaConsolidada> ideas)
+        => _respuestas.ListarIdeasConsolidadasAsync("c_1", Arg.Any<CancellationToken>()).Returns(ideas);
+
+    private static IRepositorioConfiguracion ConfiguracionLlm()
+    {
+        var repositorio = Substitute.For<IRepositorioConfiguracion>();
+        repositorio.ObtenerConfigLlmAsync("llm_1", Arg.Any<CancellationToken>()).Returns(
+            ConfigLlm.Crear(
+                "llm_1", "Azure", "AzureOpenAI", "gpt-4o-mini", "https://x", "llm-key", null,
+                LimitesTokensLlm.Crear(6000, 800), 30, 2, EstadoRegistro.Activo, Ahora, Ahora));
+        return repositorio;
     }
 
     private CandidatoCampania Candidato(

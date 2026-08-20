@@ -85,4 +85,5 @@ public enum DecisionIntencionControl
     FinalizarIdea,
     FinalizarParticipacion,
     Ambigua,
+    ConfirmarIdea,
 }
