@@ -1,0 +1,199 @@
+{
+  "formato": "catalogo-textos/v1",
+  "familiaId": "catalogo_conversacion",
+  "idioma": "es",
+  "mensajes": {
+    "encabezadoConsultaIdea": "Así quedó escrita tu idea hasta ahora:",
+    "invitacionConsultaIdea": "Si quieres ajustarla, dime qué cambiarías.",
+    "encabezadoCierreIdea": "Así queda registrada tu idea:",
+    "otrasIdeasGuardadas": "También conservamos otras ideas tuyas en este tema.",
+    "sinIdeaDisponible": "Aún no encuentro una idea guardada para mostrarte.",
+    "encabezadoResumenAvance": "Así va tu idea hasta ahora:",
+    "preguntaContinuarMadurando": "¿Quieres seguir puliéndola o prefieres dejarla así?",
+    "saludoPrimerContacto": "¡Hola! Gracias por escribirnos. Para participar, responde a esta pregunta:",
+    "saludoSiguientePregunta": "Continuemos con la siguiente pregunta:",
+    "saludoReactivacion": "¡Hola! Estoy aquí para acompañarte a crear una nueva idea. Cuéntame qué quieres proponer.",
+    "pausaPorInactividad": "Demos una pausa por ahora. Cuando quieras seguimos: escríbeme y retomamos donde quedamos.",
+    "invitacionMejora": "Si quieres, puedes enviarme una versión mejorada de tu respuesta con base en esta retroalimentación y la tomaré en cuenta.",
+    "mensajeConfiguracionNoDisponible": "Hay un problema con la configuración de esta campaña. Contacta al administrador del sistema.",
+    "mensajeCalificacionAlta": "¡Excelente! Tu respuesta ya está muy completa, así que avanzamos.",
+    "acuseContinuar": "¡Perfecto, sigamos!",
+    "acuseRechazoGuardado": "Entendido, no la guardo como definitiva. ¡Gracias por decírmelo!",
+    "acuseReaperturaIdea": "Claro, volvamos a esa idea. Así quedó registrada:",
+    "invitacionReaperturaIdea": "¿Qué quieres cambiar o agregar?",
+    "preguntaSeleccionIdea": "¿Cuál de estas ideas quieres retomar? Respóndeme con el número.",
+    "instruccionSeleccionIdea": "Responde con el número o con el resumen exacto de la idea.",
+    "sinIdeasHistoricas": "No encontré ideas anteriores en este tema. Si quieres, escribe una idea nueva.",
+    "encabezadoSeleccionCampania": "¿A cuál campaña corresponde tu aporte?",
+    "instruccionSeleccionCampania": "Responde con el número o con el nombre de la campaña.",
+    "ayudaSeleccionCampaniaInvalida": "No reconocí esa opción. Tu aporte sigue guardado.",
+    "encabezadoSeleccionPregunta": "¿Sobre cuál pregunta quieres aportar?",
+    "instruccionSeleccionPregunta": "Responde con el número o con el texto de la pregunta.",
+    "menuAclaracionSalida": "¿Qué prefieres? Responde 1 para seguir con esta idea, 2 para dejar esta idea y pasar a la siguiente, o 3 para terminar por ahora.",
+    "respaldoAclaracionSalida": "Puedes continuar con tu idea o indicar una salida cuando lo necesites.",
+    "acuseAclaracionContinuar": "Perfecto, continuemos con esta idea."
+  },
+  "frases": {
+    "invitacionMejoraVariantes": [
+      "Si quieres, puedes enviarme una versión mejorada de tu respuesta con base en esta retroalimentación y la tomaré en cuenta."
+    ],
+    "invitacionContinuarVariantes": [
+      "Si ya te sientes conforme, escríbeme algo como \"así está bien\" y seguimos.",
+      "Y si prefieres dejarla así, solo dime \"listo\" y continuamos.",
+      "Cuando quieras cerrar este punto, respóndeme \"sigamos\" y pasamos a lo siguiente."
+    ],
+    "acuseContinuarVariantes": [
+      "¡Perfecto, sigamos!"
+    ],
+    "continuar": [
+      "listo",
+      "sigamos",
+      "continuemos",
+      "continuar",
+      "siguiente pregunta",
+      "asi esta bien",
+      "esta bien asi",
+      "asi quedo bien",
+      "asi lo dejo",
+      "lo dejo asi",
+      "estoy conforme",
+      "ya estoy conforme",
+      "ya quedo",
+      "creo que ya esta bien",
+      "no quiero mejorar"
+    ],
+    "confirmar": [
+      "listo",
+      "sigamos",
+      "continuemos",
+      "continuar",
+      "siguiente pregunta",
+      "asi esta bien",
+      "esta bien asi",
+      "asi quedo bien",
+      "asi lo dejo",
+      "lo dejo asi",
+      "estoy conforme",
+      "ya estoy conforme",
+      "ya quedo",
+      "creo que ya esta bien",
+      "no quiero mejorar",
+      "si",
+      "correcto",
+      "eso es",
+      "exacto",
+      "confirmo"
+    ],
+    "finalizarIdea": [
+      "quiero parar aqui",
+      "quiero pasar a otra idea",
+      "pasar a otra idea",
+      "pasemos a otra idea",
+      "dejemos esta idea",
+      "dejar esta idea"
+    ],
+    "finalizarParticipacion": [
+      "stop now",
+      "quiero terminar por ahora",
+      "terminar por ahora",
+      "quiero parar por hoy",
+      "parar por hoy",
+      "finalizar participacion",
+      "no quiero continuar",
+      "no mas"
+    ],
+    "solicitarMejora": [
+      "vamos a mejorarla",
+      "vamos a mejorar",
+      "quiero mejorarla",
+      "quiero mejorar",
+      "ayudame a mejorarla",
+      "ayudame a mejorar",
+      "me gustaria mejorarla",
+      "me gustaria mejorar"
+    ],
+    "rechazoGuardado": [
+      "no",
+      "no es eso",
+      "no es asi",
+      "eso no es lo que quise decir",
+      "no era eso",
+      "no lo guardes",
+      "borralo",
+      "eliminalo"
+    ],
+    "revisitarAnterior": [
+      "la anterior",
+      "quiero complementar la anterior",
+      "complementar la anterior",
+      "quiero volver a la anterior",
+      "volver a la anterior",
+      "quiero retomar la anterior",
+      "retomar la anterior",
+      "quiero corregir la anterior",
+      "corregir la anterior"
+    ],
+    "revisitarIdea": [
+      "quiero volver a una idea",
+      "volver a una idea",
+      "quiero volver a una idea anterior",
+      "quiero retomar una idea",
+      "retomar una idea",
+      "quiero revisar una idea",
+      "revisar una idea",
+      "quiero complementar una idea",
+      "complementar una idea",
+      "quiero corregir una idea"
+    ],
+    "cambiarCampania": [
+      "otra campaña",
+      "cambiar de campaña",
+      "quiero cambiar de campaña",
+      "cambiemos de campaña",
+      "quiero otra campaña",
+      "cambio de campaña",
+      "ver otras campañas"
+    ],
+    "despertarProactivo": [
+      "hola",
+      "buenas",
+      "buenos dias",
+      "buenas tardes",
+      "buenas noches",
+      "quiero participar",
+      "quiero empezar",
+      "quiero comenzar",
+      "quiero iniciar",
+      "quiero continuar",
+      "como participo",
+      "como empiezo"
+    ],
+    "consultarIdea": [
+      "dime como va escrita mi idea hasta ahora",
+      "muestrame mi idea",
+      "como va mi idea",
+      "quiero ver mi idea",
+      "dime mi idea"
+    ],
+    "acuseConsultaIdea": [
+      "gracias",
+      "muchas gracias",
+      "ok",
+      "entendido",
+      "perfecto"
+    ],
+    "nuevaIdea": [
+      "nueva idea",
+      "tengo otra idea",
+      "quiero otra idea"
+    ]
+  },
+  "metadatos": {
+    "version": 1,
+    "estado": "borrador",
+    "huella": "2e30d0c6fbf6926f9072a497d34e1773b306d48dd5357917bc92632affdb10aa",
+    "creadoEn": "2026-08-19T19:40:29.6249104+00:00",
+    "actualizadoEn": "2026-08-19T19:40:29.6249104+00:00",
+    "activadoEn": null
+  }
+}

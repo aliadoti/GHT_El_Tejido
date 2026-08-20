@@ -19,6 +19,9 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     /// <summary>Retro neutra que se envia cuando la evaluacion cae en fallback (08 §6, REQ §20.3.10).</summary>
     public const string RetroNeutra = "Gracias, registramos tu aporte.";
 
+    /// <summary>DT-P32-04: respaldo equivalente para una evaluación cuyo snapshot de idioma es inglés.</summary>
+    public const string RetroNeutraIngles = "Thank you, we recorded your contribution.";
+
     /// <summary>
     /// I-03: repregunta de respaldo cuando la sugerida por el LLM revela la rubrica. El dominio
     /// (<c>Evaluacion.Crear</c>, "REPREGUNTA_REQUERIDA") exige una repregunta no vacia siempre que
@@ -26,6 +29,19 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
     /// se usa este texto generico y seguro (sin nombrar rubrica/criterios/puntajes) en su lugar.
     /// </summary>
     public const string RepreguntaNeutra = "Cuentame un poco mas sobre esa idea, ¿que le agregarias?";
+
+    /// <summary>DT-P32-04: repregunta segura equivalente para un hilo en inglés.</summary>
+    public const string RepreguntaNeutraIngles = "Tell me a little more about that idea. What would you add?";
+
+    public static string RetroNeutraPara(string? idioma)
+        => string.Equals(idioma, "en", StringComparison.OrdinalIgnoreCase)
+            ? RetroNeutraIngles
+            : RetroNeutra;
+
+    public static string RepreguntaNeutraPara(string? idioma)
+        => string.Equals(idioma, "en", StringComparison.OrdinalIgnoreCase)
+            ? RepreguntaNeutraIngles
+            : RepreguntaNeutra;
 
     private const int MaxCaracteresRetro = 600;
 
@@ -169,8 +185,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
 
         return salida with
         {
-            RetroalimentacionUsuario = fugaRetro ? RetroNeutra : salida.RetroalimentacionUsuario,
-            RepreguntaSugerida = fugaRepregunta ? RepreguntaNeutra : salida.RepreguntaSugerida,
+            RetroalimentacionUsuario = fugaRetro ? RetroNeutraPara(contexto.Idioma) : salida.RetroalimentacionUsuario,
+            RepreguntaSugerida = fugaRepregunta ? RepreguntaNeutraPara(contexto.Idioma) : salida.RepreguntaSugerida,
         };
     }
 
@@ -219,8 +235,8 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
 
         return salida with
         {
-            RetroalimentacionUsuario = motivoRetro is null ? retro : RetroNeutra,
-            RepreguntaSugerida = motivoRepregunta is null ? repregunta : RepreguntaNeutra,
+            RetroalimentacionUsuario = motivoRetro is null ? retro : RetroNeutraPara(contexto.Idioma),
+            RepreguntaSugerida = motivoRepregunta is null ? repregunta : RepreguntaNeutraPara(contexto.Idioma),
         };
     }
 
@@ -345,7 +361,7 @@ public sealed class EvaluadorLlm : IEvaluadorLlm
             Array.Empty<CalificacionCriterio>(),
             0m,
             "Evaluacion en fallback: " + motivo,
-            RetroNeutra,
+            RetroNeutraPara(contexto.Idioma),
             RecomendacionEvaluacion.Cerrar,
             null,
             null,

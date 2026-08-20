@@ -4544,7 +4544,9 @@ public sealed class OrquestadorConversacion : IOrquestadorConversacion
             return;
         }
 
-        var texto = Combinar(EvaluadorLlm.RetroNeutra, cierreCampania);
+        // DT-P32-04: el cierre neutro ya viene localizado por idioma del hilo; anteponer la constante
+        // espanola RetroNeutra producia mezcla de idiomas en hilos `en` (hallazgo del piloto 2026-08-20).
+        var texto = cierreCampania;
         await EnviarAsync(conversacion, numero, texto, TipoEnvioMensaje.Cierre, emisor, ahora, cancellationToken);
 
         var cerrada = conversacion.Cerrar(ahora);

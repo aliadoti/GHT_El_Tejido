@@ -283,7 +283,11 @@ public static class CatalogosTextosSemilla
                 "hello", "hi", "good morning", "good afternoon", "good evening", "I want to participate",
                 "I want to start", "I want to begin", "I want to continue", "how do I participate",
             },
-            ["consultarIdea"] = new[] { "show me my idea", "how is my idea written", "how is my idea so far", "show my idea" },
+            ["consultarIdea"] = new[]
+            {
+                "show me my idea", "how is my idea written", "how is my idea so far",
+                "how is my idea coming along so far", "show my idea",
+            },
             ["acuseConsultaIdea"] = new[] { "thanks", "thank you", "got it" },
             ["nuevaIdea"] = new[] { "new idea", "another idea", "I have a new idea" },
         };

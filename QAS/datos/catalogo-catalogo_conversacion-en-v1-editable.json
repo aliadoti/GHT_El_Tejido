@@ -1,0 +1,166 @@
+{
+  "formato": "catalogo-textos/v1",
+  "familiaId": "catalogo_conversacion",
+  "idioma": "en",
+  "mensajes": {
+    "encabezadoConsultaIdea": "Here is how your idea is written so far:",
+    "invitacionConsultaIdea": "If you want to refine it, tell me what you would change.",
+    "encabezadoCierreIdea": "This is how your idea is recorded:",
+    "otrasIdeasGuardadas": "We have also kept other ideas from you in this topic.",
+    "sinIdeaDisponible": "I have not found a saved idea to show you yet.",
+    "encabezadoResumenAvance": "Here is how your idea is shaping up:",
+    "preguntaContinuarMadurando": "Would you like to keep refining it, or leave it as it is?",
+    "saludoPrimerContacto": "Hello! Thank you for reaching out. To participate, answer this question:",
+    "saludoSiguientePregunta": "Let\u0027s continue with the next question:",
+    "saludoReactivacion": "Hello! I\u0027m here to help you develop a new idea. Tell me what you would like to propose.",
+    "pausaPorInactividad": "Let\u0027s pause for now. Whenever you\u0027re ready, message me and we\u0027ll pick up where we left off.",
+    "invitacionMejora": "If you want, send me an improved version of your answer based on this feedback and I will take it into account.",
+    "mensajeConfiguracionNoDisponible": "There is a problem with this campaign\u0027s configuration. Please contact the system administrator.",
+    "mensajeCalificacionAlta": "Excellent! Your answer is already very complete, so let\u0027s move on.",
+    "acuseContinuar": "Perfect, let\u0027s continue!",
+    "acuseRechazoGuardado": "Understood. I won\u0027t save it as final. Thank you for letting me know!",
+    "acuseReaperturaIdea": "Of course, let\u0027s return to that idea. This is how it was saved:",
+    "invitacionReaperturaIdea": "What would you like to change or add?",
+    "preguntaSeleccionIdea": "Which of these ideas would you like to revisit? Reply with its number.",
+    "instruccionSeleccionIdea": "Reply with the number or the exact summary of the idea.",
+    "sinIdeasHistoricas": "I couldn\u0027t find previous ideas on this topic. If you want, share a new idea.",
+    "encabezadoSeleccionCampania": "Which campaign does your contribution belong to?",
+    "instruccionSeleccionCampania": "Reply with the number or the campaign name.",
+    "ayudaSeleccionCampaniaInvalida": "I didn\u0027t recognize that option. Your contribution is still saved.",
+    "encabezadoSeleccionPregunta": "Which question would you like to contribute to?",
+    "instruccionSeleccionPregunta": "Reply with the number or the full question text.",
+    "menuAclaracionSalida": "What would you prefer? Reply 1 to continue with this idea, 2 to leave this idea and move to the next one, or 3 to finish for now.",
+    "respaldoAclaracionSalida": "You can continue with your idea or indicate that you want to leave when you need to.",
+    "acuseAclaracionContinuar": "Perfect, let\u0027s continue with this idea."
+  },
+  "frases": {
+    "invitacionMejoraVariantes": [
+      "If you want, send me an improved version and I will take it into account.",
+      "You can add more detail or make your proposal more specific."
+    ],
+    "invitacionContinuarVariantes": [
+      "If you\u0027re happy with it, write something like \u0022it is fine as is\u0022 and we\u0027ll continue.",
+      "If you prefer to leave it as it is, just say \u0022done\u0022 and we\u0027ll move on.",
+      "When you want to close this point, reply \u0022let\u0027s continue\u0022."
+    ],
+    "acuseContinuarVariantes": [
+      "Perfect, let\u0027s continue!",
+      "Great, let\u0027s move on!"
+    ],
+    "continuar": [
+      "done",
+      "let\u0027s continue",
+      "continue",
+      "next question",
+      "it is fine as is",
+      "it is good as is",
+      "leave it as is",
+      "I am satisfied",
+      "I don\u0027t want to improve it"
+    ],
+    "confirmar": [
+      "done",
+      "let\u0027s continue",
+      "continue",
+      "next question",
+      "it is fine as is",
+      "it is good as is",
+      "leave it as is",
+      "I am satisfied",
+      "I don\u0027t want to improve it",
+      "yes",
+      "correct",
+      "that\u0027s right",
+      "exactly",
+      "I confirm"
+    ],
+    "finalizarIdea": [
+      "I want to stop here",
+      "I want to move to another idea",
+      "move to another idea",
+      "let\u0027s leave this idea",
+      "leave this idea"
+    ],
+    "finalizarParticipacion": [
+      "stop now",
+      "I want to finish for now",
+      "finish for now",
+      "stop for today",
+      "finish participation",
+      "I don\u0027t want to continue",
+      "no more"
+    ],
+    "solicitarMejora": [
+      "let\u0027s improve it",
+      "I want to improve it",
+      "help me improve it",
+      "I would like to improve it"
+    ],
+    "rechazoGuardado": [
+      "no",
+      "that is not it",
+      "that is not what I meant",
+      "don\u0027t save it",
+      "delete it",
+      "remove it"
+    ],
+    "revisitarAnterior": [
+      "the previous one",
+      "I want to expand the previous one",
+      "go back to the previous one",
+      "revisit the previous one",
+      "correct the previous one"
+    ],
+    "revisitarIdea": [
+      "I want to return to an idea",
+      "return to a previous idea",
+      "revisit an idea",
+      "review an idea",
+      "expand an idea",
+      "correct an idea"
+    ],
+    "cambiarCampania": [
+      "another campaign",
+      "change campaign",
+      "I want to change campaign",
+      "I want another campaign",
+      "show other campaigns"
+    ],
+    "despertarProactivo": [
+      "hello",
+      "hi",
+      "good morning",
+      "good afternoon",
+      "good evening",
+      "I want to participate",
+      "I want to start",
+      "I want to begin",
+      "I want to continue",
+      "how do I participate"
+    ],
+    "consultarIdea": [
+      "show me my idea",
+      "how is my idea written",
+      "how is my idea so far",
+      "show my idea"
+    ],
+    "acuseConsultaIdea": [
+      "thanks",
+      "thank you",
+      "got it"
+    ],
+    "nuevaIdea": [
+      "new idea",
+      "another idea",
+      "I have a new idea"
+    ]
+  },
+  "metadatos": {
+    "version": 1,
+    "estado": "borrador",
+    "huella": "ceee6b460d308d1a860b852e13643c95d72d9a96c8167f2bcf32f2645fda412f",
+    "creadoEn": "2026-08-19T20:04:20.8316021+00:00",
+    "actualizadoEn": "2026-08-19T20:04:20.8316021+00:00",
+    "activadoEn": null
+  }
+}

@@ -114,6 +114,21 @@ public sealed class EvaluadorLlmTests
     }
 
     [Fact]
+    public async Task Evaluar_ProveedorFallaEnIngles_DevuelveFallbackNeutroEnIngles()
+    {
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TimeoutException());
+
+        var resultado = await Construir().EvaluarAsync(
+            CrearContexto() with { Idioma = "en" },
+            CancellationToken.None);
+
+        resultado.Should().BeOfType<ResultadoEvaluacion.Fallback>();
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutraIngles);
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().NotBe(EvaluadorLlm.RetroNeutra);
+    }
+
+    [Fact]
     public async Task Evaluar_JsonInvalido_DevuelveFallback()
     {
         _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>()).Returns(new LlmRespuesta("no es json", null));
@@ -301,6 +316,23 @@ public sealed class EvaluadorLlmTests
 
         resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutra);
         resultado.Evaluacion.RepreguntaSugerida.Should().Be("¿Quién mediría ese ahorro?");
+    }
+
+    [Fact]
+    public async Task Evaluar_RetroInvalidaEnIngles_ConservaLaPreguntaYNoMezclaIdiomas()
+    {
+        const string salida =
+            "{" + Calificaciones + "\"calificacion_total\":3,\"retroalimentacion_usuario\":\"Status: clear\","
+            + "\"recomendacion\":\"repreguntar\",\"repregunta_sugerida\":\"What data would you need?\"}";
+        _client.CompletarJsonAsync(Arg.Any<LlmRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new LlmRespuesta(salida, null));
+
+        var resultado = await Construir().EvaluarAsync(
+            CrearContexto() with { Idioma = "en" },
+            CancellationToken.None);
+
+        resultado.Evaluacion.RetroalimentacionEnviada.Should().Be(EvaluadorLlm.RetroNeutraIngles);
+        resultado.Evaluacion.RepreguntaSugerida.Should().Be("What data would you need?");
     }
 
     [Fact]

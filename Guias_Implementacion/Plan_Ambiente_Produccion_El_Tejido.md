@@ -221,6 +221,8 @@ Y activa:
 
 **No se crea:** Azure OpenAI (el proveedor LLM es externo), Front Door, CDN, VNet, Private Endpoints, Static Web App, Service Bus, Azure Functions, ni deployment slots (B1 no los soporta).
 
+> **Escalado previsto para la convención.** Está contemplado ampliar el App Service Plan antes del evento. Dos consecuencias que conviene tener presentes: **(a)** el firewall de Cosmos debe ser indiferente al tier — por eso se eligió la Opción A de §6.2.5 y no fijar IPs; **(b)** si se sube a **Standard (S1) o superior**, se habilitan los *deployment slots*, y entonces conviene revisar §17.1, porque el rollback pasa de "redesplegar el tag anterior con 3-5 min de caída" a "swap instantáneo". Escalar el plan **no** requiere redesplegar la aplicación.
+
 ### 3.2 Nomenclatura
 
 Convención del Cloud Adoption Framework de Azure: `<abreviatura>-<carga>-<ambiente>-<región>`. East US 2 abrevia `eus2`.
@@ -327,6 +329,20 @@ Ninguna de estas cosas se puede resolver a mitad del despliegue. Confirmarlas to
 - [ ] **Presupuesto mensual aprobado** para el budget alert.
 - [ ] **Correo de destino** para las alertas.
 
+### 5.1 Nota sobre la consola: PowerShell vs. bash
+
+Los comandos de este plan se ejecutan desde Windows, normalmente en **PowerShell 5.1** (el que trae Windows por defecto). PowerShell **no es bash** y tres diferencias rompen los comandos si se copian tal cual:
+
+| Sintaxis bash | Qué pasa en PowerShell 5.1 | Qué usar |
+|---|---|---|
+| `cmd1 && cmd2` | `The token '&&' is not a valid statement separator in this version` | Dos líneas separadas |
+| `\` al final de línea (continuación) | Rompe el comando | Backtick `` ` ``, o escribir todo en **una sola línea** |
+| `curl` | Es un **alias de `Invoke-WebRequest`**, con parámetros totalmente distintos | `curl.exe` (viene con Windows 10+) |
+
+En este plan **todos los comandos están escritos en una sola línea y usan `curl.exe`**, de modo que funcionan igual en PowerShell, en CMD y en bash. Si copias comandos de otra documentación de Azure o de Meta, casi siempre vendrán en formato bash: conviértelos antes de ejecutarlos.
+
+> Si prefieres trabajar en bash, tienes **Git Bash** (viene con Git para Windows) o **WSL**. Ahí la sintaxis original de la documentación de Microsoft funciona sin cambios.
+
 ---
 
 ## §6. Fase 1 — Aprovisionamiento en Azure
@@ -346,9 +362,64 @@ Todos los recursos siguientes van dentro de este grupo y en esta misma región.
 
 1. Búsqueda → **Azure Cosmos DB** → **+ Create** → tarjeta **Azure Cosmos DB for NoSQL** → **Create**.
 2. **Basics:** Resource group `rg-eltejido-prod-eus2`, Account Name `cosmos-eltejido-prod-eus2`, Location **East US 2**, **Capacity mode: Serverless**.
-3. Pestaña **Backup Policy** → seleccionar **Continuous (7 days)**. *(Es la decisión 9. En serverless, si esta pestaña no está disponible al crear, se cambia después desde el recurso → **Backup & Restore**.)*
-4. **Review + create** → **Create**. Tarda unos minutos.
-5. Ir al recurso → **Settings → Keys** → copiar el campo **URI** (`https://cosmos-eltejido-prod-eus2.documents.azure.com:443/`). Va al Anexo A como `Cosmos:AccountEndpoint`. **No copiar las claves:** la aplicación usa Managed Identity.
+3. Pestaña **Networking** → **Public network access: All networks**, o bien *Selected networks* **marcando obligatoriamente la casilla "Accept connections from within public Azure datacenters"**. Ver §6.2.5.
+4. Pestaña **Backup Policy** → seleccionar **Continuous (7 days)**. *(Es la decisión 9. En serverless, si esta pestaña no está disponible al crear, se cambia después desde el recurso → **Backup & Restore**.)*
+5. **Review + create** → **Create**. Tarda unos minutos.
+6. Ir al recurso → **Settings → Keys** → copiar el campo **URI** (`https://cosmos-eltejido-prod-eus2.documents.azure.com:443/`). Va al Anexo A como `Cosmos:AccountEndpoint`. **No copiar las claves:** la aplicación usa Managed Identity.
+
+#### 6.2.5 ⚠️ El firewall de IP de Cosmos y el App Service
+
+Si el filtro de IP queda activo (`ipRules` con entradas), **el App Service no puede conectarse**, porque sale por direcciones que no están en la lista. Es una trampa doble:
+
+- Cosmos responde **HTTP 403**, el mismo código que devuelve por falta de rol de datos.
+- El readiness lo reporta como `"Acceso denegado (HTTP 403). Revisa el rol de datos de la identidad administrada."` — un mensaje **engañoso** en este caso, que envía a diagnosticar RBAC cuando el problema es de red.
+
+Comprobar el estado real:
+
+```powershell
+az cosmosdb show --name cosmos-eltejido-prod-eus2 --resource-group rg-eltejido-prod-eus2 --query "{publicNetworkAccess:publicNetworkAccess, ipRules:ipRules, vnetFilter:isVirtualNetworkFilterEnabled}" -o json
+```
+
+Si `ipRules` sale **vacío**, no hay filtro y no hay nada que hacer. Si trae entradas, hay tres caminos, y **la elección depende de si el App Service Plan va a escalarse**.
+
+##### Opción A — Permitir los datacenters de Azure ✅ *(elegida para este despliegue)*
+
+Cosmos → **Networking** → marcar **"Accept connections from within public Azure datacenters"** → **Save**. Eso añade la IP especial `0.0.0.0` a la lista.
+
+Equivalente por CLI, conservando las IPs existentes:
+
+```powershell
+$rg = "rg-eltejido-prod-eus2"; $cosmos = "cosmos-eltejido-prod-eus2"
+$actuales = az cosmosdb show -n $cosmos -g $rg --query "ipRules[].ipAddressOrRange" -o tsv
+$todas = ((@("0.0.0.0") + $actuales) | Select-Object -Unique) -join ","
+az cosmosdb update -n $cosmos -g $rg --ip-range-filter $todas
+```
+
+**Por qué esta y no la B:** está previsto **ampliar el App Service Plan para la convención**. Un cambio de tier puede mover la aplicación de unidad de despliegue y **cambiar sus IPs de salida**, con lo que una lista fijada dejaría de servir justo en el momento de mayor exposición, y el síntoma sería el 403 engañoso de arriba. La opción A es indiferente al tier: se escala sin tocar nada.
+
+**Lo que se acepta a cambio:** Microsoft advierte que `0.0.0.0` admite peticiones desde **cualquier suscripción de Azure**, incluidas las de otros clientes, de modo que el firewall de IP queda prácticamente decorativo. El control real pasa a ser íntegramente **la autenticación por AAD**: quien llegue por red todavía necesita un token con un rol de datos sobre *esta* cuenta, y ese rol solo lo tiene la identidad administrada del App Service. Es una postura defendible para el MVP, pero conviene que quede escrita en la adenda.
+
+##### Opción B — Fijar las IPs de salida del App Service ❌ *(descartada aquí)*
+
+Más restrictiva, pero **frágil ante un cambio de tier**:
+
+```powershell
+$rg = "rg-eltejido-prod-eus2"; $app = "app-eltejido-prod-eus2"; $cosmos = "cosmos-eltejido-prod-eus2"
+$actuales = az cosmosdb show -n $cosmos -g $rg --query "ipRules[].ipAddressOrRange" -o tsv
+$salida = (az webapp show -n $app -g $rg --query possibleOutboundIpAddresses -o tsv).Split(",")
+$todas = (($actuales + $salida) | Select-Object -Unique) -join ","
+az cosmosdb update -n $cosmos -g $rg --ip-range-filter $todas
+```
+
+Solo tiene sentido si el plan **no** se va a escalar. Escalar *hacia fuera* (más instancias del mismo tier) es seguro, porque `possibleOutboundIpAddresses` ya cubre el conjunto completo; lo que rompe es escalar *hacia arriba* (B1 → S1 → P1v3). Si algún día se elige este camino, hay que reejecutar el script después de **cada** cambio de tier.
+
+##### Opción C — Integración con VNet y service endpoint *(endurecimiento post-evento)*
+
+El camino realmente seguro y a la vez estable frente al escalado: el tráfico de salida se enruta por una subred y Cosmos autoriza por **regla de red virtual**, no por IP. Sobrevive a cualquier cambio de tier.
+
+No se adopta ahora por tres razones: añade recursos (VNet y subred delegada) al inventario mínimo; exige enrutar todo el tráfico saliente por la VNet, lo que también afecta a las llamadas al proveedor LLM y a Graph API de Meta; y son piezas nuevas a menos de dos semanas del evento. Queda como **deuda de endurecimiento post-convención**, junto con `DT-P32-05` y `DT-QA-03`.
+
+Los cambios de firewall tardan unos **5 minutos** en propagar. No hace falta reiniciar el App Service.
 
 #### 6.2.1 Crear la base de datos
 
@@ -471,25 +542,43 @@ El acceso a **datos** de Cosmos usa roles del plano de datos que normalmente **n
 ```bash
 az login
 
-az cosmosdb sql role assignment create \
-  --account-name cosmos-eltejido-prod-eus2 \
-  --resource-group rg-eltejido-prod-eus2 \
-  --role-definition-id 00000000-0000-0000-0000-000000000002 \
-  --principal-id <OBJECT-ID-DE-LA-IDENTIDAD-DEL-APP-SERVICE> \
-  --scope "/"
+az cosmosdb sql role assignment create --account-name cosmos-eltejido-prod-eus2 --resource-group rg-eltejido-prod-eus2 --role-definition-id 00000000-0000-0000-0000-000000000002 --principal-id <OBJECT-ID-DE-LA-IDENTIDAD-DEL-APP-SERVICE> --scope "/"
 ```
 
+*(Una sola línea, a propósito: ver §5.1.)*
+
 `00000000-0000-0000-0000-000000000002` es el identificador fijo del rol integrado **Cosmos DB Built-in Data Contributor**; se escribe tal cual.
+
+> ⚠️ **`--principal-id` es el Object ID, no el Client ID.** Es el error más frecuente de este paso, y falla en silencio: el comando se ejecuta sin protestar (Cosmos no valida que el GUID corresponda a un principal existente) y el 403 sigue apareciendo. Para obtener el valor correcto sin ambigüedad:
+>
+> ```powershell
+> az webapp identity show --name app-eltejido-prod-eus2 --resource-group rg-eltejido-prod-eus2 --query principalId -o tsv
+> ```
+
+**Propagación.** La asignación tarda unos minutos en surtir efecto. Si tras crearla `/health/ready` sigue devolviendo `cosmos: error`, espera 3 a 5 minutos y reintenta; si persiste, reinicia el App Service (**Overview → Restart**) para forzar que el cliente renueve su token.
 
 Verificar que quedó:
 
 ```bash
-az cosmosdb sql role assignment list \
-  --account-name cosmos-eltejido-prod-eus2 \
-  --resource-group rg-eltejido-prod-eus2 -o table
+az cosmosdb sql role assignment list --account-name cosmos-eltejido-prod-eus2 --resource-group rg-eltejido-prod-eus2 -o table
 ```
 
-> Si este paso se omite, la aplicación arranca y `/health` responde 200, pero **todo lo que toque la base falla con 403**. Es el error más común de este despliegue y `/health/ready` lo reporta como `cosmos: error`.
+La salida debe listar una asignación con `RoleDefinitionId` terminado en `...000000000002` y el `PrincipalId` de la identidad del App Service. **Si la tabla sale vacía, la asignación no existe** por más que el comando de creación pareciera haber funcionado.
+
+> Si este paso se omite, la aplicación arranca y `/health` responde 200, pero **todo lo que toque la base falla con 403**. Es el error más común de este despliegue. El síntoma en `/health/ready` es inconfundible, y se distingue de un problema de identidad porque **el resto sigue en verde**:
+>
+> ```json
+> {"componente":"blob","estado":"ok", ...}
+> {"componente":"cosmos","estado":"error",
+>  "detalle":"Acceso denegado (HTTP 403). Revisa el rol de datos de la identidad administrada."}
+> ```
+>
+> Si Blob y los secretos están en `ok` y solo Cosmos falla, la identidad administrada funciona correctamente.
+>
+> **Pero atención: ese 403 tiene dos causas posibles y el mensaje no las distingue.** Antes de dar por hecho que falta el rol, verifica el **firewall de IP de la cuenta** (§6.2.5): Cosmos devuelve el mismo 403 cuando bloquea por red. Orden de diagnóstico recomendado:
+>
+> 1. `az cosmosdb sql role assignment list ...` → ¿existe la asignación, con rol `...002`, scope de cuenta y el `principalId` correcto?
+> 2. Si la asignación es correcta, **el problema es de red**: `az cosmosdb show ... --query ipRules` → si trae entradas, aplica §6.2.5.
 
 ---
 
@@ -514,7 +603,17 @@ O en bash: `openssl rand -base64 48`
 
 **Los tres valores de producción deben ser distintos de los de dev/QAS.** Reutilizarlos anula el aislamiento entre ambientes.
 
-El `wa-verify-token` es una cadena que se inventa quien ejecuta; se usará literalmente en Meta en la Fase 9. Cualquier cadena aleatoria larga sirve.
+> ⚠️ **`wa-verify-token` debe ser URL-safe: solo letras y dígitos.** No sirve una cadena Base64. Meta envía este token a tu webhook **en la query string** (`?hub.verify_token=...`), y ahí `+` se decodifica como espacio, mientras que `/` y `=` también se maltratan. El valor que llega a la aplicación deja de coincidir con el de Key Vault y la verificación falla con `403 Verificación rechazada` — o, si Meta agota su timeout de 6 s antes, con el críptico `(#2200) Callback verification failed ... curl_errno = 28`.
+>
+> Genera este en particular así:
+>
+> ```powershell
+> -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 48 | ForEach-Object { [char]$_ })
+> ```
+>
+> Los demás secretos **sí** pueden ser Base64: `diag-key` viaja en un header (`X-Diag-Key`), y `jwt-sign` y `otp-salt` nunca salen del servidor.
+>
+> Si hay que cambiarlo después, recuerda que la aplicación cachea las lecturas exitosas de secretos durante 5 minutos: reinicia el App Service o el cambio no surte efecto de inmediato.
 
 ### 8.2 Cargar los secretos
 
@@ -525,7 +624,7 @@ Para cada uno: Key Vault → **Objects → Secrets → + Generate/Import** → *
 | `jwt-sign` | Cadena aleatoria generada arriba | Ahora |
 | `otp-salt` | Cadena aleatoria generada arriba | Ahora |
 | `diag-key` | Cadena aleatoria generada arriba | Ahora |
-| `wa-verify-token` | Cadena inventada para el webhook | Ahora |
+| `wa-verify-token` | Cadena **solo alfanumérica** para el webhook (ver aviso abajo) | Ahora |
 | `llm-key` | API key del proveedor LLM de producción | Ahora |
 | `wa-token` | Access token de WhatsApp Cloud API | Fase 9 |
 | `wa-appsec` | App Secret de la app de Meta | Fase 9 |
@@ -555,8 +654,15 @@ El doble guion bajo `__` es la forma de anidar secciones de configuración de .N
 | `Diagnostico__ClaveSecretName` | `diag-key` | **Nunca** usar `Diagnostico__Clave` |
 | `WhatsApp__GraphApiBaseUrl` | `https://graph.facebook.com/v21.0` | La versión que indique la guía de Meta vigente |
 | `WhatsApp__PhoneNumberId` | *(Fase 9)* | El Phone Number ID del **segundo número** |
+| `Conversacion__CatalogoTextosHabilitado` | `true` | **Obligatorio en un despliegue bilingüe.** Ver la nota de abajo |
 
-Son **once** settings. Opcionalmente se pueden añadir `WhatsApp__VerifyTokenSecretName = wa-verify-token`, `WhatsApp__AppSecretSecretName = wa-appsec` y `WhatsApp__AccessTokenSecretName = wa-token`: existen de verdad en `OpcionesWhatsApp`, pero **sus valores por defecto en el código ya son exactamente esos**, así que declararlos solo aporta explicitud.
+Son **doce** settings. Opcionalmente se pueden añadir `WhatsApp__VerifyTokenSecretName = wa-verify-token`, `WhatsApp__AppSecretSecretName = wa-appsec` y `WhatsApp__AccessTokenSecretName = wa-token`: existen de verdad en `OpcionesWhatsApp`, pero **sus valores por defecto en el código ya son exactamente esos**, así que declararlos solo aporta explicitud.
+
+> ⚠️ **`Conversacion__CatalogoTextosHabilitado` no es opcional aquí.** Nace apagado, y con el gate en `false` el runtime **no consulta Cosmos**: devuelve la semilla española compilada en el binario e **ignora el idioma `en` por completo**. Es decir, todo el catálogo bilingüe de la Fase 8 quedaría sin usarse y los participantes anglófonos recibirían texto en español. No afecta la validación de activación de la campaña —esa exige catálogos activos por idioma con gate o sin él— pero sí determina qué texto se envía. Enciéndelo **antes** de crear la campaña, para no gastar un reinicio a mitad de la parametrización.
+
+> **Pendientes de la Fase 9 (mapeo de plantillas Meta).** `plantillaRef` en la campaña es solo un **alias lógico**; el nombre físico de la plantilla aprobada por Meta vive en App Settings bajo `WhatsApp__PlantillaEnvioInicial__*`, único puente entre el idioma interno (`es`/`en`) y el código de Meta (`es_CO`, `en_US`). Se completan al tener el Phone Number ID.
+
+> **Application Insights.** Enciéndelo desde App Service → **Settings → Application Insights**, no a mano: el agente inyecta por su cuenta `APPLICATIONINSIGHTS_CONNECTION_STRING` y `ApplicationInsightsAgent_EXTENSION_VERSION`. **Si esos dos settings no aparecen en la lista, la telemetría no está conectada** y las alertas de la Fase 10 no tendrían datos que vigilar — incluida la del endpoint de simulación, que es el control compensatorio de §4.1.
 
 **No configurar — settings inertes que el código nunca lee:**
 
@@ -597,7 +703,49 @@ Este es el paso donde más gente se equivoca. El *subject* del token OIDC tiene 
 
 El subject resultante es `repo:<ORG>/<REPO>:environment:production`. Si no coincide con lo que envía GitHub, `azure/login` falla con **`AADSTS700213: No matching federated identity record found`**.
 
-> **Nota sobre repositorios creados o transferidos después del 15 de julio de 2026:** GitHub usa un formato de *subject* inmutable que incluye los IDs numéricos de owner y repositorio (`repo:OWNER@123456/REPO@789012:environment:production`). Si el repositorio es de esa cohorte, el asistente del portal lo genera correctamente al escribir organización y repositorio; solo hay que no editarlo a mano.
+#### 10.2.1 ⚠️ Discordancia de formato de subject (legacy vs. inmutable)
+
+Existen **dos** formatos de subject y el match entre GitHub y Entra es **literal**:
+
+| Formato | Aspecto |
+|---|---|
+| **Legacy** (por nombre) | `repo:aliadoti/GHT_El_Tejido:environment:production` |
+| **Inmutable** (por ID) | `repo:aliadoti@<owner-id>/GHT_El_Tejido@<repo-id>:environment:production` |
+
+GitHub emite el inmutable solo en repositorios **creados o transferidos después del 15-jul-2026**, o que se hayan adherido explícitamente. `aliadoti/GHT_El_Tejido` es anterior, así que **emite el formato legacy**.
+
+**El problema:** el asistente del portal de Azure ya genera el formato **inmutable** por defecto. Si se crea la credencial con el asistente sin más, queda con un subject que este repositorio nunca va a presentar, y el login falla con `AADSTS700213` aunque todo lo demás esté bien.
+
+**Solución — crear la credencial con el subject legacy.** El asistente de "GitHub Actions" no permite editar el subject a mano, así que se usa Azure CLI, que es determinista:
+
+Crear un archivo `fic.json`:
+
+```json
+{
+  "name": "gh-env-production-legacy",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:aliadoti/GHT_El_Tejido:environment:production",
+  "audiences": ["api://AzureADTokenExchange"]
+}
+```
+
+Y ejecutar:
+
+```bash
+az ad app federated-credential create --id <APPLICATION-CLIENT-ID-de-gh-eltejido-deploy-prod> --parameters "@fic.json"
+```
+
+*(Alternativa por portal: **Federated credentials → + Add credential → Credential scenario: "Other issuer"**, que sí deja escribir los tres campos a mano con los valores del JSON.)*
+
+**No hace falta borrar la credencial inmutable.** Un app registration admite varias credenciales federadas (hasta 20) y Entra evalúa todas. La inmutable simplemente no hará match hoy, y quedará lista para el día en que GitHub migre este repositorio. Es la estrategia de convivencia que la propia documentación de migración recomienda.
+
+> 🚫 **Lo que NO hay que hacer:** adherir el repositorio a los *immutable subject claims* desde GitHub para que coincida con la credencial existente. Eso cambiaría el subject de **todos** los workflows, incluida la credencial Branch = `main` de `gh-eltejido-deploy`, y **rompería los despliegues a dev/QAS**.
+
+Verificar cómo quedó:
+
+```bash
+az ad app federated-credential list --id <APPLICATION-CLIENT-ID-de-gh-eltejido-deploy-prod> -o table
+```
 
 ### 10.3 Permisos en Azure, acotados al RG de producción
 
@@ -702,6 +850,22 @@ git push origin v0.0.1-test
 
 Qué debe pasar, en orden: la guarda de destino imprime `Destino verificado: app-eltejido-prod-eus2 en rg-eltejido-prod-eus2`, `azure/login` obtiene el token, el deploy publica y el smoke test responde OK. Si la guarda aborta, faltan variables en el Environment (§10.4.1). Si falla `azure/login` con `AADSTS700213`, el *Environment name* de la credencial federada no coincide con `production` (§10.2).
 
+#### Si falla con `AADSTS700213`
+
+El mensaje incluye el subject que GitHub presentó. Si dice `repo:<org>/<repo>:environment:production`, GitHub hizo su parte bien y el problema está en Azure. Dos causas, en orden de frecuencia:
+
+**a) El Client ID usado no es el de producción.** Si `AZURE_CLIENT_ID` no está definida **a nivel del Environment**, cae a la variable de repositorio, que apunta a `gh-eltejido-deploy` (la identidad de dev). Esa identidad solo tiene una credencial de tipo Branch = `main`, así que ningún subject de tipo Environment le hará match. El log del paso *Verificar que el destino es producción* imprime el Client ID en uso: compáralo con el de `gh-eltejido-deploy-prod`.
+
+**b) El subject de la credencial no coincide carácter por carácter.** En Entra ID → `gh-eltejido-deploy-prod` → **Federated credentials**, abrir la credencial y leer el campo **Subject identifier**. Debe decir exactamente:
+
+```
+repo:aliadoti/GHT_El_Tejido:environment:production
+```
+
+Los fallos típicos: **que el subject esté en formato inmutable (`repo:owner@<id>/repo@<id>:...`) mientras GitHub emite el legacy — ver §10.2.1, es la causa más frecuente en este repositorio**; haberla creado con Entity type **Branch** o **Tag** en vez de **Environment**; haber escrito el nombre del environment con mayúscula (`Production`) cuando GitHub envía `production`; o haberla creado sobre el app registration equivocado.
+
+> Las credenciales federadas propagan casi de inmediato, pero si acabas de crearla espera un par de minutos antes de reintentar. Para reintentar sin recrear el tag: **Actions → el run fallido → Re-run failed jobs**.
+
 Al terminar, borrar el tag de prueba para no dejar ruido en el historial de releases:
 
 ```bash
@@ -729,8 +893,9 @@ Con la decisión de §1.2 firmada y la verificación anterior en vacío:
 
 ```bash
 git fetch --all
-git checkout main && git pull
-git tag -a v1.0.0-convencion -m "Artefacto congelado — Convención GHT 2026"
+git checkout main
+git pull
+git tag -a v1.0.0-convencion -m "Artefacto congelado - Convencion GHT 2026"
 git push origin v1.0.0-convencion
 ```
 
@@ -747,7 +912,7 @@ Ejecutar en orden. Cada nivel supone que el anterior pasó.
 **Nivel 1 — el proceso arrancó**
 
 ```bash
-curl -i https://<HOST-REAL>/health
+curl.exe -i https://<HOST-REAL>/health
 ```
 Debe responder `200 OK` con `{"status":"ok"}`. Esto solo dice que el proceso vive: no verifica Key Vault, ni Cosmos, ni Blob.
 
@@ -758,7 +923,7 @@ Abrir `https://<HOST-REAL>/` en el navegador. Debe cargar el portal de El Tejido
 **Nivel 3 — las dependencias responden**
 
 ```bash
-curl -H "X-Diag-Key: <valor-de-diag-key>" https://<HOST-REAL>/health/ready
+curl.exe -H "X-Diag-Key: <valor-de-diag-key>" https://<HOST-REAL>/health/ready
 ```
 
 | Respuesta | Qué significa |
@@ -771,7 +936,7 @@ Diagnóstico de los `503` más frecuentes:
 
 | Componente en `error`/`faltante` | Causa habitual | Se corrige en |
 |---|---|---|
-| `cosmos` en `error` con 403 | Falta el rol de datos de Cosmos | §7.3 |
+| `cosmos` en `error` con 403 | **Dos causas posibles:** falta el rol de datos, **o** el firewall de IP de Cosmos bloquea al App Service. Verifica primero el rol; si es correcto, es la red | §7.3 y **§6.2.5** |
 | `blob` en `error` con 403 | Falta *Storage Blob Data Contributor* | §7.2b |
 | `secreto:jwt-sign` (o cualquier otro) en `faltante` | El secreto no existe, el nombre no coincide, o falta *Key Vault Secrets User* | §8.2 / §7.2a |
 | `whatsapp:PhoneNumberId` en `faltante` | Aún no se ha hecho la Fase 9 | Normal en este punto |
@@ -881,16 +1046,21 @@ Este es el mecanismo que permite que dos ambientes convivan bajo una misma app d
 Se configura con una llamada a la Graph API:
 
 ```bash
-curl -X POST "https://graph.facebook.com/v21.0/<PHONE-NUMBER-ID-DE-PRODUCCION>" \
-  -H "Authorization: Bearer <ACCESS-TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "webhook_configuration": {
-          "override_callback_uri": "https://<HOST-REAL>/webhook/whatsapp",
-          "verify_token": "<EL-MISMO-VALOR-DE-wa-verify-token>"
-        }
-      }'
+# 1) Guardar el cuerpo en un archivo llamado override.json:
+{
+  "webhook_configuration": {
+    "override_callback_uri": "https://<HOST-REAL>/webhook/whatsapp",
+    "verify_token": "<EL-MISMO-VALOR-DE-wa-verify-token>"
+  }
+}
 ```
+
+```powershell
+# 2) Enviarlo (una sola linea; ver §5.1):
+curl.exe -X POST "https://graph.facebook.com/v21.0/<PHONE-NUMBER-ID-DE-PRODUCCION>" -H "Authorization: Bearer <ACCESS-TOKEN>" -H "Content-Type: application/json" -d "@override.json"
+```
+
+> Se usa un archivo en vez de `-d '{...}'` porque las comillas simples de bash **no** delimitan cadenas en PowerShell y el JSON llegaría corrupto.
 
 Requisitos y límites:
 
@@ -904,8 +1074,7 @@ Requisitos y límites:
 Verificar que quedó:
 
 ```bash
-curl "https://graph.facebook.com/v21.0/<PHONE-NUMBER-ID-DE-PRODUCCION>?fields=webhook_configuration" \
-  -H "Authorization: Bearer <ACCESS-TOKEN>"
+curl.exe "https://graph.facebook.com/v21.0/<PHONE-NUMBER-ID-DE-PRODUCCION>?fields=webhook_configuration" -H "Authorization: Bearer <ACCESS-TOKEN>"
 ```
 
 ### 14.3 Cargar los secretos de WhatsApp
@@ -924,7 +1093,7 @@ App Service → **Environment variables**:
 ### 14.5 Verificación completa de readiness
 
 ```bash
-curl -H "X-Diag-Key: <diag-key>" https://<HOST-REAL>/health/ready
+curl.exe -H "X-Diag-Key: <diag-key>" https://<HOST-REAL>/health/ready
 ```
 
 Ahora sí debe responder **`200`** con `"estado":"ok"` y **todos** los componentes en `ok`, incluidos los seis secretos y `whatsapp:PhoneNumberId`.
@@ -990,6 +1159,8 @@ Checklist final antes de habilitar el primer envío real.
 - [ ] `Diagnostico__Clave` **ausente**; solo existe `Diagnostico__ClaveSecretName`.
 - [ ] `Cosmos__AccountKey` **ausente** (la app debe usar Managed Identity).
 - [ ] `diag-key` **rotada** después de terminar la parametrización, y el valor nuevo comunicado solo al responsable.
+- [ ] **`wa-token` es el de producción, no el de dev/QAS.** Durante el montaje se cargó temporalmente el token de QAS para desbloquear la configuración, a la espera de la aprobación del segundo administrador en Meta. Sustituirlo por el del system user `eltejido-prod` **antes del primer envío real**. Mientras siga el de QAS, una rotación o revocación hecha en el ambiente de pruebas deja producción sin enviar, en silencio y sin error visible.
+- [ ] Verificado que el `wa-token` en uso **no expira** (system user con *Token expiration: Never*), no uno temporal.
 - [ ] Alerta sobre `/diagnostico/simulacion/*` **probada**: hacer una llamada deliberada y confirmar que llega el correo.
 - [ ] **HTTPS Only: On** y **Minimum TLS Version: 1.2** en el App Service.
 - [ ] **Always On: On** confirmado.
@@ -1094,7 +1265,8 @@ Con la simulación habilitada, se resuelve solo: volver a `/simulacion-whatsapp`
 - [ ] Los tres generados son distintos de los de dev/QAS
 
 **Fase 4 — Configuración**
-- [ ] Los 11 Application Settings de §9
+- [ ] Los 12 Application Settings de §9, incluido `Conversacion__CatalogoTextosHabilitado=true`
+- [ ] Application Insights conectado desde su hoja (verificar que aparecen `APPLICATIONINSIGHTS_CONNECTION_STRING` y `ApplicationInsightsAgent_EXTENSION_VERSION`)
 - [ ] `Seguridad__PermitirReinicioDatos = false`
 - [ ] `Cosmos__AccountKey`, `Diagnostico__Clave` y `Persistencia__Modo` ausentes
 - [ ] Ningún setting inerte que induzca a error (`Auth__*SecretName`, `Llm__*`)
@@ -1258,7 +1430,10 @@ jobs:
             echo "::error::Grupo '$grupo' no es el resource group de producción."; fallo=1
           fi
           [ "$fallo" -eq 0 ] || exit 1
+          # Se imprime el Client ID en uso: no es secreto y convierte un AADSTS700213
+          # en un diagnostico de cinco segundos (¿es el de prod o cayo al de dev?).
           echo "Destino verificado: $destino en $grupo"
+          echo "Client ID en uso:   $cliente"
 
       # 4) Login a Azure por OIDC y despliegue al App Service de producción.
       - uses: azure/login@v2

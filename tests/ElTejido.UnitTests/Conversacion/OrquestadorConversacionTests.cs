@@ -3081,7 +3081,7 @@ public sealed class OrquestadorConversacionTests
             new MensajeEntrante(Numero, "Two ideas", "wamid.p32neutro", Epoca),
             CancellationToken.None);
 
-        await EsperarCierreConAsync(CierreIngles);
+        await EsperarCierreConAsync(CierreIngles, prohibido: EvaluadorLlm.RetroNeutra);
     }
 
     [Fact]
