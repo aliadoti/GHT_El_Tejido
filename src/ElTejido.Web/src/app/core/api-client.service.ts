@@ -40,6 +40,18 @@ export class ApiClient {
     return this.http.get(url, { responseType: 'blob' });
   }
 
+  /**
+   * P-34 §4.5: descarga que conserva la respuesta completa, para poder usar el nombre de archivo que
+   * manda el servidor en `Content-Disposition` en vez de inventar uno distinto en el navegador.
+   */
+  getArchivo(url: string, query?: Record<string, QueryValue>) {
+    return this.http.get(url, {
+      params: this.toParams(query),
+      responseType: 'blob',
+      observe: 'response',
+    });
+  }
+
   private toParams(query?: Record<string, QueryValue>) {
     let params = new HttpParams();
     for (const [key, value] of Object.entries(query ?? {})) {

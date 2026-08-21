@@ -452,6 +452,69 @@ describe('ResultadosPage', () => {
     expect(element.querySelector('.resultados-tabla tbody tr[aria-current="true"]')).not.toBeNull();
   });
 
+  // P-34 §4.5: el archivo lo arma el servidor con el mismo filtro de la pantalla y su propio nombre.
+  it('exporta con los filtros vigentes y guarda el archivo con el nombre del servidor', () => {
+    const llamadas: {
+      campaniaId: string;
+      opciones: Record<string, unknown>;
+      filtros: Record<string, string>;
+    }[] = [];
+    const descargas: string[] = [];
+    configurar(undefined, {
+      exportarResultados: (
+        campaniaId: string,
+        opciones: Record<string, unknown>,
+        filtros: Record<string, string>,
+      ) => {
+        llamadas.push({ campaniaId, opciones, filtros });
+        return of({
+          body: new Blob(['contenido']),
+          headers: {
+            get: (nombre: string) =>
+              nombre === 'Content-Disposition'
+                ? 'attachment; filename="Convencion_ideas_2026-08-21.xlsx"'
+                : null,
+          },
+        });
+      },
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    // Se intercepta solo el clic del enlace de descarga: envolver `document.createElement` entero
+    // rompería el renderizado de Angular, que también crea elementos.
+    const clicOriginal = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function reemplazo(this: HTMLAnchorElement) {
+      descargas.push(this.download);
+    };
+    URL.createObjectURL = () => 'blob:prueba';
+    URL.revokeObjectURL = () => undefined;
+
+    const pagina = fixture.componentInstance as unknown as {
+      filtros: Record<string, string>;
+      aplicarFiltros: () => void;
+      alternarAnonimizado: () => void;
+    };
+    pagina.filtros = { area: 'Operaciones' };
+    pagina.aplicarFiltros();
+    pagina.alternarAnonimizado();
+    fixture.detectChanges();
+
+    const exportar = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((boton) => boton.textContent?.trim() === 'Exportar') as HTMLButtonElement;
+    exportar.click();
+    fixture.detectChanges();
+
+    const llamada = llamadas[llamadas.length - 1];
+    expect(llamada.campaniaId).toBe('campania-1');
+    expect(llamada.opciones).toEqual({ recurso: 'ideas', formato: 'xlsx', anonimizado: true });
+    expect(llamada.filtros['area']).toBe('Operaciones');
+    expect(descargas).toEqual(['Convencion_ideas_2026-08-21.xlsx']);
+
+    HTMLAnchorElement.prototype.click = clicOriginal;
+  });
+
   it('muestra una guía educada cuando no hay campañas que consultar', () => {
     configurar([]);
     const fixture = TestBed.createComponent(ResultadosPage);

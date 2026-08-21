@@ -1732,3 +1732,37 @@
   propias pruebas de orden, paginación, ficha y línea de tiempo.
 - Rollback: revertir el commit deja la vista de P-23 con los filtros del corte 3; no hay dato,
   contrato ni configuración involucrados.
+
+
+### exportacion-resultados-p-34 — «Descargar» no es una acción, sino tres
+
+- Fecha: 2026-08-21 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend/Frontend/SDET (P-34 corte 5/6).
+  Contrato en `04 §5.8`, commit documental `c9181a6`, previo al código.
+- Decisión 1 — **el alcance lo resuelve el servidor**, con el mismo filtro y el mismo orden que la
+  pantalla, e **ignorando `page`/`pageSize`**: exportar media página sería una trampa. Para que el
+  archivo y la vista no puedan divergir, ambos pasan por el mismo `ConsultaResultadosCompartida`; el
+  listado se refactorizó para usarlo en vez de mantener su propia copia del filtro.
+- Decisión 2 — **el archivo declara su alcance**: campaña, cada filtro, orden, total, fecha y quién
+  exportó. En `xlsx` es la primera hoja; en `csv`, líneas iniciales con `#`. Sin eso, un archivo
+  suelto en un correo no se puede auditar tres semanas después.
+- Decisión 3 — **tope explícito de 10.000 filas**, verificado dos veces: sobre las ideas del alcance y
+  otra vez sobre las filas reales, porque un recurso de grano fino (aportes) multiplica lo que en
+  ideas cabía de sobra. Excederlo responde `400` con el total encontrado.
+- Decisión 4 — **cómo se escribe.** El `csv` sí se escribe fila por fila sobre la respuesta. ClosedXML
+  y `ZipArchive` **solo escriben de forma síncrona**, y hacerlo sobre el socket está prohibido en
+  ASP.NET (`AllowSynchronousIO`) además de bloquear un hilo: se arman en un **archivo temporal** —una
+  entrada/fila por vez— y la respuesta lo envía en modo asíncrono con `DeleteOnClose`, que lo borra
+  aunque el cliente corte la descarga. Es la forma de cumplir «nunca el archivo entero en memoria»
+  (§7) sin sincronía sobre la red. El contrato se corrigió en el commit de implementación: la versión
+  documental anterior suponía que el `xlsx` se armaba en memoria.
+- Decisión 5 — **anonimizado (D1)**: sustituye el nombre por `codigoUsuarioLegible` en todas las
+  columnas **y en los nombres de archivo del ZIP**; área, empresa y sede se conservan porque no
+  identifican por sí solas y sin ellas el archivo pierde su utilidad analítica.
+- `csv` en UTF-8 **con BOM**: sin él Excel abre los acentos rotos, que es exactamente el caso de uso.
+  Los nombres de archivo van en ASCII sin acentos: viajan mal en `Content-Disposition` y terminan como
+  mojibake en la descarga.
+- Sin dependencias nuevas: ClosedXML ya estaba en el proyecto por la carga masiva de I-08.
+- Permisos: son `GET` bajo el mismo guard admin, así que el `visor` puede exportar igual que puede
+  leer la pantalla. Hay prueba de que un anónimo recibe `401` y de que el visor recibe `200`.
+- Rollback: revertir el commit quita las dos rutas; nada más las consume y no hay dato ni
+  configuración involucrados.

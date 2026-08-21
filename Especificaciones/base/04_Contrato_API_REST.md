@@ -760,8 +760,11 @@ anonimizado  true | false                        (por defecto `false`)
 - `csv` sale en **UTF-8 con BOM** para que Excel no rompa los acentos.
 - **Tope explícito:** `10000` filas por exportación. Al excederlo responde `400 VALIDATION_ERROR` con
   `recurso: excede_tope` y el total encontrado, en vez de intentar un archivo que nadie va a abrir.
-  El `csv` se escribe fila por fila sobre la respuesta; el `xlsx` lo arma la librería en memoria, y
-  por eso el tope es la protección real (`§7`).
+  El `csv` se escribe fila por fila sobre la respuesta. El `xlsx` y el ZIP se arman primero en un
+  archivo temporal —sus librerías solo escriben de forma síncrona, y escribir así sobre el socket
+  está prohibido además de bloquear un hilo— y la respuesta los envía en modo asíncrono; el temporal
+  se borra al cerrarse, incluso si el cliente corta la descarga. Ninguno se construye entero en
+  memoria (`§7`).
 - Valores inválidos de `recurso`, `formato` o `anonimizado` responden `400 VALIDATION_ERROR` con el
   campo y `valor_invalido`, como el resto de los criterios del listado.
 
@@ -770,7 +773,8 @@ anonimizado  true | false                        (por defecto `false`)
 - Acepta `anonimizado` y los mismos filtros; devuelve `application/zip` con un `.md` por idea que
   tenga documento, nombrado `U-000042_Marta-Rueda_idea-2.md` (con `anonimizado=true`,
   `U-000042_idea-2.md`). Nombres repetidos se desambiguan con el id de la idea.
-- Se escribe **en streaming** sobre la respuesta, una entrada por vez. Mismo tope de filas.
+- Se arma **una entrada por vez** sobre un archivo temporal y se envía en modo asíncrono; nunca se
+  construye el ZIP completo en memoria. Mismo tope de filas.
 - Una campaña sin documentos devuelve un ZIP vacío y `200`: es una respuesta legítima, no un error.
 
 Campos aditivos de respuesta para I-06/I-18:

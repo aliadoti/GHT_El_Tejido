@@ -123,6 +123,7 @@ app.MapearEndpointsAdminEnvios();
 
 // Consulta de resultados: conversaciones, respuestas, evaluaciones, Markdown (04 §5.8).
 app.MapearEndpointsAdminResultados();
+app.MapearEndpointsAdminExportacion();
 
 if (app.Environment.IsDevelopment())
 {

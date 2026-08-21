@@ -561,6 +561,30 @@ export class AdminApiService {
     });
   }
 
+  /**
+   * P-34 §4.5 (04 §5.8): el alcance lo resuelve el servidor con el mismo filtro que la pantalla, así
+   * que aquí solo viajan los filtros vigentes más el recurso, el formato y el anonimizado.
+   */
+  exportarResultados(
+    campaniaId: string,
+    opciones: { recurso: string; formato: string; anonimizado: boolean },
+    filtros: FiltrosIdeas = {},
+  ) {
+    return this.api.getArchivo(`/api/admin/campanias/${campaniaId}/exportar`, {
+      ...limpiarFiltros(filtros),
+      recurso: opciones.recurso,
+      formato: opciones.formato,
+      anonimizado: opciones.anonimizado ? 'true' : undefined,
+    });
+  }
+
+  exportarDocumentos(campaniaId: string, anonimizado: boolean, filtros: FiltrosIdeas = {}) {
+    return this.api.getArchivo(`/api/admin/campanias/${campaniaId}/documentos.zip`, {
+      ...limpiarFiltros(filtros),
+      anonimizado: anonimizado ? 'true' : undefined,
+    });
+  }
+
   /** I-19: detalle auditable con versiones, aportes y evaluación vigente. */
   idea(campaniaId: string, id: string) {
     return this.api.get<DetalleIdea>(`/api/admin/ideas/${id}`, { campaniaId });

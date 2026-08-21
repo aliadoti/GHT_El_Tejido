@@ -87,47 +87,27 @@ internal static class EndpointsAdminResultados
         var campaniaId = RequerirCampania(query);
         var criterios = ConsultaIdeasResultados.Interpretar(LeerCriterios(query));
         var repo = Respuestas(contexto);
-        var ideas = await repo.ListarIdeasConsolidadasAsync(campaniaId, ct);
 
-        var candidatas = ideas
-            .Where(i => CoincideOpcional(query["usuarioId"], i.UsuarioId)
-                && CoincideOpcional(query["preguntaId"], i.PreguntaId)
-                && CoincideEnum(query["estadoResultado"], i.EstadoResultado?.ToString())
-                && CoincideEnum(query["estadoFlujo"], i.EstadoFlujo.ToString())
-                && CoincideEnum(query["estadoCuraduria"], i.EstadoCuraduria?.ToString()))
-            .ToArray();
-
-        // P-34 §4.1: la identidad la resuelve el servidor. Es lo que permite filtrar y ordenar por
-        // área, empresa o sede sin mentir sobre el `total`, y lo que elimina el join del maestro de
-        // usuarios en el navegador (origen de H-01/H-02).
-        var participantes = await ParticipantesDeAsync(Usuarios(contexto), candidatas, ct);
-
-        var textos = criterios.NecesitaTexto
-            ? TextosDe(candidatas, await VersionesDeAsync(repo, campaniaId, candidatas, ct))
-            : SinTextos;
-        var evaluaciones = criterios.NecesitaCalificacion
-            ? await EvaluacionesDeAsync(repo, campaniaId, candidatas, ct)
-            : SinEvaluaciones;
-
-        var filtradas = ConsultaIdeasResultados.FiltrarYOrdenar(
-            candidatas, criterios, participantes, textos, CalificacionesDe(evaluaciones));
+        // Mismo alcance que la exportación: si cada uno filtrara por su cuenta, el archivo diría algo
+        // distinto de lo que el administrador vio en pantalla (P-34 §4.5).
+        var alcance = await ConsultaResultadosCompartida.ResolverAsync(contexto, campaniaId, criterios, query, ct);
 
         var (page, pageSize) = LeerPaginacion(query);
-        var pagina = filtradas.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
-        var versionesPagina = await VersionesDeAsync(repo, campaniaId, pagina, ct);
+        var pagina = alcance.Ideas.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
+        var versionesPagina = await ConsultaResultadosCompartida.VersionesVigentesAsync(repo, campaniaId, pagina, ct);
         var evaluacionesPagina = criterios.NecesitaCalificacion
-            ? evaluaciones
-            : await EvaluacionesDeAsync(repo, campaniaId, pagina, ct);
+            ? alcance.Evaluaciones
+            : await ConsultaResultadosCompartida.EvaluacionesDeAsync(repo, campaniaId, pagina, ct);
 
         var resumenes = pagina
             .Select(idea => MapearIdeaResumen(
                 idea,
-                VersionVigente(idea, versionesPagina),
-                participantes.GetValueOrDefault(idea.UsuarioId),
+                ConsultaResultadosCompartida.VersionVigente(idea, versionesPagina),
+                alcance.Participantes.GetValueOrDefault(idea.UsuarioId),
                 evaluacionesPagina.GetValueOrDefault(idea.Id)))
             .ToArray();
 
-        return Results.Ok(Envolver(resumenes, page, pageSize, filtradas.Count));
+        return Results.Ok(Envolver(resumenes, page, pageSize, alcance.Ideas.Count));
     }
 
     /// <summary>
@@ -171,12 +151,6 @@ internal static class EndpointsAdminResultados
         });
     }
 
-    private static readonly IReadOnlyDictionary<string, string> SinTextos =
-        new Dictionary<string, string>(StringComparer.Ordinal);
-
-    private static readonly IReadOnlyDictionary<string, DominioEvaluacion> SinEvaluaciones =
-        new Dictionary<string, DominioEvaluacion>(StringComparer.Ordinal);
-
     /// <summary>Traduce la query string a los criterios crudos de P-34 (04 §5.8).</summary>
     private static CriteriosIdeasCrudos LeerCriterios(IQueryCollection query)
         => new(
@@ -191,125 +165,6 @@ internal static class EndpointsAdminResultados
             Confirmada: query["confirmada"].ToString(),
             Orden: query["orden"].ToString(),
             Dir: query["dir"].ToString());
-
-    /// <summary>
-    /// P-34 §4.1: identidad de los participantes de un conjunto de ideas, en una consulta acotada por
-    /// ids. Un id sin usuario no entra al índice y la fila se presenta como no identificada.
-    /// </summary>
-    private static async Task<IReadOnlyDictionary<string, Usuario>> ParticipantesDeAsync(
-        IRepositorioUsuarios usuarios, IReadOnlyCollection<IdeaConsolidada> ideas, CancellationToken ct)
-    {
-        var ids = ideas
-            .Select(idea => idea.UsuarioId)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        if (ids.Length == 0)
-        {
-            return new Dictionary<string, Usuario>(StringComparer.Ordinal);
-        }
-
-        var encontrados = await usuarios.ListarUsuariosPorIdsAsync(ids, ct);
-        var indice = new Dictionary<string, Usuario>(encontrados.Count, StringComparer.Ordinal);
-        foreach (var usuario in encontrados)
-        {
-            indice[usuario.Id] = usuario;
-        }
-
-        return indice;
-    }
-
-    /// <summary>P-34 §4.2: texto vigente por idea, para la búsqueda libre.</summary>
-    private static IReadOnlyDictionary<string, string> TextosDe(
-        IReadOnlyCollection<IdeaConsolidada> ideas, IReadOnlyDictionary<string, VersionIdeaConsolidada> versiones)
-    {
-        var textos = new Dictionary<string, string>(ideas.Count, StringComparer.Ordinal);
-        foreach (var idea in ideas)
-        {
-            var texto = VersionVigente(idea, versiones)?.Texto;
-            if (!string.IsNullOrWhiteSpace(texto))
-            {
-                textos[idea.Id] = texto;
-            }
-        }
-
-        return textos;
-    }
-
-    /// <summary>
-    /// P-34 §5: evaluación vigente por idea, en una sola consulta por ids (mismo patrón que las
-    /// versiones). Una idea sin `evaluacionVigenteRef` no consume nada.
-    /// </summary>
-    private static async Task<IReadOnlyDictionary<string, DominioEvaluacion>> EvaluacionesDeAsync(
-        IRepositorioRespuestas repo, string campaniaId, IReadOnlyCollection<IdeaConsolidada> ideas, CancellationToken ct)
-    {
-        var referencias = ideas
-            .Select(idea => idea.EvaluacionVigenteRef)
-            .Where(referencia => !string.IsNullOrWhiteSpace(referencia))
-            .Select(referencia => referencia!.Trim())
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        if (referencias.Length == 0)
-        {
-            return SinEvaluaciones;
-        }
-
-        var evaluaciones = await repo.ListarEvaluacionesPorIdsAsync(campaniaId, referencias, ct);
-        var porId = evaluaciones.ToDictionary(evaluacion => evaluacion.Id, StringComparer.Ordinal);
-        var porIdea = new Dictionary<string, DominioEvaluacion>(ideas.Count, StringComparer.Ordinal);
-        foreach (var idea in ideas)
-        {
-            if (!string.IsNullOrWhiteSpace(idea.EvaluacionVigenteRef)
-                && porId.TryGetValue(idea.EvaluacionVigenteRef.Trim(), out var evaluacion))
-            {
-                porIdea[idea.Id] = evaluacion;
-            }
-        }
-
-        return porIdea;
-    }
-
-    private static IReadOnlyDictionary<string, decimal> CalificacionesDe(
-        IReadOnlyDictionary<string, DominioEvaluacion> evaluaciones)
-        => evaluaciones.ToDictionary(par => par.Key, par => par.Value.CalificacionTotal, StringComparer.Ordinal);
-
-    /// <summary>
-    /// P-34 §6 (H-10): una sola consulta con las versiones referidas por las ideas de la página.
-    /// Devuelve el índice por id; una referencia sin documento simplemente no aparece y la idea cae a
-    /// la propuesta, igual que cuando la lectura puntual devolvía <c>null</c>.
-    /// </summary>
-    private static async Task<IReadOnlyDictionary<string, VersionIdeaConsolidada>> VersionesDeAsync(
-        IRepositorioRespuestas repo, string campaniaId, IReadOnlyCollection<IdeaConsolidada> ideas, CancellationToken ct)
-    {
-        var referencias = ideas
-            .SelectMany(idea => new[] { idea.VersionConfirmadaRef, idea.VersionPropuestaRef })
-            .Where(referencia => !string.IsNullOrWhiteSpace(referencia))
-            .Select(referencia => referencia!.Trim())
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        if (referencias.Length == 0)
-        {
-            return new Dictionary<string, VersionIdeaConsolidada>(StringComparer.Ordinal);
-        }
-
-        var versiones = await repo.ListarVersionesDeCampaniaAsync(campaniaId, referencias, ct);
-        var indice = new Dictionary<string, VersionIdeaConsolidada>(versiones.Count, StringComparer.Ordinal);
-        foreach (var version in versiones)
-        {
-            indice[version.Id] = version;
-        }
-
-        return indice;
-    }
-
-    /// <summary>Confirmada si existe; si no, la propuesta marcada (misma precedencia de I-19).</summary>
-    private static VersionIdeaConsolidada? VersionVigente(
-        IdeaConsolidada idea, IReadOnlyDictionary<string, VersionIdeaConsolidada> versiones)
-        => Version(idea.VersionConfirmadaRef, versiones) ?? Version(idea.VersionPropuestaRef, versiones);
-
-    private static VersionIdeaConsolidada? Version(
-        string? versionId, IReadOnlyDictionary<string, VersionIdeaConsolidada> versiones)
-        => string.IsNullOrWhiteSpace(versionId) ? null : versiones.GetValueOrDefault(versionId.Trim());
 
     private static async Task<VersionIdeaConsolidada?> VersionAsync(
         IRepositorioRespuestas repo, string campaniaId, string? versionId, CancellationToken ct)

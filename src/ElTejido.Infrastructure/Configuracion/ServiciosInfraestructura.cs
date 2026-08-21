@@ -17,7 +17,10 @@ using ElTejido.Infrastructure.Usuarios;
 using ElTejido.Infrastructure.WhatsApp;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
+using ElTejido.Application.Exportacion;
+using ElTejido.Infrastructure.Exportacion;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ElTejido.Infrastructure.Configuracion;
 
@@ -33,6 +36,11 @@ public static class ServiciosInfraestructura
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // P-34 §4.5: la escritura de exportaciones no depende del almacen, asi que se registra en los
+        // dos modos y tambien cuando no hay persistencia configurada.
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IEscritorExportacion, EscritorExportacion>();
+
         if (OpcionesPersistencia.EsMemoria(configuration))
         {
             return RegistrarMemoria(services);

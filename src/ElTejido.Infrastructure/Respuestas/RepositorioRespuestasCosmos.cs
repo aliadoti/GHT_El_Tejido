@@ -107,6 +107,31 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.Select(documento => documento.ToDomain()).ToArray();
     }
 
+    /// <summary>P-34 §4.5: todas las versiones de un conjunto de ideas, en una sola consulta.</summary>
+    public async Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesDeIdeasAsync(
+        string campaniaId, IReadOnlyCollection<string> ideaIds, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentNullException.ThrowIfNull(ideaIds);
+
+        var ids = ideaIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (ids.Length == 0)
+        {
+            return Array.Empty<VersionIdeaConsolidada>();
+        }
+
+        var query = new QueryDefinition(
+                "SELECT * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@ideaIds, c.ideaId) ORDER BY c.numeroVersion")
+            .WithParameter("@type", VersionIdeaConsolidadaCosmosDocument.DocumentType)
+            .WithParameter("@ideaIds", ids);
+        var documentos = await _container.QueryAsync<VersionIdeaConsolidadaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
     /// <summary>
     /// P-34 §6 (H-10): una sola consulta dentro de la particion en vez de una lectura puntual por
     /// version. Sin ids no consulta nada; los ids se filtran en el servidor con <c>ARRAY_CONTAINS</c>,

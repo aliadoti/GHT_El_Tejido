@@ -1,16 +1,15 @@
 # P-34 — Resultados: identidad, filtros, tabla ordenable, exportación y resumen de campaña
 
-> Estado: **EN CURSO — 4/6 (cortes 1 y 2 DONE local 2026-08-20; cortes 3 y 4 DONE local 2026-08-21; siguiente corte 5/6)**
+> Estado: **EN CURSO — 5/6 (cortes 1 y 2 DONE local 2026-08-20; cortes 3, 4 y 5 DONE local 2026-08-21; siguiente corte 6/6)**
 > Origen: solicitud del usuario (2026-08-20) como especialista en UX/UI sobre la pantalla de Resultados
 > Tipo: Desarrollo **frontend + backend aditivo** · Prioridad: Alta · Ventana: previa a la convención
 > Dependencias: **I-17**, **I-19** (idea consolidada), **P-18/P-19** (accesibilidad), **P-23** (maestro-detalle)
 > Absorbe de **P-04**: filtros de servidor, ranking por calificación y exportación CSV
 > Riesgo: Medio — cambia `04 §5.8` de forma **aditiva**; no toca `03`, ni rutas, ni permisos
-> Handoff: cortes 1 a 4 DONE local. `04 §5.8` ya publica la identidad embebida, la calificación
-> vigente, los filtros y `orden`/`dir` (commit `98b8bca`), y el portal ya tiene tabla ordenable, ficha
-> completa y línea de tiempo. Sigue el corte 5 (exportación), que **sí** agrega rutas nuevas: su
-> contrato va en commit aparte y previo. DT-P33-01 integral queda en backlog y no bloquea esta
-> iniciativa.
+> Handoff: cortes 1 a 5 DONE local. `04 §5.8` publica la identidad embebida, los filtros, `orden`/`dir`
+> (`98b8bca`) y las dos rutas de exportación (`c9181a6`). Sigue el **corte 6, el último**: el resumen
+> de campaña, con su contrato en commit aparte y previo. DT-P33-01 integral queda en backlog y no
+> bloquea esta iniciativa.
 
 ---
 
@@ -202,8 +201,8 @@ Todo aditivo. `03` no cambia. `04 §5.8` se actualiza en commit aparte, con su e
 | `GET /admin/ideas` | `orden` = `participante\|calificacion\|creada\|actualizada\|pregunta` + `dir` = `asc\|desc`. **Implementado en el servidor (corte 3); la UI llega con la tabla del corte 4** | aditivo |
 | `GET /admin/ideas/{id}` | Traer los aportes por `ideaId` en vez de cargar la partición de respuestas | interno |
 | `GET /admin/markdown` | Sin cambio de contrato: el portal debe pasar `pageSize` y paginar (corrige H-03) | solo portal |
-| `GET /admin/campanias/{id}/exportar` | **Nuevo.** `recurso` = `ideas\|aportes\|evaluaciones`, `formato` = `xlsx\|csv`, `anonimizado` = `true\|false`, más los filtros del listado | nuevo |
-| `GET /admin/campanias/{id}/documentos.zip` | **Nuevo.** ZIP de los `.md` con nombres legibles | nuevo |
+| `GET /admin/campanias/{id}/exportar` | **Nuevo.** `recurso` = `ideas\|aportes\|evaluaciones`, `formato` = `xlsx\|csv`, `anonimizado` = `true\|false`, más los filtros del listado. **Implementado (corte 5)** | nuevo |
+| `GET /admin/campanias/{id}/documentos.zip` | **Nuevo.** ZIP de los `.md` con nombres legibles. **Implementado (corte 5)** | nuevo |
 | `GET /admin/campanias/{id}/resumen` | **Nuevo.** Participación, embudo, histograma, cobertura y temas; acepta los mismos filtros | nuevo |
 | `GET /admin/usuarios` | Subir el tope de `pageSize` o exponer `continuationToken` (red de seguridad para H-02). **Ya no hace falta para Resultados**: el corte 1 pagina y el corte 3 resuelve la identidad en el servidor | aditivo |
 | `IRepositorioUsuarios` | **Nuevo** `ListarUsuariosPorIdsAsync`: identidad por bloques de ids dentro de la partición de usuarios. **Implementado (corte 3)** | interno |
@@ -284,7 +283,7 @@ P-23 sin afectar datos ni contratos.
 | **2** ✅ | **Que aguante 1.000 ideas** (backend) — **DONE local 2026-08-20** | Se filtra, ordena y **pagina antes** de resolver versiones; las de la página se piden en una sola consulta por ids dentro de la partición (`ListarVersionesDeCampaniaAsync`); el detalle trae los aportes por `ideaId` (`ListarRespuestasPorIdeaAsync`); ambos con degradación por defecto en el puerto. El portal recorre además el listado completo de ideas, lo que vuelve exacto el desglose por estado de H-04. Medición con 1.000 ideas y 5.000 aportes: listado de **1.000 lecturas puntuales a 0** (403 → 332 ms) y detalle de **5.000 documentos de respuesta a 5** (701 → 496 ms), en operaciones e in-process; **RU/latencia reales contra Cosmos siguen pendientes como puerta operativa**. |
 | **3** ✅ | **Identidad y filtros en el servidor** — **DONE local 2026-08-21** | `participante` embebido (con `resuelto`) y `calificacionTotal`/`evaluadaEn` en `/ideas`; filtros `q`, área, empresa, sede, fechas, calificación y confirmada, más `orden`/`dir`, con `400` y todos los motivos ante una consulta inválida; identidad y evaluaciones por consultas acotadas a ids; barra de dos niveles con chips removibles, estado del filtro en la URL y vacío que nombra el filtro. Quedan fuera «con/sin documento» y «con/sin evaluación», y la **UI** de ordenamiento pasa al corte 4. |
 | **4** ✅ | **Tabla, orden y metadata** (solo portal) — **DONE local 2026-08-21** | Vista tabla como principal con orden resuelto en el servidor (`orden`/`dir`), anunciado con `aria-sort` y con tercer clic al orden natural; agrupación por participante colapsable, selector de columnas, densidad, tamaño de página y paginación honesta («Mostrando 1–25 de 30 filtradas · 120 en la campaña»); vista lectura de P-23 conservada y recordada en sesión; ficha con toda la metadata de H-05 —fechas absolutas en `America/Bogota` más relativas, rúbrica/modelo, id copiable— y línea de tiempo única de aportes y versiones; selección múltiple prevista sin acción (D4). **No se implementaron las columnas «versiones» y «aportes»**: sus conteos no están en el DTO de lista y exigirían otro cambio aditivo de `04 §5.8`. |
-| **5** | **Exportación** | `/exportar` con los tres recursos en xlsx y csv; hoja «Filtros aplicados»; casilla de anonimizado; ZIP de documentos. |
+| **5** ✅ | **Exportación** — **DONE local 2026-08-21** | `/exportar` con los tres recursos en xlsx y csv y `documentos.zip` con nombres legibles, todos con **los filtros de la pantalla** e ignorando `page`/`pageSize`; hoja «Filtros aplicados» (o líneas `#` en csv) con campaña, filtros, orden, total, fecha y quién exportó; casilla de anonimizado (D1) que alcanza también a los nombres del ZIP; csv en UTF-8 con BOM; tope de 10.000 filas con `400`; `xlsx` y ZIP escritos en archivo temporal y enviados asíncronos, nunca enteros en memoria. Listado y exportación comparten `ConsultaResultadosCompartida`. |
 | **6** | **Resumen de campaña** | `/resumen`; panel plegable que respeta el filtro; tooltips y tabla equivalente por gráfico. |
 
 Cada corte deja el repositorio verde y es desplegable sin esperar al siguiente.

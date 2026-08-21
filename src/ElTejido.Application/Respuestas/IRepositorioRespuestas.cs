@@ -47,6 +47,25 @@ public interface IRepositorioRespuestas
         => throw new NotSupportedException("El repositorio no implementa versiones de ideas I-19.");
 
     /// <summary>
+    /// P-34 §4.5: todas las versiones de un conjunto de ideas, en una sola consulta por particion.
+    /// La exportacion necesita contarlas y ubicar el aporte que origino cada una; pedirlas idea por
+    /// idea repetiria el problema H-10. La implementacion por defecto recorre las ideas.
+    /// </summary>
+    async Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesDeIdeasAsync(
+        string campaniaId,
+        IReadOnlyCollection<string> ideaIds,
+        CancellationToken cancellationToken)
+    {
+        var encontradas = new List<VersionIdeaConsolidada>();
+        foreach (var ideaId in ideaIds)
+        {
+            encontradas.AddRange(await ListarVersionesIdeaAsync(campaniaId, ideaId, cancellationToken));
+        }
+
+        return encontradas;
+    }
+
+    /// <summary>
     /// P-34 §6 (H-10): versiones pedidas <b>en bloque</b> dentro de la particion <c>campaniaId</c>.
     /// El listado de resultados necesita la version vigente de cada idea de la pagina; resolverlas una
     /// por una costaba una lectura puntual por idea (hasta 2.000 en la campania de 1.000 ideas

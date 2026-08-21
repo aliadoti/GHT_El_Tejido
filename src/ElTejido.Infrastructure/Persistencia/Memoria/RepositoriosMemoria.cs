@@ -457,6 +457,19 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
             .Where(version => version.CampaniaId == campaniaId && version.IdeaId == ideaId)
             .OrderBy(version => version.NumeroVersion).ToArray());
 
+    /// <summary>P-34 §4.5: todas las versiones de un conjunto de ideas.</summary>
+    public Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesDeIdeasAsync(
+        string campaniaId, IReadOnlyCollection<string> ideaIds, CancellationToken cancellationToken)
+    {
+        var ideas = ideaIds.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+        return Task.FromResult<IReadOnlyCollection<VersionIdeaConsolidada>>(ideas.Count == 0
+            ? []
+            : _versionesIdea.Values
+                .Where(version => version.CampaniaId == campaniaId && ideas.Contains(version.IdeaId))
+                .OrderBy(version => version.NumeroVersion)
+                .ToArray());
+    }
+
     /// <summary>P-34 §6: mismo resultado que el adaptador Cosmos, en un solo recorrido.</summary>
     public Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesDeCampaniaAsync(
         string campaniaId, IReadOnlyCollection<string> versionIds, CancellationToken cancellationToken)

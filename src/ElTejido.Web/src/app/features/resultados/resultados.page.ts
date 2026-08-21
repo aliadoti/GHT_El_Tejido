@@ -1,3 +1,4 @@
+import { HttpResponse } from '@angular/common/http';
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -300,6 +301,73 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
               Vista lectura
             </button>
           </div>
+          <!-- P-34 §4.5: «Exportar» sin desplegar baja el listado visible en Excel; el menú tiene los
+               demás recursos, el CSV, el anonimizado y el ZIP de documentos. -->
+          <div class="actions-row">
+            <button
+              type="button"
+              class="ghost-button"
+              [disabled]="exportando()"
+              (click)="exportar('ideas', 'xlsx')"
+            >
+              Exportar
+            </button>
+            <details class="resultados-exportar">
+              <summary>Más formatos</summary>
+              <div class="actions-row">
+                <label class="resultados-opcion">
+                  <input
+                    type="checkbox"
+                    name="anonimizado"
+                    [ngModel]="anonimizado()"
+                    (ngModelChange)="alternarAnonimizado()"
+                  />
+                  Exportar anonimizado
+                </label>
+              </div>
+              <ul class="compact-list">
+                <li>
+                  <button type="button" class="ghost-button" (click)="exportar('ideas', 'csv')">
+                    Ideas (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="ghost-button" (click)="exportar('aportes', 'xlsx')">
+                    Aportes (.xlsx)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="ghost-button" (click)="exportar('aportes', 'csv')">
+                    Aportes (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="ghost-button"
+                    (click)="exportar('evaluaciones', 'xlsx')"
+                  >
+                    Evaluaciones (.xlsx)
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="ghost-button"
+                    (click)="exportar('evaluaciones', 'csv')"
+                  >
+                    Evaluaciones (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" class="ghost-button" (click)="exportarDocumentos()">
+                    Documentos (.zip)
+                  </button>
+                </li>
+              </ul>
+            </details>
+          </div>
+
           @if (vista() === 'tabla') {
             <div class="actions-row">
               <label class="resultados-opcion">
@@ -963,6 +1031,9 @@ export class ResultadosPage {
   /** Total de la campaña sin filtros, para que la paginación diga la verdad completa (§4.3). */
   protected readonly totalCampania = signal(0);
   protected readonly columnasDisponibles = COLUMNAS_RESULTADOS;
+  /** P-34 §4.5 (D1): la casilla de anonimizado está disponible desde el primer día. */
+  protected readonly anonimizado = signal(false);
+  protected readonly exportando = signal(false);
   protected nivelMadurezFiltro = '';
   private cargasPendientes = 0;
   private urlAplicada = '';
@@ -1270,6 +1341,67 @@ export class ResultadosPage {
 
   tieneDocumento(ideaId: string): boolean {
     return this.artefactos().some((artefacto) => artefacto.ideaRef === ideaId);
+  }
+
+  // ---- P-34 §4.5: exportación -------------------------------------------------------------------
+
+  alternarAnonimizado() {
+    this.anonimizado.update((valor) => !valor);
+  }
+
+  /**
+   * El archivo lo arma el servidor con el mismo filtro que la pantalla (§4.5): aquí solo se pide y se
+   * guarda con el nombre que él decide, para que el archivo y la vista cuenten lo mismo.
+   */
+  exportar(recurso: string, formato: string) {
+    if (!this.campaniaId || this.exportando()) return;
+    this.exportando.set(true);
+    this.api
+      .exportarResultados(
+        this.campaniaId,
+        { recurso, formato, anonimizado: this.anonimizado() },
+        this.filtrosParaApi(),
+      )
+      .pipe(finalize(() => this.exportando.set(false)))
+      .subscribe({
+        next: (respuesta) => this.guardarDescarga(respuesta, `${recurso}.${formato}`),
+        error: (err: unknown) => this.error.set(formatApiError(err)),
+      });
+  }
+
+  exportarDocumentos() {
+    if (!this.campaniaId || this.exportando()) return;
+    this.exportando.set(true);
+    this.api
+      .exportarDocumentos(this.campaniaId, this.anonimizado(), this.filtrosParaApi())
+      .pipe(finalize(() => this.exportando.set(false)))
+      .subscribe({
+        next: (respuesta) => this.guardarDescarga(respuesta, 'documentos.zip'),
+        error: (err: unknown) => this.error.set(formatApiError(err)),
+      });
+  }
+
+  private guardarDescarga(respuesta: HttpResponse<Blob>, nombrePorDefecto: string) {
+    const cuerpo = respuesta.body;
+    if (!cuerpo) {
+      this.error.set('La descarga llegó vacía. Intenta de nuevo.');
+      return;
+    }
+
+    const url = URL.createObjectURL(cuerpo);
+    const ancla = document.createElement('a');
+    ancla.href = url;
+    ancla.download = this.nombreDescarga(respuesta) ?? nombrePorDefecto;
+    ancla.click();
+    URL.revokeObjectURL(url);
+    this.informacion.set('Descarga iniciada.');
+  }
+
+  /** El nombre lo decide el servidor; si no viaja, se usa uno equivalente. */
+  private nombreDescarga(respuesta: HttpResponse<Blob>): string | null {
+    const cabecera = respuesta.headers.get('Content-Disposition');
+    const coincidencia = cabecera?.match(/filename="?([^";]+)"?/i);
+    return coincidencia?.[1] ?? null;
   }
 
   // ---- P-34 §4.4: ficha y línea de tiempo -------------------------------------------------------
