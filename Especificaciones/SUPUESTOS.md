@@ -1617,3 +1617,42 @@
   `-warnaserror`, `dotnet format` y `git diff --check` verdes).
 - Rollback: revertir el commit devuelve la vista de P-23 exacta; no hay contrato, dato ni
   configuración involucrados.
+
+### escala-listado-ideas-p-34 — Paginar primero, resolver después y en bloque
+
+- Fecha: 2026-08-20 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend senior/SDET (P-34 corte 2/6).
+- Hallazgo (P-34 H-10): `GET /admin/ideas` resolvía la versión vigente **idea por idea y antes de
+  paginar**, con una lectura puntual por idea (hasta dos cuando la confirmada no existía). En la
+  campaña de 1.000 ideas prevista para la convención eso son 1.000 lecturas puntuales por cada carga
+  y por cada cambio de filtro. `GET /admin/ideas/{id}` era peor: leía la partición completa de
+  respuestas para quedarse con los aportes de una sola idea.
+- Decisión 1 — **el orden no depende del texto de la versión** (`preguntaId → ideaIndice → creadaEn`),
+  así que se filtra, se ordena, se **recorta la página** y solo entonces se resuelven versiones. El
+  `total` sigue siendo el del conjunto filtrado completo, no el de la página.
+- Decisión 2 — las versiones de la página se piden **en una sola consulta acotada por ids** dentro de
+  la partición (`ARRAY_CONTAINS`), no una lectura por idea. El método del puerto es
+  `ListarVersionesDeCampaniaAsync(campaniaId, versionIds, ct)`: P-34 §5 lo nombraba sin parámetros;
+  recibir los ids de la página evita traer las versiones de toda la campaña —que con 1.000 ideas es
+  el texto completo de ~2.000 documentos— y conserva la propiedad que importa, una sola consulta.
+- Decisión 3 — **degradación por defecto en el puerto, no en el endpoint.** `ListarVersionesDeCampaniaAsync`
+  cae a lecturas puntuales y `ListarRespuestasPorIdeaAsync` filtra el listado completo: un adaptador o
+  doble sin la consulta nativa devuelve exactamente lo mismo, solo que más caro. Ningún llamador
+  necesita saber cuál de los dos caminos tomó.
+- Consecuencia visible: ninguna. La página, el orden, el `total`, la precedencia confirmada→propuesta
+  y el detalle devuelven lo mismo que antes; una referencia de versión sin documento sigue cayendo a
+  la propuesta, igual que cuando la lectura puntual devolvía `null`.
+- Portal: con el listado ya barato, Resultados recorre también las páginas de ideas (`ideasTodas`),
+  que es lo que vuelve exacto el desglose por estado de H-04. El aviso «(sobre las N primeras)» se
+  conserva para el caso defensivo en que el servidor declare más ideas de las que entrega.
+- Medición (`ListadoIdeasEscalaP34IntegrationTests`, 1.000 ideas y 5.000 aportes sembrados, doble de
+  repositorio que cuenta operaciones como las contaría Cosmos):
+  - Listado `pageSize=100`: **antes** 1 consulta de ideas + **1.000 lecturas puntuales**, 403 ms →
+    **después** 1 consulta de ideas + **1 consulta de versiones (100 ids)** y **0 lecturas
+    puntuales**, 332 ms.
+  - Detalle de una idea: **antes 5.000 documentos de respuesta leídos** (la partición entera), 701 ms
+    → **después 5**, 496 ms.
+  - Límite honesto: es una medición **de operaciones**, in-process; las RU y la latencia reales
+    contra Cosmos siguen siendo una puerta operativa pendiente, con credenciales y ambiente. Las
+    operaciones son el factor que las gobierna, y son las que quedan fijadas por prueba en CI.
+- Rollback: revertir el commit restaura el comportamiento anterior; no hay contrato, dato, índice ni
+  configuración involucrados.

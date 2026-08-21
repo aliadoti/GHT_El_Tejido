@@ -46,6 +46,32 @@ public interface IRepositorioRespuestas
     Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesIdeaAsync(string campaniaId, string ideaId, CancellationToken cancellationToken)
         => throw new NotSupportedException("El repositorio no implementa versiones de ideas I-19.");
 
+    /// <summary>
+    /// P-34 §6 (H-10): versiones pedidas <b>en bloque</b> dentro de la particion <c>campaniaId</c>.
+    /// El listado de resultados necesita la version vigente de cada idea de la pagina; resolverlas una
+    /// por una costaba una lectura puntual por idea (hasta 2.000 en la campania de 1.000 ideas
+    /// prevista para la convencion). Los adaptadores persistentes lo traducen a <b>una sola consulta</b>.
+    /// La implementacion por defecto conserva el comportamiento anterior —lecturas puntuales— para que
+    /// un doble de prueba sin la consulta nativa siga devolviendo lo mismo, solo que mas caro.
+    /// </summary>
+    async Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesDeCampaniaAsync(
+        string campaniaId,
+        IReadOnlyCollection<string> versionIds,
+        CancellationToken cancellationToken)
+    {
+        var encontradas = new List<VersionIdeaConsolidada>(versionIds.Count);
+        foreach (var versionId in versionIds)
+        {
+            var version = await ObtenerVersionIdeaAsync(campaniaId, versionId, cancellationToken);
+            if (version is not null)
+            {
+                encontradas.Add(version);
+            }
+        }
+
+        return encontradas;
+    }
+
     Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken);
 
     /// <summary>
@@ -74,6 +100,20 @@ public interface IRepositorioRespuestas
     Task<IReadOnlyCollection<Respuesta>> ListarRespuestasAsync(
         string campaniaId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// P-34 §6 (H-10): aportes de <b>una</b> idea. El detalle de resultados cargaba la particion
+    /// completa de respuestas para quedarse con los aportes de una sola idea. La implementacion por
+    /// defecto filtra en memoria —el comportamiento anterior, exacto— y los adaptadores persistentes
+    /// lo traducen a una consulta acotada por <c>ideaId</c> dentro de la misma particion.
+    /// </summary>
+    async Task<IReadOnlyCollection<Respuesta>> ListarRespuestasPorIdeaAsync(
+        string campaniaId,
+        string ideaId,
+        CancellationToken cancellationToken)
+        => (await ListarRespuestasAsync(campaniaId, cancellationToken))
+            .Where(respuesta => respuesta.IdeaId == ideaId)
+            .ToArray();
 
     /// <summary>
     /// Cantidad de evaluaciones registradas para un usuario dentro de una campania. Cada llamada al

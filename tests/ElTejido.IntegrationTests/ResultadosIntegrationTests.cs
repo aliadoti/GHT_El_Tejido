@@ -125,6 +125,9 @@ public sealed class ResultadosIntegrationTests
         json.Should().Contain("\"numeroVersion\":1");
         json.Should().Contain("eval_1");
         json.Should().Contain("\"aportes\"");
+        // P-34 §6: los aportes llegan de la consulta por `ideaId`; el doble no responde el listado
+        // completo de la campaña, así que este texto solo aparece si se usó la ruta nueva.
+        json.Should().Contain("Mi idea");
     }
 
     [Fact]
@@ -301,8 +304,17 @@ public sealed class ResultadosIntegrationTests
         respuestas.ObtenerIdeaConsolidadaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>()).Returns(ideaMadura);
         respuestas.ObtenerVersionIdeaAsync(CampaniaId, "idea_1_v1", Arg.Any<CancellationToken>()).Returns(versionMadura);
         respuestas.ObtenerVersionIdeaAsync(CampaniaId, "idea_2_v1", Arg.Any<CancellationToken>()).Returns(versionRechazada);
+        // P-34 §6: el listado resuelve las versiones de la pagina en una sola consulta por ids.
+        respuestas
+            .ListarVersionesDeCampaniaAsync(CampaniaId, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => new[] { versionMadura, versionRechazada }
+                .Where(version => ((IReadOnlyCollection<string>)llamada[1]).Contains(version.Id))
+                .ToArray());
         respuestas.ListarVersionesIdeaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>())
             .Returns(new[] { versionMadura });
+        // P-34 §6: el detalle pide los aportes por ideaId en vez de leer la particion completa.
+        respuestas.ListarRespuestasPorIdeaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>())
+            .Returns(new[] { respuesta });
         respuestas.ObtenerEvaluacionPorIdAsync(CampaniaId, "eval_1", Arg.Any<CancellationToken>()).Returns(CrearEvaluacion());
 
         var conversaciones = Substitute.For<IRepositorioConversaciones>();

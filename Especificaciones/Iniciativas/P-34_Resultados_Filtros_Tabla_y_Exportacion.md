@@ -1,14 +1,15 @@
 # P-34 — Resultados: identidad, filtros, tabla ordenable, exportación y resumen de campaña
 
-> Estado: **EN CURSO — 1/6 (corte 1 DONE local 2026-08-20; siguiente corte 2/6)**
+> Estado: **EN CURSO — 2/6 (cortes 1 y 2 DONE local 2026-08-20; siguiente corte 3/6)**
 > Origen: solicitud del usuario (2026-08-20) como especialista en UX/UI sobre la pantalla de Resultados
 > Tipo: Desarrollo **frontend + backend aditivo** · Prioridad: Alta · Ventana: previa a la convención
 > Dependencias: **I-17**, **I-19** (idea consolidada), **P-18/P-19** (accesibilidad), **P-23** (maestro-detalle)
 > Absorbe de **P-04**: filtros de servidor, ranking por calificación y exportación CSV
 > Riesgo: Medio — cambia `04 §5.8` de forma **aditiva**; no toca `03`, ni rutas, ni permisos
-> Handoff: el corte 1 (H-01/H-02/H-03/H-04) quedó DONE local el 2026-08-20, solo portal y sin
-> contratos; sigue el corte 2 (escala a 1.000 ideas, backend). DT-P33-01 integral queda en backlog y
-> no bloquea esta iniciativa.
+> Handoff: los cortes 1 (H-01/H-02/H-03/H-04) y 2 (escala a 1.000 ideas) quedaron DONE local el
+> 2026-08-20, sin cambios de contrato; sigue el corte 3 (identidad embebida y filtros de servidor),
+> que **sí** cambia `04 §5.8` de forma aditiva y en commit aparte. DT-P33-01 integral queda en backlog
+> y no bloquea esta iniciativa.
 
 ---
 
@@ -204,7 +205,8 @@ Todo aditivo. `03` no cambia. `04 §5.8` se actualiza en commit aparte, con su e
 | `GET /admin/campanias/{id}/documentos.zip` | **Nuevo.** ZIP de los `.md` con nombres legibles | nuevo |
 | `GET /admin/campanias/{id}/resumen` | **Nuevo.** Participación, embudo, histograma, cobertura y temas; acepta los mismos filtros | nuevo |
 | `GET /admin/usuarios` | Subir el tope de `pageSize` o exponer `continuationToken` (red de seguridad para H-02) | aditivo |
-| `IRepositorioRespuestas` | **Nuevo** `ListarVersionesDeCampaniaAsync`: una query por partición en vez de N lecturas puntuales | interno |
+| `IRepositorioRespuestas` | **Nuevo** `ListarVersionesDeCampaniaAsync(campaniaId, versionIds, ct)`: una query por partición (`ARRAY_CONTAINS`) en vez de N lecturas puntuales. Recibe los ids de la página —no toda la campaña— para no traer el texto de ~2.000 documentos; degrada por defecto a lecturas puntuales. **Implementado (corte 2)** | interno |
+| `IRepositorioRespuestas` | **Nuevo** `ListarRespuestasPorIdeaAsync`: aportes por `ideaId`; degrada por defecto al filtro en memoria. **Implementado (corte 2)** | interno |
 
 Permisos sin cambios: lectura para `admin`/`visor`; el export es `GET` y por tanto también lectura,
 bajo el mismo guard admin, sin PII fuera de él.
@@ -276,7 +278,7 @@ P-23 sin afectar datos ni contratos.
 | # | Corte | Qué entrega |
 |---|-------|-------------|
 | **1** ✅ | **Los cuatro bugs** (frontend) — **DONE local 2026-08-20** | Recorrido de páginas hasta agotar `total` en `/usuarios`, `/markdown`, `/respuestas` y `/conversaciones` con `pageSize` en el tope real (100), degradando a una sola página si el servidor no informa `total`; contadores tomados de `total`, con aviso «(sobre las N primeras)» mientras el listado de ideas siga trayendo una página (se retira con el corte 2); error de `/usuarios` visible en la región asertiva y reintentable; «Participante no identificado · código» en vez del id técnico. Portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios. |
-| **2** | **Que aguante 1.000 ideas** (backend) | Versiones en una query por partición; resolver versión después de paginar; detalle sin leer la partición completa; medición de RU y latencia. |
+| **2** ✅ | **Que aguante 1.000 ideas** (backend) — **DONE local 2026-08-20** | Se filtra, ordena y **pagina antes** de resolver versiones; las de la página se piden en una sola consulta por ids dentro de la partición (`ListarVersionesDeCampaniaAsync`); el detalle trae los aportes por `ideaId` (`ListarRespuestasPorIdeaAsync`); ambos con degradación por defecto en el puerto. El portal recorre además el listado completo de ideas, lo que vuelve exacto el desglose por estado de H-04. Medición con 1.000 ideas y 5.000 aportes: listado de **1.000 lecturas puntuales a 0** (403 → 332 ms) y detalle de **5.000 documentos de respuesta a 5** (701 → 496 ms), en operaciones e in-process; **RU/latencia reales contra Cosmos siguen pendientes como puerta operativa**. |
 | **3** | **Identidad y filtros en el servidor** | `participante` y `calificacionTotal` en `/ideas`; filtros nuevos; barra de dos niveles con chips; estado en la URL; estados vacíos que nombran el filtro. |
 | **4** | **Tabla, orden y metadata** | Vista tabla ordenable, agrupación, selector de columnas, paginación configurable; ficha completa y línea de tiempo; vista lectura conservada; columna de selección prevista (D4). |
 | **5** | **Exportación** | `/exportar` con los tres recursos en xlsx y csv; hoja «Filtros aplicados»; casilla de anonimizado; ZIP de documentos. |

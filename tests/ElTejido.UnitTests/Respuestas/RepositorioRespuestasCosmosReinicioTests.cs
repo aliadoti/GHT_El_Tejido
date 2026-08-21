@@ -118,6 +118,54 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
             && !query.Contains("estado", StringComparison.OrdinalIgnoreCase));
     }
 
+    // P-34 §6 (H-10): las versiones de una pagina se piden en UNA consulta por particion.
+    [Fact]
+    public async Task P34_ListarVersionesDeCampania_UnaSolaConsultaPorIdsSinLecturasPuntuales()
+    {
+        var container = new FakeResponsesCosmosContainer
+        {
+            Versiones = [DocVersion("idea_1_v1", "idea_1", 1), DocVersion("idea_2_v1", "idea_2", 1)],
+        };
+        var repo = new RepositorioRespuestasCosmos(container);
+
+        var resultado = await repo.ListarVersionesDeCampaniaAsync(
+            "c_1", ["idea_1_v1", "idea_2_v1", "idea_1_v1", " "], CancellationToken.None);
+
+        resultado.Select(version => version.Id).Should().BeEquivalentTo(["idea_1_v1", "idea_2_v1"]);
+        container.QueryTexts.Should().ContainSingle(query =>
+            query.Contains("ARRAY_CONTAINS(@versionIds, c.id)", StringComparison.Ordinal));
+        container.LecturasPuntuales.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task P34_ListarVersionesDeCampania_SinIds_NoConsultaNada()
+    {
+        var container = new FakeResponsesCosmosContainer();
+        var repo = new RepositorioRespuestasCosmos(container);
+
+        var resultado = await repo.ListarVersionesDeCampaniaAsync("c_1", [], CancellationToken.None);
+
+        resultado.Should().BeEmpty();
+        container.QueryTexts.Should().BeEmpty();
+    }
+
+    // P-34 §6 (H-10): el detalle pide los aportes de la idea, no la particion completa.
+    [Fact]
+    public async Task P34_ListarRespuestasPorIdea_FiltraPorIdeaIdEnLaConsulta()
+    {
+        var container = new FakeResponsesCosmosContainer
+        {
+            Respuestas = [DocRespuesta("resp_1", "u_1")],
+        };
+        var repo = new RepositorioRespuestasCosmos(container);
+
+        var resultado = await repo.ListarRespuestasPorIdeaAsync("c_1", "idea_1", CancellationToken.None);
+
+        resultado.Should().ContainSingle().Which.Id.Should().Be("resp_1");
+        container.QueryTexts.Should().ContainSingle(query =>
+            query.Contains("c.ideaId = @ideaId", StringComparison.Ordinal));
+    }
+
     private static RespuestaCosmosDocument DocRespuesta(string id, string usuarioId)
         => RespuestaCosmosDocument.FromDomain(
             Respuesta.Crear(id, "c_1", usuarioId, "p_1", "conv_1", "Idea", "whatsapp", false, EstadoRespuesta.Recibida, Epoca, null));
@@ -131,6 +179,13 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
                 id, "c_1", respuestaId, usuarioId, "p_1", "r_general", 1, "pr_eval", 1, "llm_default",
                 new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
                 null, null, calificacionTotal, "ok", "Bien", RecomendacionEvaluacion.Cerrar, null, null, null, false, fecha));
+
+    private static VersionIdeaConsolidadaCosmosDocument DocVersion(string id, string ideaId, int numeroVersion)
+        => VersionIdeaConsolidadaCosmosDocument.FromDomain(
+            VersionIdeaConsolidada.Crear(
+                id, "c_1", ideaId, numeroVersion, null, "Texto consolidado", ["resp_1"], ["resp_1"],
+                TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Confirmada, null, null, null, null,
+                Epoca, Epoca));
 
     private static ArtefactoMarkdownCosmosDocument DocArtefacto(string id, string respuestaId, string usuarioId, string blobPath)
         => ArtefactoMarkdownCosmosDocument.FromDomain(
@@ -148,6 +203,11 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
 
         public IReadOnlyCollection<IdeaConsolidadaCosmosDocument> Ideas { get; init; } = [];
 
+        public IReadOnlyCollection<VersionIdeaConsolidadaCosmosDocument> Versiones { get; init; } = [];
+
+        /// <summary>P-34 §6: cada lectura puntual es la RU que el listado dejo de gastar.</summary>
+        public List<(string Id, string PartitionKey)> LecturasPuntuales { get; } = [];
+
         public List<(string Id, string PartitionKey)> Deletes { get; } = [];
 
         public List<bool> QueriesConUsuario { get; } = [];
@@ -159,7 +219,10 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
 
         public Task<T?> ReadByIdAsync<T>(string id, string partitionKey, CancellationToken cancellationToken)
             where T : class
-            => Task.FromResult<T?>(null);
+        {
+            LecturasPuntuales.Add((id, partitionKey));
+            return Task.FromResult<T?>(null);
+        }
 
         public Task DeleteAsync(string id, string partitionKey, CancellationToken cancellationToken)
         {
@@ -177,6 +240,7 @@ public sealed class RepositorioRespuestasCosmosReinicioTests
                 var t when t == typeof(EvaluacionCosmosDocument) => OrdenarEvaluaciones(query),
                 var t when t == typeof(ArtefactoMarkdownCosmosDocument) => Artefactos,
                 var t when t == typeof(IdeaConsolidadaCosmosDocument) => Ideas,
+                var t when t == typeof(VersionIdeaConsolidadaCosmosDocument) => Versiones,
                 _ => Array.Empty<object>(),
             };
             return Task.FromResult<IReadOnlyCollection<T>>(resultado.Cast<T>().ToArray());

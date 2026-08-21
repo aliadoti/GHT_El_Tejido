@@ -520,7 +520,10 @@ export class ResultadosPage {
     return usuarioId.length > limite ? `${usuarioId.slice(0, limite)}…` : usuarioId;
   }
 
-  /** El listado de ideas todavía trae una sola página (la escala es el corte 2 de P-34). */
+  /**
+   * Desde el corte 2 el listado se recorre completo, así que esto solo es cierto si el servidor
+   * declara más ideas de las que llegó a entregar; el desglose por estado lo dice en vez de mentir.
+   */
   hayIdeasSinCargar(): boolean {
     return this.totalIdeas() > this.ideas().length;
   }
@@ -613,7 +616,7 @@ export class ResultadosPage {
     this.markdown.set(null);
 
     this.api
-      .ideas(this.campaniaId, this.estadoIdeaFiltro)
+      .ideasTodas(this.campaniaId, this.estadoIdeaFiltro)
       .pipe(finalize(() => this.finalizarCarga()))
       .subscribe({
         next: (page) => {

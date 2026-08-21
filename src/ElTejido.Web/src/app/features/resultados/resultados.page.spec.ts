@@ -91,7 +91,7 @@ describe('ResultadosPage', () => {
             conversacionesTodas: () => of({ items: [], total: 0 }),
             respuestasTodas: () => of({ items: [respuesta], total: 1 }),
             markdownTodo: () => of({ items: [markdown, markdownIdea], total: 2 }),
-            ideas: () => of({ items: [idea, ideaEnCurso], total: 2 }),
+            ideasTodas: () => of({ items: [idea, ideaEnCurso], total: 2 }),
             idea: () => of(detalleIdea),
             respuesta: () =>
               of({
@@ -222,9 +222,11 @@ describe('ResultadosPage', () => {
     expect(element.textContent).not.toContain('Participante no identificado');
   });
 
-  // P-34 H-04: los contadores son los de la campaña, no los del arreglo cargado.
+  // P-34 H-04: los contadores son los de la campaña, no los del arreglo cargado. Desde el corte 2 el
+  // listado se recorre completo, así que el aviso solo aparece si el servidor entrega menos de lo que
+  // declara; sigue siendo preferible decirlo a presentar un desglose parcial como si fuera el total.
   it('cuenta las ideas con el total del servidor y advierte cuando falta cargar', () => {
-    configurar(undefined, { ideas: () => of({ items: [idea, ideaEnCurso], total: 137 }) });
+    configurar(undefined, { ideasTodas: () => of({ items: [idea, ideaEnCurso], total: 137 }) });
     const fixture = TestBed.createComponent(ResultadosPage);
     fixture.detectChanges();
 

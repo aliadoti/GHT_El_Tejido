@@ -9,13 +9,32 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟢 SIGUIENTE IMPLEMENTACIÓN: `P-34` CORTE 2/6 — QUE AGUANTE 1.000 IDEAS (2026-08-20).** Backend.
-> Ver `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §6 y H-10: sumar
-> `ListarVersionesDeCampaniaAsync` a `IRepositorioRespuestas` (una query por partición en vez de hasta
-> dos lecturas puntuales por idea), resolver la versión vigente **después** de paginar cuando el orden
-> no dependa del texto, quitar de `ObtenerIdeaAsync` la lectura de la partición completa de respuestas
-> y **medir RU y latencia con 1.000 ideas sembradas, antes y después, dejando la medición en el
-> commit**. No adelantar identidad embebida, filtros, tabla, exportación ni resumen (cortes 3–6).
+> **🟢 SIGUIENTE IMPLEMENTACIÓN: `P-34` CORTE 3/6 — IDENTIDAD Y FILTROS EN EL SERVIDOR (2026-08-20).**
+> Ver `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §4.1, §4.2 y §5. Embeber
+> `participante` (código legible, nombre, área, empresa, sede, estado) y `calificacionTotal` /
+> `evaluadaEn` en `GET /admin/ideas`, **aditivo**, con el cambio de `04 §5.8` en **commit aparte y
+> previo**; sumar los filtros `q`, `area`, `empresa`, `sede`, `desde`, `hasta`, `calificacionMin`,
+> `calificacionMax`, `confirmada` y el par `orden`/`dir`; en el portal, barra de dos niveles con chips
+> removibles, estado del filtro en la URL (H-09) y estados vacíos que nombran el filtro. Con
+> `participante` resuelto por el servidor desaparece el *join* del navegador y con él la clase entera
+> de bug H-01/H-02. Volver a medir operaciones al añadir filtros (§7). No adelantar tabla, exportación
+> ni resumen (cortes 4–6).
+>
+> **🟢 `P-34` CORTE 2/6 ESCALA A 1.000 IDEAS — DONE LOCAL 2026-08-20 (Claude Opus 5).** El listado
+> resolvía la versión vigente **idea por idea y antes de paginar**; ahora filtra, ordena, **recorta la
+> página** y solo entonces resuelve, pidiendo las versiones de esa página en **una sola consulta por
+> ids** dentro de la partición (`ListarVersionesDeCampaniaAsync`). El detalle pide los aportes por
+> `ideaId` (`ListarRespuestasPorIdeaAsync`) en vez de leer la partición completa de respuestas. Ambos
+> métodos del puerto traen **implementación por defecto que degrada al comportamiento anterior**, así
+> que un adaptador o doble sin la consulta nativa devuelve lo mismo, solo que más caro. Medición con
+> 1.000 ideas y 5.000 aportes sembrados: listado de **1.000 lecturas puntuales a 0** (403 → 332 ms) y
+> detalle de **5.000 documentos de respuesta leídos a 5** (701 → 496 ms); es una medición de
+> **operaciones**, in-process — las **RU y latencia reales contra Cosmos siguen siendo puerta
+> operativa**. Con el listado ya barato, el portal recorre también las páginas de ideas y el desglose
+> por estado de H-04 quedó exacto. Backend **1056 unitarias + 125 de integración**; portal **77
+> pruebas en 10 archivos**; build Release `-warnaserror`, `dotnet format`, `git diff --check`,
+> `ng build` producción y Prettier verdes. Sin contratos, datos ni configuración remota. Decisión en
+> `SUPUESTOS.md#escala-listado-ideas-p-34`.
 >
 > **🟢 `P-34` CORTE 1/6 BUGS DE RESULTADOS — DONE LOCAL 2026-08-20 (Claude Opus 5).** Solo portal.
 > El servidor recorta `pageSize` a 100 y responde `total`; el portal ahora **recorre las páginas**
@@ -839,7 +858,7 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea y **sin depender de los flags de P-27**. Kill-switch OFF + opt-out por campaña. P-33 resuelve aparte la consulta reactiva. |
 | **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
 | **DT-P33-01** | **Clasificación semántica de consulta de idea** | **HOTFIX DESPLEGADO; ROBUSTECIMIENTO INTEGRAL EN BACKLOG** | **Codex** | `85b78f8` / `v1.0.3-convencion`, workflow/readiness verdes, gates ON e inglés v3 activo. Pendiente posterior: banco semántico, QAS/25 abierto/cerrado/mixto, D5, costo/latencia y acta. No bloquea P-34. |
-| **P-34** | **Resultados: identidad, filtros, tabla, exportación y resumen** | **CORTE 1/6 DONE local — 2026-08-20; SIGUIENTE CORTE 2/6** | **Claude** | Corte 1 (solo portal): páginas recorridas hasta el `total` en usuarios/Markdown/respuestas/conversaciones, contadores tomados de `total` con aviso de desglose parcial, y fallo del maestro visible/reintentable con «Participante no identificado · código». Portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122). **Siguiente: corte 2/6** — escala a 1.000 ideas en backend con medición de RU/latencia; después identidad/filtros server-side, tabla/metadata, exportación y resumen. Spec `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md`; supuesto `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`. |
+| **P-34** | **Resultados: identidad, filtros, tabla, exportación y resumen** | **CORTES 1-2/6 DONE local — 2026-08-20; SIGUIENTE CORTE 3/6** | **Claude** | Corte 1 (solo portal): páginas recorridas hasta el `total` en usuarios/Markdown/respuestas/conversaciones, contadores tomados de `total` con aviso de desglose parcial, y fallo del maestro visible/reintentable con «Participante no identificado · código». Corte 2 (backend + cierre en portal): paginar antes de resolver versiones, versiones de la página en una sola consulta por ids, aportes por `ideaId` y listado de ideas recorrido completo desde el portal; medido con 1.000 ideas, de 1.000 lecturas puntuales a 0 y de 5.000 documentos de respuesta a 5. Backend 1056 unitarias + 125 de integración; portal 77 pruebas en 10 archivos; build, format, diff, `ng build` y Prettier verdes. **Siguiente: corte 3/6** — identidad embebida y filtros de servidor (con `04 §5.8` en commit aparte); después tabla/metadata, exportación y resumen. Spec `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md`; supuesto `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`. |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
 | **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
 | **DT-P32-03** | **Cierre localizado único y readiness Meta** | **DESPLEGADA 2/2 — `a9f4a6f`** | **Claude** | Cierres QAS/23 1–3 PASS; la semántica posterior quedó cerrada en DT-P32-03-01. Sin código pendiente. |
@@ -908,13 +927,13 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-0. **IMPLEMENTAR `P-34` CORTE 2/6 — que el listado aguante 1.000 ideas (backend).** Es el trabajo
-   ejecutable de hoy: `ListarVersionesDeCampaniaAsync` en `IRepositorioRespuestas` (una query por
-   partición), versión vigente resuelta **después** de paginar, `ObtenerIdeaAsync` sin leer la
-   partición completa de respuestas, y **medición de RU y latencia con 1.000 ideas sembradas, antes y
-   después, registrada en el commit** (`P-34 §6`, H-10). El corte 1/6 quedó DONE local el 2026-08-20;
-   cuando el corte 2 esté verde, el portal podrá paginar el listado de ideas y retirar el aviso
-   «(sobre las N primeras)». No adelantar los cortes 3–6.
+0. **IMPLEMENTAR `P-34` CORTE 3/6 — identidad y filtros en el servidor.** Es el trabajo ejecutable de
+   hoy: `participante` embebido y `calificacionTotal`/`evaluadaEn` en `GET /admin/ideas` (aditivo, con
+   `04 §5.8` actualizado en **commit aparte y previo**), los filtros `q`/`area`/`empresa`/`sede`/
+   `desde`/`hasta`/`calificacionMin`/`calificacionMax`/`confirmada`, el par `orden`/`dir`, y en el
+   portal la barra de dos niveles con chips, el estado del filtro en la URL (H-09) y estados vacíos
+   que nombran el filtro (`P-34 §4.1`, `§4.2`, `§5`). Los cortes 1/6 y 2/6 quedaron DONE local el
+   2026-08-20. No adelantar tabla, exportación ni resumen (cortes 4–6).
 
 1. **El artefacto que se despliega a la convención sigue siendo el congelado `28c3cb1`.** El trabajo
    de P-34 vive en `main` y **no se despliega** al ambiente de la convención sin una decisión

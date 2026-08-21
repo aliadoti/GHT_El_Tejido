@@ -3,7 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { AdminApiService } from './admin-api.service';
-import { ArtefactoMarkdown, Conversacion, PagedResult, UsuarioAdmin } from './api-models';
+import {
+  ArtefactoMarkdown,
+  Conversacion,
+  IdeaConsolidada,
+  PagedResult,
+  UsuarioAdmin,
+} from './api-models';
 
 /**
  * P-34 §2.1 (H-02/H-03/H-04): el servidor recorta `pageSize` a 100 y responde `total`. Estas pruebas
@@ -71,6 +77,30 @@ describe('AdminApiService · listados completos', () => {
     } satisfies PagedResult<UsuarioAdmin>);
 
     expect(resultado?.items.map((u) => u.id)).toEqual(['u_1', 'u_2']);
+  });
+
+  // P-34 corte 2: con el listado ya barato en el servidor, las ideas también se recorren completas;
+  // es lo que vuelve exacto el desglose por estado de una campaña de 1.000 ideas.
+  it('recorre el listado de ideas conservando el filtro de estado', () => {
+    let resultado: PagedResult<IdeaConsolidada> | undefined;
+    admin.ideasTodas('campania-1', 'madura').subscribe((p) => (resultado = p));
+
+    const primera = http.expectOne(
+      (r) => r.url === '/api/admin/ideas' && r.params.get('page') === '1',
+    );
+    expect(primera.request.params.get('estadoResultado')).toBe('madura');
+    expect(primera.request.params.get('pageSize')).toBe('100');
+    primera.flush({
+      items: [{ id: 'idea_1' } as IdeaConsolidada],
+      page: 1,
+      pageSize: 100,
+      total: 2,
+    } satisfies PagedResult<IdeaConsolidada>);
+
+    responder<IdeaConsolidada>('/api/admin/ideas', 2, [{ id: 'idea_2' } as IdeaConsolidada], 2);
+
+    expect(resultado?.items.map((i) => i.id)).toEqual(['idea_1', 'idea_2']);
+    expect(resultado?.total).toBe(2);
   });
 
   // §9: un servidor anterior que no informe `total` degrada a una sola página, sin bucle.

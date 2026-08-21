@@ -71,6 +71,9 @@ internal static class EndpointsAdminResultados
     /// <summary>
     /// I-19 (04 §5.8): una fila por idea lógica. Los filtros opcionales se aplican en memoria como el
     /// resto de resultados; el extracto usa la versión confirmada y, si aún no hay, la propuesta marcada.
+    /// P-34 §6 (H-10): el orden no depende del texto de la versión, así que la página se recorta
+    /// <b>antes</b> de resolver versiones y estas se piden en una sola consulta para las ideas de esa
+    /// página — no una lectura puntual por idea de toda la campaña.
     /// </summary>
     private static async Task<IResult> ListarIdeasAsync(HttpContext contexto, CancellationToken ct)
     {
@@ -90,14 +93,14 @@ internal static class EndpointsAdminResultados
             .ThenBy(i => i.CreadaEn)
             .ToArray();
 
-        var resumenes = new List<object>(filtradas.Length);
-        foreach (var idea in filtradas)
-        {
-            var version = await VersionVigenteAsync(repo, campaniaId, idea, ct);
-            resumenes.Add(MapearIdeaResumen(idea, version));
-        }
+        var (page, pageSize) = LeerPaginacion(query);
+        var pagina = filtradas.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
+        var versiones = await VersionesDeAsync(repo, campaniaId, pagina, ct);
+        var resumenes = pagina
+            .Select(idea => MapearIdeaResumen(idea, VersionVigente(idea, versiones)))
+            .ToArray();
 
-        return Results.Ok(Paginar(resumenes, query));
+        return Results.Ok(Envolver(resumenes, page, pageSize, filtradas.Length));
     }
 
     /// <summary>
@@ -120,8 +123,8 @@ internal static class EndpointsAdminResultados
             .OrderBy(v => v.NumeroVersion)
             .Select(MapearVersionIdea)
             .ToArray();
-        var aportes = (await repo.ListarRespuestasAsync(campaniaId, ct))
-            .Where(r => r.IdeaId == id)
+        // P-34 §6 (H-10): los aportes se piden por `ideaId`; antes se traia la particion completa.
+        var aportes = (await repo.ListarRespuestasPorIdeaAsync(campaniaId, id, ct))
             .OrderBy(r => r.Fecha)
             .Select(MapearRespuesta)
             .ToArray();
@@ -137,10 +140,43 @@ internal static class EndpointsAdminResultados
         });
     }
 
-    private static async Task<VersionIdeaConsolidada?> VersionVigenteAsync(
-        IRepositorioRespuestas repo, string campaniaId, IdeaConsolidada idea, CancellationToken ct)
-        => await VersionAsync(repo, campaniaId, idea.VersionConfirmadaRef, ct)
-            ?? await VersionAsync(repo, campaniaId, idea.VersionPropuestaRef, ct);
+    /// <summary>
+    /// P-34 §6 (H-10): una sola consulta con las versiones referidas por las ideas de la página.
+    /// Devuelve el índice por id; una referencia sin documento simplemente no aparece y la idea cae a
+    /// la propuesta, igual que cuando la lectura puntual devolvía <c>null</c>.
+    /// </summary>
+    private static async Task<IReadOnlyDictionary<string, VersionIdeaConsolidada>> VersionesDeAsync(
+        IRepositorioRespuestas repo, string campaniaId, IReadOnlyCollection<IdeaConsolidada> ideas, CancellationToken ct)
+    {
+        var referencias = ideas
+            .SelectMany(idea => new[] { idea.VersionConfirmadaRef, idea.VersionPropuestaRef })
+            .Where(referencia => !string.IsNullOrWhiteSpace(referencia))
+            .Select(referencia => referencia!.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (referencias.Length == 0)
+        {
+            return new Dictionary<string, VersionIdeaConsolidada>(StringComparer.Ordinal);
+        }
+
+        var versiones = await repo.ListarVersionesDeCampaniaAsync(campaniaId, referencias, ct);
+        var indice = new Dictionary<string, VersionIdeaConsolidada>(versiones.Count, StringComparer.Ordinal);
+        foreach (var version in versiones)
+        {
+            indice[version.Id] = version;
+        }
+
+        return indice;
+    }
+
+    /// <summary>Confirmada si existe; si no, la propuesta marcada (misma precedencia de I-19).</summary>
+    private static VersionIdeaConsolidada? VersionVigente(
+        IdeaConsolidada idea, IReadOnlyDictionary<string, VersionIdeaConsolidada> versiones)
+        => Version(idea.VersionConfirmadaRef, versiones) ?? Version(idea.VersionPropuestaRef, versiones);
+
+    private static VersionIdeaConsolidada? Version(
+        string? versionId, IReadOnlyDictionary<string, VersionIdeaConsolidada> versiones)
+        => string.IsNullOrWhiteSpace(versionId) ? null : versiones.GetValueOrDefault(versionId.Trim());
 
     private static async Task<VersionIdeaConsolidada?> VersionAsync(
         IRepositorioRespuestas repo, string campaniaId, string? versionId, CancellationToken ct)
@@ -581,16 +617,26 @@ internal static class EndpointsAdminResultados
 
     private static object Paginar(IReadOnlyCollection<object> items, IQueryCollection query)
     {
-        var page = ParsearEntero(query["page"], 1);
-        var pageSize = Math.Min(ParsearEntero(query["pageSize"], 25), 100);
-        return new
+        var (page, pageSize) = LeerPaginacion(query);
+        return Envolver(items.Skip((page - 1) * pageSize).Take(pageSize).ToArray(), page, pageSize, items.Count);
+    }
+
+    /// <summary>Página pedida y tamaño efectivo (el servidor recorta el máximo, 04 §5.8).</summary>
+    private static (int Page, int PageSize) LeerPaginacion(IQueryCollection query)
+        => (ParsearEntero(query["page"], 1), Math.Min(ParsearEntero(query["pageSize"], 25), 100));
+
+    /// <summary>
+    /// Sobre de paginación: <c>total</c> es siempre el del conjunto filtrado completo, aunque los
+    /// elementos ya vengan recortados (P-34 §6 pagina antes de resolver versiones).
+    /// </summary>
+    private static object Envolver(IReadOnlyCollection<object> items, int page, int pageSize, int total)
+        => new
         {
-            items = items.Skip((page - 1) * pageSize).Take(pageSize).ToArray(),
+            items,
             page,
             pageSize,
-            total = items.Count,
+            total,
         };
-    }
 
     private static object PaginarEvaluaciones(IReadOnlyCollection<EvaluacionListada> evaluaciones, IQueryCollection query)
     {

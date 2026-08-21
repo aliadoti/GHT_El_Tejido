@@ -503,6 +503,22 @@ export class AdminApiService {
     });
   }
 
+  /**
+   * P-34 corte 2: el listado dejó de resolver la versión vigente idea por idea, así que ya se puede
+   * recorrer completo sin multiplicar lecturas puntuales. Es lo que hace exactos los contadores por
+   * estado de Resultados (H-04) en una campaña de 1.000 ideas.
+   */
+  ideasTodas(campaniaId: string, estadoResultado?: string) {
+    return this.paginarTodo<IdeaConsolidada>((page) =>
+      this.api.get<PagedResult<IdeaConsolidada>>('/api/admin/ideas', {
+        campaniaId,
+        estadoResultado: estadoResultado || undefined,
+        page,
+        pageSize: TAMANO_PAGINA_MAXIMO,
+      }),
+    );
+  }
+
   /** I-19: detalle auditable con versiones, aportes y evaluación vigente. */
   idea(campaniaId: string, id: string) {
     return this.api.get<DetalleIdea>(`/api/admin/ideas/${id}`, { campaniaId });

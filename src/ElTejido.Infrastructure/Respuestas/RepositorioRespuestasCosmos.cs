@@ -107,6 +107,34 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documentos.Select(documento => documento.ToDomain()).ToArray();
     }
 
+    /// <summary>
+    /// P-34 §6 (H-10): una sola consulta dentro de la particion en vez de una lectura puntual por
+    /// version. Sin ids no consulta nada; los ids se filtran en el servidor con <c>ARRAY_CONTAINS</c>,
+    /// igual que el conteo de consolidaciones.
+    /// </summary>
+    public async Task<IReadOnlyCollection<VersionIdeaConsolidada>> ListarVersionesDeCampaniaAsync(
+        string campaniaId, IReadOnlyCollection<string> versionIds, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentNullException.ThrowIfNull(versionIds);
+
+        var ids = versionIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (ids.Length == 0)
+        {
+            return Array.Empty<VersionIdeaConsolidada>();
+        }
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@versionIds, c.id)")
+            .WithParameter("@type", VersionIdeaConsolidadaCosmosDocument.DocumentType)
+            .WithParameter("@versionIds", ids);
+        var documentos = await _container.QueryAsync<VersionIdeaConsolidadaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
     public Task GuardarEvaluacionAsync(DominioEvaluacion evaluacion, CancellationToken cancellationToken)
         => _container.UpsertAsync(EvaluacionCosmosDocument.FromDomain(evaluacion), evaluacion.CampaniaId, cancellationToken);
 
@@ -162,6 +190,24 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
 
         var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type")
             .WithParameter("@type", RespuestaCosmosDocument.DocumentType);
+
+        var documentos = await _container.QueryAsync<RespuestaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(d => d.ToDomain()).ToArray();
+    }
+
+    /// <summary>
+    /// P-34 §6 (H-10): los aportes de una idea se piden por <c>ideaId</c>; antes el detalle traia la
+    /// particion completa de respuestas para descartar casi todo en memoria.
+    /// </summary>
+    public async Task<IReadOnlyCollection<Respuesta>> ListarRespuestasPorIdeaAsync(
+        string campaniaId, string ideaId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ideaId);
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND c.ideaId = @ideaId")
+            .WithParameter("@type", RespuestaCosmosDocument.DocumentType)
+            .WithParameter("@ideaId", ideaId.Trim());
 
         var documentos = await _container.QueryAsync<RespuestaCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
         return documentos.Select(d => d.ToDomain()).ToArray();
