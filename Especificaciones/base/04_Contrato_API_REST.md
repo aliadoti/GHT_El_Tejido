@@ -602,6 +602,7 @@ anterior.
 | GET | `/api/admin/markdown/{id}/raw` | Descarga el `.md` (text/markdown). |
 | GET | `/api/admin/campanias/{id}/exportar` | **P-34:** exporta `ideas`, `aportes` o `evaluaciones` en `xlsx`/`csv`, con los mismos filtros del listado. Ver sub-sección. |
 | GET | `/api/admin/campanias/{id}/documentos.zip` | **P-34:** ZIP de los `.md` de la campaña, con nombres legibles y el mismo filtro. |
+| GET | `/api/admin/campanias/{id}/resumen` | **P-34:** participación, embudo, distribución de calificaciones, cobertura por pregunta y temas, con los mismos filtros. Ver sub-sección. |
 
 I-05 añade `parafraseoDevuelto` opcional al detalle de evaluación que devuelven
 `/respuestas/{id}` y `/evaluaciones/{id}`. `null`/ausente significa que la campaña no lo tenía
@@ -776,6 +777,47 @@ anonimizado  true | false                        (por defecto `false`)
 - Se arma **una entrada por vez** sobre un archivo temporal y se envía en modo asíncrono; nunca se
   construye el ZIP completo en memoria. Mismo tope de filas.
 - Una campaña sin documentos devuelve un ZIP vacío y `200`: es una respuesta legítima, no un error.
+
+#### Resumen de campaña — `P-34` (ruta nueva, solo lectura)
+> Ruta nueva `GET`, bajo el mismo guard admin. Calcularla en el navegador obligaría a descargar las
+> 1.000 ideas de la campaña (D5). Acepta **los mismos filtros** que `GET /admin/ideas` y **describe
+> exactamente el mismo conjunto**: `totalIdeas` coincide siempre con el `total` del listado para el
+> mismo filtro (`P-34 §8.9`). Detalle en `Iniciativas/P-34_…` §4.6.
+
+```json
+{
+  "totalIdeas": 124,
+  "participacion": { "convocados": 180, "conIdeas": 88, "promedioIdeasPorActivo": 1.41 },
+  "embudo": { "iniciadas": 124, "confirmadas": 96, "conEvaluacion": 90, "maduras": 41 },
+  "calificaciones": {
+    "evaluadas": 90, "mediana": 3.8, "minima": 1.2, "maxima": 4.9,
+    "umbralMadurez": 4.0, "umbralUniforme": true,
+    "escala": { "min": 1, "max": 5 },
+    "tramos": [ { "desde": 1, "hasta": 2, "conteo": 4 } ]
+  },
+  "coberturaPorPregunta": [
+    { "preguntaId": "p_ingresos", "total": 40, "maduras": 12, "pendientes": 20, "rechazadas": 3, "enCurso": 5 }
+  ],
+  "temas": [ { "tema": "riego", "conteo": 12 } ]
+}
+```
+
+- `participacion.convocados` es la **convocatoria completa de la campaña**, no el subconjunto
+  filtrado: es el denominador que responde «¿cuánta gente participó?». `conIdeas` sí sale del alcance
+  filtrado, así que con filtros activos la razón se lee como cobertura de ese filtro sobre la
+  convocatoria. `promedioIdeasPorActivo` es `totalIdeas / conIdeas`, `0` si nadie participó.
+- `embudo` es acumulativo por definición —iniciadas ≥ confirmadas ≥ con evaluación ≥ maduras— y se
+  calcula sobre el mismo conjunto filtrado.
+- `calificaciones` mira la **evaluación vigente** de cada idea. `mediana` es `null` si no hay
+  ninguna. Los `tramos` cubren la escala de la rúbrica en pasos de un punto; sin escala conocida
+  (evaluaciones históricas sin snapshot) se usan los valores observados y `escala` viaja en `null`.
+- `umbralMadurez` es el valor absoluto del umbral en la escala. `umbralUniforme` es `false` cuando
+  alguna pregunta sobrescribe el umbral de la campaña o cuando las evaluaciones no comparten escala:
+  el cliente **no debe dibujar la marca** en ese caso, porque no aplicaría a todas las barras.
+- `coberturaPorPregunta` va ordenada por `preguntaId`; `enCurso` son las ideas sin `estadoResultado`.
+- `temas` son los `temas` de las evaluaciones vigentes, con su conteo, de mayor a menor y **hasta 20**;
+  el desempate es alfabético para que la lista sea estable entre llamadas.
+- Los filtros inválidos responden `400 VALIDATION_ERROR` con los mismos motivos del listado.
 
 Campos aditivos de respuesta para I-06/I-18:
 ```json

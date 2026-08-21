@@ -1926,6 +1926,14 @@
 - 2026-06-14 - Frontend/AppSec/SDET (Codex) - Fase 8: Portal Angular (`11`) construido como SPA standalone con login OTP, `AuthService` con CSRF en memoria, interceptor `withCredentials` + `X-CSRF-Token`, guards de sesion/admin/login, shell autenticado con marca GHT, servicios tipados por feature contra `04`, pantallas de dashboard, usuarios/tags, campanias/participantes, envios/jobs, rubricas, prompts, config-llm y resultados/Markdown. `ng build --configuration production` publica en `src/ElTejido.Api/wwwroot`; `proxy.conf.json` apunta `/api` y `/webhook` a `https://localhost:5001` en dev. Ref: `11`, `04`, `10`, `13`.
 
 ## Contratos: cambios respecto a las specs
+- 2026-08-21 - P-34 (corte 6): `04 §5.8` suma `GET /admin/campanias/{id}/resumen`, ruta nueva de solo
+  lectura, en commit propio y previo al código: participación, embudo, distribución de calificaciones,
+  cobertura por pregunta y temas, con **los mismos filtros del listado**. Queda documentado que
+  `totalIdeas` coincide siempre con el `total` del listado para el mismo filtro (§8.9); que
+  `convocados` es la convocatoria completa —el denominador de «¿cuánta gente participó?»— mientras
+  `conIdeas` sale del alcance filtrado; que los tramos del histograma cubren la escala de la rúbrica y
+  viajan sin escala cuando las evaluaciones históricas no la traen; y que `umbralUniforme=false`
+  significa **no dibujar la marca**, porque el umbral no aplicaría a todas las barras.
 - 2026-08-21 - P-34 (corte 5): `04 §5.8` suma **dos rutas nuevas de solo lectura**, en commit propio y
   previo al código: `GET /admin/campanias/{id}/exportar` (`recurso` = ideas|aportes|evaluaciones,
   `formato` = xlsx|csv, `anonimizado`, más los mismos filtros del listado) y
