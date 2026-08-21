@@ -91,6 +91,8 @@ describe('controles accesibles', () => {
             usuarios: () => of({ items: [], page: 1, pageSize: 50, total: 0 }),
             tags: () => of({ items: [], page: 1, pageSize: 100, total: 0 }),
             campanias: () => of({ items: [], page: 1, pageSize: 100, total: 0 }),
+            nombresSaludoPendientes: () => of({ pendientes: 0 }),
+            completarNombresSaludo: () => of({ completados: 0 }),
           },
         },
         { provide: AuthService, useValue: { isAdmin: () => true } },

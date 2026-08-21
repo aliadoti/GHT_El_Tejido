@@ -17,7 +17,9 @@ No ejecutar el POST si el ambiente, el respaldo o el conteo no son los esperados
 
 ## Ejecución
 
-Con la sesión administrativa y el mecanismo CSRF normal del portal/API:
+En **Usuarios**, comparar las columnas **Nombre** y **Nombre para saludo**. El encabezado muestra el
+conteo **sin persistir en Cosmos**. Seleccionar **Completar nombres de saludo** y confirmar la
+operación. El portal utiliza la sesión y el mecanismo CSRF normal para invocar:
 
 ```http
 POST /api/admin/usuarios/nombres-saludo/completar
@@ -36,11 +38,12 @@ La implementación consulta únicamente documentos `type = "Usuario"`, seleccion
 ## Verificación
 
 1. Repetir `GET /api/admin/usuarios/nombres-saludo/pendientes`; debe devolver `0`.
-2. Revisar una muestra desde el portal, incluyendo nombres de cuatro palabras y apellidos compuestos.
-3. Corregir los casos ambiguos en **Usuarios → Editar → Nombre para saludo**.
-4. En una campaña de prueba autorizada, verificar `Hola {{nombre}}` sin iniciar envíos reales fuera
+2. Confirmar que el encabezado del portal muestra `0 sin persistir en Cosmos`.
+3. Revisar una muestra desde la tabla, incluyendo nombres de cuatro palabras y apellidos compuestos.
+4. Corregir los casos ambiguos en **Usuarios → Editar → Nombre para saludo**.
+5. En una campaña de prueba autorizada, verificar `Hola {{nombre}}` sin iniciar envíos reales fuera
    del alcance aprobado.
-5. Repetir el POST debe devolver `{ "completados": 0 }`.
+6. Repetir el POST debe devolver `{ "completados": 0 }`.
 
 ## Detención y recuperación
 

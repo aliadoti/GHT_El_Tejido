@@ -82,15 +82,41 @@ import {
       <div class="two-column">
         <section class="panel">
           <div class="panel-heading">
-            <h3>Usuarios</h3>
-            <span class="muted">{{ usuarios().length }} visibles</span>
+            <div>
+              <h3>Usuarios</h3>
+              <span class="muted">{{ usuarios().length }} visibles</span>
+            </div>
+            @if (auth.isAdmin()) {
+              <div>
+                @if (nombresSaludoPendientes() !== null) {
+                  <span class="muted">
+                    {{ nombresSaludoPendientes() }} sin persistir en Cosmos
+                  </span>
+                }
+                <button
+                  type="button"
+                  class="ghost-button"
+                  [disabled]="completandoNombresSaludo() || nombresSaludoPendientes() === 0"
+                  (click)="completarNombresSaludo()"
+                >
+                  {{
+                    completandoNombresSaludo() ? 'Completando...' : 'Completar nombres de saludo'
+                  }}
+                </button>
+              </div>
+            }
           </div>
+          <p class="muted">
+            Revisa la columna Nombre para saludo. Si un valor no es correcto, usa Editar para
+            ajustarlo sin cambiar el nombre completo.
+          </p>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th scope="col">Código</th>
                   <th scope="col">Nombre</th>
+                  <th scope="col">Nombre para saludo</th>
                   <th scope="col">Numero</th>
                   <th scope="col">Rol</th>
                   <th scope="col">Empresa</th>
@@ -103,6 +129,7 @@ import {
                   <tr>
                     <td>{{ usuario.codigoUsuarioLegible }}</td>
                     <td>{{ usuario.nombre }}</td>
+                    <td>{{ usuario.nombreSaludo || 'Pendiente' }}</td>
                     <td>{{ usuario.whatsappNormalizado }}</td>
                     <td>{{ usuario.rol }}</td>
                     <td>{{ usuario.empresaId ?? usuario.empresa ?? '—' }}</td>
@@ -129,7 +156,7 @@ import {
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="7" class="empty-cell">No hay usuarios para el filtro actual.</td>
+                    <td colspan="8" class="empty-cell">No hay usuarios para el filtro actual.</td>
                   </tr>
                 }
               </tbody>
@@ -279,6 +306,8 @@ export class UsuariosPage {
   protected readonly editandoId = signal<string | null>(null);
   protected readonly fichaUsuario = signal<UsuarioAdmin | null>(null);
   protected readonly historicoNumero = signal<UsuarioAdmin[]>([]);
+  protected readonly nombresSaludoPendientes = signal<number | null>(null);
+  protected readonly completandoNombresSaludo = signal(false);
 
   protected filtroRol = '';
   protected filtroEstado = '';
@@ -299,6 +328,48 @@ export class UsuariosPage {
 
   constructor() {
     this.load();
+    if (this.auth.isAdmin()) {
+      this.cargarNombresSaludoPendientes();
+    }
+  }
+
+  completarNombresSaludo() {
+    const pendientes = this.nombresSaludoPendientes();
+    if (pendientes === 0 || this.completandoNombresSaludo()) {
+      return;
+    }
+
+    const cantidad = pendientes === null ? '' : ` ${pendientes}`;
+    if (
+      !window.confirm(
+        `Se agregará nombreSaludo a${cantidad} documento(s) que aún no lo tienen. ` +
+          'Los valores ya existentes no se modificarán. ¿Deseas continuar?',
+      )
+    ) {
+      return;
+    }
+
+    this.completandoNombresSaludo.set(true);
+    this.api.completarNombresSaludo().subscribe({
+      next: (resultado) => {
+        this.completandoNombresSaludo.set(false);
+        this.nombresSaludoPendientes.set(0);
+        this.notificaciones.exito(
+          `${resultado.completados} documento(s) de usuario actualizados en Cosmos.`,
+        );
+      },
+      error: (err: unknown) => {
+        this.completandoNombresSaludo.set(false);
+        this.notificaciones.error(formatApiError(err));
+      },
+    });
+  }
+
+  private cargarNombresSaludoPendientes() {
+    this.api.nombresSaludoPendientes().subscribe({
+      next: (resultado) => this.nombresSaludoPendientes.set(resultado.pendientes),
+      error: (err: unknown) => this.notificaciones.error(formatApiError(err)),
+    });
   }
 
   load() {

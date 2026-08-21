@@ -45,8 +45,11 @@ La regla es determinista y no intenta adivinar apellidos compuestos. Casos como
 - `POST /api/admin/usuarios/nombres-saludo/completar` completa únicamente documentos históricos sin
   la propiedad y devuelve el número actualizado.
 - `GET /api/admin/usuarios/nombres-saludo/pendientes` permite previsualizar el conteo sin exponer PII.
-- El portal muestra y permite editar ambos campos con etiquetas inequívocas: **Nombre completo** y
-  **Nombre para saludo**.
+- El portal muestra ambos valores como columnas de la lista y permite editarlos con etiquetas
+  inequívocas: **Nombre completo** y **Nombre para saludo**. El administrador puede revisar los
+  valores calculados y corregir manualmente las excepciones.
+- La lista consulta el conteo de documentos que aún no tienen físicamente `nombreSaludo` y ofrece
+  una acción administrativa confirmada para completar solo esos faltantes en Cosmos.
 - `RenderizadorMensaje.ConstruirVariables` resuelve `{{nombre}}` con `usuario.NombreSaludo`; las
   demás variables no cambian.
 
@@ -79,6 +82,9 @@ valor existente al actualizar. Las excepciones se corrigen desde la edición ind
 5. Un documento Cosmos histórico sin el campo se lee y saluda sin error.
 6. El DTO y el formulario administrativo permiten corregir el valor.
 7. El backfill no sobrescribe valores existentes.
+8. La tabla de usuarios permite comparar `nombre` y `nombreSaludo`, editar una excepción y conocer
+   cuántos documentos siguen sin la propiedad física.
+9. Desde el portal, un administrador puede ejecutar el backfill y observar el conteo llegar a cero.
 
 ## 8. Validación
 

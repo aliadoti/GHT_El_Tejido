@@ -4,7 +4,14 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-21 (Codex, Arquitectura/Backend/Frontend/SDET): **`P-35` COMPLETA
+- Ultima actualizacion: 2026-08-21 (Codex, Frontend/SDET/Operación): **`P-35` COMPLEMENTO LOCAL.**
+  La tabla de Usuarios compara `nombre` y `nombreSaludo`; un administrador ve el conteo de documentos
+  sin la propiedad física y dispone de una acción confirmada para completar solo faltantes en Cosmos
+  usando la sesión/CSRF normal. Los valores existentes y las correcciones manuales no se sobrescriben.
+  La base de P-35 ya fue publicada y desplegada en QAS; este complemento pasó **12/12 pruebas
+  afectadas**, build Angular de producción, Prettier y `git diff --check`. Todavía requiere commit,
+  push y despliegue. **No se ejecutó el backfill remoto en esta sesión.**
+- Actualizacion anterior: 2026-08-21 (Codex, Arquitectura/Backend/Frontend/SDET): **`P-35` COMPLETA
   LOCAL.** `Usuario.nombre` conserva la identidad completa y se agrega `nombreSaludo` persistido,
   editable y usado exclusivamente por `{{nombre}}`. La regla determinista convierte
   `ARENAS CHAVES JUAN PABLO` en `Juan Pablo`; documentos históricos sin el campo se leen con fallback

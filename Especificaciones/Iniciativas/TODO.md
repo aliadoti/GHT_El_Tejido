@@ -9,14 +9,15 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟢 `P-35` NOMBRE DE SALUDO — COMPLETA LOCAL 2026-08-21.** `nombre` sigue completo;
+> **🟡 `P-35` COMPLEMENTO DE VISIBILIDAD/BACKFILL — LOCAL 2026-08-21.** `nombre` sigue completo;
 > `nombreSaludo` queda persistido, editable y usado por `{{nombre}}`, con fallback histórico y
-> backfill idempotente que no sobrescribe correcciones. Backend 1105 + 145 sin Calibración; portal
-> 89/89, build, formato y diff verdes. **No se ejecutó el backfill remoto, no hubo despliegue ni push.**
-> Siguiente operativo, solo con autorización: desplegar, consultar `GET
-> /api/admin/usuarios/nombres-saludo/pendientes` y seguir
+> backfill idempotente que no sobrescribe correcciones. La base ya está desplegada en QAS; el corte
+> local agrega ambas columnas a la tabla, muestra el conteo físico pendiente y permite ejecutar el
+> llenado desde el portal con confirmación. **Validado con 12/12 pruebas afectadas, build Angular de
+> producción, Prettier y diff; pendiente commit/push, despliegue QAS y ejecutar el botón
+> administrativo. No hubo escritura remota en esta sesión.** Seguir
 > `Guias_Implementacion/P-35_Backfill_NombreSaludo.md`. Deuda: agregar la columna opcional a la
-> plantilla/lector CSV-XLSX de I-08. Después de esa operación no hay código P-35 pendiente.
+> plantilla/lector CSV-XLSX de I-08.
 >
 > **🟢 `P-34` CORTE 6/6 RESUMEN DE CAMPAÑA — DONE LOCAL 2026-08-21 (Claude Opus 5). INICIATIVA
 > COMPLETA.** Contrato `04 §5.8` en commit previo `267c0b7`. `GET /admin/campanias/{id}/resumen`

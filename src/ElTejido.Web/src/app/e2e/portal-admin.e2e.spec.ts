@@ -120,22 +120,43 @@ describe('Portal admin E2E (recorrido SPA)', () => {
 
     const fixture = TestBed.createComponent(UsuariosPage);
 
-    // El constructor dispara load(): GET usuarios + GET tags + GET campanias.
-    responderListaUsuarios([usuario('u1', 'Ana')]);
+    // El constructor dispara la carga de listados y del estado fisico de nombreSaludo en Cosmos.
+    responderListaUsuarios([usuario('u1', 'ARENAS CHAVES JUAN PABLO', 'Juan Pablo')]);
     http
       .expectOne((r) => r.url === '/api/admin/tags' && r.method === 'GET')
       .flush({ items: [], page: 1, pageSize: 100, total: 0 });
     responderListaCampanias([]);
+    http
+      .expectOne(
+        (r) => r.url === '/api/admin/usuarios/nombres-saludo/pendientes' && r.method === 'GET',
+      )
+      .flush({ pendientes: 1 });
 
     await fixture.whenStable();
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Ana');
+    const textoInicial = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(textoInicial).toContain('ARENAS CHAVES JUAN PABLO');
+    expect(textoInicial).toContain('Juan Pablo');
+    expect(textoInicial).toContain('1 sin persistir en Cosmos');
 
-    // Alta de usuario: mutacion con CSRF + recarga.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const comp = fixture.componentInstance as unknown as {
       nuevoUsuario: Record<string, string>;
       guardarUsuario: () => void;
+      completarNombresSaludo: () => void;
     };
+    comp.completarNombresSaludo();
+    const completar = http.expectOne(
+      (r) => r.url === '/api/admin/usuarios/nombres-saludo/completar' && r.method === 'POST',
+    );
+    expect(completar.request.headers.get('X-CSRF-Token')).toBe(CSRF);
+    completar.flush({ completados: 1 });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '0 sin persistir en Cosmos',
+    );
+
+    // Alta de usuario: mutacion con CSRF + recarga.
     comp.nuevoUsuario = {
       nombre: 'ARENAS CHAVES JUAN PABLO',
       nombreSaludo: 'Juan Pablo',
@@ -170,12 +191,17 @@ describe('Portal admin E2E (recorrido SPA)', () => {
 
     const fixture = TestBed.createComponent(UsuariosPage);
 
-    // El constructor dispara load(): GET usuarios + GET tags + GET campanias.
+    // El constructor dispara load() y consulta los nombres de saludo pendientes.
     responderListaUsuarios([]);
     http
       .expectOne((r) => r.url === '/api/admin/tags' && r.method === 'GET')
       .flush({ items: [], page: 1, pageSize: 100, total: 0 });
     responderListaCampanias([campania('c_1', 'llm_1')]);
+    http
+      .expectOne(
+        (r) => r.url === '/api/admin/usuarios/nombres-saludo/pendientes' && r.method === 'GET',
+      )
+      .flush({ pendientes: 0 });
 
     await fixture.whenStable();
     fixture.detectChanges();
@@ -542,13 +568,13 @@ describe('Portal admin E2E (recorrido SPA)', () => {
     boton?.click();
   }
 
-  function usuario(id: string, nombre: string): UsuarioAdmin {
+  function usuario(id: string, nombre: string, nombreSaludo = nombre): UsuarioAdmin {
     return {
       id,
       codigoUsuario: 1,
       codigoUsuarioLegible: 'U-000001',
       nombre,
-      nombreSaludo: nombre,
+      nombreSaludo,
       whatsappNormalizado: '573001112233',
       rol: 'participante',
       estado: 'activo',

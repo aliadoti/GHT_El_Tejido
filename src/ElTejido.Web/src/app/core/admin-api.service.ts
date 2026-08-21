@@ -189,6 +189,17 @@ export class AdminApiService {
     return this.api.patch<UsuarioAdmin>(`/api/admin/usuarios/${id}/estado`, { estado });
   }
 
+  nombresSaludoPendientes() {
+    return this.api.get<{ pendientes: number }>('/api/admin/usuarios/nombres-saludo/pendientes');
+  }
+
+  completarNombresSaludo() {
+    return this.api.post<{ completados: number }>(
+      '/api/admin/usuarios/nombres-saludo/completar',
+      {},
+    );
+  }
+
   // I-08 v2 (04 §5.1): historico de titulares de un numero (activo + inactivos).
   usuariosPorNumero(numero: string) {
     return this.api.get<UsuarioAdmin[]>(

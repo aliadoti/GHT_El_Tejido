@@ -1820,7 +1820,14 @@
 - Compatibilidad: un documento histórico sin `nombreSaludo` se materializa con el cálculo. El
   backfill es explícito e idempotente: primero cuenta pendientes y después solo persiste faltantes;
   no escribe durante lecturas ni reemplaza un valor existente.
+- Revisión: la tabla expone `nombre` y `nombreSaludo` lado a lado. No se agrega una marca automática
+  de “correcto/incorrecto”, porque la regla no puede reconocer de forma fiable apellidos compuestos;
+  el administrador valida el valor visible y corrige las excepciones desde **Editar**.
+- Operación desde portal: el administrador ve el conteo físico de faltantes y puede ejecutar el
+  backfill con confirmación. La acción usa el CSRF de la sesión, llena solo valores ausentes y deja
+  el conteo en cero; abrir la pantalla o consultar la lista continúa siendo de solo lectura.
 - Deuda deliberada: la plantilla y el lector CSV/XLSX todavía no exponen `Nombre para saludo`. Las
   altas lo calculan y las actualizaciones lo conservan hasta ampliar I-08.
-- Operación: el código y el runbook están listos, pero no se ejecutó ninguna mutación contra Cosmos
-  remoto ni hubo despliegue o push.
+- Operación: la base de P-35 fue publicada y desplegada en QAS; la columna y el control de backfill
+  de este corte quedan locales hasta el siguiente commit, push y despliegue. No se ejecutó ninguna
+  mutación contra Cosmos remoto desde esta sesión.
