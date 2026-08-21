@@ -1,7 +1,7 @@
 # P-33 — Consulta y cierre visible de la idea
 
-> Estado: **hotfix determinista DT-P33-01 desplegado en `v1.0.3-convencion`; validación integral al
-> cierre del fix completo (2026-08-20)**
+> Estado: **hotfix determinista DT-P33-01 desplegado en `v1.0.3-convencion`; robustecimiento integral
+> en backlog (2026-08-20)**
 > Origen: retroalimentación de usuario de la convención + REQ-054  
 > Dependencias: I-19, I-20, P-26, P-29, P-30, P-31 y P-32  
 > Alcance operativo: `85b78f8` desplegado con workflow/readiness verdes; gates semántico y de

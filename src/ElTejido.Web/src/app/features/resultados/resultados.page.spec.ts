@@ -1,5 +1,6 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { AdminApiService } from '../../core/admin-api.service';
 import {
@@ -73,6 +74,7 @@ describe('ResultadosPage', () => {
 
   function configurar(
     campanias: Campania[] = [{ id: 'campania-1', nombre: 'Piloto' } as Campania],
+    sobreescrituras: Record<string, unknown> = {},
   ) {
     TestBed.configureTestingModule({
       imports: [ResultadosPage],
@@ -81,14 +83,15 @@ describe('ResultadosPage', () => {
           provide: AdminApiService,
           useValue: {
             campanias: () => of({ items: campanias }),
-            usuarios: () =>
+            usuariosTodos: () =>
               of({
                 items: [{ id: 'usuario-1', nombre: 'Ana', area: 'Producto' } as UsuarioAdmin],
+                total: 1,
               }),
-            conversaciones: () => of({ items: [] }),
-            respuestas: () => of({ items: [respuesta] }),
-            markdown: () => of({ items: [markdown, markdownIdea] }),
-            ideas: () => of({ items: [idea, ideaEnCurso] }),
+            conversacionesTodas: () => of({ items: [], total: 0 }),
+            respuestasTodas: () => of({ items: [respuesta], total: 1 }),
+            markdownTodo: () => of({ items: [markdown, markdownIdea], total: 2 }),
+            ideas: () => of({ items: [idea, ideaEnCurso], total: 2 }),
             idea: () => of(detalleIdea),
             respuesta: () =>
               of({
@@ -104,6 +107,7 @@ describe('ResultadosPage', () => {
             markdownDetalle: (_campaniaId: string, id: string) =>
               of(id === markdownIdea.id ? markdownIdea : markdown),
             regenerarMarkdown: () => of(markdown),
+            ...sobreescrituras,
           },
         },
         { provide: AuthService, useValue: { isAdmin: () => true } },
@@ -178,6 +182,58 @@ describe('ResultadosPage', () => {
     expect(respuestaBoton.getAttribute('aria-current')).toBe('true');
     expect(fixture.nativeElement.textContent).toContain('Evaluación');
     expect(fixture.nativeElement.textContent).toContain('# Documento de prueba');
+  });
+
+  // P-34 H-01: con el maestro de usuarios caído la pantalla lo dice y ofrece reintentar.
+  it('avisa cuando no puede cargar los participantes y no muestra el id técnico', () => {
+    let intentos = 0;
+    configurar(undefined, {
+      usuariosTodos: () => {
+        intentos += 1;
+        return intentos === 1
+          ? throwError(() => new HttpErrorResponse({ status: 503 }))
+          : of({
+              items: [{ id: 'usuario-1', nombre: 'Ana', area: 'Producto' } as UsuarioAdmin],
+              total: 1,
+            });
+      },
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const aviso = element.querySelector('.resultados-aviso-usuarios');
+    expect(aviso?.textContent).toContain('No se pudo cargar la lista de participantes');
+    expect(aviso?.querySelector('p')?.getAttribute('role')).toBe('alert');
+    // El id nunca se presenta solo, como si fuera el nombre: queda etiquetado y rastreable.
+    expect(element.querySelector('.resultados-idea strong')?.textContent?.trim()).toBe(
+      'Participante no identificado · usuario-1',
+    );
+
+    const reintentar = Array.from(element.querySelectorAll('button')).find((boton) =>
+      boton.textContent?.includes('Reintentar la carga de participantes'),
+    ) as HTMLButtonElement;
+    reintentar.click();
+    fixture.detectChanges();
+
+    expect(intentos).toBe(2);
+    expect(element.querySelector('.resultados-aviso-usuarios')).toBeNull();
+    expect(element.textContent).toContain('Ana (Producto)');
+    expect(element.textContent).not.toContain('Participante no identificado');
+  });
+
+  // P-34 H-04: los contadores son los de la campaña, no los del arreglo cargado.
+  it('cuenta las ideas con el total del servidor y advierte cuando falta cargar', () => {
+    configurar(undefined, { ideas: () => of({ items: [idea, ideaEnCurso], total: 137 }) });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.resultados-resumen')?.textContent).toContain('137 ideas');
+    expect(element.querySelector('.resultados-resumen')?.textContent).toContain(
+      'sobre las 2 primeras',
+    );
+    expect(element.querySelector('.panel-heading .muted')?.textContent).toContain('2 de 137');
   });
 
   it('muestra una guía educada cuando no hay campañas que consultar', () => {

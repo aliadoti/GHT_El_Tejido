@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { Observable, of, switchMap } from 'rxjs';
 
 import { ApiClient } from './api-client.service';
 import {
@@ -117,12 +118,32 @@ export interface ReadinessCatalogosTextos {
   mapeosMeta: MapeoPlantillaMeta[];
 }
 
+/** El servidor recorta cualquier `pageSize` mayor a este tope (04 §5.8). */
+const TAMANO_PAGINA_MAXIMO = 100;
+
+/** Red de seguridad: 100 páginas son 10.000 filas, muy por encima de la escala prevista (P-34 §6). */
+const MAXIMO_PAGINAS = 100;
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly api = inject(ApiClient);
 
   usuarios(query?: Record<string, string | number | undefined>) {
     return this.api.get<PagedResult<UsuarioAdmin>>('/api/admin/usuarios', query);
+  }
+
+  /**
+   * P-34 H-02: el maestro completo. Pedir `pageSize: 500` no servía —el servidor recorta a 100 sin
+   * avisar—, así que se piden páginas sucesivas hasta agotar el `total` que la misma respuesta trae.
+   */
+  usuariosTodos(query?: Record<string, string | number | undefined>) {
+    return this.paginarTodo<UsuarioAdmin>((page) =>
+      this.api.get<PagedResult<UsuarioAdmin>>('/api/admin/usuarios', {
+        ...query,
+        page,
+        pageSize: TAMANO_PAGINA_MAXIMO,
+      }),
+    );
   }
 
   crearUsuario(body: Partial<UsuarioAdmin> & { numero?: string }) {
@@ -462,6 +483,17 @@ export class AdminApiService {
     return this.api.get<PagedResult<Conversacion>>('/api/admin/conversaciones', { campaniaId });
   }
 
+  /** P-34 H-04: la actividad de la campaña completa, no las 25 primeras conversaciones. */
+  conversacionesTodas(campaniaId: string) {
+    return this.paginarTodo<Conversacion>((page) =>
+      this.api.get<PagedResult<Conversacion>>('/api/admin/conversaciones', {
+        campaniaId,
+        page,
+        pageSize: TAMANO_PAGINA_MAXIMO,
+      }),
+    );
+  }
+
   /** I-19 (04 §5.8): una fila por idea lógica; es la unidad principal de Resultados. */
   ideas(campaniaId: string, estadoResultado?: string) {
     return this.api.get<PagedResult<IdeaConsolidada>>('/api/admin/ideas', {
@@ -483,6 +515,18 @@ export class AdminApiService {
     });
   }
 
+  /** P-34 H-04: las respuestas históricas también llegaban de 25 en 25. */
+  respuestasTodas(campaniaId: string, nivelMadurez?: string) {
+    return this.paginarTodo<Respuesta>((page) =>
+      this.api.get<PagedResult<Respuesta>>('/api/admin/respuestas', {
+        campaniaId,
+        nivelMadurez: nivelMadurez || undefined,
+        page,
+        pageSize: TAMANO_PAGINA_MAXIMO,
+      }),
+    );
+  }
+
   respuesta(campaniaId: string, id: string) {
     return this.api.get<{ respuesta: Respuesta; evaluacion: Evaluacion | null }>(
       `/api/admin/respuestas/${id}`,
@@ -496,6 +540,20 @@ export class AdminApiService {
     return this.api.get<PagedResult<ArtefactoMarkdown>>('/api/admin/markdown', { campaniaId });
   }
 
+  /**
+   * P-34 H-03: el listado sin `pageSize` devolvía 25 artefactos y el portal concluía que la idea 26
+   * en adelante no tenía documento. Se recorren todas las páginas antes de buscar por `ideaRef`.
+   */
+  markdownTodo(campaniaId: string) {
+    return this.paginarTodo<ArtefactoMarkdown>((page) =>
+      this.api.get<PagedResult<ArtefactoMarkdown>>('/api/admin/markdown', {
+        campaniaId,
+        page,
+        pageSize: TAMANO_PAGINA_MAXIMO,
+      }),
+    );
+  }
+
   markdownDetalle(campaniaId: string, id: string) {
     return this.api.get<ArtefactoMarkdown>(`/api/admin/markdown/${id}`, { campaniaId });
   }
@@ -506,5 +564,30 @@ export class AdminApiService {
       {},
       { campaniaId },
     );
+  }
+
+  /**
+   * P-34 §2.1 (H-02/H-03/H-04): recorre las páginas de un listado paginado hasta reunir el `total`
+   * que declara el servidor y devuelve un único resultado con todos los elementos. Se detiene ante
+   * una página vacía o un servidor que no informa `total`, de modo que un backend anterior degrada
+   * al comportamiento actual (una sola página) en vez de girar en falso.
+   */
+  private paginarTodo<T>(
+    cargarPagina: (page: number) => Observable<PagedResult<T>>,
+  ): Observable<PagedResult<T>> {
+    const siguiente = (page: number, acumulados: T[]): Observable<PagedResult<T>> =>
+      cargarPagina(page).pipe(
+        switchMap((resultado) => {
+          const recibidos = resultado.items ?? [];
+          const items = page === 1 ? [...recibidos] : [...acumulados, ...recibidos];
+          const total = resultado.total ?? items.length;
+          const faltan = items.length < total && recibidos.length > 0 && page < MAXIMO_PAGINAS;
+          return faltan
+            ? siguiente(page + 1, items)
+            : of({ ...resultado, items, page: 1, pageSize: items.length, total });
+        }),
+      );
+
+    return siguiente(1, []);
   }
 }

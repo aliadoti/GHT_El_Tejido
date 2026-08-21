@@ -94,7 +94,8 @@ como borrador; el español v3 activo se revisó sin modificarlo.
 
 **Estado.** `85b78f8` / `v1.0.3-convencion` desplegado; workflow verde, `/health/ready=ok` y catálogo
 inglés v3 activo. El gate local fue 1053 unitarias + 121 integración, build Release, formato y diff
-verdes. La validación conversacional se integra a la corrida final cuando termine el fix completo.
+verdes. El robustecimiento semántico y su validación conversacional integral quedan en backlog para
+una iteración posterior; la siguiente implementación priorizada es P-34.
 
 ## 4. Desviaciones de configuración aceptadas
 
@@ -167,8 +168,8 @@ verificar ambos ambientes.
 
 ## 6. Puertas operativas pendientes antes del primer envío
 
-1. Al terminar el fix completo, ejecutar sobre `v1.0.3-convencion` y el catálogo inglés v3 la corrida
-   integral abierto/cerrado/mixto de QAS/25; la validación anterior cubría `v1.0.2-convencion`.
+1. Al retomar el backlog semántico, ejecutar sobre el artefacto vigente y el catálogo inglés v3 la
+   corrida integral abierto/cerrado/mixto de QAS/25; la validación anterior cubría `v1.0.2-convencion`.
 2. Sustituir `wa-token` por el de producción (§4.4).
 3. Rotar `diag-key` al cerrar la parametrización.
 4. Alertas de Application Insights, incluida la del endpoint de simulación (§4.1).

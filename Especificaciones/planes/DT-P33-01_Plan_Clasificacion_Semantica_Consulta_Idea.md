@@ -1,7 +1,7 @@
 # Plan de implementación — DT-P33-01
 
 > **Estado:** hotfix desplegado en `85b78f8` / `v1.0.3-convencion`; workflow/readiness verdes, gates
-> semántico/visibilidad ON y catálogo inglés v3 activo. Validación integral al terminar el fix completo.
+> semántico/visibilidad ON y catálogo inglés v3 activo. Robustecimiento integral en backlog; P-34 sigue.
 
 ## Corte 1 — clasificador único y candidato transportado — DONE
 
@@ -49,5 +49,5 @@ la misma idea, sin repregunta, reevaluación ni repetición de la versión.
 4. Cubrir idea abierta, cerrada y mensaje mixto. Resultado local: 1053 unitarias + 121 integración,
    build Release `-warnaserror`, formato y diff verdes.
 5. Handoff operativo cerrado: commit `85b78f8`, tag `v1.0.3-convencion`, deploy/readiness verdes e
-   inglés v3 activo. Siguiente: terminar el fix completo y ejecutar QAS/25 abierto/cerrado/mixto,
-   D5, costo/latencia y acta en una corrida integral.
+   inglés v3 activo. El robustecimiento, QAS/25 abierto/cerrado/mixto, D5, costo/latencia y acta quedan
+   en backlog para una iteración posterior. La siguiente implementación es P-34 corte 1/6.

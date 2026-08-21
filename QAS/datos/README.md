@@ -7,8 +7,8 @@
 | `catalogo-catalogo_conversacion-en-v2-editable.json` | Descargado de inglés v2 activo; editado, importado y activado en portal como v3 | Contiene los siete alias de conformidad del hotfix en `continuar`, `confirmar` y `acuseConsultaIdea`. La copia local conserva `metadatos.version=2` porque los metadatos de descarga son informativos y el importador crea siempre una versión nueva. |
 | `catalogo-catalogo_conversacion-es-v3-editable.json` | Descargado de español v3 activo, sin modificaciones | Double check de las 29 claves de mensajes y 16 grupos de frases; no se debe reimportar para este hotfix. |
 
-El inglés v3 remoto quedó activo después de desplegar `v1.0.3-convencion`. Su validación dirigida forma
-parte de la corrida integral de `QAS/25` al terminar el fix completo.
+El inglés v3 remoto quedó activo después de desplegar `v1.0.3-convencion`. Su validación dirigida queda
+en el backlog integral de `QAS/25` para cuando se retome el robustecimiento semántico DT-P33-01.
 
 ---
 

@@ -1,11 +1,14 @@
 # P-34 — Resultados: identidad, filtros, tabla ordenable, exportación y resumen de campaña
 
-> Estado: **ESPECIFICADA 0/6 (2026-08-20)**
+> Estado: **EN CURSO — 1/6 (corte 1 DONE local 2026-08-20; siguiente corte 2/6)**
 > Origen: solicitud del usuario (2026-08-20) como especialista en UX/UI sobre la pantalla de Resultados
 > Tipo: Desarrollo **frontend + backend aditivo** · Prioridad: Alta · Ventana: previa a la convención
 > Dependencias: **I-17**, **I-19** (idea consolidada), **P-18/P-19** (accesibilidad), **P-23** (maestro-detalle)
 > Absorbe de **P-04**: filtros de servidor, ranking por calificación y exportación CSV
 > Riesgo: Medio — cambia `04 §5.8` de forma **aditiva**; no toca `03`, ni rutas, ni permisos
+> Handoff: el corte 1 (H-01/H-02/H-03/H-04) quedó DONE local el 2026-08-20, solo portal y sin
+> contratos; sigue el corte 2 (escala a 1.000 ideas, backend). DT-P33-01 integral queda en backlog y
+> no bloquea esta iniciativa.
 
 ---
 
@@ -272,7 +275,7 @@ P-23 sin afectar datos ni contratos.
 
 | # | Corte | Qué entrega |
 |---|-------|-------------|
-| **1** | **Los cuatro bugs** (frontend, ~1 día) | Paginar `/markdown`, `/respuestas` y `/conversaciones` hasta agotar `total`; usar `total` en los contadores; mostrar el error de `/usuarios` con reintento; fallback legible del participante. |
+| **1** ✅ | **Los cuatro bugs** (frontend) — **DONE local 2026-08-20** | Recorrido de páginas hasta agotar `total` en `/usuarios`, `/markdown`, `/respuestas` y `/conversaciones` con `pageSize` en el tope real (100), degradando a una sola página si el servidor no informa `total`; contadores tomados de `total`, con aviso «(sobre las N primeras)» mientras el listado de ideas siga trayendo una página (se retira con el corte 2); error de `/usuarios` visible en la región asertiva y reintentable; «Participante no identificado · código» en vez del id técnico. Portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios. |
 | **2** | **Que aguante 1.000 ideas** (backend) | Versiones en una query por partición; resolver versión después de paginar; detalle sin leer la partición completa; medición de RU y latencia. |
 | **3** | **Identidad y filtros en el servidor** | `participante` y `calificacionTotal` en `/ideas`; filtros nuevos; barra de dos niveles con chips; estado en la URL; estados vacíos que nombran el filtro. |
 | **4** | **Tabla, orden y metadata** | Vista tabla ordenable, agrupación, selector de columnas, paginación configurable; ficha completa y línea de tiempo; vista lectura conservada; columna de selección prevista (D4). |

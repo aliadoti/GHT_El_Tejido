@@ -1,8 +1,8 @@
 # QAS 25 — DT-P33-01: clasificación semántica de consulta de idea
 
 > **Estado:** hotfix `85b78f8` / `v1.0.3-convencion` desplegado con workflow/readiness verdes y
-> catálogo inglés v3 activo. Esta guía se ejecutará dentro de la validación integral al terminar el
-> fix completo, junto con D5.
+> catálogo inglés v3 activo. La ejecución integral de esta guía y D5 queda en backlog para cuando se
+> retome el robustecimiento semántico; no bloquea P-34.
 > **Estado del ambiente informado:** clasificación semántica y visibilidad de idea ON. Verificar además
 > `configConversacional.consultaIdea=true` en la campaña antes de ejecutar.
 

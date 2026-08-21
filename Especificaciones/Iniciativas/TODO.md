@@ -9,7 +9,33 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 `DT-P33-01` — HOTFIX DETERMINISTA DESPLEGADO; VALIDACIÓN INTEGRAL PENDIENTE (2026-08-20).**
+> **🟢 SIGUIENTE IMPLEMENTACIÓN: `P-34` CORTE 2/6 — QUE AGUANTE 1.000 IDEAS (2026-08-20).** Backend.
+> Ver `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §6 y H-10: sumar
+> `ListarVersionesDeCampaniaAsync` a `IRepositorioRespuestas` (una query por partición en vez de hasta
+> dos lecturas puntuales por idea), resolver la versión vigente **después** de paginar cuando el orden
+> no dependa del texto, quitar de `ObtenerIdeaAsync` la lectura de la partición completa de respuestas
+> y **medir RU y latencia con 1.000 ideas sembradas, antes y después, dejando la medición en el
+> commit**. No adelantar identidad embebida, filtros, tabla, exportación ni resumen (cortes 3–6).
+>
+> **🟢 `P-34` CORTE 1/6 BUGS DE RESULTADOS — DONE LOCAL 2026-08-20 (Claude Opus 5).** Solo portal.
+> El servidor recorta `pageSize` a 100 y responde `total`; el portal ahora **recorre las páginas**
+> de usuarios, Markdown, respuestas y conversaciones hasta agotar ese total (`paginarTodo` +
+> `usuariosTodos` / `markdownTodo` / `respuestasTodas` / `conversacionesTodas`), y se detiene ante una
+> página vacía, ante un servidor sin `total` —degrada a una sola página— o ante un techo de 100
+> páginas. Con eso «Descargar .md» vuelve a aparecer más allá de la idea 25 (H-03) y el maestro de
+> participantes deja de truncarse en 100 (H-02). Los contadores salen del `total` del servidor (H-04);
+> como **el listado de ideas sigue trayendo una sola página hasta el corte 2**, el desglose por estado
+> advierte «(sobre las N primeras)» en vez de hacerse pasar por el de la campaña. El fallo de
+> `/usuarios` ya no se descarta en silencio: se anuncia en la región asertiva con botón de reintento y
+> la fila dice «Participante no identificado · código», nunca un id técnico disfrazado de nombre
+> (H-01). Maestro-detalle de P-23 intacto; sin contratos, datos ni configuración remota. Portal
+> **76 pruebas en 10 archivos** (6 nuevas), `ng build --configuration production` y Prettier verdes;
+> backend sin cambios (**1053 unitarias + 122 de integración**, build Release `-warnaserror`, formato
+> y diff verdes). Decisión en `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`. Fuera de alcance
+> por decisión explícita: `campanias.page` y `envios.page` conservan su `usuarios({ pageSize: 500 })`
+> truncado a 100 hasta que su propia iniciativa los toque.
+>
+> **📌 BACKLOG: ROBUSTECIMIENTO SEMÁNTICO INTEGRAL `DT-P33-01`.**
 > El commit `85b78f8` / tag `v1.0.3-convencion` fue publicado con workflow verde; `/health/ready`
 > respondió `estado=ok` y los gates semántico/visibilidad están activos. Un caso real demostró que
 > `No is all right for me`, después de mostrar la idea, podía caer en `aportar`: el clasificador seguía
@@ -17,8 +43,8 @@ Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos p
 > coincidencia exacta de `frases.confirmar`, sin LLM/tokens, y deja las frases mixtas en la ruta
 > semántica. Siete alias ingleses quedaron en semilla y en el catálogo inglés **v3 activo**; español v3
 > se conservó sin cambios. Validación local: build Release `-warnaserror`, **1053 unitarias + 121
-> integración**, formato y diff verdes. **Siguiente:** terminar el fix completo y ejecutar en una sola
-> corrida QAS/25 abierto/cerrado/mixto, D5 `n=3`, costo/latencia y acta.
+> integración**, formato y diff verdes. Quedan para una iteración posterior el banco semántico, la
+> corrida QAS/25 abierto/cerrado/mixto, D5 `n=3`, costo/latencia y acta. No bloquea P-34.
 >
 > **🟢 CONVENCIÓN 2026 — CÓDIGO APROBADO CONDICIONADAMENTE PARA CONGELAMIENTO.** Se desplegará
 > `28c3cb1` en un ambiente nuevo y exclusivo, con base/configuración limpias y una sola campaña que
@@ -812,7 +838,8 @@ agente, y hace el handoff por `AVANCES.md`. No arranques un ítem cuya dependenc
 | **37** | **`P-31` resumen de la consolidación al alcanzar un umbral propio** | 2026-08-06/07 | Codex/Claude | **DONE 3/3 y DESPLEGADO (2026-08-07).** Commits `6ba6ce0` · `32794fb` · `6d02492`. Build Release, **664 unitarias + 77 integración**, formato y `git diff --check` verdes. E2E simulada: inicio → aporte sobre umbral → resumen → mejora sin repetirlo. Guía: `QAS/14_P31_Resumen_Consolidacion_Como_Probar.md`. **Flags OFF**; encenderlos exige D5 real + UAT + acta de flags, y elegir el umbral. La consulta bajo demanda se resolvió en P-33. Detalle original ↓ |
 | ~~37 (histórico)~~ | ~~especificación original~~ | — | — | REQ-052 (GHT, 2026-08-06). Umbral de resumen propio `Conversacion:UmbralResumenConsolidacion` con override por campaña y pregunta, **independiente** del `umbralCierreAnticipado` de I-17/P-13: al cruzarlo con la idea **abierta**, el turno de coaching lleva el texto de la versión vigente I-19 **insertado server-side** más una pregunta de continuidad. Sin estado conversacional nuevo (queda en `esperandoRepregunta`), sin tocar el sellado de madurez, sin consumir `repreguntasUsadas`, idempotente por idea y **sin depender de los flags de P-27**. Kill-switch OFF + opt-out por campaña. P-33 resuelve aparte la consulta reactiva. |
 | **38** | **`P-33` consulta y cierre visible de la idea** | **DONE local 3/3** | **Codex** | Consulta pura activa→última sin menú, versión I-19 exacta por demanda/cierre, afinidad y reapertura de la misma cerrada ante corrección; gate OFF, opt-outs, `es/en`, seguridad, telemetría y QAS. Build `-warnaserror`: 789 unitarias + 87 integración. **Siguiente: D5/UAT y acta de flags; sin activar remotamente.** |
-| **DT-P33-01** | **Clasificación semántica de consulta de idea** | **HOTFIX DESPLEGADO; VALIDACIÓN INTEGRAL AL CIERRE DEL FIX COMPLETO** | **Codex** | `85b78f8` / `v1.0.3-convencion`, workflow y readiness verdes, gates ON, inglés v3 activo. Afinidad P-33 + alias exacto prevalecen sin LLM; mixto sigue como aporte. Gate local: 1053 unitarias + 121 integración. Siguiente: completar el fix y correr QAS/25+D5+acta de forma integral. |
+| **DT-P33-01** | **Clasificación semántica de consulta de idea** | **HOTFIX DESPLEGADO; ROBUSTECIMIENTO INTEGRAL EN BACKLOG** | **Codex** | `85b78f8` / `v1.0.3-convencion`, workflow/readiness verdes, gates ON e inglés v3 activo. Pendiente posterior: banco semántico, QAS/25 abierto/cerrado/mixto, D5, costo/latencia y acta. No bloquea P-34. |
+| **P-34** | **Resultados: identidad, filtros, tabla, exportación y resumen** | **CORTE 1/6 DONE local — 2026-08-20; SIGUIENTE CORTE 2/6** | **Claude** | Corte 1 (solo portal): páginas recorridas hasta el `total` en usuarios/Markdown/respuestas/conversaciones, contadores tomados de `total` con aviso de desglose parcial, y fallo del maestro visible/reintentable con «Participante no identificado · código». Portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122). **Siguiente: corte 2/6** — escala a 1.000 ideas en backend con medición de RU/latencia; después identidad/filtros server-side, tabla/metadata, exportación y resumen. Spec `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md`; supuesto `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`. |
 | **DT-I20-01** | **Variación y no duplicación en la redacción conversacional** | **DONE local 5/5 — 2026-08-13** | **Claude** | I-20: `Queda claro que...` sigue permitida pero deja de ser la apertura obligatoria; `FiltroDuplicacionTurno` (puro) omite el puente equivalente, prefijo o superconjunto del cuerpo validado, `ExigePregunta` decide si una pregunta duplicada se omite o cae al respaldo, y la auditoría añade `ajuste:<motivo>` sin texto. Aplica a los mensajes nuevos de todas las campañas; no toca historial, contratos, portal, flags, migraciones ni configuración por campaña. Backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes. **Pendiente: D5 con ejemplos reales antes de desplegar.** Spec `Iniciativas/DT-I20-01_*`; QAS `QAS/19_*`. |
 | **DT-P32-02** | **Semillas seguras, edición masiva JSON y readiness** | **COMPLETA local 3/3 — 2026-08-14** | **Claude** | Corte 1: base curada `es/en` independiente de App Settings, fotografía legacy separada y sin truncar, límites operativos con techo compilado (`MaxFrasesPorGrupo` 100/500, `MaxBytesImportacionJson` 256 KiB/1 MiB, con clamp), `Prevalidar(...)` puro compartido y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}` + `POST /legacy`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con `Content-Type`, tamaño verificado **antes de deserializar**, profundidad acotada, metadatos ignorados y `v+1` siempre borrador, selección por `?idioma=`/`?familiaId=`, `GET /readiness` con gate real y precondición `catalogosTextos.{idioma}: activo_requerido`. Corte 3: portal completo (semilla base vs. configuración anterior, descargar → editar → revisar → confirmar, readiness visible, comparación con la activa, reintento del mismo archivo, sin activación automática). Backend 817 unitarias + 103 integración; portal 57/57, `ng build` y Prettier verdes; contrato `04` en commit aparte (`77377ec`). Gate OFF, sin despliegue ni cambio remoto. **Siguiente (operativo): `QAS/22` y luego `QAS/17` en ambiente aislado autorizado; solo con green se retoma `DT-I20-02`.** Spec `Iniciativas/DT-P32-02_*`; plan `planes/DT-P32-02_*`; QAS `QAS/22_*`; supuesto `SUPUESTOS.md#semillas-y-limites-catalogo-dt-p32-02`. |
 | **DT-P32-03** | **Cierre localizado único y readiness Meta** | **DESPLEGADA 2/2 — `a9f4a6f`** | **Claude** | Cierres QAS/23 1–3 PASS; la semántica posterior quedó cerrada en DT-P32-03-01. Sin código pendiente. |
@@ -881,8 +908,17 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
 
 ### 8. Primer paso concreto (arranca aquí)
 
-1. **Congelar código en `28c3cb1`.** No implementar cambios antes de la convención salvo que falle una
-   puerta operativa y exista una decisión explícita de descongelar.
+0. **IMPLEMENTAR `P-34` CORTE 2/6 — que el listado aguante 1.000 ideas (backend).** Es el trabajo
+   ejecutable de hoy: `ListarVersionesDeCampaniaAsync` en `IRepositorioRespuestas` (una query por
+   partición), versión vigente resuelta **después** de paginar, `ObtenerIdeaAsync` sin leer la
+   partición completa de respuestas, y **medición de RU y latencia con 1.000 ideas sembradas, antes y
+   después, registrada en el commit** (`P-34 §6`, H-10). El corte 1/6 quedó DONE local el 2026-08-20;
+   cuando el corte 2 esté verde, el portal podrá paginar el listado de ideas y retirar el aviso
+   «(sobre las N primeras)». No adelantar los cortes 3–6.
+
+1. **El artefacto que se despliega a la convención sigue siendo el congelado `28c3cb1`.** El trabajo
+   de P-34 vive en `main` y **no se despliega** al ambiente de la convención sin una decisión
+   explícita; los puntos 2 a 8 son la operación de ese ambiente, no del desarrollo en curso.
 
 2. **Preparar el ambiente exclusivo desde cero.** Desplegar el artefacto congelado y parametrizar una
    sola campaña completa, catálogos, rúbrica, prompts, ConfigLLM, mapeos Meta y flags aprobados.
@@ -911,8 +947,9 @@ También mantén `Especificaciones/SUPUESTOS.md` (referenciado en `01 §9`) para
    defecto; no desplegar ni modificar configuración remota sin orden.
 9. Lee, en el orden de §1: `AVANCES.md` (Próximo paso + Tablero) → `Iniciativas/00_Indice…` → la spec de la iniciativa → `Reglas_Conversacion…` y `SUPUESTOS.md` → las secciones de contrato/módulo que toque.
 10. **Declara desde qué rol decides y qué REQ §/ARQ §/ID-iniciativa cubres.** Si la spec plantea una decisión de diseño (opción A/B/C, cambio de contrato, dónde vive un flag), **confírmala con el usuario antes de codificar**.
-11. **El código está congelado para la convención.** No implementar iniciativas ni deudas aunque sus
-    specs históricas las describan como siguientes; solo una decisión explícita puede descongelarlo.
+11. **El congelamiento aplica al artefacto de la convención, no al desarrollo.** Por decisión del
+    usuario (2026-08-20) la iniciativa en curso es `P-34`; ninguna otra iniciativa ni deuda histórica
+    se retoma sin decisión explícita, y nada se despliega al ambiente de la convención sin ella.
 12. Las aprobaciones históricas de P-26, P-27, P-33, `DT-P32-02`, `DT-I20-02` y `DT-P32-04` quedan
     como trazabilidad, no como autorización para modificar el artefacto congelado.
 13. Registra en `AVANCES.md` (marca DONE, tablero, siguiente "Próximo paso"), en `SUPUESTOS.md` y en `Reglas_Conversacion_y_Participacion.md` según corresponda.

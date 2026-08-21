@@ -1580,7 +1580,40 @@
   comparar claves y quedó intacta.
 - Evidencia: 1053 unitarias + 121 integración sin Calibración, build Release `-warnaserror`, formato
   y diff verdes; `85b78f8` / `v1.0.3-convencion` desplegado con workflow y `/health/ready` verdes;
-  catálogo inglés v3 activo. La validación conversacional se ejecutará al terminar el fix completo,
-  junto con QAS/25 y las puertas D5/costo/latencia/acta.
+  catálogo inglés v3 activo.
+- Priorización posterior (usuario, 2026-08-20): el robustecimiento semántico integral, su banco de
+  casos, QAS/25 y las puertas D5/costo/latencia/acta pasan al backlog. La siguiente implementación es
+  P-34 corte 1/6; esta priorización no declara cerrada la deuda DT-P33-01 ni borra su rollback.
 - Rollback: volver la activa inglesa a v2 y apagar el gate semántico; no requiere borrar afinidades,
   ideas, evaluaciones ni historial.
+
+### paginacion-y-contadores-resultados-p-34 — Lo que la pantalla afirma, lo afirma el servidor
+
+- Fecha: 2026-08-20 - Agente/Rol: Claude Opus 5 - Frontend senior/SDET (P-34 corte 1/6).
+- Hallazgo: Resultados presentaba como completo lo que solo era la primera página. `GET /usuarios`
+  se pedía con `pageSize: 500` —el servidor recorta a 100—, `GET /markdown` viajaba sin `pageSize`
+  y devolvía 25, y los contadores usaban el largo del arreglo cargado en vez del campo `total` que
+  la misma respuesta trae. Un fallo de `/usuarios` se descartaba en silencio y dejaba todas las
+  filas mostrando el id técnico como si fuera el nombre del participante.
+- Decisión: el portal recorre las páginas de los listados baratos por partición
+  (`/usuarios`, `/markdown`, `/respuestas`, `/conversaciones`) con `pageSize` en el tope del servidor
+  (100) hasta reunir el `total` declarado, y los conteos visibles salen de `total`, no del arreglo.
+  El recorrido se detiene ante una página vacía, ante un servidor que no informa `total` —degradación
+  a una sola página, sin bucle— y ante un techo de 100 páginas.
+- Límite deliberado: **el listado de ideas sigue trayendo una sola página**. Recorrerlo entero
+  multiplicaría el costo descrito en P-34 H-10 (hasta dos lecturas puntuales por idea antes de
+  paginar), que es exactamente lo que corrige el corte 2. Mientras tanto la pantalla dice el total
+  del servidor y advierte «(sobre las N primeras)» cuando el desglose por estado es parcial, en vez
+  de presentar un conteo parcial como si fuera el de la campaña.
+- Identidad: sin usuario en el maestro, la fila dice «Participante no identificado · <código>» y el
+  fallo aparece en la región asertiva con un botón de reintento. El id nunca se muestra solo, como
+  si fuera un nombre. La identidad resuelta por el servidor (`participante` embebido) sigue siendo
+  el corte 3 y esta decisión no la adelanta.
+- Alcance: solo la pantalla de Resultados. `campanias.page` y `envios.page` conservan su
+  `usuarios({ pageSize: 500 })` y su truncamiento a 100 hasta que su iniciativa los toque; el método
+  paginado (`usuariosTodos`) ya está disponible para ellos.
+- Evidencia: portal 76 pruebas en 10 archivos (6 nuevas), `ng build --configuration production` y
+  Prettier verdes; backend sin cambios (1053 unitarias + 122 integración, build Release
+  `-warnaserror`, `dotnet format` y `git diff --check` verdes).
+- Rollback: revertir el commit devuelve la vista de P-23 exacta; no hay contrato, dato ni
+  configuración involucrados.

@@ -6,7 +6,13 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF VIGENTE 2026-08-20 — HOTFIX DETERMINISTA `DT-P33-01` DESPLEGADO.** El commit
+> **HANDOFF VIGENTE 2026-08-20 — SIGUIENTE IMPLEMENTACIÓN `P-34` CORTE 1/6.** Leer
+> `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md`; corregir primero H-01/H-02/H-03/H-04
+> con regresiones: paginación completa de Markdown/respuestas/conversaciones, contadores con `total`,
+> error visible/reintentable de usuarios y fallback legible del participante. Mantener P-23 y no
+> adelantar escala, filtros, tabla, exportación o resumen de los cortes 2–6.
+>
+> **BACKLOG VIGENTE — ROBUSTECIMIENTO SEMÁNTICO INTEGRAL `DT-P33-01`.** El commit
 > `85b78f8` / tag `v1.0.3-convencion` está publicado; el workflow terminó verde y `/health/ready`
 > respondió `estado=ok`. Los App Settings
 > `Conversacion__ClasificacionSemanticaConsultaIdeaHabilitada=true` y
@@ -16,9 +22,9 @@
 > resuelve primero la afinidad P-33 y los alias exactos de `confirmar`, sin LLM ni tokens; el mensaje
 > mixto conserva la clasificación semántica y sigue como aporte. Se añadieron siete alias a la semilla
 > inglesa y al catálogo inglés **v3 activo**. Validación local: build Release `-warnaserror`, **1053
-> unitarias + 121 integración** sin Calibración, formato y diff verdes. La validación conversacional
-> abierto/cerrado/mixto se ejecutará dentro de la corrida integral al terminar el fix completo, junto
-> con QAS/25, D5 `n=3`, costo/latencia y acta; este corte no se cierra aisladamente.
+> unitarias + 121 integración** sin Calibración, formato y diff verdes. El banco semántico, QAS/25
+> abierto/cerrado/mixto, D5 `n=3`, costo/latencia y acta quedan para una iteración posterior; no
+> bloquean el inicio de P-34.
 
 > **HANDOFF VIGENTE 2026-08-16 — CÓDIGO CONGELADO CONDICIONADAMENTE PARA CONVENCIÓN 2026.**
 > El artefacto objetivo es `28c3cb1`. Alcance aprobado: ambiente nuevo/exclusivo, base y configuración

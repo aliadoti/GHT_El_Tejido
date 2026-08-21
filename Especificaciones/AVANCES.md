@@ -4,7 +4,20 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-20 (usuario + Codex, Producto/Arquitecto/Backend/SDET): **HOTFIX
+- Ultima actualizacion: 2026-08-20 (Claude Opus 5, Frontend senior/SDET): **`P-34` CORTE 1/6 — DONE
+  LOCAL.** Los cuatro defectos de Resultados quedaron corregidos y con regresión: el portal recorre
+  las páginas de usuarios, Markdown, respuestas y conversaciones hasta agotar el `total` del servidor
+  (H-02/H-03), los contadores usan ese `total` y advierten cuando el desglose es parcial (H-04), y el
+  fallo del maestro de participantes es visible, reintentable y ya no deja un id técnico haciéndose
+  pasar por nombre (H-01). Portal **76 pruebas en 10 archivos** (6 nuevas), `ng build --configuration
+  production` y Prettier verdes; backend sin cambios (**1053 unitarias + 122 de integración**, build
+  Release `-warnaserror`, `dotnet format` y `git diff --check` verdes). Sin cambios de contrato, de
+  datos ni de configuración remota. **Siguiente: corte 2/6** (escala a 1.000 ideas, backend).
+- Actualizacion anterior: 2026-08-20 (usuario + Codex, Producto/Arquitectura): **P-34 PRIORIZADA COMO
+  SIGUIENTE IMPLEMENTACIÓN (0/6).** Iniciar por el corte 1 y sus cuatro defectos H-01/H-02/H-03/H-04.
+  El robustecimiento semántico integral DT-P33-01, QAS/25, D5, costo/latencia y acta pasan al backlog
+  para una iteración posterior; el hotfix `v1.0.3-convencion` permanece desplegado y reversible.
+- Actualizacion anterior: 2026-08-20 (usuario + Codex, Producto/Arquitecto/Backend/SDET): **HOTFIX
   DETERMINISTA `DT-P33-01` DESPLEGADO.** El commit `85b78f8`, tag `v1.0.3-convencion`, fue publicado;
   el workflow terminó verde y `/health/ready` respondió `estado=ok`. Se confirmaron
   en el ambiente los App Settings `Conversacion__ClasificacionSemanticaConsultaIdeaHabilitada=true` y
@@ -17,8 +30,9 @@
   JSON descargado de la activa inglesa v2; ese JSON fue importado y el catálogo inglés **v3 quedó
   activo**. El catálogo español v3 activo se descargó solo para double check y no se modificó.
   Validación local: build Release `-warnaserror`, **1053 unitarias + 121 de integración** sin Calibración,
-  formato y diff verdes. La validación conversacional abierto/cerrado/mixto se integrará a la corrida
-  de cierre cuando termine el fix completo; QAS/25, D5 `n=3`, costo/latencia y acta siguen como gates.
+  formato y diff verdes. Por decisión de producto, el robustecimiento semántico integral y su corrida
+  QAS/25 abierto/cerrado/mixto + D5/costo/latencia/acta quedan en backlog para retomarse posteriormente.
+  **La siguiente implementación es P-34, corte 1/6.**
 - Actualizacion anterior: 2026-08-16 (Codex, Arquitecto/Tech Lead/SDET):
   **CÓDIGO APROBADO CONDICIONADAMENTE PARA CONGELAMIENTO — CONVENCIÓN 2026.** El alcance confirmado
   es una sola campaña en un ambiente nuevo y exclusivo, con base/configuración limpias, plantillas
@@ -1355,12 +1369,24 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **TERMINAR EL FIX COMPLETO Y EJECUTAR SU VALIDACIÓN INTEGRAL.** El hotfix determinista ya está
-  publicado como `v1.0.3-convencion`, el workflow/readiness están verdes y el catálogo inglés v3 está
-  activo. Al cerrar el fix completo, ejecutar en una misma corrida QAS/25 y los recorridos abierto,
-  cerrado y mixto: `How is my idea going?` → `No is all right for me` no debe repreguntar/reabrir/
-  reevaluar; `It is all right for me, but change the loading order` debe seguir como aporte. Incluir
-  D5 `n=3`, costo/latencia y acta. Si la corrida falla, volver inglés a v2 y apagar el gate semántico.
+- [ ] **IMPLEMENTAR `P-34` CORTE 2/6 — QUE AGUANTE 1.000 IDEAS (backend).** Leer
+  `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §6 y H-10. `ListarIdeasAsync` resuelve
+  hoy la versión vigente idea por idea (hasta dos *point reads* cada una) **antes** de paginar: sumar
+  `ListarVersionesDeCampaniaAsync` a `IRepositorioRespuestas` (una query por partición) con join en
+  memoria, resolver la versión vigente **después** de paginar cuando el orden no dependa del texto y
+  quitar de `ObtenerIdeaAsync` la lectura de la partición completa de respuestas. Medir RU y latencia
+  con 1.000 ideas sembradas, antes y después, y dejar la medición en el commit. Sin adelantar
+  identidad embebida, filtros, tabla, exportación ni resumen (cortes 3–6). **Cuando el corte 2 esté
+  verde, el listado de ideas del portal podrá paginarse completo y desaparecerá el aviso
+  «(sobre las N primeras)» del desglose por estado.**
+- [x] **(HECHO 2026-08-20, Claude Opus 5 — portal 76 pruebas en 10 archivos, `ng build` producción y
+  Prettier verdes; backend sin cambios: 1053 unitarias + 122 integración, build Release
+  `-warnaserror`, format y diff verdes) `P-34` corte 1/6.** Recorrido completo de páginas en
+  usuarios/Markdown/respuestas/conversaciones con el tope real del servidor (H-02/H-03), contadores
+  tomados de `total` con aviso explícito cuando el desglose es parcial (H-04), y fallo del maestro de
+  participantes visible, reintentable y con «Participante no identificado · código» en vez del id
+  técnico (H-01). Maestro-detalle de P-23 intacto; sin contratos, datos ni configuración remota.
+  Supuesto en `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`.
 - [x] **(HECHO 2026-08-15, Claude Opus 5 — backend 925 unitarias + 112 integración; build Release
   `-warnaserror`, format y diff verdes) `DT-I20-02` corte 3/3.** Contenido candidato del prompt sin
   tocar Cosmos, pruebas de §7.2 sobre el evaluador real con `ILlmClient` falso en el recorrido webhook
@@ -1725,7 +1751,8 @@
 | P-31 | Resumen consolidado por umbral | DONE 3/3 y desplegado; flags OFF | `6ba6ce0`, `32794fb`, `6d02492` | backend 664 unitarias + 77 integración al cierre | Resumen proactivo e idempotente por umbral propio. La consulta bajo demanda quedó resuelta separadamente en P-33. |
 | P-32 | Conversación multidioma y catálogo | DONE local 4/4; D5/UAT/Meta/costo pendientes | cambios locales | backend 858 no-Calibración tras correcciones; portal 43/43 previo | Runtime `es/en`, catálogo Cosmos/portal, localizaciones, envío mixto y rollback; gate OFF. P-33 extiende de forma compatible el registro 24/13 a 29/16. |
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
-| DT-P33-01 | Clasificación semántica de consulta de idea | HOTFIX DESPLEGADO; catálogo inglés v3 activo; validación integral al cierre del fix completo | `85b78f8` / `v1.0.3-convencion` | build Release, 1053 unitarias + 121 integración, formato/diff y workflow verdes; `/health/ready` ok | Gates semántico/visibilidad ON. Afinidad P-33 + alias exacto prevalecen antes del LLM. Siguiente: terminar el fix completo y ejecutar QAS/25 abierto/cerrado/mixto, D5 y acta en una corrida integral. |
+| DT-P33-01 | Clasificación semántica de consulta de idea | HOTFIX DESPLEGADO; robustecimiento semántico integral en backlog | `85b78f8` / `v1.0.3-convencion` | build Release, 1053 unitarias + 121 integración, formato/diff y workflow verdes; `/health/ready` ok | Gates semántico/visibilidad ON, inglés v3 activo. Afinidad P-33 + alias exacto prevalecen antes del LLM. Pendiente posterior: banco semántico, QAS/25 abierto/cerrado/mixto, D5, costo/latencia y acta. No bloquea el inicio de P-34. |
+| P-34 | Resultados: identidad, filtros, tabla, exportación y resumen | **CORTE 1/6 DONE local; siguiente corte 2/6** | cambios locales | portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122) | Corte 1: paginación completa de usuarios/Markdown/respuestas/conversaciones hasta el `total` del servidor, contadores tomados de `total` con aviso cuando el desglose por estado es parcial, y fallo del maestro de participantes visible y reintentable con «Participante no identificado · código» en vez del id técnico. Sin contratos ni datos; P-23 intacto. Supuesto `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`. **Cómo probarlo:** abre Resultados con una campaña que tenga más de 25 documentos y comprueba que «Descargar .md» aparece también en las ideas del final de la lista, que el número de ideas del encabezado coincide con el de la campaña y que, si la lista de participantes falla, la pantalla lo dice y ofrece «Reintentar». Siguiente: corte 2/6 (escala a 1.000 ideas, backend). |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
@@ -1881,6 +1908,36 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-20 - Claude Opus 5 - **`P-34` corte 1/6 — los cuatro defectos de Resultados (H-01 a H-04),
+  solo portal.** Rol: Frontend senior Angular para el portal y SDET para las regresiones; Arquitecto
+  para no adelantar la frontera del corte 2. Cubre `P-34 §2.1`, `§8.1-§8.3` y `§10` corte 1; sin
+  tocar `03`, `04`, rutas ni permisos. **Qué cambió:** (1) `AdminApiService` suma un recorrido de
+  páginas privado (`paginarTodo`) y cuatro consultas completas —`usuariosTodos`,
+  `conversacionesTodas`, `respuestasTodas`, `markdownTodo`— que piden `pageSize` en el tope real del
+  servidor (100) y siguen pidiendo páginas hasta reunir el `total` declarado; se detienen ante una
+  página vacía, ante un servidor que no informa `total` (degradación a una sola página) y ante un
+  techo de 100 páginas. Corrige H-02 —`pageSize: 500` se recortaba a 100 sin avisar— y H-03 —el
+  listado de Markdown sin `pageSize` devolvía 25 artefactos, así que a partir de la idea 26 el portal
+  concluía que el documento no existía y escondía «Descargar .md»—. (2) `ResultadosPage` toma el
+  conteo de ideas del `total` del servidor en vez del largo del arreglo (H-04) y, como el listado de
+  ideas sigue trayendo una sola página hasta el corte 2, advierte «(sobre las N primeras)» cuando el
+  desglose por estado es parcial en lugar de presentarlo como el de la campaña. (3) El fallo de
+  `/usuarios` deja de descartarse en silencio: aparece en la región asertiva con un botón
+  «Reintentar la carga de participantes», y sin usuario en el maestro la fila dice «Participante no
+  identificado · código» en vez de un id técnico disfrazado de nombre (H-01). **Qué NO cambió:** el
+  maestro-detalle de P-23, el listado de ideas (su escala es el corte 2), la identidad resuelta por
+  el servidor (corte 3) y el `usuarios({ pageSize: 500 })` de `campanias.page` / `envios.page`, que
+  quedan para sus propias iniciativas con `usuariosTodos` ya disponible. **Pruebas:** nuevo
+  `core/admin-api.paginacion.spec.ts` con `HttpTestingController` (recorrido de Markdown hasta el
+  total, maestro de usuarios conservando filtros por página, degradación sin `total` y página vacía)
+  y dos regresiones de componente en `resultados.page.spec.ts` (maestro caído → aviso `role=alert`,
+  fallback legible y reintento que recupera el nombre; contadores con `total` y aviso de desglose
+  parcial). Portal **76 pruebas en 10 archivos** (6 nuevas), `ng build --configuration production` y
+  Prettier verdes; backend sin cambios verificado igual: **1053 unitarias + 122 de integración**,
+  build Release `-warnaserror`, `dotnet format --verify-no-changes` y `git diff --check` verdes.
+  Decisión en `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`. Sin push, despliegue, Cosmos ni
+  configuración remota. **Siguiente: corte 2/6** (una query por partición para las versiones, versión
+  vigente después de paginar, detalle sin leer la partición completa y medición de RU/latencia).
 - 2026-08-14 - Claude Opus 5 - **`DT-P32-03` corte 2/2 — readiness de plantillas Meta y Preparación
   con dos comprobaciones (DT-P32-03 COMPLETA local 2/2).** Rol: Arquitecto para la frontera del
   validador, Backend senior .NET para readiness y contrato, Frontend Angular + UX/A11Y para

@@ -1,8 +1,8 @@
 # DT-P33-01 — Clasificación semántica de la consulta de idea
 
 > **Estado:** hotfix determinista desplegado en `85b78f8` / `v1.0.3-convencion` (2026-08-20), workflow
-> y readiness verdes, catálogo inglés v3 activo. Validación conversacional integral al cierre del fix
-> completo.
+> y readiness verdes, catálogo inglés v3 activo. **Robustecimiento semántico integral en backlog**;
+> P-34 es la siguiente implementación.
 > **Fecha:** 2026-08-20.
 > **Origen:** dos defectos observados en conversación inglesa: `How is my idea coming along so far?`
 > abrió el menú de salida en vez de mostrar la idea, y `I'm satisfied with this` fue tratado como un
@@ -411,5 +411,6 @@ evaluaciones. El despliegue del hotfix no modificó ConfigLLM ni secretos.
 - Validación del hotfix: **1053 unitarias + 121 de integración**, build Release `-warnaserror`,
   `dotnet format --verify-no-changes` y `git diff --check` verdes. Incluye regresiones de idea abierta,
   cerrada y mensaje mixto; cero llamadas LLM para coincidencias exactas y una para el mixto.
-- Pendiente operativo: terminar el fix completo y ejecutar en una misma corrida la validación
-  conversacional abierto/cerrado/mixto, QAS/25, D5 `n=3`, costo/latencia y acta de flags.
+- Backlog posterior: banco de conformidades puras/mixtas/ambiguas, robustecimiento del clasificador y
+  una misma corrida de validación abierto/cerrado/mixto, QAS/25, D5 `n=3`, costo/latencia y acta. Esta
+  deuda no bloquea la implementación de P-34.

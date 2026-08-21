@@ -35,6 +35,23 @@ import { ResultadosSesionService } from './resultados-sesion.service';
       <app-estado-accesible tipo="error" [mensaje]="error()" />
       <app-estado-accesible tipo="informacion" [mensaje]="informacion()" />
 
+      <!-- P-34 H-01: el fallo del directorio deja de ser silencioso y se puede reintentar. -->
+      @if (errorUsuarios()) {
+        <section class="panel resultados-aviso-usuarios">
+          <app-estado-accesible tipo="error" [mensaje]="errorUsuarios()" />
+          <div class="actions-row">
+            <button
+              type="button"
+              class="ghost-button"
+              [disabled]="cargandoUsuarios()"
+              (click)="reintentarUsuarios()"
+            >
+              Reintentar la carga de participantes
+            </button>
+          </div>
+        </section>
+      }
+
       <section class="panel">
         <div class="filters-grid">
           <label>
@@ -55,11 +72,15 @@ import { ResultadosSesionService } from './resultados-sesion.service';
               <option value="rechazada">Rechazadas</option>
             </select>
           </label>
+          <!-- P-34 H-04: el conteo es el de la campaña completa, no el del arreglo cargado. -->
           <div class="resultados-resumen" aria-label="Resumen de ideas">
-            <strong>{{ ideas().length }} ideas</strong>
+            <strong>{{ totalIdeas() }} ideas</strong>
             <span>
               {{ conteoIdeas('madura') }} maduras · {{ conteoIdeas('pendiente') }} pendientes ·
               {{ conteoIdeas('rechazada') }} rechazadas
+              @if (hayIdeasSinCargar()) {
+                <span class="muted">(sobre las {{ ideas().length }} primeras)</span>
+              }
             </span>
           </div>
           <div class="resultados-leyenda" aria-label="Leyenda de estados">
@@ -83,7 +104,9 @@ import { ResultadosSesionService } from './resultados-sesion.service';
           <section class="panel">
             <div class="panel-heading">
               <h3>Ideas</h3>
-              <span class="muted">{{ ideas().length }}</span>
+              <span class="muted">
+                {{ hayIdeasSinCargar() ? ideas().length + ' de ' + totalIdeas() : totalIdeas() }}
+              </span>
             </div>
             @if (cargando()) {
               <div class="resultados-skeleton" aria-label="Cargando ideas">
@@ -430,9 +453,13 @@ export class ResultadosPage {
   protected readonly campanias = signal<Campania[]>([]);
   protected readonly usuarios = signal<Map<string, UsuarioAdmin>>(new Map());
   protected readonly error = signal('');
+  protected readonly errorUsuarios = signal('');
   protected readonly informacion = signal('');
   protected readonly cargando = signal(false);
+  protected readonly cargandoUsuarios = signal(false);
   protected readonly cargandoDetalle = signal(false);
+  /** P-34 H-04: total declarado por el servidor para la campaña y el filtro vigentes. */
+  protected readonly totalIdeas = signal(0);
   protected campaniaId = '';
   protected estadoIdeaFiltro = '';
   protected nivelMadurezFiltro = '';
@@ -451,18 +478,51 @@ export class ResultadosPage {
       },
       error: (err: unknown) => this.error.set(formatApiError(err)),
     });
-    this.api.usuarios({ pageSize: 500 }).subscribe({
-      next: (page) => this.usuarios.set(new Map(page.items.map((u) => [u.id, u]))),
-      error: () => {
-        /* el id técnico sigue siendo el fallback; no bloquea la consulta de resultados */
-      },
-    });
+    this.cargarUsuarios();
   }
 
+  /**
+   * P-34 H-01/H-02: el directorio completo, con el fallo visible. Antes se pedía una sola página de
+   * 500 —que el servidor recortaba a 100— y el error se descartaba, así que la pantalla se veía
+   * normal mientras todas las filas mostraban el id técnico.
+   */
+  cargarUsuarios() {
+    this.cargandoUsuarios.set(true);
+    this.api
+      .usuariosTodos()
+      .pipe(finalize(() => this.cargandoUsuarios.set(false)))
+      .subscribe({
+        next: (page) => {
+          this.usuarios.set(new Map(page.items.map((u) => [u.id, u])));
+          this.errorUsuarios.set('');
+        },
+        error: (err: unknown) =>
+          this.errorUsuarios.set(
+            `No se pudo cargar la lista de participantes, así que las ideas se muestran sin nombre. ${formatApiError(err)}`,
+          ),
+      });
+  }
+
+  reintentarUsuarios() {
+    if (this.cargandoUsuarios()) return;
+    this.cargarUsuarios();
+  }
+
+  /** P-34 H-01: nunca un id técnico pelado; el código corto queda visible para poder rastrear. */
   nombreUsuario(usuarioId: string): string {
     const usuario = this.usuarios().get(usuarioId);
-    if (!usuario) return usuarioId;
+    if (!usuario) return `Participante no identificado · ${this.codigoCorto(usuarioId)}`;
     return usuario.area ? `${usuario.nombre} (${usuario.area})` : usuario.nombre;
+  }
+
+  codigoCorto(usuarioId: string): string {
+    const limite = 12;
+    return usuarioId.length > limite ? `${usuarioId.slice(0, limite)}…` : usuarioId;
+  }
+
+  /** El listado de ideas todavía trae una sola página (la escala es el corte 2 de P-34). */
+  hayIdeasSinCargar(): boolean {
+    return this.totalIdeas() > this.ideas().length;
   }
 
   esMadura(respuesta: Respuesta): boolean {
@@ -556,25 +616,28 @@ export class ResultadosPage {
       .ideas(this.campaniaId, this.estadoIdeaFiltro)
       .pipe(finalize(() => this.finalizarCarga()))
       .subscribe({
-        next: (page) => this.ideas.set(page.items),
+        next: (page) => {
+          this.ideas.set(page.items);
+          this.totalIdeas.set(page.total ?? page.items.length);
+        },
         error: (err: unknown) => this.error.set(formatApiError(err)),
       });
     this.api
-      .conversaciones(this.campaniaId)
+      .conversacionesTodas(this.campaniaId)
       .pipe(finalize(() => this.finalizarCarga()))
       .subscribe({
         next: (page) => this.conversaciones.set(page.items),
         error: (err: unknown) => this.error.set(formatApiError(err)),
       });
     this.api
-      .respuestas(this.campaniaId, this.nivelMadurezFiltro)
+      .respuestasTodas(this.campaniaId, this.nivelMadurezFiltro)
       .pipe(finalize(() => this.finalizarCarga()))
       .subscribe({
         next: (page) => this.respuestas.set(page.items),
         error: (err: unknown) => this.error.set(formatApiError(err)),
       });
     this.api
-      .markdown(this.campaniaId)
+      .markdownTodo(this.campaniaId)
       .pipe(finalize(() => this.finalizarCarga()))
       .subscribe({
         next: (page) => {
