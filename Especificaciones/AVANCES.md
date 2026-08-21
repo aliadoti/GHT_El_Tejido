@@ -1866,6 +1866,15 @@
 - 2026-06-14 - Frontend/AppSec/SDET (Codex) - Fase 8: Portal Angular (`11`) construido como SPA standalone con login OTP, `AuthService` con CSRF en memoria, interceptor `withCredentials` + `X-CSRF-Token`, guards de sesion/admin/login, shell autenticado con marca GHT, servicios tipados por feature contra `04`, pantallas de dashboard, usuarios/tags, campanias/participantes, envios/jobs, rubricas, prompts, config-llm y resultados/Markdown. `ng build --configuration production` publica en `src/ElTejido.Api/wwwroot`; `proxy.conf.json` apunta `/api` y `/webhook` a `https://localhost:5001` en dev. Ref: `11`, `04`, `10`, `13`.
 
 ## Contratos: cambios respecto a las specs
+- 2026-08-21 - P-34 (corte 3): `04 §5.8` suma, **de forma aditiva y en commit propio y previo al
+  código**, el objeto `participante` embebido en cada elemento de `GET /api/admin/ideas` (con
+  `resuelto` para el caso en que el usuario ya no exista), los campos `calificacionTotal`/`evaluadaEn`
+  de la evaluación vigente, los filtros `q, area, empresa, sede, desde, hasta, calificacionMin,
+  calificacionMax, confirmada` y el par `orden`/`dir`. Un cliente anterior ignora lo nuevo y recibe lo
+  mismo que antes; el orden por defecto, el significado de `total` y los permisos no cambian. `03` sin
+  cambios: `participante` es una proyección de lectura, no un dato persistido. Motivo: el *join* del
+  maestro de usuarios en el navegador era el origen de H-01/H-02 e impedía filtrar y ordenar por área,
+  empresa o sede sin mentir sobre el `total`.
 - 2026-08-13 - P-33: `03 §3.3` y `04 §5.3` agregan los bool aditivos
   `configConversacional.consultaIdea` y `mostrarIdeaAlCerrar` (default `true`, gobernados por gate
   global OFF); `EnrutamientoAporte` admite `modo=consultarIdea`; P-32 amplía su registro a 29 mensajes

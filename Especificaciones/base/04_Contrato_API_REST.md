@@ -590,7 +590,7 @@ anterior.
 |---|---|---|
 | GET | `/api/admin/conversaciones` | Lista/filtra conversaciones. |
 | GET | `/api/admin/conversaciones/{id}` | Detalle con mensajes in/out. |
-| GET | `/api/admin/ideas` | **I-19:** lista una fila por idea lógica (`usuarioId, preguntaId, estadoResultado, estadoFlujo, estadoCuraduria`). |
+| GET | `/api/admin/ideas` | **I-19:** lista una fila por idea lógica (`usuarioId, preguntaId, estadoResultado, estadoFlujo, estadoCuraduria`). **P-34 (aditivo):** `participante` embebido, `calificacionTotal`/`evaluadaEn`, filtros `q, area, empresa, sede, desde, hasta, calificacionMin, calificacionMax, confirmada` y `orden`/`dir`. Ver sub-sección. |
 | GET | `/api/admin/ideas/{id}` | **I-19:** idea vigente + evaluación + aportes/versiones auditables. |
 | GET | `/api/admin/respuestas` | Lista/filtra aportes originales (`usuarioId, preguntaId, estado` y, para legacy, `nivelMadurez`). |
 | GET | `/api/admin/respuestas/{id}` | Respuesta + evaluación asociada. |
@@ -663,6 +663,69 @@ confirmada (o propuesta marcada si todavía no hay confirmación), estados, `niv
 `evaluacionVigenteRef`, `versionConfirmadaRef`, fechas y motivo de cierre. El detalle devuelve además
 las versiones ordenadas, aportes originales, evaluación vigente y propuesta pendiente. Las versiones
 rechazadas requieren los mismos roles administrativos vigentes y nunca aparecen al filtrar maduras.
+
+#### Identidad, filtros y orden del listado de ideas — `P-34` (aditivo)
+> Cambio **aditivo** sobre `GET /api/admin/ideas`: campos nuevos en el DTO de lista y parámetros de
+> consulta nuevos. Un cliente anterior ignora lo que no conoce y recibe exactamente lo mismo que
+> antes. No modifica `03`, ni rutas, ni permisos: sigue siendo lectura para `admin`/`visor`.
+> Detalle en `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §4.1, §4.2 y §5.
+
+**Por qué.** El portal descargaba el maestro de usuarios y hacía el *join* en el navegador. Ese join
+era el origen de que una fila mostrara el id técnico en vez del nombre, y además impedía filtrar u
+ordenar por área, empresa o sede: el servidor paginaba sin conocer esos campos, así que cualquier
+refinamiento en cliente mentía sobre el `total`. **La identidad la resuelve el servidor.**
+
+Campos nuevos en cada elemento de `items`:
+
+```json
+{
+  "participante": {
+    "usuarioId": "u_8f3c...",
+    "codigoUsuarioLegible": "U-000042",
+    "nombre": "Ana Pérez",
+    "area": "Operaciones",
+    "empresa": "Flores El Aljibe",
+    "sede": "AL",
+    "estado": "activo",
+    "resuelto": true
+  },
+  "calificacionTotal": 4.1,
+  "evaluadaEn": "2026-06-11T14:05:10Z"
+}
+```
+
+- `participante` viaja **siempre**; cuando el usuario no existe (purgado, dato inconsistente) llega
+  con `resuelto: false` y el resto en `null`, y el cliente lo presenta como «Participante no
+  identificado · código», nunca como un id crudo. No expone nada que el mismo rol no pueda leer ya en
+  `GET /api/admin/usuarios`; en particular **no** lleva número de WhatsApp, email ni tags.
+- `calificacionTotal`/`evaluadaEn` son los de la **evaluación vigente** (`evaluacionVigenteRef`);
+  `null` cuando la idea todavía no tiene una.
+
+**Query aditiva** (todos opcionales; se combinan con `AND` con los filtros I-19 ya existentes):
+
+```text
+q                  texto libre sobre nombre, código legible y texto de la versión vigente
+area, empresa, sede  atributos del participante (comparación exacta, sin distinguir mayúsculas)
+desde, hasta       ISO-8601 sobre `creadaEn` de la idea, inclusive
+calificacionMin, calificacionMax   sobre `calificacionTotal` de la evaluación vigente
+confirmada         true|false
+orden              participante|calificacion|creada|actualizada|pregunta
+dir                asc|desc (por defecto `asc`)
+```
+
+- `q` se compara **normalizado** (minúsculas, sin acentos y sin puntuación) como subcadena. El código
+  legible se busca también sin su prefijo, de modo que `42` encuentra a `U-000042`.
+- `desde`/`hasta` se validan: un valor no interpretable responde `400 VALIDATION_ERROR` con
+  `desde`/`hasta`: `formato_invalido`, en vez de devolver una lista vacía como si no hubiera datos.
+  Lo mismo para `calificacionMin`/`calificacionMax` (`formato_invalido`, y `rango_invalido` si el
+  mínimo supera al máximo) y para `orden`/`dir` (`valor_invalido`).
+- Filtrar por calificación **excluye** las ideas sin evaluación vigente: no hay número que comparar.
+- El orden por defecto no cambia (`preguntaId → ideaIndice → creadaEn`). `orden` reordena el conjunto
+  filtrado **completo** antes de paginar, y desempata siempre por ese orden natural para que la
+  paginación sea estable. `participante` ordena por nombre visible y las filas sin identidad resuelta
+  van al final; `calificacion` ordena por la calificación vigente y las ideas sin evaluación van al
+  final en ambas direcciones.
+- `total` sigue siendo el del conjunto filtrado completo, nunca el de la página.
 
 Campos aditivos de respuesta para I-06/I-18:
 ```json
