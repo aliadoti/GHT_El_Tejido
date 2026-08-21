@@ -73,7 +73,8 @@ public sealed class ServicioGestionUsuariosTests
             cargo: "Gerente",
             email: "ana@ght.com",
             antiguedadAnios: 16.391666m,
-            idioma: "en");
+            idioma: "en",
+            nombreSaludo: "Anita");
         var repositorio = Substitute.For<IRepositorioUsuarios>();
         repositorio.ObtenerUsuarioPorIdAsync("u_1", Arg.Any<CancellationToken>()).Returns(existente);
         var servicio = CrearServicio(repositorio);
@@ -84,6 +85,7 @@ public sealed class ServicioGestionUsuariosTests
             CancellationToken.None);
 
         actualizado.Nombre.Should().Be("Ana Nueva");
+        actualizado.NombreSaludo.Should().Be("Anita");
         actualizado.CodigoUsuario.Should().Be(77);
         actualizado.UsuarioWhatsapp.Should().Be("ana.perez");
         actualizado.EmpresaId.Should().Be("AL");
@@ -95,6 +97,45 @@ public sealed class ServicioGestionUsuariosTests
         await repositorio.DidNotReceive().ReservarCodigosUsuarioAsync(
             Arg.Any<int>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CrearYActualizarUsuario_PermiteCorregirNombreSaludo()
+    {
+        var repositorio = Substitute.For<IRepositorioUsuarios>();
+        repositorio.ReservarCodigosUsuarioAsync(1, Arg.Any<CancellationToken>()).Returns(1);
+        var servicio = CrearServicio(repositorio);
+        var creado = await servicio.CrearUsuarioAsync(
+            new SolicitudCrearUsuario(
+                "ARENAS CHAVES JUAN PABLO",
+                "573001112233",
+                RolUsuario.Participante,
+                EstadoRegistro.Activo,
+                null,
+                null,
+                null,
+                null),
+            CancellationToken.None);
+        repositorio.ObtenerUsuarioPorIdAsync(creado.Id, Arg.Any<CancellationToken>()).Returns(creado);
+
+        var corregido = await servicio.ActualizarUsuarioAsync(
+            creado.Id,
+            new SolicitudActualizarUsuario(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                NombreSaludo: "Juan"),
+            CancellationToken.None);
+
+        creado.Nombre.Should().Be("ARENAS CHAVES JUAN PABLO");
+        creado.NombreSaludo.Should().Be("Juan Pablo");
+        corregido.Nombre.Should().Be("ARENAS CHAVES JUAN PABLO");
+        corregido.NombreSaludo.Should().Be("Juan");
     }
 
     [Fact]

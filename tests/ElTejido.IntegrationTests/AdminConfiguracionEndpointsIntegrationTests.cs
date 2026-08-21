@@ -35,7 +35,7 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
             "/api/admin/usuarios",
             new
             {
-                nombre = "Ana Perez",
+                nombre = "ARENAS CHAVES JUAN PABLO",
                 numero = "+57 300 111 2233",
                 rol = "participante",
                 area = "Operaciones",
@@ -47,6 +47,8 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         creacion.StatusCode.Should().Be(HttpStatusCode.Created);
         var creado = await creacion.Content.ReadFromJsonAsync<UsuarioDto>();
         creado!.Id.Should().StartWith("u_");
+        creado.Nombre.Should().Be("ARENAS CHAVES JUAN PABLO");
+        creado.NombreSaludo.Should().Be("Juan Pablo");
         creado.WhatsappNormalizado.Should().Be("573001112233");
         creado.Rol.Should().Be("participante");
         creado.Estado.Should().Be("activo");
@@ -133,6 +135,35 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         using var porEmpresa = await client.GetAsync("/api/admin/usuarios?empresaId=AL&idioma=en");
         var pagina = await porEmpresa.Content.ReadFromJsonAsync<PaginaUsuariosDto>();
         pagina!.Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Usuarios_BackfillNombreSaludo_PrevisualizaYCompletaDeFormaIdempotente()
+    {
+        var repositorio = new RepositorioUsuariosMemoria { NombresSaludoFaltantes = 3 };
+        using var fabrica = Construir(repositorio);
+        using var client = CrearClienteConSesion(fabrica, SesionesFake.TokenAdmin);
+
+        using var previsualizacion = await client.GetAsync("/api/admin/usuarios/nombres-saludo/pendientes");
+        var pendientes = await previsualizacion.Content.ReadFromJsonAsync<ConteoPendientesDto>();
+        using var ejecucion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/usuarios/nombres-saludo/completar",
+            new { });
+        var completados = await ejecucion.Content.ReadFromJsonAsync<ConteoCompletadosDto>();
+        using var repeticion = await EnviarJsonAsync(
+            client,
+            HttpMethod.Post,
+            "/api/admin/usuarios/nombres-saludo/completar",
+            new { });
+        var repetidos = await repeticion.Content.ReadFromJsonAsync<ConteoCompletadosDto>();
+
+        previsualizacion.StatusCode.Should().Be(HttpStatusCode.OK);
+        pendientes!.Pendientes.Should().Be(3);
+        ejecucion.StatusCode.Should().Be(HttpStatusCode.OK);
+        completados!.Completados.Should().Be(3);
+        repetidos!.Completados.Should().Be(0);
     }
 
     [Fact]
@@ -297,6 +328,7 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         int CodigoUsuario,
         string CodigoUsuarioLegible,
         string Nombre,
+        string NombreSaludo,
         string WhatsappNormalizado,
         string? UsuarioWhatsapp,
         string Rol,
@@ -327,6 +359,10 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         DateTimeOffset CreadoEn);
 
     private sealed record CuerpoErrorDto(ErrorDto Error);
+
+    private sealed record ConteoPendientesDto(int Pendientes);
+
+    private sealed record ConteoCompletadosDto(int Completados);
 
     private sealed record ErrorDto(string Code, string Message);
 
@@ -366,6 +402,8 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
         private readonly Dictionary<string, Usuario> _usuarios = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Tag> _tags = new(StringComparer.Ordinal);
         private int _ultimoCodigoUsuario;
+
+        public int NombresSaludoFaltantes { get; set; }
 
         public RepositorioUsuariosMemoria(params Usuario[] usuarios)
         {
@@ -443,6 +481,16 @@ public sealed class AdminConfiguracionEndpointsIntegrationTests
             }
 
             return Task.FromResult<IReadOnlyCollection<Usuario>>(consulta.ToArray());
+        }
+
+        public Task<int> ContarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+            => Task.FromResult(NombresSaludoFaltantes);
+
+        public Task<int> CompletarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+        {
+            var completados = NombresSaludoFaltantes;
+            NombresSaludoFaltantes = 0;
+            return Task.FromResult(completados);
         }
 
         public Task GuardarTagAsync(Tag tag, CancellationToken cancellationToken)

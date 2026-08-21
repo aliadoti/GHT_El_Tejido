@@ -6,7 +6,15 @@
 
 ## ▼▼▼ INICIO DEL PROMPT — copia desde aquí ▼▼▼
 
-> **HANDOFF VIGENTE 2026-08-20 — SIGUIENTE IMPLEMENTACIÓN `P-34` CORTE 1/6.** Leer
+> **HANDOFF VIGENTE 2026-08-21 — `P-35` COMPLETA LOCAL.** `Usuario.nombre` conserva el nombre
+> completo y `nombreSaludo` queda persistido, editable y usado por `{{nombre}}`. Hay compatibilidad
+> con documentos históricos, backfill idempotente y runbook en
+> `Guias_Implementacion/P-35_Backfill_NombreSaludo.md`. La columna CSV/XLSX queda como deuda de I-08.
+> Backend 1105 unitarias + 145 integraciones sin Calibración; portal 89/89. No hubo backfill remoto,
+> despliegue ni push. Siguiente operativo con autorización: desplegar, previsualizar pendientes y
+> ejecutar el backfill; no empezar otra iniciativa por arrastre.
+
+> **HANDOFF HISTÓRICO 2026-08-20 — SIGUIENTE IMPLEMENTACIÓN `P-34` CORTE 1/6.** Leer
 > `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md`; corregir primero H-01/H-02/H-03/H-04
 > con regresiones: paginación completa de Markdown/respuestas/conversaciones, contadores con `total`,
 > error visible/reintentable de usuarios y fallback legible del participante. Mantener P-23 y no

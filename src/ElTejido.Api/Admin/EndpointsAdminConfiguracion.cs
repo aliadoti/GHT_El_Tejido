@@ -29,6 +29,8 @@ internal static class EndpointsAdminConfiguracion
         // X-CSRF-Token propio, no el token antiforgery.
         usuarios.MapPost("/carga-masiva", CargaMasivaUsuariosAsync).DisableAntiforgery();
         usuarios.MapGet("/plantilla-carga", DescargarPlantillaCargaAsync);
+        usuarios.MapPost("/nombres-saludo/completar", CompletarNombresSaludoAsync);
+        usuarios.MapGet("/nombres-saludo/pendientes", ContarNombresSaludoPendientesAsync);
         usuarios.MapGet("/por-numero/{numero}", ListarUsuariosPorNumeroAsync);
         usuarios.MapGet("/{id}", ObtenerUsuarioAsync);
         usuarios.MapPut("/{id}", ActualizarUsuarioAsync);
@@ -94,10 +96,29 @@ internal static class EndpointsAdminConfiguracion
                 request.Cargo,
                 request.AntiguedadAnios,
                 request.Idioma,
-                request.UsuarioWhatsapp),
+                request.UsuarioWhatsapp,
+                request.NombreSaludo),
             cancellationToken);
 
         return Results.Created($"/api/admin/usuarios/{usuario.Id}", MapearUsuario(usuario));
+    }
+
+    private static async Task<IResult> CompletarNombresSaludoAsync(
+        HttpContext contexto,
+        CancellationToken cancellationToken)
+    {
+        var completados = await ResolverServicio(contexto)
+            .CompletarNombresSaludoFaltantesAsync(cancellationToken);
+        return Results.Ok(new { completados });
+    }
+
+    private static async Task<IResult> ContarNombresSaludoPendientesAsync(
+        HttpContext contexto,
+        CancellationToken cancellationToken)
+    {
+        var pendientes = await ResolverServicio(contexto)
+            .ContarNombresSaludoFaltantesAsync(cancellationToken);
+        return Results.Ok(new { pendientes });
     }
 
     // I-08 (04 §5.1): sube un archivo (CSV en Sprint 1a) y hace upsert por numero normalizado. El
@@ -230,7 +251,8 @@ internal static class EndpointsAdminConfiguracion
                 request.Cargo,
                 request.AntiguedadAnios,
                 request.Idioma,
-                request.UsuarioWhatsapp),
+                request.UsuarioWhatsapp,
+                request.NombreSaludo),
             cancellationToken);
 
         return Results.Ok(MapearUsuario(usuario));
@@ -256,7 +278,8 @@ internal static class EndpointsAdminConfiguracion
                 request.Cargo,
                 request.AntiguedadAnios,
                 request.Idioma,
-                request.UsuarioWhatsapp),
+                request.UsuarioWhatsapp,
+                request.NombreSaludo),
             cancellationToken);
 
         return Results.Created(
@@ -537,6 +560,7 @@ internal static class EndpointsAdminConfiguracion
             usuario.CodigoUsuario,
             usuario.CodigoUsuarioLegible,
             usuario.Nombre,
+            usuario.NombreSaludo,
             usuario.WhatsappNormalizado.Valor,
             usuario.UsuarioWhatsapp,
             usuario.Rol.ToString().ToLowerInvariant(),
@@ -603,7 +627,8 @@ internal static class EndpointsAdminConfiguracion
         string? Cargo,
         decimal? AntiguedadAnios,
         string? Idioma,
-        string? UsuarioWhatsapp);
+        string? UsuarioWhatsapp,
+        string? NombreSaludo);
 
     private sealed record ActualizarUsuarioRequest(
         string? Nombre,
@@ -620,7 +645,8 @@ internal static class EndpointsAdminConfiguracion
         string? Cargo,
         decimal? AntiguedadAnios,
         string? Idioma,
-        string? UsuarioWhatsapp);
+        string? UsuarioWhatsapp,
+        string? NombreSaludo);
 
     /// <summary>Reasignacion manual del numero a otra persona (04 §5.1, I-08 §4.4).</summary>
     private sealed record ReasignarNumeroRequest(
@@ -631,7 +657,8 @@ internal static class EndpointsAdminConfiguracion
         string? Cargo,
         decimal? AntiguedadAnios,
         string? Idioma,
-        string? UsuarioWhatsapp);
+        string? UsuarioWhatsapp,
+        string? NombreSaludo);
 
     private sealed record GuardarTagRequest(
         string? Nombre,
@@ -658,6 +685,7 @@ internal static class EndpointsAdminConfiguracion
         int CodigoUsuario,
         string CodigoUsuarioLegible,
         string Nombre,
+        string NombreSaludo,
         string WhatsappNormalizado,
         string? UsuarioWhatsapp,
         string Rol,

@@ -40,6 +40,16 @@ public interface IRepositorioUsuarios
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-35: persiste <c>nombreSaludo</c> solo en documentos historicos que aun no tienen la
+    /// propiedad. Los adaptadores sin documentos legacy pueden conservar el no-op por defecto.
+    /// </summary>
+    Task<int> CompletarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+        => Task.FromResult(0);
+
+    Task<int> ContarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+        => Task.FromResult(0);
+
+    /// <summary>
     /// P-34 §4.1: los participantes de un conjunto de ids, para que el servidor resuelva la identidad
     /// del listado de resultados en vez de que el portal descargue el maestro y haga el join en el
     /// navegador. Los adaptadores persistentes lo traducen a consultas acotadas por ids dentro de la

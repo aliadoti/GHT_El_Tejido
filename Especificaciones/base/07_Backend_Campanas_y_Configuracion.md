@@ -21,6 +21,9 @@ CRUD vía `/api/admin/usuarios` (`04 §5.1`). Reglas:
   número**; el resto es opcional (`I-08 §3`).
 - `codigoUsuario` (secuencial legible `U-000042`) lo asigna el servidor al crear y es **de solo
   lectura**: no cambia nunca, ni al editar ni al inactivar (`03 §3.1.1`).
+- P-35 mantiene `nombre` como identidad completa y agrega `nombreSaludo` persistido/editable. Si se
+  omite al crear se calcula con la convención `APELLIDO1 APELLIDO2 NOMBRES`; el chat usa
+  `nombreSaludo`, mientras búsquedas, resultados y documentos conservan `nombre`.
 - Activar/inactivar por `PATCH .../estado` (no se borran físicamente). **Activar falla con `409`** si
   ya hay otro activo con el mismo número.
 - Reasignación de número (`POST .../reasignar-numero`, `04 §5.1`): inactiva al titular y crea un

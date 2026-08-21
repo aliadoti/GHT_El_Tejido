@@ -1805,3 +1805,22 @@
 - Sigue pendiente, como puerta **operativa** y no de código: la medición de **RU y latencia reales
   contra Cosmos** del listado a escala (`§6`), que necesita ambiente y credenciales. Las mediciones
   de operaciones —el factor que las gobierna— están fijadas por prueba en CI.
+
+### nombre-saludo-p-35 — Identidad completa separada del trato conversacional
+
+- Fecha: 2026-08-21 - Agente/Rol: Codex - Arquitectura/Backend/Frontend/SDET.
+- `Usuario.Nombre` no cambia de significado: sigue siendo el nombre completo para identidad,
+  búsquedas, resultados, exportaciones, Markdown, JWT y comparación de titulares de I-08.
+- `Usuario.NombreSaludo` es persistido y editable. Solo sustituye `{{nombre}}` al renderizar mensajes
+  de campaña y el saludo del primer entrante; una corrección manual no se recalcula en una carga
+  masiva posterior.
+- Regla aceptada: con tres o más palabras se descartan las dos primeras bajo la convención
+  `APELLIDO1 APELLIDO2 NOMBRES`; con una o dos se conserva todo. Los valores completamente en
+  mayúsculas se capitalizan con cultura `es-CO`. Apellidos compuestos ambiguos se corrigen a mano.
+- Compatibilidad: un documento histórico sin `nombreSaludo` se materializa con el cálculo. El
+  backfill es explícito e idempotente: primero cuenta pendientes y después solo persiste faltantes;
+  no escribe durante lecturas ni reemplaza un valor existente.
+- Deuda deliberada: la plantilla y el lector CSV/XLSX todavía no exponen `Nombre para saludo`. Las
+  altas lo calculan y las actualizaciones lo conservan hasta ampliar I-08.
+- Operación: el código y el runbook están listos, pero no se ejecutó ninguna mutación contra Cosmos
+  remoto ni hubo despliegue o push.

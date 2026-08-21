@@ -280,6 +280,25 @@ public sealed class ServicioCargaMasivaTests
     }
 
     [Fact]
+    public async Task Cargar_ActualizacionConservaNombreSaludoCorregidoManualmente()
+    {
+        await SembrarAsync(
+            "u_1",
+            7,
+            "ARENAS CHAVES JUAN PABLO",
+            "573001112233",
+            nombreSaludo: "Juan");
+        var csv = Cabecera + ",,,ARENAS CHAVES JUAN PABLO,Gerente,,,,573001112233\n";
+
+        await Cargar(csv);
+
+        var usuario = await BuscarPorNumero("573001112233");
+        usuario!.Nombre.Should().Be("ARENAS CHAVES JUAN PABLO");
+        usuario.NombreSaludo.Should().Be("Juan");
+        usuario.Cargo.Should().Be("Gerente");
+    }
+
+    [Fact]
     public async Task Cargar_TelefonoExistenteConNombreDistinto_RechazaYNoEscribeNada()
     {
         await SembrarAsync("u_1", 7, "ANA PEREZ", "573001112233", cargo: "Coordinadora");
@@ -497,7 +516,8 @@ public sealed class ServicioCargaMasivaTests
         string? cargo = null,
         string? usuarioWhatsapp = null,
         RolUsuario rol = RolUsuario.Participante,
-        IEnumerable<string>? tags = null)
+        IEnumerable<string>? tags = null,
+        string? nombreSaludo = null)
     {
         var usuario = Usuario.Crear(
             id,
@@ -516,7 +536,8 @@ public sealed class ServicioCargaMasivaTests
             empresaId: null,
             sede: null,
             cargo,
-            email);
+            email,
+            nombreSaludo: nombreSaludo);
 
         await _usuarios.GuardarUsuarioAsync(usuario, CancellationToken.None);
     }

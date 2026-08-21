@@ -37,6 +37,7 @@ export interface UsuarioAdmin {
   codigoUsuario: number;
   codigoUsuarioLegible: string;
   nombre: string;
+  nombreSaludo: string;
   whatsappNormalizado: string;
   usuarioWhatsapp?: string | null;
   rol: 'admin' | 'visor' | 'participante' | string;

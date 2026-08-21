@@ -26,6 +26,7 @@ public sealed class Usuario
         string? email,
         decimal? antiguedadAnios,
         IdiomaConversacion idioma,
+        string nombreSaludo,
         IReadOnlyCollection<string> tags,
         IReadOnlyDictionary<string, object?> propiedadesDinamicas,
         DateTimeOffset creadoEn,
@@ -34,6 +35,7 @@ public sealed class Usuario
         Id = id;
         CodigoUsuario = codigoUsuario;
         Nombre = nombre;
+        NombreSaludo = nombreSaludo;
         WhatsappNormalizado = whatsappNormalizado;
         UsuarioWhatsapp = usuarioWhatsapp;
         Rol = rol;
@@ -62,6 +64,12 @@ public sealed class Usuario
     public int CodigoUsuario { get; }
 
     public string Nombre { get; }
+
+    /// <summary>
+    /// P-35: nombre cercano usado exclusivamente para saludar al participante. El nombre completo
+    /// permanece en <see cref="Nombre"/> para identidad, busqueda, reportes y auditoria.
+    /// </summary>
+    public string NombreSaludo { get; }
 
     public NumeroWhatsApp WhatsappNormalizado { get; }
 
@@ -129,7 +137,8 @@ public sealed class Usuario
         string? cargo = null,
         string? email = null,
         decimal? antiguedadAnios = null,
-        string? idioma = null)
+        string? idioma = null,
+        string? nombreSaludo = null)
     {
         var fechaCreacionUtc = creadoEn.ToUniversalTime();
         var fechaActualizacionUtc = actualizadoEn.ToUniversalTime();
@@ -150,10 +159,12 @@ public sealed class Usuario
                 "El codigo de usuario debe ser un entero positivo asignado por la secuencia.");
         }
 
+        var nombreCompleto = NormalizarNombre(DomainGuards.Required(nombre, nameof(nombre)));
+
         return new Usuario(
             DomainGuards.Required(id, nameof(id)),
             codigoUsuario,
-            NormalizarNombre(DomainGuards.Required(nombre, nameof(nombre))),
+            nombreCompleto,
             whatsappNormalizado,
             Opcional(usuarioWhatsapp),
             rol,
@@ -166,6 +177,7 @@ public sealed class Usuario
             NormalizarEmail(email),
             antiguedadAnios,
             CrearIdioma(idioma),
+            ResolverNombreSaludo(nombreCompleto, nombreSaludo),
             NormalizeTags(tags),
             NormalizeProperties(propiedadesDinamicas),
             fechaCreacionUtc,
@@ -200,6 +212,28 @@ public sealed class Usuario
         var partes = nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return string.Join(' ', partes);
     }
+
+    /// <summary>
+    /// P-35: deriva el saludo bajo la convencion vigente APELLIDO1 APELLIDO2 NOMBRES. La regla es
+    /// deliberadamente determinista; los apellidos compuestos se corrigen mediante el campo
+    /// persistido <c>nombreSaludo</c>, no con heuristicas adicionales.
+    /// </summary>
+    public static string CalcularNombreSaludo(string nombreCompleto)
+    {
+        var partes = NormalizarNombre(DomainGuards.Required(nombreCompleto, nameof(nombreCompleto)))
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var partesSaludo = partes.Length >= 3 ? partes.Skip(2) : partes;
+        var cultura = CultureInfo.GetCultureInfo("es-CO");
+        var candidato = string.Join(' ', partesSaludo);
+        return candidato == candidato.ToUpper(cultura)
+            ? cultura.TextInfo.ToTitleCase(candidato.ToLower(cultura))
+            : candidato;
+    }
+
+    private static string ResolverNombreSaludo(string nombreCompleto, string? nombreSaludo)
+        => string.IsNullOrWhiteSpace(nombreSaludo)
+            ? CalcularNombreSaludo(nombreCompleto)
+            : NormalizarNombre(nombreSaludo);
 
     private static string? NormalizarEmail(string? email)
     {

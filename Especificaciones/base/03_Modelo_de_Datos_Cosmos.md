@@ -53,6 +53,7 @@ Notas (`ARQ §9`):
   "codigoUsuario": 42,
   "claveUnicidad": "wa|573001112233",
   "nombre": "Ana Pérez",
+  "nombreSaludo": "Ana",
   "whatsappNormalizado": "573001112233",
   "usuarioWhatsapp": null,
   "rol": "participante",
@@ -79,6 +80,10 @@ Notas (`ARQ §9`):
 - `idioma` **ya existe** como campo de primer nivel (`I-08 v2`), admite `es|en` y usa `es` cuando el
   origen viene vacío o el documento histórico no lo contiene. P-32 lo consume como fuente de verdad;
   no agrega otro campo ni autodetección.
+- `nombre` conserva la identidad completa y canónica. `nombreSaludo` es el valor cercano usado por
+  `{{nombre}}` en WhatsApp (`P-35`): se persiste y puede corregirse manualmente. Un documento
+  histórico sin el campo se lee calculándolo desde `nombre`; el backfill explícito completa la forma
+  canónica sin sobrescribir correcciones existentes.
 
 **Identificadores (`I-08 §3.1`)**
 - `id` (`u_<guid>`) es el identificador **técnico** y el que referencian `ParticipanteCampania`,

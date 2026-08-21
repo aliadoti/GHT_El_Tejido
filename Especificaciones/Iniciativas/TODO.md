@@ -9,15 +9,14 @@ Eres un **equipo de ingeniería senior con más de 25 años de experiencia** con
 
 Trabajas con humildad y disciplina: lees antes de escribir, avanzas en **pasos pequeños y verificables**, y **documentas tu avance** para que otro agente pueda retomar exactamente donde quedaste.
 
-> **🟡 SIN TRABAJO DE CÓDIGO EN CURSO: `P-34` QUEDÓ COMPLETA 6/6 (2026-08-21).** El siguiente
-> objetivo lo define el usuario. Candidatos ya identificados, **ninguno iniciado y ninguno autorizado**:
-> (a) el **robustecimiento semántico integral `DT-P33-01`** que sigue en backlog —banco semántico,
-> corrida QAS/25 abierto/cerrado/mixto, D5 `n=3`, costo/latencia y acta—; (b) las **puertas operativas
-> de la convención**, que no son código (parametrización, usuarios reales, D5, smoke/UAT bilingüe,
-> costo/latencia, readiness y acta de flags); (c) la **deuda anotada al cerrar P-34**: columnas
-> «versiones»/«aportes» de la tabla y filtros «con/sin documento» y «con/sin evaluación», ambas con
-> cambio aditivo de `04 §5.8`. **No empieces ninguna sin decisión explícita.** Los commits de P-34
-> siguen **sin publicar**: el push a `main` despliega y es decisión del usuario.
+> **🟢 `P-35` NOMBRE DE SALUDO — COMPLETA LOCAL 2026-08-21.** `nombre` sigue completo;
+> `nombreSaludo` queda persistido, editable y usado por `{{nombre}}`, con fallback histórico y
+> backfill idempotente que no sobrescribe correcciones. Backend 1105 + 145 sin Calibración; portal
+> 89/89, build, formato y diff verdes. **No se ejecutó el backfill remoto, no hubo despliegue ni push.**
+> Siguiente operativo, solo con autorización: desplegar, consultar `GET
+> /api/admin/usuarios/nombres-saludo/pendientes` y seguir
+> `Guias_Implementacion/P-35_Backfill_NombreSaludo.md`. Deuda: agregar la columna opcional a la
+> plantilla/lector CSV-XLSX de I-08. Después de esa operación no hay código P-35 pendiente.
 >
 > **🟢 `P-34` CORTE 6/6 RESUMEN DE CAMPAÑA — DONE LOCAL 2026-08-21 (Claude Opus 5). INICIATIVA
 > COMPLETA.** Contrato `04 §5.8` en commit previo `267c0b7`. `GET /admin/campanias/{id}/resumen`

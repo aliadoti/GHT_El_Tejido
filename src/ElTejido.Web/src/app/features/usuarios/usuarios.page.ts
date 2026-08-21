@@ -147,7 +147,18 @@ import {
             }
           </div>
           <form class="form-grid" (ngSubmit)="guardarUsuario()">
-            <label>Nombre <input name="nombre" [(ngModel)]="nuevoUsuario.nombre" required /></label>
+            <label
+              >Nombre completo
+              <input name="nombre" [(ngModel)]="nuevoUsuario.nombre" required />
+            </label>
+            <label
+              >Nombre para saludo
+              <input
+                name="nombreSaludo"
+                [(ngModel)]="nuevoUsuario.nombreSaludo"
+                placeholder="Se calcula si se deja vacío"
+              />
+            </label>
             <label>Numero <input name="numero" [(ngModel)]="nuevoUsuario.numero" required /></label>
             <label>
               Rol
@@ -425,6 +436,7 @@ export class UsuariosPage {
     this.editandoId.set(usuario.id);
     this.nuevoUsuario = {
       nombre: usuario.nombre,
+      nombreSaludo: usuario.nombreSaludo,
       numero: usuario.whatsappNormalizado,
       rol: usuario.rol,
       area: usuario.area ?? '',
@@ -473,6 +485,7 @@ export class UsuariosPage {
 function formularioUsuarioVacio() {
   return {
     nombre: '',
+    nombreSaludo: '',
     numero: '',
     rol: 'participante',
     area: '',

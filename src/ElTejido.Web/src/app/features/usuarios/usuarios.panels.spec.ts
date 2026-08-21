@@ -38,6 +38,7 @@ function usuario(parcial: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
     codigoUsuario: 7,
     codigoUsuarioLegible: 'U-000007',
     nombre: 'ANA PEREZ',
+    nombreSaludo: 'Ana Perez',
     whatsappNormalizado: '573001112233',
     rol: 'participante',
     estado: 'activo',

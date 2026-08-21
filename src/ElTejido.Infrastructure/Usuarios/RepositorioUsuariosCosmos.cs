@@ -157,6 +157,32 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
             .ToArray();
     }
 
+    public async Task<int> CompletarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+    {
+        var documents = await _container.QueryUsuariosAsync(
+            new FiltroUsuariosCosmos(null, null, null, null, null, [], null),
+            cancellationToken);
+        var faltantes = documents
+            .Where(document => string.IsNullOrWhiteSpace(document.NombreSaludo))
+            .ToArray();
+
+        foreach (var document in faltantes)
+        {
+            var completo = UsuarioCosmosDocument.FromDomain(document.ToDomain());
+            await _container.UpsertUsuarioAsync(completo, completo.Pk, cancellationToken);
+        }
+
+        return faltantes.Length;
+    }
+
+    public async Task<int> ContarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+    {
+        var documents = await _container.QueryUsuariosAsync(
+            new FiltroUsuariosCosmos(null, null, null, null, null, [], null),
+            cancellationToken);
+        return documents.Count(document => string.IsNullOrWhiteSpace(document.NombreSaludo));
+    }
+
     /// <summary>
     /// P-34 §4.1: identidad del listado de resultados. Los ids viajan en bloques para que la consulta
     /// no crezca sin limite: con las 1.000 ideas previstas para la convencion son a lo sumo cinco

@@ -29,6 +29,7 @@ public sealed class RepositorioUsuariosCosmosTests
         upsert.Document.WhatsappNormalizado.Should().Be("573001112233");
         upsert.Document.Rol.Should().Be("participante");
         upsert.Document.Estado.Should().Be("activo");
+        upsert.Document.NombreSaludo.Should().Be("Ana Perez");
         upsert.Document.Tags.Should().BeEquivalentTo("t_area_oper", "t_emp_ght");
         upsert.Document.PropiedadesDinamicas.Should().ContainKey("cargo");
     }
@@ -78,6 +79,42 @@ public sealed class RepositorioUsuariosCosmosTests
         documento.Idioma.Should().Be("en");
         documento.ToDomain().Idioma.Should().Be("en");
         historico.ToDomain().Idioma.Should().Be("es");
+    }
+
+    [Fact]
+    public void NombreSaludo_DocumentoHistoricoLoCalculaYRoundTripLoPersiste()
+    {
+        var documento = UsuarioCosmosDocument.FromDomain(CrearUsuario(nombre: "ARENAS CHAVES JUAN PABLO"));
+        var historico = CopiarSinNombreSaludo(documento);
+
+        var dominio = historico.ToDomain();
+        var canonico = UsuarioCosmosDocument.FromDomain(dominio);
+
+        dominio.Nombre.Should().Be("ARENAS CHAVES JUAN PABLO");
+        dominio.NombreSaludo.Should().Be("Juan Pablo");
+        canonico.NombreSaludo.Should().Be("Juan Pablo");
+    }
+
+    [Fact]
+    public async Task CompletarNombresSaludoFaltantes_NoSobrescribeCorreccionesExistentes()
+    {
+        var faltante = CopiarSinNombreSaludo(
+            UsuarioCosmosDocument.FromDomain(CrearUsuario(nombre: "ARENAS CHAVES JUAN PABLO")));
+        var corregido = UsuarioCosmosDocument.FromDomain(
+            CrearUsuario(nombre: "DE LA CRUZ PEREZ ANA", nombreSaludo: "Ana"));
+        var container = new FakeUsersCosmosContainer
+        {
+            UsuarioQueryResult = [faltante, corregido],
+        };
+        var repository = new RepositorioUsuariosCosmos(container);
+
+        var pendientes = await repository.ContarNombresSaludoFaltantesAsync(CancellationToken.None);
+        var completados = await repository.CompletarNombresSaludoFaltantesAsync(CancellationToken.None);
+
+        pendientes.Should().Be(1);
+        completados.Should().Be(1);
+        container.UsuarioUpserts.Should().ContainSingle()
+            .Which.Document.NombreSaludo.Should().Be("Juan Pablo");
     }
 
     [Fact]
@@ -311,12 +348,15 @@ public sealed class RepositorioUsuariosCosmosTests
         result.Should().ContainSingle().Which.Nombre.Should().Be("Operaciones");
     }
 
-    private static Usuario CrearUsuario(string? idioma = null)
+    private static Usuario CrearUsuario(
+        string? idioma = null,
+        string nombre = "Ana Perez",
+        string? nombreSaludo = null)
     {
         return Usuario.Crear(
             "u_1",
             1,
-            "Ana Perez",
+            nombre,
             NumeroWhatsApp.FromNormalized("573001112233"),
             RolUsuario.Participante,
             EstadoRegistro.Activo,
@@ -326,8 +366,36 @@ public sealed class RepositorioUsuariosCosmosTests
             new Dictionary<string, object?> { ["cargo"] = "Coordinadora" },
             new DateTimeOffset(2026, 6, 10, 12, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 6, 11, 9, 0, 0, TimeSpan.Zero),
-            idioma: idioma);
+            idioma: idioma,
+            nombreSaludo: nombreSaludo);
     }
+
+    private static UsuarioCosmosDocument CopiarSinNombreSaludo(UsuarioCosmosDocument original)
+        => new()
+        {
+            Id = original.Id,
+            Pk = original.Pk,
+            ClaveUnicidad = original.ClaveUnicidad,
+            CodigoUsuario = original.CodigoUsuario,
+            Nombre = original.Nombre,
+            WhatsappNormalizado = original.WhatsappNormalizado,
+            UsuarioWhatsapp = original.UsuarioWhatsapp,
+            Rol = original.Rol,
+            Estado = original.Estado,
+            Area = original.Area,
+            Empresa = original.Empresa,
+            EmpresaId = original.EmpresaId,
+            Sede = original.Sede,
+            Cargo = original.Cargo,
+            Email = original.Email,
+            AntiguedadAnios = original.AntiguedadAnios,
+            Idioma = original.Idioma,
+            Tags = original.Tags,
+            PropiedadesDinamicas = original.PropiedadesDinamicas,
+            CreadoEn = original.CreadoEn,
+            ActualizadoEn = original.ActualizadoEn,
+            NombreSaludo = null,
+        };
 
     private static SecuenciaCosmosDocument CrearSecuencia(int ultimoValor, string etag)
         => new()

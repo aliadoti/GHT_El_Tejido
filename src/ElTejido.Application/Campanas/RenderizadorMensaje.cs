@@ -32,7 +32,7 @@ public static class RenderizadorMensaje
         var nombreEfectivoCampania = nombreCampania ?? campania.Nombre;
         var variables = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["nombre"] = usuario.Nombre,
+            ["nombre"] = usuario.NombreSaludo,
             // area/empresa son opcionales desde la plantilla oficial (I-08 §3): una variable sin dato
             // se resuelve a cadena vacia, nunca deja el placeholder crudo en el mensaje.
             ["area"] = usuario.Area ?? string.Empty,

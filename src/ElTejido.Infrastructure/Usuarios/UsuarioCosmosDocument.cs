@@ -32,6 +32,9 @@ internal sealed class UsuarioCosmosDocument
     [JsonProperty("nombre")]
     public string Nombre { get; init; } = string.Empty;
 
+    [JsonProperty("nombreSaludo")]
+    public string? NombreSaludo { get; init; }
+
     [JsonProperty("whatsappNormalizado")]
     public string WhatsappNormalizado { get; init; } = string.Empty;
 
@@ -91,6 +94,7 @@ internal sealed class UsuarioCosmosDocument
             CodigoUsuario = usuario.CodigoUsuario,
             ClaveUnicidad = ConstruirClaveUnicidad(usuario),
             Nombre = usuario.Nombre,
+            NombreSaludo = usuario.NombreSaludo,
             WhatsappNormalizado = usuario.WhatsappNormalizado.Valor,
             UsuarioWhatsapp = usuario.UsuarioWhatsapp,
             Rol = ToCosmosRol(usuario.Rol),
@@ -143,7 +147,8 @@ internal sealed class UsuarioCosmosDocument
             Cargo,
             Email,
             AntiguedadAnios,
-            Idioma);
+            Idioma,
+            NombreSaludo);
     }
 
     public static string ToCosmosRol(RolUsuario rol)

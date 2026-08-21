@@ -61,7 +61,8 @@ internal static class EndpointsSimulacion
             request.Tags,
             null,
             existente?.CreadoEn ?? ahora,
-            ahora);
+            ahora,
+            nombreSaludo: existente?.NombreSaludo);
 
         await usuarios.GuardarUsuarioAsync(admin, ct);
         return Results.Ok(new

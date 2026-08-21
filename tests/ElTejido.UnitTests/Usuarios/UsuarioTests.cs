@@ -143,6 +143,41 @@ public sealed class UsuarioTests
         usuario.UsuarioWhatsapp.Should().Be("ana.perez");
     }
 
+    [Theory]
+    [InlineData("ARENAS CHAVES JUAN PABLO", "Juan Pablo")]
+    [InlineData("PEREZ GOMEZ ANA MARÍA", "Ana María")]
+    [InlineData("ANA", "Ana")]
+    [InlineData("Ana Pérez", "Ana Pérez")]
+    public void Crear_CalculaNombreSaludoSinCambiarNombreCompleto(string nombre, string esperado)
+    {
+        var usuario = Crear(nombre: nombre);
+
+        usuario.Nombre.Should().Be(nombre);
+        usuario.NombreSaludo.Should().Be(esperado);
+    }
+
+    [Fact]
+    public void Crear_ConservaNombreSaludoCorregidoManualmente()
+    {
+        var usuario = Usuario.Crear(
+            "u_1",
+            1,
+            "DE LA CRUZ PEREZ ANA",
+            Numero,
+            RolUsuario.Participante,
+            EstadoRegistro.Activo,
+            null,
+            null,
+            [],
+            null,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            nombreSaludo: "Ana María");
+
+        usuario.Nombre.Should().Be("DE LA CRUZ PEREZ ANA");
+        usuario.NombreSaludo.Should().Be("Ana María");
+    }
+
     [Fact]
     public void Crear_KeepsAntiguedadDecimalWithoutRounding()
     {

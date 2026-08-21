@@ -34,6 +34,10 @@ public interface IServicioGestionUsuarios
         EstadoRegistro estado,
         CancellationToken cancellationToken);
 
+    Task<int> CompletarNombresSaludoFaltantesAsync(CancellationToken cancellationToken);
+
+    Task<int> ContarNombresSaludoFaltantesAsync(CancellationToken cancellationToken);
+
     /// <summary>
     /// Reasignacion manual de un numero a otra persona (I-08 §4.4, 04 §5.1). Inactiva al titular
     /// <paramref name="id"/> conservando su numero e historial y <b>crea</b> un usuario nuevo (nuevo
@@ -85,7 +89,8 @@ public sealed record SolicitudCrearUsuario(
     string? Cargo = null,
     decimal? AntiguedadAnios = null,
     string? Idioma = null,
-    string? UsuarioWhatsapp = null);
+    string? UsuarioWhatsapp = null,
+    string? NombreSaludo = null);
 
 /// <summary>
 /// Edicion individual (04 §5.1): un campo <c>null</c> conserva el valor actual. No cambia
@@ -106,7 +111,8 @@ public sealed record SolicitudActualizarUsuario(
     string? Cargo = null,
     decimal? AntiguedadAnios = null,
     string? Idioma = null,
-    string? UsuarioWhatsapp = null);
+    string? UsuarioWhatsapp = null,
+    string? NombreSaludo = null);
 
 /// <summary>Datos del nuevo titular en una reasignacion manual de numero (I-08 §4.4).</summary>
 public sealed record SolicitudReasignarNumero(
@@ -117,7 +123,8 @@ public sealed record SolicitudReasignarNumero(
     string? Cargo = null,
     decimal? AntiguedadAnios = null,
     string? Idioma = null,
-    string? UsuarioWhatsapp = null);
+    string? UsuarioWhatsapp = null,
+    string? NombreSaludo = null);
 
 /// <summary>
 /// Resultado de una reasignacion: el usuario nuevo y la identidad del titular anterior, que queda

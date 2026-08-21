@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Especificaciones/Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md",
+                "file": "Client_partner/Guia_Rapida_Palancas_Conversacion_Admin.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "P-34_Resultados_Filtros_Tabla_y_Exportacion"
+              "title": "Guia_Rapida_Palancas_Conversacion_Admin"
             }
           },
           {
@@ -199,24 +199,27 @@
       "bases:Create new base": false
     }
   },
-  "active": "f83ad7aa300cd713",
+  "active": "d7b3a10ae41f7f3b",
   "lastOpenFiles": [
-    "src/ElTejido.Api/wwwroot/chunk-DR1CIJT_.js",
-    "src/ElTejido.Api/wwwroot/chunk-DghRPLdq.js",
-    "src/ElTejido.Api/wwwroot/chunk-Bq3bhFID.js",
-    "src/ElTejido.Api/wwwroot/chunk-BPY8xYkg.js",
-    "src/ElTejido.Api/wwwroot/chunk-Brhg30d4.js",
-    "src/ElTejido.Api/wwwroot/chunk-C74Smwkt.js",
-    "src/ElTejido.Api/wwwroot/chunk-PKZ3jwli.js",
-    "src/ElTejido.Api/wwwroot/chunk-DLepATOW.js",
-    "src/ElTejido.Api/wwwroot/chunk-Cp2ocFzM.js",
-    "src/ElTejido.Api/wwwroot/chunk-prCu1z1I.js",
-    "src/ElTejido.Api/wwwroot/chunk-DMKIYGLI.js",
+    "src/ElTejido.Api/wwwroot/chunk-BH2PTb7r.js",
+    "src/ElTejido.Api/wwwroot/chunk-CCLubmbe.js",
+    "src/ElTejido.Api/wwwroot/chunk-DirWWANi.js",
+    "src/ElTejido.Api/wwwroot/chunk-BNiLgGip.js",
+    "src/ElTejido.Api/wwwroot/chunk-1yMKzEx4.js",
+    "src/ElTejido.Api/wwwroot/chunk-DVtDaPot.js",
+    "src/ElTejido.Api/wwwroot/chunk-r06Zcdvs.js",
+    "src/ElTejido.Api/wwwroot/chunk-CBjf6fIC.js",
+    "src/ElTejido.Api/wwwroot/chunk-CfgZE1oM.js",
+    "src/ElTejido.Api/wwwroot/chunk-CNatQfOg.js",
+    "src/ElTejido.Api/wwwroot/chunk-DDKOmOQO.js",
+    "Guias_Implementacion/P-35_Backfill_NombreSaludo.md",
+    "Especificaciones/Iniciativas/P-35_Nombre_de_Saludo_Participantes.md",
+    "Client_partner/Manual_Tejido_de_Red_Convencion.md",
+    "Especificaciones/Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md",
+    "Especificaciones/Iniciativas/DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md",
     "src/ElTejido.Api/wwwroot/brand/aliadoti-mark.png",
     "src/ElTejido.Api/wwwroot/brand/eltejido-logo.png",
     "Especificaciones/Iniciativas/P-33_Consulta_y_Cierre_Visible_de_la_Idea.md",
-    "Especificaciones/Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md",
-    "Especificaciones/Iniciativas/DT-P33-01_Clasificacion_Semantica_Consulta_Idea.md",
     "Rubricas/20260818Prompt Coach Tejido de Red — Rúbrica y Retroalimentación de Ideas - 081826.md",
     "Guias_Implementacion/Plan_Ambiente_Produccion_El_Tejido.md",
     "Especificaciones/Adenda_Congelamiento_Convencion_2026.md",
@@ -236,9 +239,6 @@
     "Especificaciones/Iniciativas/DT-P32-05_Guarda_Edicion_Campana_Activa.md",
     "QAS/resultados/Resultados_P32_Multidioma_2026-08-16_corrida-P32-20260816-1955.md",
     "QAS/resultados/Resultados_P32_Multidioma_2026-08-16.md",
-    "Especificaciones/planes/DT-RUB-01_Inventario_y_Migracion_Rubricas.md",
-    "Especificaciones/Iniciativas/DT-I20-02_Contrato_Visible_Texto_Plano_y_Gobierno_de_Prompts.md",
-    "Especificaciones/Iniciativas/D5_Banco_Calibracion.md",
     "Client_partner/flujo_participante_tejido.png",
     "QAS/resultados/2026-08-06/portal_login.png",
     "src/ElTejido.Web/public/brand/eltejido-logo.png",

@@ -137,7 +137,8 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       guardarUsuario: () => void;
     };
     comp.nuevoUsuario = {
-      nombre: 'Beto',
+      nombre: 'ARENAS CHAVES JUAN PABLO',
+      nombreSaludo: 'Juan Pablo',
       numero: '573004445566',
       rol: 'participante',
       area: 'Ventas',
@@ -147,7 +148,8 @@ describe('Portal admin E2E (recorrido SPA)', () => {
 
     const post = http.expectOne((r) => r.url === '/api/admin/usuarios' && r.method === 'POST');
     expect(post.request.headers.get('X-CSRF-Token')).toBe(CSRF);
-    expect((post.request.body as { nombre: string }).nombre).toBe('Beto');
+    expect((post.request.body as { nombre: string }).nombre).toBe('ARENAS CHAVES JUAN PABLO');
+    expect((post.request.body as { nombreSaludo: string }).nombreSaludo).toBe('Juan Pablo');
     post.flush(usuario('u2', 'Beto'));
 
     // Recarga posterior al alta.
@@ -546,6 +548,7 @@ describe('Portal admin E2E (recorrido SPA)', () => {
       codigoUsuario: 1,
       codigoUsuarioLegible: 'U-000001',
       nombre,
+      nombreSaludo: nombre,
       whatsappNormalizado: '573001112233',
       rol: 'participante',
       estado: 'activo',

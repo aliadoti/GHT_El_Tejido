@@ -4,7 +4,18 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-21 (Claude Opus 5, Backend/Frontend/UX-A11Y/SDET): **`P-34` COMPLETA
+- Ultima actualizacion: 2026-08-21 (Codex, Arquitectura/Backend/Frontend/SDET): **`P-35` COMPLETA
+  LOCAL.** `Usuario.nombre` conserva la identidad completa y se agrega `nombreSaludo` persistido,
+  editable y usado exclusivamente por `{{nombre}}`. La regla determinista convierte
+  `ARENAS CHAVES JUAN PABLO` en `Juan Pablo`; documentos históricos sin el campo se leen con fallback
+  y el backfill explícito `GET .../nombres-saludo/pendientes` + `POST .../completar` solo llena
+  faltantes, sin sobrescribir correcciones. Alta/edición individual y portal permiten corregirlo; la
+  carga masiva calcula en altas y conserva en actualizaciones. La columna CSV/XLSX queda como deuda
+  documentada. Backend **1105 unitarias + 145 integraciones** sin Calibración; portal **89 pruebas en
+  11 archivos**, build de producción y Prettier verdes; build Release `-warnaserror`, formato y diff
+  verdes. **No se ejecutó el backfill contra Cosmos remoto, no hubo despliegue ni push.** Siguiente
+  operativo: desplegar con autorización, previsualizar el conteo y ejecutar el runbook P-35.
+- Actualizacion anterior: 2026-08-21 (Claude Opus 5, Backend/Frontend/UX-A11Y/SDET): **`P-34` COMPLETA
   6/6 — DONE LOCAL.** Cierra con el **resumen de campaña**: `GET /admin/campanias/{id}/resumen`
   (`04 §5.8` en commit previo `267c0b7`) devuelve participación, embudo, distribución de
   calificaciones, cobertura por pregunta y temas **sobre el mismo conjunto filtrado que la tabla** —

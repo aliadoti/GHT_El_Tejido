@@ -401,7 +401,8 @@ public sealed class ServicioCargaMasiva : IServicioCargaMasiva
             fila.Cargo ?? existente.Cargo,
             fila.Email ?? existente.Email,
             fila.AntiguedadAnios ?? existente.AntiguedadAnios,
-            fila.Idioma ?? existente.Idioma);
+            fila.Idioma ?? existente.Idioma,
+            existente.NombreSaludo);
 
     private static Usuario Clonar(Usuario usuario, EstadoRegistro estado, DateTimeOffset ahora)
         => Usuario.Crear(
@@ -423,7 +424,8 @@ public sealed class ServicioCargaMasiva : IServicioCargaMasiva
             usuario.Cargo,
             usuario.Email,
             usuario.AntiguedadAnios,
-            usuario.Idioma);
+            usuario.Idioma,
+            usuario.NombreSaludo);
 
     // ---------- Tags, campania y auditoria ----------
 

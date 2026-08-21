@@ -77,7 +77,8 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             solicitud.Cargo,
             solicitud.Email,
             solicitud.AntiguedadAnios,
-            solicitud.Idioma);
+            solicitud.Idioma,
+            solicitud.NombreSaludo);
 
         await _usuarios.GuardarUsuarioAsync(usuario, cancellationToken);
         return usuario;
@@ -128,7 +129,8 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             ResolverOpcional(solicitud.Cargo, existente.Cargo),
             ResolverOpcional(solicitud.Email, existente.Email),
             solicitud.AntiguedadAnios ?? existente.AntiguedadAnios,
-            ResolverOpcional(solicitud.Idioma, existente.Idioma));
+            ResolverOpcional(solicitud.Idioma, existente.Idioma),
+            ResolverTexto(solicitud.NombreSaludo, existente.NombreSaludo));
 
         await _usuarios.GuardarUsuarioAsync(actualizado, cancellationToken);
         return actualizado;
@@ -174,7 +176,8 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             solicitud.Cargo,
             solicitud.Email,
             solicitud.AntiguedadAnios,
-            solicitud.Idioma);
+            solicitud.Idioma,
+            solicitud.NombreSaludo);
 
         try
         {
@@ -210,7 +213,8 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             usuario.Cargo,
             usuario.Email,
             usuario.AntiguedadAnios,
-            usuario.Idioma);
+            usuario.Idioma,
+            usuario.NombreSaludo);
 
     /// <summary>
     /// El email, si viene, es unico <b>entre usuarios activos</b> (I-08 §3.1.g). Es nullable, asi que
@@ -251,6 +255,12 @@ public sealed class ServicioGestionUsuarios : IServicioGestionUsuarios
             id,
             new SolicitudActualizarUsuario(null, null, null, estado, null, null, null, null),
             cancellationToken);
+
+    public Task<int> CompletarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+        => _usuarios.CompletarNombresSaludoFaltantesAsync(cancellationToken);
+
+    public Task<int> ContarNombresSaludoFaltantesAsync(CancellationToken cancellationToken)
+        => _usuarios.ContarNombresSaludoFaltantesAsync(cancellationToken);
 
     public Task<IReadOnlyCollection<Tag>> BuscarTagsAsync(
         FiltroTags filtro,

@@ -130,11 +130,14 @@ Devuelve el usuario de la sesión actual (para que el SPA restaure estado). `200
 | POST | `/api/admin/usuarios/{id}/reasignar-numero` | Reasignación manual: inactiva al titular y crea el nuevo (`I-08 §4.4`). |
 | POST | `/api/admin/usuarios/carga-masiva` | Alta/actualización en lote desde archivo (`I-08`). Ver sub-sección. |
 | GET | `/api/admin/usuarios/plantilla-carga` | Descarga la plantilla vacía (`.xlsx`) con la cabecera oficial. |
+| POST | `/api/admin/usuarios/nombres-saludo/completar` | Backfill idempotente P-35: agrega `nombreSaludo` solo a documentos que no lo tienen; devuelve `{ completados }`. |
+| GET | `/api/admin/usuarios/nombres-saludo/pendientes` | Previsualización P-35 sin PII: devuelve `{ pendientes }` antes o después del backfill. |
 
 Request de creación (ejemplo):
 ```json
 {
-  "nombre": "Ana Pérez", "numero": "573001112233", "rol": "participante",
+  "nombre": "ARENAS CHAVES JUAN PABLO", "nombreSaludo": "Juan Pablo",
+  "numero": "573001112233", "rol": "participante",
   "email": "ana.perez@ght.com", "empresa": "Flores El Aljibe", "empresaId": "AL", "sede": "AL",
   "cargo": "Coordinadora", "area": "Operaciones", "antiguedadAnios": 16.391666, "idioma": "es",
   "usuarioWhatsapp": null, "tags": ["t_area_oper"], "propiedadesDinamicas": {}
@@ -148,8 +151,12 @@ Request de creación (ejemplo):
 - `usuarioWhatsapp` (`string?`, opcional) se captura **solo por API/portal**; la carga masiva lo ignora
   (`03 §3.1`). No participa aún en el enrutamiento.
 - `email`, si viene, debe ser único **entre activos** → `409` si ya lo tiene otro usuario activo.
+- `nombre` sigue siendo el nombre completo. `nombreSaludo` es opcional en el request: si se omite al
+  crear, el servidor lo calcula según P-35; si se omite al editar, conserva el actual. Se devuelve
+  siempre en el DTO y es el valor de `{{nombre}}` en los saludos. En una edición, enviar cadena vacía
+  recalcula el valor con la regla automática.
 
-**Response de usuario (DTO)** — se agregan de forma **aditiva** `codigoUsuario`, `email`, `empresaId`,
+**Response de usuario (DTO)** — se agregan de forma **aditiva** `codigoUsuario`, `nombreSaludo`, `email`, `empresaId`,
 `sede`, `cargo`, `antiguedadAnios`, `idioma` y `usuarioWhatsapp` al DTO existente. Los clientes que
 ignoren los campos nuevos siguen funcionando.
 
@@ -210,7 +217,9 @@ Flores El Aljibe,AL,AL,CELY FARIAS EDGAR FELIPE,GERENTE 2 EAI,felipe.celyf@flore
 - Cabecera distinta o columnas fuera de orden → **`400`**, el lote no se procesa.
 - **No hay columna `Tags`**: si `ID Empresa` viene, se asegura la tag `t_emp_<idEmpresa>`
   (`tipoTag=empresa`, creada si falta) sin borrar las tags puestas a mano.
-- `codigoUsuario` y `usuarioWhatsapp` **nunca** se leen del archivo (`03 §3.1`).
+- `codigoUsuario`, `usuarioWhatsapp` y `nombreSaludo` **no** se leen todavía del archivo
+  (`03 §3.1`, `P-35`). En altas, `nombreSaludo` se calcula; en actualizaciones se conserva. Agregar la
+  columna opcional a CSV/XLSX queda como deuda explícita de P-35.
 
 **Response `200`** — reporte por fila (sin PII: solo ids, resultado y motivo):
 ```json
