@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,7 +18,13 @@ import {
 import { AuthService } from '../../core/auth.service';
 import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
-import { ResultadosSesionService } from './resultados-sesion.service';
+import { EventoIdea, construirLineaTiempo } from './linea-tiempo-idea';
+import {
+  COLUMNAS_RESULTADOS,
+  ColumnaResultados,
+  ResultadosSesionService,
+  VistaResultados,
+} from './resultados-sesion.service';
 
 /** P-34 (04 §5.8): filtros que el servidor entiende y que el portal serializa en la URL. */
 const LLAVES_FILTRO = [
@@ -71,7 +78,7 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
 @Component({
   selector: 'app-resultados-page',
   standalone: true,
-  imports: [FormsModule, EstadoAccesibleComponent],
+  imports: [FormsModule, NgTemplateOutlet, EstadoAccesibleComponent],
   template: `
     <section class="page-grid">
       <div class="section-header">
@@ -273,286 +280,335 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
           </p>
         </section>
       } @else {
-        <div class="resultados-master-detail">
+        <!-- P-34 §4.3: la tabla compara, el maestro-detalle lee. La vista elegida vive en sesión. -->
+        <section class="panel resultados-barra-vistas">
+          <div class="actions-row" role="group" aria-label="Vista de resultados">
+            <button
+              type="button"
+              class="ghost-button"
+              [attr.aria-pressed]="vista() === 'tabla'"
+              (click)="cambiarVista('tabla')"
+            >
+              Vista tabla
+            </button>
+            <button
+              type="button"
+              class="ghost-button"
+              [attr.aria-pressed]="vista() === 'lectura'"
+              (click)="cambiarVista('lectura')"
+            >
+              Vista lectura
+            </button>
+          </div>
+          @if (vista() === 'tabla') {
+            <div class="actions-row">
+              <label class="resultados-opcion">
+                <input
+                  type="checkbox"
+                  name="agrupar"
+                  [ngModel]="agrupado()"
+                  (ngModelChange)="alternarAgrupado()"
+                />
+                Agrupar por participante
+              </label>
+              <label class="resultados-opcion">
+                <input
+                  type="checkbox"
+                  name="densidad"
+                  [ngModel]="densidadCompacta()"
+                  (ngModelChange)="alternarDensidad()"
+                />
+                Filas compactas
+              </label>
+              <label class="resultados-opcion">
+                Filas por página
+                <select
+                  name="tamanoPagina"
+                  [ngModel]="tamanoPagina()"
+                  (ngModelChange)="cambiarTamanoPagina($event)"
+                >
+                  <option [value]="25">25</option>
+                  <option [value]="50">50</option>
+                  <option [value]="100">100</option>
+                </select>
+              </label>
+              <details class="resultados-columnas">
+                <summary>Columnas</summary>
+                <ul class="compact-list">
+                  @for (columna of columnasDisponibles; track columna.clave) {
+                    <li>
+                      <label class="resultados-opcion">
+                        <input
+                          type="checkbox"
+                          [name]="'columna-' + columna.clave"
+                          [ngModel]="columnaVisible(columna.clave)"
+                          (ngModelChange)="alternarColumna(columna.clave)"
+                        />
+                        {{ columna.etiqueta }}
+                      </label>
+                    </li>
+                  }
+                </ul>
+              </details>
+            </div>
+          }
+        </section>
+
+        @if (vista() === 'tabla') {
           <section class="panel">
             <div class="panel-heading">
               <h3>Ideas</h3>
-              <span class="muted">
-                {{ hayIdeasSinCargar() ? ideas().length + ' de ' + totalIdeas() : totalIdeas() }}
-              </span>
+              <span class="muted">{{ resumenPaginacion() }}</span>
             </div>
             @if (cargando()) {
               <div class="resultados-skeleton" aria-label="Cargando ideas">
                 <span></span><span></span><span></span>
               </div>
+            } @else if (!ideas().length) {
+              <p class="muted">{{ mensajeSinIdeas() }}</p>
             } @else {
-              <ul class="compact-list resultados-lista-maestra">
-                @for (idea of ideas(); track idea.id) {
-                  <li [class.selected-row]="ideaSeleccionada()?.id === idea.id">
-                    <button
-                      type="button"
-                      class="resultados-idea"
-                      [attr.aria-current]="ideaSeleccionada()?.id === idea.id ? 'true' : null"
-                      (click)="abrirIdea(idea.id)"
-                    >
-                      <span class="resultados-respuesta-titulo">
-                        <strong>{{ nombreParticipante(idea) }}</strong>
-                        <span
-                          class="status-badge"
-                          [class.badge-ok]="idea.estadoResultado === 'madura'"
-                          [class.badge-warn]="idea.estadoResultado === 'rechazada'"
-                          [title]="tituloEstadoIdea(idea)"
+              <div class="resultados-tabla-scroll">
+                <table
+                  class="resultados-tabla"
+                  [class.compacta]="densidadCompacta()"
+                  aria-label="Ideas de la campaña"
+                >
+                  <thead>
+                    <tr>
+                      <th scope="col" class="resultados-col-seleccion">
+                        <span class="sr-only">Selección</span>
+                      </th>
+                      <th scope="col" [attr.aria-sort]="ordenDe('participante')">
+                        <button
+                          type="button"
+                          class="resultados-orden"
+                          (click)="ordenarPor('participante')"
                         >
-                          {{ etiquetaEstadoIdea(idea) }}
-                        </span>
-                        @if (marcaFlujoIdea(idea); as marca) {
-                          <span class="status-badge">{{ marca }}</span>
-                        }
-                        @if (idea.estadoCuraduria === 'pendiente') {
-                          <span
-                            class="status-badge"
-                            title="Ninguna idea pasa automáticamente: queda pendiente de curaduría"
+                          Participante
+                        </button>
+                      </th>
+                      @if (columnaVisible('area')) {
+                        <th scope="col">Área</th>
+                      }
+                      @if (columnaVisible('pregunta')) {
+                        <th scope="col" [attr.aria-sort]="ordenDe('pregunta')">
+                          <button
+                            type="button"
+                            class="resultados-orden"
+                            (click)="ordenarPor('pregunta')"
                           >
-                            pendiente de curaduría
-                          </span>
+                            Pregunta
+                          </button>
+                        </th>
+                      }
+                      <th scope="col">Idea</th>
+                      @if (columnaVisible('estado')) {
+                        <th scope="col">Estado</th>
+                      }
+                      @if (columnaVisible('calificacion')) {
+                        <th scope="col" [attr.aria-sort]="ordenDe('calificacion')">
+                          <button
+                            type="button"
+                            class="resultados-orden"
+                            (click)="ordenarPor('calificacion')"
+                          >
+                            Calificación
+                          </button>
+                        </th>
+                      }
+                      @if (columnaVisible('creada')) {
+                        <th scope="col" [attr.aria-sort]="ordenDe('creada')">
+                          <button
+                            type="button"
+                            class="resultados-orden"
+                            (click)="ordenarPor('creada')"
+                          >
+                            Creada
+                          </button>
+                        </th>
+                      }
+                      @if (columnaVisible('actualizada')) {
+                        <th scope="col" [attr.aria-sort]="ordenDe('actualizada')">
+                          <button
+                            type="button"
+                            class="resultados-orden"
+                            (click)="ordenarPor('actualizada')"
+                          >
+                            Actualizada
+                          </button>
+                        </th>
+                      }
+                      @if (columnaVisible('documento')) {
+                        <th scope="col">Documento</th>
+                      }
+                    </tr>
+                  </thead>
+                  @for (grupo of gruposPagina(); track grupo.clave) {
+                    <tbody>
+                      @if (agrupado()) {
+                        <tr class="resultados-grupo">
+                          <th [attr.colspan]="totalColumnas()" scope="colgroup">
+                            <button
+                              type="button"
+                              class="resultados-orden"
+                              [attr.aria-expanded]="!grupoColapsado(grupo.clave)"
+                              (click)="alternarGrupo(grupo.clave)"
+                            >
+                              {{ grupo.etiqueta }} ({{ grupo.filas.length }})
+                            </button>
+                          </th>
+                        </tr>
+                      }
+                      @if (!agrupado() || !grupoColapsado(grupo.clave)) {
+                        @for (idea of grupo.filas; track idea.id) {
+                          <tr
+                            [class.selected-row]="ideaSeleccionada()?.id === idea.id"
+                            [attr.aria-current]="ideaSeleccionada()?.id === idea.id ? 'true' : null"
+                          >
+                            <td>
+                              <label class="resultados-opcion">
+                                <span class="sr-only"
+                                  >Seleccionar la idea de {{ nombreParticipante(idea) }}</span
+                                >
+                                <input
+                                  type="checkbox"
+                                  [name]="'seleccion-' + idea.id"
+                                  [ngModel]="estaSeleccionada(idea.id)"
+                                  (ngModelChange)="alternarSeleccion(idea.id)"
+                                />
+                              </label>
+                            </td>
+                            <th scope="row">
+                              <button
+                                type="button"
+                                class="resultados-orden"
+                                (click)="abrirIdea(idea.id)"
+                              >
+                                {{ nombreParticipante(idea) }}
+                              </button>
+                              <span class="muted">{{
+                                idea.participante?.codigoUsuarioLegible ?? ''
+                              }}</span>
+                            </th>
+                            @if (columnaVisible('area')) {
+                              <td>{{ idea.participante?.area ?? '-' }}</td>
+                            }
+                            @if (columnaVisible('pregunta')) {
+                              <td>{{ idea.preguntaId }}</td>
+                            }
+                            <td class="resultados-col-idea">{{ extracto(idea.texto ?? '') }}</td>
+                            @if (columnaVisible('estado')) {
+                              <td>
+                                <span
+                                  class="status-badge"
+                                  [class.badge-ok]="idea.estadoResultado === 'madura'"
+                                  [class.badge-warn]="idea.estadoResultado === 'rechazada'"
+                                  [title]="tituloEstadoIdea(idea)"
+                                >
+                                  {{ etiquetaEstadoIdea(idea) }}
+                                </span>
+                              </td>
+                            }
+                            @if (columnaVisible('calificacion')) {
+                              <td>{{ idea.calificacionTotal ?? '-' }}</td>
+                            }
+                            @if (columnaVisible('creada')) {
+                              <td>{{ fechaCorta(idea.creadaEn) }}</td>
+                            }
+                            @if (columnaVisible('actualizada')) {
+                              <td>{{ fechaCorta(idea.actualizadaEn) }}</td>
+                            }
+                            @if (columnaVisible('documento')) {
+                              <td>{{ tieneDocumento(idea.id) ? 'Sí' : 'No' }}</td>
+                            }
+                          </tr>
                         }
-                      </span>
-                      <span class="resultados-extracto">{{ extracto(idea.texto ?? '') }}</span>
-                    </button>
-                  </li>
-                } @empty {
-                  <li class="muted">{{ mensajeSinIdeas() }}</li>
-                }
-              </ul>
+                      }
+                    </tbody>
+                  }
+                </table>
+              </div>
+              <div class="actions-row">
+                <button
+                  type="button"
+                  class="ghost-button"
+                  [disabled]="pagina() === 1"
+                  (click)="irAPagina(pagina() - 1)"
+                >
+                  Anterior
+                </button>
+                <span class="muted">Página {{ pagina() }} de {{ totalPaginas() }}</span>
+                <button
+                  type="button"
+                  class="ghost-button"
+                  [disabled]="pagina() >= totalPaginas()"
+                  (click)="irAPagina(pagina() + 1)"
+                >
+                  Siguiente
+                </button>
+              </div>
             }
           </section>
 
-          <section class="panel resultados-detalle">
-            @if (cargandoDetalle()) {
-              <div class="resultados-skeleton" aria-label="Cargando detalle">
-                <span></span><span></span>
-              </div>
-            } @else if (detalleIdea(); as detalle) {
+          <ng-container [ngTemplateOutlet]="panelDetalle" />
+        } @else {
+          <div class="resultados-master-detail">
+            <section class="panel">
               <div class="panel-heading">
-                <h3>Detalle de {{ nombreParticipante(detalle.idea) }}</h3>
-                <span
-                  class="status-badge"
-                  [class.badge-ok]="detalle.idea.estadoResultado === 'madura'"
-                >
-                  {{ etiquetaEstadoIdea(detalle.idea) }}
+                <h3>Ideas</h3>
+                <span class="muted">
+                  {{ hayIdeasSinCargar() ? ideas().length + ' de ' + totalIdeas() : totalIdeas() }}
                 </span>
               </div>
-
-              <section aria-labelledby="idea-consolidada">
-                <h4 id="idea-consolidada">Idea consolidada</h4>
-                @if (!detalle.idea.confirmada) {
-                  <p class="muted">
-                    Esta versión todavía no fue confirmada por el participante, así que no puede
-                    contar como madura.
-                  </p>
-                }
-                <p>{{ detalle.idea.texto ?? 'Sin versión consolidada todavía.' }}</p>
-                <div class="detail-grid">
-                  <div>
-                    <span class="muted">Estado</span>
-                    <p>{{ etiquetaEstadoIdea(detalle.idea) }}</p>
-                  </div>
-                  <div>
-                    <span class="muted">Motivo de cierre</span>
-                    <p>{{ detalle.idea.motivoCierre ?? '-' }}</p>
-                  </div>
-                  <div>
-                    <span class="muted">Curaduría</span>
-                    <p>
-                      {{
-                        detalle.idea.estadoCuraduria === 'pendiente'
-                          ? 'Pendiente de curaduría'
-                          : 'No aplica'
-                      }}
-                    </p>
-                  </div>
+              @if (cargando()) {
+                <div class="resultados-skeleton" aria-label="Cargando ideas">
+                  <span></span><span></span><span></span>
                 </div>
-              </section>
-
-              <section aria-labelledby="evaluacion-idea">
-                <h4 id="evaluacion-idea">Evaluación de la versión vigente</h4>
-                @if (detalle.evaluacion; as evaluacionIdea) {
-                  <div class="detail-grid">
-                    <div>
-                      <span class="muted">Calificación</span>
-                      <strong class="score">{{ evaluacionIdea.calificacionTotal }}</strong>
-                    </div>
-                    <div>
-                      <span class="muted">Temas</span>
-                      <p>{{ evaluacionIdea.temas.join(', ') || '-' }}</p>
-                    </div>
-                    <div class="wide">
-                      <span class="muted">Retroalimentación enviada</span>
-                      <p>{{ evaluacionIdea.retroalimentacionEnviada }}</p>
-                    </div>
-                    <div class="wide">
-                      <span class="muted">Explicación</span>
-                      <p>{{ evaluacionIdea.explicacion }}</p>
-                    </div>
-                  </div>
-                } @else {
-                  <p class="muted">
-                    Esta idea todavía no tiene una evaluación de su versión vigente.
-                  </p>
-                }
-              </section>
-
-              <details class="resultados-historial">
-                <summary>
-                  Historial de la idea ({{ detalle.aportes.length }} aportes ·
-                  {{ detalle.versiones.length }} versiones)
-                </summary>
-                <h5>Aportes originales</h5>
-                <ul class="compact-list">
-                  @for (aporte of detalle.aportes; track aporte.id) {
-                    <li>
-                      <span class="status-badge">{{ aporte.tipoAporte ?? 'aporte' }}</span>
-                      <span>{{ aporte.texto }}</span>
-                    </li>
-                  } @empty {
-                    <li class="muted">Sin aportes registrados.</li>
-                  }
-                </ul>
-                <h5>Versiones</h5>
-                <ul class="compact-list">
-                  @for (version of detalle.versiones; track version.id) {
-                    <li>
-                      <span class="status-badge">v{{ version.numeroVersion }}</span>
-                      <span class="status-badge">{{ version.estadoConfirmacion }}</span>
-                      <span>{{ extracto(version.texto) }}</span>
-                    </li>
-                  } @empty {
-                    <li class="muted">Sin versiones registradas.</li>
-                  }
-                </ul>
-              </details>
-
-              <section aria-labelledby="markdown-idea">
-                <div class="panel-heading">
-                  <h4 id="markdown-idea">Documento Markdown</h4>
-                  @if (markdown(); as selectedMarkdown) {
-                    <div class="actions-row">
-                      @if (auth.isAdmin()) {
-                        <button
-                          type="button"
-                          class="ghost-button"
-                          (click)="regenerar(selectedMarkdown.id)"
-                        >
-                          Regenerar documento
-                        </button>
-                      }
+              } @else {
+                <ul class="compact-list resultados-lista-maestra">
+                  @for (idea of ideas(); track idea.id) {
+                    <li [class.selected-row]="ideaSeleccionada()?.id === idea.id">
                       <button
                         type="button"
-                        class="ghost-button"
-                        (click)="descargar(selectedMarkdown)"
+                        class="resultados-idea"
+                        [attr.aria-current]="ideaSeleccionada()?.id === idea.id ? 'true' : null"
+                        (click)="abrirIdea(idea.id)"
                       >
-                        Descargar .md
+                        <span class="resultados-respuesta-titulo">
+                          <strong>{{ nombreParticipante(idea) }}</strong>
+                          <span
+                            class="status-badge"
+                            [class.badge-ok]="idea.estadoResultado === 'madura'"
+                            [class.badge-warn]="idea.estadoResultado === 'rechazada'"
+                            [title]="tituloEstadoIdea(idea)"
+                          >
+                            {{ etiquetaEstadoIdea(idea) }}
+                          </span>
+                          @if (marcaFlujoIdea(idea); as marca) {
+                            <span class="status-badge">{{ marca }}</span>
+                          }
+                          @if (idea.estadoCuraduria === 'pendiente') {
+                            <span
+                              class="status-badge"
+                              title="Ninguna idea pasa automáticamente: queda pendiente de curaduría"
+                            >
+                              pendiente de curaduría
+                            </span>
+                          }
+                        </span>
+                        <span class="resultados-extracto">{{ extracto(idea.texto ?? '') }}</span>
                       </button>
-                    </div>
+                    </li>
+                  } @empty {
+                    <li class="muted">{{ mensajeSinIdeas() }}</li>
                   }
-                </div>
-                @if (markdown(); as selectedMarkdown) {
-                  <pre class="markdown-preview">{{ selectedMarkdown.contenidoMarkdown }}</pre>
-                } @else {
-                  <p class="muted">Esta idea aún no tiene un documento Markdown disponible.</p>
-                }
-              </section>
-            } @else if (respuestaSeleccionada(); as resp) {
-              <div class="panel-heading">
-                <h3>Detalle de {{ nombreUsuario(resp.usuarioId) }}</h3>
-                @if (evaluacion(); as detalle) {
-                  <span class="status-badge">{{ detalle.recomendacion }}</span>
-                }
-              </div>
+                </ul>
+              }
+            </section>
 
-              <section aria-labelledby="evaluacion-seleccionada">
-                <h4 id="evaluacion-seleccionada">Evaluación</h4>
-                @if (!evaluacion()) {
-                  <p class="muted">Esta respuesta aún no tiene una evaluación asociada.</p>
-                } @else if (esFallback()) {
-                  <p class="form-error">
-                    La evaluación no se completó. Revisa la configuración y vuelve a enviar la
-                    respuesta.
-                  </p>
-                  <div class="detail-grid">
-                    <div class="wide">
-                      <span class="muted">Respuesta del participante</span>
-                      <p>{{ resp.texto }}</p>
-                    </div>
-                    <div class="wide">
-                      <span class="muted">Detalle para el equipo técnico</span>
-                      <p>{{ evaluacion()!.explicacion }}</p>
-                    </div>
-                  </div>
-                } @else {
-                  <div class="detail-grid">
-                    <div>
-                      <span class="muted">Calificación</span>
-                      <strong class="score">{{ evaluacion()!.calificacionTotal }}</strong>
-                    </div>
-                    <div>
-                      <span class="muted">Temas</span>
-                      <p>{{ evaluacion()!.temas.join(', ') || '-' }}</p>
-                    </div>
-                    <div class="wide">
-                      <span class="muted">Respuesta del participante</span>
-                      <p>{{ resp.texto }}</p>
-                    </div>
-                    <div class="wide">
-                      <span class="muted">Retroalimentación enviada</span>
-                      <p>{{ evaluacion()!.retroalimentacionEnviada }}</p>
-                    </div>
-                    <div class="wide">
-                      <span class="muted">Explicación</span>
-                      <p>{{ evaluacion()!.explicacion }}</p>
-                    </div>
-                  </div>
-                }
-              </section>
-
-              <section aria-labelledby="markdown-seleccionado">
-                <div class="panel-heading">
-                  <h4 id="markdown-seleccionado">Documento Markdown</h4>
-                  @if (markdown(); as selectedMarkdown) {
-                    <div class="actions-row">
-                      @if (auth.isAdmin()) {
-                        <button
-                          type="button"
-                          class="ghost-button"
-                          (click)="regenerar(selectedMarkdown.id)"
-                        >
-                          Regenerar documento
-                        </button>
-                      }
-                      <button
-                        type="button"
-                        class="ghost-button"
-                        (click)="descargar(selectedMarkdown)"
-                      >
-                        Descargar .md
-                      </button>
-                    </div>
-                  }
-                </div>
-                @if (markdown(); as selectedMarkdown) {
-                  <pre class="markdown-preview">{{ selectedMarkdown.contenidoMarkdown }}</pre>
-                } @else {
-                  <p class="muted">Esta respuesta aún no tiene un documento Markdown disponible.</p>
-                }
-              </section>
-            } @else {
-              <div class="empty-state">
-                <h3>Selecciona una idea</h3>
-                <p>Elige una idea de la izquierda para ver su evaluación y su documento.</p>
-              </div>
-            }
-          </section>
-        </div>
+            <ng-container [ngTemplateOutlet]="panelDetalle" />
+          </div>
+        }
 
         @if (respuestasHistoricas().length) {
           <details class="panel resultados-historicos">
@@ -604,6 +660,265 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
         </details>
       }
     </section>
+
+    <ng-template #panelDetalle>
+      <section class="panel resultados-detalle">
+        @if (cargandoDetalle()) {
+          <div class="resultados-skeleton" aria-label="Cargando detalle">
+            <span></span><span></span>
+          </div>
+        } @else if (detalleIdea(); as detalle) {
+          <div class="panel-heading">
+            <h3>Detalle de {{ nombreParticipante(detalle.idea) }}</h3>
+            <span class="status-badge" [class.badge-ok]="detalle.idea.estadoResultado === 'madura'">
+              {{ etiquetaEstadoIdea(detalle.idea) }}
+            </span>
+          </div>
+
+          <section aria-labelledby="idea-consolidada">
+            <h4 id="idea-consolidada">Idea consolidada</h4>
+            @if (!detalle.idea.confirmada) {
+              <p class="muted">
+                Esta versión todavía no fue confirmada por el participante, así que no puede contar
+                como madura.
+              </p>
+            }
+            <p>{{ detalle.idea.texto ?? 'Sin versión consolidada todavía.' }}</p>
+            <!-- P-34 §4.4 (H-05): la metadata que la API ya devolvía y no se pintaba. -->
+            <div class="detail-grid">
+              <div>
+                <span class="muted">Participante</span>
+                <p>{{ nombreParticipante(detalle.idea) }}</p>
+              </div>
+              <div>
+                <span class="muted">Código</span>
+                <p>{{ detalle.idea.participante?.codigoUsuarioLegible ?? '-' }}</p>
+              </div>
+              <div>
+                <span class="muted">Empresa y sede</span>
+                <p>
+                  {{ detalle.idea.participante?.empresa ?? '-' }} ·
+                  {{ detalle.idea.participante?.sede ?? '-' }}
+                </p>
+              </div>
+              <div>
+                <span class="muted">Pregunta</span>
+                <p>{{ detalle.idea.preguntaId }}</p>
+              </div>
+              <div>
+                <span class="muted">Idea número</span>
+                <p>{{ detalle.idea.ideaIndice }}</p>
+              </div>
+              <div>
+                <span class="muted">Estado</span>
+                <p>{{ etiquetaEstadoIdea(detalle.idea) }}</p>
+              </div>
+              <div>
+                <span class="muted">Creada</span>
+                <p>{{ fechaLarga(detalle.idea.creadaEn) }}</p>
+              </div>
+              <div>
+                <span class="muted">Actualizada</span>
+                <p>{{ fechaLarga(detalle.idea.actualizadaEn) }}</p>
+              </div>
+              <div>
+                <span class="muted">Confirmada</span>
+                <p>
+                  {{
+                    detalle.versionConfirmada
+                      ? 'Sí, versión ' + detalle.versionConfirmada.numeroVersion
+                      : 'Todavía no'
+                  }}
+                </p>
+              </div>
+              <div>
+                <span class="muted">Motivo de cierre</span>
+                <p>{{ detalle.idea.motivoCierre ?? '-' }}</p>
+              </div>
+              <div>
+                <span class="muted">Curaduría</span>
+                <p>
+                  {{
+                    detalle.idea.estadoCuraduria === 'pendiente'
+                      ? 'Pendiente de curaduría'
+                      : 'No aplica'
+                  }}
+                </p>
+              </div>
+              <div>
+                <span class="muted">Rúbrica y modelo</span>
+                <p>{{ rubricaYModelo(detalle.evaluacion) }}</p>
+              </div>
+              <div class="wide">
+                <span class="muted">Identificador técnico</span>
+                <p class="resultados-id-tecnico">
+                  <code>{{ detalle.idea.id }}</code>
+                  <button type="button" class="ghost-button" (click)="copiar(detalle.idea.id)">
+                    Copiar
+                  </button>
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="evaluacion-idea">
+            <h4 id="evaluacion-idea">Evaluación de la versión vigente</h4>
+            @if (detalle.evaluacion; as evaluacionIdea) {
+              <div class="detail-grid">
+                <div>
+                  <span class="muted">Calificación</span>
+                  <strong class="score">{{ evaluacionIdea.calificacionTotal }}</strong>
+                </div>
+                <div>
+                  <span class="muted">Temas</span>
+                  <p>{{ evaluacionIdea.temas.join(', ') || '-' }}</p>
+                </div>
+                <div class="wide">
+                  <span class="muted">Retroalimentación enviada</span>
+                  <p>{{ evaluacionIdea.retroalimentacionEnviada }}</p>
+                </div>
+                <div class="wide">
+                  <span class="muted">Explicación</span>
+                  <p>{{ evaluacionIdea.explicacion }}</p>
+                </div>
+              </div>
+            } @else {
+              <p class="muted">Esta idea todavía no tiene una evaluación de su versión vigente.</p>
+            }
+          </section>
+
+          <!-- P-34 §4.4: una sola secuencia cronológica, como ocurrió la conversación. -->
+          <details class="resultados-historial">
+            <summary>
+              Línea de tiempo de la idea ({{ detalle.aportes.length }} aportes ·
+              {{ detalle.versiones.length }} versiones)
+            </summary>
+            <ol class="compact-list resultados-linea-tiempo">
+              @for (evento of lineaTiempo(detalle); track evento.id) {
+                <li>
+                  <span class="status-badge">{{ evento.etiqueta }}</span>
+                  <span class="muted">{{ fechaLarga(evento.fecha) }}</span>
+                  <span>{{ extracto(evento.texto) }}</span>
+                </li>
+              } @empty {
+                <li class="muted">Esta idea todavía no tiene aportes ni versiones registradas.</li>
+              }
+            </ol>
+          </details>
+
+          <section aria-labelledby="markdown-idea">
+            <div class="panel-heading">
+              <h4 id="markdown-idea">Documento Markdown</h4>
+              @if (markdown(); as selectedMarkdown) {
+                <div class="actions-row">
+                  @if (auth.isAdmin()) {
+                    <button
+                      type="button"
+                      class="ghost-button"
+                      (click)="regenerar(selectedMarkdown.id)"
+                    >
+                      Regenerar documento
+                    </button>
+                  }
+                  <button type="button" class="ghost-button" (click)="descargar(selectedMarkdown)">
+                    Descargar .md
+                  </button>
+                </div>
+              }
+            </div>
+            @if (markdown(); as selectedMarkdown) {
+              <pre class="markdown-preview">{{ selectedMarkdown.contenidoMarkdown }}</pre>
+            } @else {
+              <p class="muted">Esta idea aún no tiene un documento Markdown disponible.</p>
+            }
+          </section>
+        } @else if (respuestaSeleccionada(); as resp) {
+          <div class="panel-heading">
+            <h3>Detalle de {{ nombreUsuario(resp.usuarioId) }}</h3>
+            @if (evaluacion(); as detalle) {
+              <span class="status-badge">{{ detalle.recomendacion }}</span>
+            }
+          </div>
+
+          <section aria-labelledby="evaluacion-seleccionada">
+            <h4 id="evaluacion-seleccionada">Evaluación</h4>
+            @if (!evaluacion()) {
+              <p class="muted">Esta respuesta aún no tiene una evaluación asociada.</p>
+            } @else if (esFallback()) {
+              <p class="form-error">
+                La evaluación no se completó. Revisa la configuración y vuelve a enviar la
+                respuesta.
+              </p>
+              <div class="detail-grid">
+                <div class="wide">
+                  <span class="muted">Respuesta del participante</span>
+                  <p>{{ resp.texto }}</p>
+                </div>
+                <div class="wide">
+                  <span class="muted">Detalle para el equipo técnico</span>
+                  <p>{{ evaluacion()!.explicacion }}</p>
+                </div>
+              </div>
+            } @else {
+              <div class="detail-grid">
+                <div>
+                  <span class="muted">Calificación</span>
+                  <strong class="score">{{ evaluacion()!.calificacionTotal }}</strong>
+                </div>
+                <div>
+                  <span class="muted">Temas</span>
+                  <p>{{ evaluacion()!.temas.join(', ') || '-' }}</p>
+                </div>
+                <div class="wide">
+                  <span class="muted">Respuesta del participante</span>
+                  <p>{{ resp.texto }}</p>
+                </div>
+                <div class="wide">
+                  <span class="muted">Retroalimentación enviada</span>
+                  <p>{{ evaluacion()!.retroalimentacionEnviada }}</p>
+                </div>
+                <div class="wide">
+                  <span class="muted">Explicación</span>
+                  <p>{{ evaluacion()!.explicacion }}</p>
+                </div>
+              </div>
+            }
+          </section>
+
+          <section aria-labelledby="markdown-seleccionado">
+            <div class="panel-heading">
+              <h4 id="markdown-seleccionado">Documento Markdown</h4>
+              @if (markdown(); as selectedMarkdown) {
+                <div class="actions-row">
+                  @if (auth.isAdmin()) {
+                    <button
+                      type="button"
+                      class="ghost-button"
+                      (click)="regenerar(selectedMarkdown.id)"
+                    >
+                      Regenerar documento
+                    </button>
+                  }
+                  <button type="button" class="ghost-button" (click)="descargar(selectedMarkdown)">
+                    Descargar .md
+                  </button>
+                </div>
+              }
+            </div>
+            @if (markdown(); as selectedMarkdown) {
+              <pre class="markdown-preview">{{ selectedMarkdown.contenidoMarkdown }}</pre>
+            } @else {
+              <p class="muted">Esta respuesta aún no tiene un documento Markdown disponible.</p>
+            }
+          </section>
+        } @else {
+          <div class="empty-state">
+            <h3>Selecciona una idea</h3>
+            <p>Elige una idea de la izquierda para ver su evaluación y su documento.</p>
+          </div>
+        }
+      </section>
+    </ng-template>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -636,6 +951,18 @@ export class ResultadosPage {
   /** P-34 §4.2: los filtros del servidor, tal como viajan en la query y en la URL del portal. */
   protected filtros: FiltrosIdeas = {};
   protected readonly masFiltros = signal(false);
+  /** P-34 §4.3: preferencias de la tabla; viven en sesión, no en `localStorage` (01 §11). */
+  protected readonly vista = signal<VistaResultados>(this.sesion.vista);
+  protected readonly agrupado = signal(this.sesion.agruparPorParticipante);
+  protected readonly densidadCompacta = signal(this.sesion.densidadCompacta);
+  protected readonly tamanoPagina = signal(this.sesion.tamanoPagina);
+  protected readonly columnas = signal<ColumnaResultados[]>([...this.sesion.columnas]);
+  protected readonly pagina = signal(1);
+  protected readonly seleccion = signal<ReadonlySet<string>>(new Set());
+  protected readonly gruposColapsados = signal<ReadonlySet<string>>(new Set());
+  /** Total de la campaña sin filtros, para que la paginación diga la verdad completa (§4.3). */
+  protected readonly totalCampania = signal(0);
+  protected readonly columnasDisponibles = COLUMNAS_RESULTADOS;
   protected nivelMadurezFiltro = '';
   private cargasPendientes = 0;
   private urlAplicada = '';
@@ -806,6 +1133,193 @@ export class ResultadosPage {
     );
   }
 
+  // ---- P-34 §4.3: vista tabla ------------------------------------------------------------------
+
+  cambiarVista(vista: VistaResultados) {
+    this.vista.set(vista);
+    this.sesion.vista = vista;
+  }
+
+  alternarAgrupado() {
+    const valor = !this.agrupado();
+    this.agrupado.set(valor);
+    this.sesion.agruparPorParticipante = valor;
+    this.pagina.set(1);
+  }
+
+  alternarDensidad() {
+    const valor = !this.densidadCompacta();
+    this.densidadCompacta.set(valor);
+    this.sesion.densidadCompacta = valor;
+  }
+
+  cambiarTamanoPagina(valor: string | number) {
+    const tamano = Number(valor) || 25;
+    this.tamanoPagina.set(tamano);
+    this.sesion.tamanoPagina = tamano;
+    this.pagina.set(1);
+  }
+
+  columnaVisible(clave: ColumnaResultados): boolean {
+    return this.columnas().includes(clave);
+  }
+
+  alternarColumna(clave: ColumnaResultados) {
+    const visibles = this.columnaVisible(clave)
+      ? this.columnas().filter((columna) => columna !== clave)
+      : [...this.columnas(), clave];
+    this.columnas.set(visibles);
+    this.sesion.columnas = [...visibles];
+  }
+
+  /** Columnas realmente pintadas, para el `colspan` de la fila de grupo. */
+  totalColumnas(): number {
+    return 3 + this.columnas().length;
+  }
+
+  /**
+   * P-34 §4.3: el orden lo resuelve el servidor. Ordenar en el cliente con paginación sería un orden
+   * falso —solo reordenaría lo que ya se trajo—, así que el clic viaja como `orden`/`dir`.
+   */
+  ordenarPor(columna: string) {
+    const mismaColumna = this.filtros.orden === columna;
+    this.filtros.orden = columna;
+    this.filtros.dir = mismaColumna && this.filtros.dir !== 'desc' ? 'desc' : 'asc';
+    if (mismaColumna && this.filtros.dir === 'asc') {
+      // Tercer clic: se vuelve al orden natural de I-19 en vez de dejarlo pegado.
+      delete this.filtros.orden;
+      delete this.filtros.dir;
+    }
+
+    this.pagina.set(1);
+    this.aplicarFiltros();
+  }
+
+  /** Valor de `aria-sort` que anuncia el orden vigente al lector de pantalla (P-18/P-19). */
+  ordenDe(columna: string): 'ascending' | 'descending' | 'none' {
+    if (this.filtros.orden !== columna) return 'none';
+    return this.filtros.dir === 'desc' ? 'descending' : 'ascending';
+  }
+
+  estaSeleccionada(ideaId: string): boolean {
+    return this.seleccion().has(ideaId);
+  }
+
+  /** D4: la curaduría se mira, no se marca. La selección existe, pero todavía no ejecuta nada. */
+  alternarSeleccion(ideaId: string) {
+    const seleccion = new Set(this.seleccion());
+    if (!seleccion.delete(ideaId)) seleccion.add(ideaId);
+    this.seleccion.set(seleccion);
+  }
+
+  grupoColapsado(clave: string): boolean {
+    return this.gruposColapsados().has(clave);
+  }
+
+  alternarGrupo(clave: string) {
+    const colapsados = new Set(this.gruposColapsados());
+    if (!colapsados.delete(clave)) colapsados.add(clave);
+    this.gruposColapsados.set(colapsados);
+  }
+
+  totalPaginas(): number {
+    return Math.max(1, Math.ceil(this.ideas().length / this.tamanoPagina()));
+  }
+
+  irAPagina(pagina: number) {
+    this.pagina.set(Math.min(Math.max(1, pagina), this.totalPaginas()));
+  }
+
+  /** Filas de la página actual, agrupadas por participante cuando se pide (§4.3). */
+  gruposPagina(): { clave: string; etiqueta: string; filas: IdeaConsolidada[] }[] {
+    const inicio = (this.pagina() - 1) * this.tamanoPagina();
+    const filas = this.ideas().slice(inicio, inicio + this.tamanoPagina());
+    if (!this.agrupado()) {
+      return [{ clave: 'todas', etiqueta: 'Todas', filas }];
+    }
+
+    const grupos = new Map<string, { clave: string; etiqueta: string; filas: IdeaConsolidada[] }>();
+    for (const idea of filas) {
+      const clave = idea.usuarioId;
+      const grupo = grupos.get(clave) ?? {
+        clave,
+        etiqueta: this.nombreParticipante(idea),
+        filas: [],
+      };
+      grupo.filas.push(idea);
+      grupos.set(clave, grupo);
+    }
+
+    return [...grupos.values()];
+  }
+
+  /**
+   * P-34 §4.3 (H-04): paginación honesta. Distingue lo que se está mostrando, lo que dejó el filtro
+   * y lo que tiene la campaña completa, en vez de insinuar que la página es todo lo que existe.
+   */
+  resumenPaginacion(): string {
+    const total = this.ideas().length;
+    if (!total) return 'Sin ideas para este filtro';
+
+    const inicio = (this.pagina() - 1) * this.tamanoPagina() + 1;
+    const fin = Math.min(inicio + this.tamanoPagina() - 1, total);
+    const filtradas = `Mostrando ${inicio}–${fin} de ${total} filtradas`;
+    const campania = this.totalCampania();
+    return campania && campania !== total ? `${filtradas} · ${campania} en la campaña` : filtradas;
+  }
+
+  tieneDocumento(ideaId: string): boolean {
+    return this.artefactos().some((artefacto) => artefacto.ideaRef === ideaId);
+  }
+
+  // ---- P-34 §4.4: ficha y línea de tiempo -------------------------------------------------------
+
+  lineaTiempo(detalle: DetalleIdea): EventoIdea[] {
+    return construirLineaTiempo(detalle);
+  }
+
+  /** Fecha absoluta en la zona de la operación (`America/Bogota`) más el «hace cuánto». */
+  fechaLarga(fecha?: string | null): string {
+    if (!fecha) return '-';
+    const momento = new Date(fecha);
+    if (Number.isNaN(momento.getTime())) return '-';
+
+    const absoluta = momento.toLocaleString('es-CO', {
+      timeZone: 'America/Bogota',
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+    return `${absoluta} (${this.relativa(momento)})`;
+  }
+
+  fechaCorta(fecha?: string | null): string {
+    if (!fecha) return '-';
+    const momento = new Date(fecha);
+    if (Number.isNaN(momento.getTime())) return '-';
+    return momento.toLocaleDateString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short' });
+  }
+
+  rubricaYModelo(evaluacion: Evaluacion | null): string {
+    if (!evaluacion) return 'Sin evaluación vigente';
+    const rubrica = evaluacion.rubricaRef
+      ? `${evaluacion.rubricaRef} v${evaluacion.versionRubrica ?? '?'}`
+      : 'Rúbrica no registrada';
+    const modelo = evaluacion.configLLMSnapshot?.modelo ?? 'modelo no registrado';
+    return `${rubrica} · ${modelo}`;
+  }
+
+  copiar(texto: string) {
+    void navigator.clipboard?.writeText(texto);
+    this.informacion.set('Identificador copiado.');
+  }
+
+  private relativa(momento: Date): string {
+    const dias = Math.round((momento.getTime() - Date.now()) / 86400000);
+    if (dias === 0) return 'hoy';
+    const formato = new Intl.RelativeTimeFormat('es-CO', { numeric: 'auto' });
+    return formato.format(dias, 'day');
+  }
+
   cambiarCampania() {
     this.aplicarFiltros();
   }
@@ -878,6 +1392,7 @@ export class ResultadosPage {
     }
 
     this.sesion.campaniaId = this.campaniaId;
+    this.pagina.set(1);
     this.error.set('');
     this.informacion.set('');
     this.cargando.set(true);
@@ -888,6 +1403,11 @@ export class ResultadosPage {
     this.evaluacion.set(null);
     this.markdown.set(null);
 
+    // El total sin filtros es lo que permite decir «… · N en la campaña» sin inventar (§4.3).
+    this.api.conteoIdeasCampania(this.campaniaId).subscribe({
+      next: (page) => this.totalCampania.set(page.total ?? 0),
+      error: () => this.totalCampania.set(0),
+    });
     this.api
       .ideasTodas(this.campaniaId, this.filtrosParaApi())
       .pipe(finalize(() => this.finalizarCarga()))

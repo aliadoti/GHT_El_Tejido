@@ -1,15 +1,16 @@
 # P-34 — Resultados: identidad, filtros, tabla ordenable, exportación y resumen de campaña
 
-> Estado: **EN CURSO — 3/6 (cortes 1 y 2 DONE local 2026-08-20; corte 3 DONE local 2026-08-21; siguiente corte 4/6)**
+> Estado: **EN CURSO — 4/6 (cortes 1 y 2 DONE local 2026-08-20; cortes 3 y 4 DONE local 2026-08-21; siguiente corte 5/6)**
 > Origen: solicitud del usuario (2026-08-20) como especialista en UX/UI sobre la pantalla de Resultados
 > Tipo: Desarrollo **frontend + backend aditivo** · Prioridad: Alta · Ventana: previa a la convención
 > Dependencias: **I-17**, **I-19** (idea consolidada), **P-18/P-19** (accesibilidad), **P-23** (maestro-detalle)
 > Absorbe de **P-04**: filtros de servidor, ranking por calificación y exportación CSV
 > Riesgo: Medio — cambia `04 §5.8` de forma **aditiva**; no toca `03`, ni rutas, ni permisos
-> Handoff: cortes 1, 2 y 3 DONE local. `04 §5.8` ya publica la identidad embebida, la calificación
-> vigente, los filtros y `orden`/`dir` (commit `98b8bca`). Sigue el corte 4 (tabla ordenable y
-> metadata), que es **solo portal**: el servidor ya acepta el orden. DT-P33-01 integral queda en
-> backlog y no bloquea esta iniciativa.
+> Handoff: cortes 1 a 4 DONE local. `04 §5.8` ya publica la identidad embebida, la calificación
+> vigente, los filtros y `orden`/`dir` (commit `98b8bca`), y el portal ya tiene tabla ordenable, ficha
+> completa y línea de tiempo. Sigue el corte 5 (exportación), que **sí** agrega rutas nuevas: su
+> contrato va en commit aparte y previo. DT-P33-01 integral queda en backlog y no bloquea esta
+> iniciativa.
 
 ---
 
@@ -282,7 +283,7 @@ P-23 sin afectar datos ni contratos.
 | **1** ✅ | **Los cuatro bugs** (frontend) — **DONE local 2026-08-20** | Recorrido de páginas hasta agotar `total` en `/usuarios`, `/markdown`, `/respuestas` y `/conversaciones` con `pageSize` en el tope real (100), degradando a una sola página si el servidor no informa `total`; contadores tomados de `total`, con aviso «(sobre las N primeras)» mientras el listado de ideas siga trayendo una página (se retira con el corte 2); error de `/usuarios` visible en la región asertiva y reintentable; «Participante no identificado · código» en vez del id técnico. Portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios. |
 | **2** ✅ | **Que aguante 1.000 ideas** (backend) — **DONE local 2026-08-20** | Se filtra, ordena y **pagina antes** de resolver versiones; las de la página se piden en una sola consulta por ids dentro de la partición (`ListarVersionesDeCampaniaAsync`); el detalle trae los aportes por `ideaId` (`ListarRespuestasPorIdeaAsync`); ambos con degradación por defecto en el puerto. El portal recorre además el listado completo de ideas, lo que vuelve exacto el desglose por estado de H-04. Medición con 1.000 ideas y 5.000 aportes: listado de **1.000 lecturas puntuales a 0** (403 → 332 ms) y detalle de **5.000 documentos de respuesta a 5** (701 → 496 ms), en operaciones e in-process; **RU/latencia reales contra Cosmos siguen pendientes como puerta operativa**. |
 | **3** ✅ | **Identidad y filtros en el servidor** — **DONE local 2026-08-21** | `participante` embebido (con `resuelto`) y `calificacionTotal`/`evaluadaEn` en `/ideas`; filtros `q`, área, empresa, sede, fechas, calificación y confirmada, más `orden`/`dir`, con `400` y todos los motivos ante una consulta inválida; identidad y evaluaciones por consultas acotadas a ids; barra de dos niveles con chips removibles, estado del filtro en la URL y vacío que nombra el filtro. Quedan fuera «con/sin documento» y «con/sin evaluación», y la **UI** de ordenamiento pasa al corte 4. |
-| **4** | **Tabla, orden y metadata** | Vista tabla ordenable, agrupación, selector de columnas, paginación configurable; ficha completa y línea de tiempo; vista lectura conservada; columna de selección prevista (D4). |
+| **4** ✅ | **Tabla, orden y metadata** (solo portal) — **DONE local 2026-08-21** | Vista tabla como principal con orden resuelto en el servidor (`orden`/`dir`), anunciado con `aria-sort` y con tercer clic al orden natural; agrupación por participante colapsable, selector de columnas, densidad, tamaño de página y paginación honesta («Mostrando 1–25 de 30 filtradas · 120 en la campaña»); vista lectura de P-23 conservada y recordada en sesión; ficha con toda la metadata de H-05 —fechas absolutas en `America/Bogota` más relativas, rúbrica/modelo, id copiable— y línea de tiempo única de aportes y versiones; selección múltiple prevista sin acción (D4). **No se implementaron las columnas «versiones» y «aportes»**: sus conteos no están en el DTO de lista y exigirían otro cambio aditivo de `04 §5.8`. |
 | **5** | **Exportación** | `/exportar` con los tres recursos en xlsx y csv; hoja «Filtros aplicados»; casilla de anonimizado; ZIP de documentos. |
 | **6** | **Resumen de campaña** | `/resumen`; panel plegable que respeta el filtro; tooltips y tabla equivalente por gráfico. |
 

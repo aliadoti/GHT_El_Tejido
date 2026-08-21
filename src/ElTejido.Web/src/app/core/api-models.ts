@@ -396,6 +396,10 @@ export interface Evaluacion {
   respuestaId: string;
   usuarioId: string;
   preguntaId: string;
+  /** P-34 §4.4 (H-05): metadata que la API ya devolvía y la ficha no mostraba. */
+  rubricaRef?: string | null;
+  versionRubrica?: number | null;
+  configLLMSnapshot?: { proveedor?: string; modelo?: string; endpoint?: string } | null;
   calificacionTotal: number;
   explicacion: string;
   retroalimentacionEnviada: string;

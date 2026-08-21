@@ -1698,3 +1698,37 @@
   costo por idea de H-10. Sigue pendiente la medición de RU reales contra Cosmos.
 - Rollback: revertir el commit devuelve el listado de I-19 con el join en el navegador; no hay dato,
   índice ni configuración involucrados, y `03` no cambió.
+
+### tabla-y-ficha-resultados-p-34 — La tabla compara, el maestro-detalle lee
+
+- Fecha: 2026-08-21 - Agente/Rol: Claude Opus 5 - Frontend senior/UX-A11Y/SDET (P-34 corte 4/6).
+  **Solo portal**: sin cambios de backend, contratos, datos ni configuración.
+- Decisión 1 — **la tabla es la vista por defecto y el maestro-detalle de P-23 se conserva** como
+  «vista lectura». La elección vive en `ResultadosSesionService` (memoria de la sesión, sin
+  `localStorage`, `01 §11`), igual que la campaña recordada.
+- Decisión 2 — **ordenar es cosa del servidor.** Cada encabezado ordenable manda `orden`/`dir`
+  (aceptados desde el corte 3) y recarga: ordenar en el cliente sobre una página sería un orden
+  falso. El tercer clic sobre la misma columna **vuelve al orden natural** de I-19 en vez de dejarlo
+  fijado, y `aria-sort` anuncia el estado en los tres pasos (P-18/P-19).
+- Decisión 3 — **paginación honesta y separada del servidor.** El portal ya trae todas las ideas
+  filtradas (corte 2), así que la paginación de la tabla es de presentación: «Mostrando 1–25 de 30
+  filtradas · 120 en la campaña». El total de la campaña se pide aparte con `pageSize=1`, que es la
+  consulta más barata que responde esa pregunta, y si falla simplemente no se afirma.
+- Decisión 4 — **la selección múltiple existe y no hace nada** (D4): dejarla prevista es lo que
+  permite que la curaduría futura sea agregar un botón y no rehacer la tabla.
+- Columnas: participante (nombre + código) e idea son **fijas**; área, pregunta, estado, calificación,
+  creada, actualizada y documento se pueden ocultar. **No se implementaron las columnas «versiones» y
+  «aportes»** que menciona `§4.3`: sus conteos no están en el DTO de lista y agregarlos exigiría otro
+  cambio aditivo de `04 §5.8`; el dato sí está en la ficha, que los lista uno por uno.
+- Ficha (`§4.4`, H-05): participante, código, empresa y sede, pregunta, `ideaIndice`, estado, creada y
+  actualizada (absolutas en `America/Bogota` **más** el «hace cuánto»), confirmación con número de
+  versión, curaduría, motivo de cierre, rúbrica/versión y modelo del snapshot, e id técnico copiable.
+- Línea de tiempo: `construirLineaTiempo` (puro, con pruebas propias) intercala aportes y versiones en
+  una sola secuencia. La **confirmación se emite como evento propio** en su propia fecha: ocurre
+  después de generarse la versión —a veces al día siguiente— y mostrarla en el instante de la versión
+  contaría mal la conversación.
+- Consecuencia en pruebas: las regresiones de P-23 (maestro-detalle, H-01 y H-04) ahora cambian
+  primero a «vista lectura», porque esa es la vista donde vive ese comportamiento; la tabla tiene sus
+  propias pruebas de orden, paginación, ficha y línea de tiempo.
+- Rollback: revertir el commit deja la vista de P-23 con los filtros del corte 3; no hay dato,
+  contrato ni configuración involucrados.

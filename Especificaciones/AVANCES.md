@@ -4,7 +4,19 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-21 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET): **`P-34` CORTE
+- Ultima actualizacion: 2026-08-21 (Claude Opus 5, Frontend senior/UX-A11Y/SDET): **`P-34` CORTE 4/6
+  — DONE LOCAL.** **Solo portal.** Entra la **vista tabla** como principal —participante, área,
+  pregunta, extracto, estado, calificación, fechas y documento, con selector de columnas, densidad,
+  agrupación por participante colapsable y selección múltiple prevista sin acción (D4)— y el
+  maestro-detalle de P-23 se conserva como **vista lectura**, con la elección recordada en sesión. El
+  **orden lo resuelve el servidor** (`orden`/`dir` del corte 3), se anuncia con `aria-sort` y al tercer
+  clic vuelve al orden natural. Paginación honesta: «Mostrando 1–25 de 30 filtradas · 120 en la
+  campaña». La **ficha** muestra por fin la metadata que la API ya devolvía (H-05) —código, empresa y
+  sede, `ideaIndice`, fechas absolutas en `America/Bogota` más relativas, confirmación con número de
+  versión, rúbrica y modelo, id técnico copiable— y aportes y versiones se intercalan en una **línea de
+  tiempo** única. Portal **86 pruebas en 11 archivos**; backend sin cambios (**1073 + 131**); build,
+  format, diff, `ng build` producción y Prettier verdes. **Siguiente: corte 5/6** (exportación).
+- Actualizacion anterior: 2026-08-21 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET): **`P-34` CORTE
   3/6 — DONE LOCAL.** **La identidad la resuelve el servidor:** `GET /admin/ideas` embebe
   `participante` (código legible, nombre, área, empresa, sede, estado y `resuelto`) y la calificación
   vigente, y acepta `q`, `area`, `empresa`, `sede`, `desde`, `hasta`, `calificacionMin/Max`,
@@ -1394,15 +1406,22 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **IMPLEMENTAR `P-34` CORTE 4/6 — TABLA, ORDEN Y METADATA.** Leer
-  `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §4.3 y §4.4. Vista **tabla** ordenable
-  como principal (el maestro-detalle de P-23 se conserva como «vista lectura», recordando la última
-  vista en sesión con `ResultadosSesionService`, sin `localStorage`), encabezados ordenables que usan
-  el `orden`/`dir` que el servidor **ya acepta** desde el corte 3 y se anuncian con `aria-sort`,
-  navegación por teclado y `scope`; agrupación por participante, selector de columnas, paginación
-  configurable; ficha de la idea con toda la metadata (fechas, `ideaIndice`, motivo de cierre,
-  calificación) y línea de tiempo; columna de selección múltiple **sin acción** (D4). Sin adelantar
-  exportación (corte 5) ni resumen (corte 6).
+- [ ] **IMPLEMENTAR `P-34` CORTE 5/6 — EXPORTACIÓN.** Leer
+  `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §4.5 y §5. Endpoint nuevo
+  `GET /admin/campanias/{id}/exportar` con `recurso` = `ideas|aportes|evaluaciones`, `formato` =
+  `xlsx|csv`, `anonimizado` = `true|false` y **los mismos filtros del listado**, más
+  `GET /admin/campanias/{id}/documentos.zip` con nombres legibles; hoja «Filtros aplicados» en el
+  archivo; casilla de anonimizado que sustituye el nombre por el código (D1); respuesta en
+  **streaming** con tope documentado, nunca construyendo el archivo completo en memoria (§7). El
+  contrato `04 §5.8` va en **commit aparte y previo**. Es `GET` bajo el mismo guard admin: sin PII
+  fuera de él. No adelantar el resumen de campaña (corte 6).
+- [x] **(HECHO 2026-08-21, Claude Opus 5 — portal 86 pruebas en 11 archivos; backend sin cambios
+  1073 + 131; build, format, diff, `ng build` producción y Prettier verdes) `P-34` corte 4/6.** Vista
+  tabla ordenable como principal (orden resuelto en el servidor, `aria-sort`, tercer clic al orden
+  natural), agrupación por participante, selector de columnas, densidad, tamaño de página y
+  paginación honesta; maestro-detalle de P-23 conservado como vista lectura y recordado en sesión;
+  ficha con toda la metadata (H-05) y línea de tiempo única de aportes y versiones. Supuesto en
+  `SUPUESTOS.md#tabla-y-ficha-resultados-p-34`.
 - [x] **(HECHO 2026-08-21, Claude Opus 5 — backend 1073 unitarias + 131 integración; portal 79 pruebas
   en 10 archivos; build Release `-warnaserror`, format, diff, `ng build` producción y Prettier verdes)
   `P-34` corte 3/6.** `participante` embebido y `calificacionTotal`/`evaluadaEn` en `/admin/ideas`,
@@ -1792,7 +1811,7 @@
 | P-32 | Conversación multidioma y catálogo | DONE local 4/4; D5/UAT/Meta/costo pendientes | cambios locales | backend 858 no-Calibración tras correcciones; portal 43/43 previo | Runtime `es/en`, catálogo Cosmos/portal, localizaciones, envío mixto y rollback; gate OFF. P-33 extiende de forma compatible el registro 24/13 a 29/16. |
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P33-01 | Clasificación semántica de consulta de idea | HOTFIX DESPLEGADO; robustecimiento semántico integral en backlog | `85b78f8` / `v1.0.3-convencion` | build Release, 1053 unitarias + 121 integración, formato/diff y workflow verdes; `/health/ready` ok | Gates semántico/visibilidad ON, inglés v3 activo. Afinidad P-33 + alias exacto prevalecen antes del LLM. Pendiente posterior: banco semántico, QAS/25 abierto/cerrado/mixto, D5, costo/latencia y acta. No bloquea el inicio de P-34. |
-| P-34 | Resultados: identidad, filtros, tabla, exportación y resumen | **CORTES 1-3/6 DONE local; siguiente corte 4/6** | cambios locales + `98b8bca` (contrato) | portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122) | Corte 1: paginación completa de usuarios/Markdown/respuestas/conversaciones hasta el `total` del servidor, contadores tomados de `total` con aviso cuando el desglose por estado es parcial, y fallo del maestro de participantes visible y reintentable con «Participante no identificado · código» en vez del id técnico. Sin contratos ni datos; P-23 intacto. Corte 2: el listado pagina **antes** de resolver versiones y pide las de la página en una sola consulta por ids; el detalle trae los aportes por `ideaId`. Medido con 1.000 ideas: 1.000 → **0** lecturas puntuales y 5.000 → **5** documentos de respuesta. Corte 3: `participante` embebido y calificación vigente en `/admin/ideas`, filtros de servidor (`q`, área, empresa, sede, fechas, calificación, confirmada) y `orden`/`dir` con `400` ante consulta inválida; portal con barra de dos niveles, chips, filtro en la URL y vacío que nombra el filtro; `04 §5.8` en commit previo `98b8bca`. Supuestos `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`, `#escala-listado-ideas-p-34` y `#identidad-y-filtros-servidor-p-34`. **Cómo probarlo:** abre Resultados con una campaña que tenga más de 25 documentos y comprueba que «Descargar .md» aparece también en las ideas del final de la lista, que el número de ideas del encabezado coincide con el de la campaña y que, si la lista de participantes falla, la pantalla lo dice y ofrece «Reintentar». Siguiente: corte 2/6 (escala a 1.000 ideas, backend). |
+| P-34 | Resultados: identidad, filtros, tabla, exportación y resumen | **CORTES 1-4/6 DONE local; siguiente corte 5/6** | cambios locales + `98b8bca` (contrato) | portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122) | Corte 1: paginación completa de usuarios/Markdown/respuestas/conversaciones hasta el `total` del servidor, contadores tomados de `total` con aviso cuando el desglose por estado es parcial, y fallo del maestro de participantes visible y reintentable con «Participante no identificado · código» en vez del id técnico. Sin contratos ni datos; P-23 intacto. Corte 2: el listado pagina **antes** de resolver versiones y pide las de la página en una sola consulta por ids; el detalle trae los aportes por `ideaId`. Medido con 1.000 ideas: 1.000 → **0** lecturas puntuales y 5.000 → **5** documentos de respuesta. Corte 3: `participante` embebido y calificación vigente en `/admin/ideas`, filtros de servidor (`q`, área, empresa, sede, fechas, calificación, confirmada) y `orden`/`dir` con `400` ante consulta inválida; portal con barra de dos niveles, chips, filtro en la URL y vacío que nombra el filtro; `04 §5.8` en commit previo `98b8bca`. Corte 4 (solo portal): vista tabla ordenable como principal con orden resuelto en el servidor y anunciado con `aria-sort`, agrupación por participante, columnas/densidad/tamaño de página configurables, paginación honesta, vista lectura conservada, ficha con toda la metadata (H-05) y línea de tiempo única. Supuestos `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`, `#escala-listado-ideas-p-34`, `#identidad-y-filtros-servidor-p-34` y `#tabla-y-ficha-resultados-p-34`. **Cómo probarlo:** abre Resultados con una campaña que tenga más de 25 documentos y comprueba que «Descargar .md» aparece también en las ideas del final de la lista, que el número de ideas del encabezado coincide con el de la campaña y que, si la lista de participantes falla, la pantalla lo dice y ofrece «Reintentar». Siguiente: corte 2/6 (escala a 1.000 ideas, backend). |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
@@ -1957,6 +1976,35 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-21 - Claude Opus 5 - **`P-34` corte 4/6 — la tabla compara, el maestro-detalle lee (solo
+  portal).** Rol: Frontend senior Angular y UX/A11Y para la vista, SDET para las regresiones. Cubre
+  `P-34 §4.3` y `§4.4`; sin backend, contratos, datos ni configuración. **Qué cambió:** (1) entra la
+  **vista tabla** como principal —selección · participante (nombre + código) · área · pregunta ·
+  extracto · estado · calificación · creada · actualizada · documento—, con selector de columnas,
+  densidad, tamaño de página, **agrupación por participante** colapsable y **selección múltiple sin
+  acción** (D4, para que la curaduría futura sea agregar un botón y no rehacer la tabla); el
+  maestro-detalle de P-23 se conserva como **vista lectura** y la elección vive en
+  `ResultadosSesionService` (sesión, sin `localStorage`). (2) **El orden lo resuelve el servidor**: el
+  encabezado manda `orden`/`dir` —aceptados desde el corte 3— y recarga, porque ordenar en el cliente
+  sobre una página sería un orden falso; `aria-sort` anuncia el estado y el tercer clic **vuelve al
+  orden natural** de I-19 en vez de dejarlo fijado. (3) **Paginación honesta**: «Mostrando 1–25 de 30
+  filtradas · 120 en la campaña», con el total de la campaña pedido aparte con `pageSize=1` y omitido
+  si falla. (4) La **ficha** muestra la metadata que la API ya devolvía y no se pintaba (H-05): código,
+  empresa y sede, pregunta, `ideaIndice`, estado, creada y actualizada **absolutas en `America/Bogota`
+  más el «hace cuánto»**, confirmación con número de versión, curaduría, motivo de cierre, rúbrica y
+  modelo del snapshot, e id técnico copiable. (5) `construirLineaTiempo` (puro, con pruebas propias)
+  intercala aportes y versiones en **una sola secuencia**, con la confirmación como evento propio en su
+  fecha real: mostrarla en el instante de la versión contaría mal la conversación. **Qué NO se hizo:**
+  las columnas «versiones» y «aportes» de `§4.3` —sus conteos no están en el DTO de lista y exigirían
+  otro cambio aditivo de `04 §5.8`; la ficha sí los lista—. **Pruebas:** 3 nuevas del helper puro y 4
+  de componente (tabla por defecto y orden servidor con `aria-sort` en sus tres pasos, paginación y
+  su resumen, vista lectura conservada y recordada, ficha con metadata y línea de tiempo); las
+  regresiones de P-23, H-01 y H-04 ahora cambian a «vista lectura» primero, que es donde vive ese
+  comportamiento. Portal **86 pruebas en 11 archivos**; backend sin cambios verificado igual (**1073
+  unitarias + 131 de integración**); build Release `-warnaserror`, `dotnet format`, `git diff --check`,
+  `ng build --configuration production` y Prettier verdes. Decisión en
+  `SUPUESTOS.md#tabla-y-ficha-resultados-p-34`. Sin push, despliegue ni configuración remota.
+  **Siguiente: corte 5/6** (exportación, con `04 §5.8` en commit aparte y previo).
 - 2026-08-21 - Claude Opus 5 - **`P-34` corte 3/6 — la identidad la resuelve el servidor, y con ella
   llegan los filtros.** Rol: Arquitecto para la frontera del puerto y la lógica pura, Backend senior
   .NET para adaptadores y endpoint, Frontend Angular + UX/A11Y para la barra de filtros, SDET para las

@@ -318,6 +318,93 @@ th {
   align-items: start;
 }
 
+/* P-34 §4.3: barra de vistas, tabla ordenable y agrupación por participante. */
+.resultados-barra-vistas {
+  display: grid;
+  gap: 12px;
+}
+
+.resultados-opcion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.resultados-columnas summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* La tabla puede ser ancha: se desplaza dentro de su panel, no arrastra la página. */
+.resultados-tabla-scroll {
+  overflow-x: auto;
+}
+
+.resultados-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.resultados-tabla th,
+.resultados-tabla td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--ght-borde);
+  vertical-align: top;
+}
+
+.resultados-tabla.compacta th,
+.resultados-tabla.compacta td {
+  padding: 5px 8px;
+}
+
+.resultados-tabla thead th {
+  font-size: 0.8rem;
+  color: var(--ght-texto-secundario);
+  white-space: nowrap;
+}
+
+.resultados-tabla .resultados-col-idea {
+  min-width: 260px;
+}
+
+.resultados-tabla .resultados-col-seleccion {
+  width: 32px;
+}
+
+.resultados-tabla tr.selected-row {
+  background: var(--ght-panel-suave);
+}
+
+.resultados-grupo th {
+  background: var(--ght-panel-suave);
+}
+
+.resultados-orden {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.resultados-linea-tiempo li {
+  display: grid;
+  gap: 4px;
+}
+
+.resultados-id-tecnico {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* P-34 §4.2: panel de filtros de nivel 2 y chips de lo aplicado. */
 .resultados-filtros-avanzados {
   border-top: 1px solid var(--ght-borde);

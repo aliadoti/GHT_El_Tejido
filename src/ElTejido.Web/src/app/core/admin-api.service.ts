@@ -549,6 +549,18 @@ export class AdminApiService {
     );
   }
 
+  /**
+   * P-34 §4.3: solo el `total` de la campaña sin filtros, para que la paginación pueda decir
+   * «… · 1.024 en la campaña». Pide una fila: es la consulta más barata que responde esa pregunta.
+   */
+  conteoIdeasCampania(campaniaId: string) {
+    return this.api.get<PagedResult<IdeaConsolidada>>('/api/admin/ideas', {
+      campaniaId,
+      page: 1,
+      pageSize: 1,
+    });
+  }
+
   /** I-19: detalle auditable con versiones, aportes y evaluación vigente. */
   idea(campaniaId: string, id: string) {
     return this.api.get<DetalleIdea>(`/api/admin/ideas/${id}`, { campaniaId });

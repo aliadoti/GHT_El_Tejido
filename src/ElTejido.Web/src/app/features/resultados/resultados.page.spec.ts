@@ -101,6 +101,7 @@ describe('ResultadosPage', () => {
             respuestasTodas: () => of({ items: [respuesta], total: 1 }),
             markdownTodo: () => of({ items: [markdown, markdownIdea], total: 2 }),
             ideasTodas: () => of({ items: [idea, ideaEnCurso], total: 2 }),
+            conteoIdeasCampania: () => of({ items: [], total: 2 }),
             idea: () => of(detalleIdea),
             respuesta: () =>
               of({
@@ -126,11 +127,21 @@ describe('ResultadosPage', () => {
     });
   }
 
+  /** P-34 §4.3: la tabla es la vista por defecto; el maestro-detalle de P-23 es «vista lectura». */
+  function verEnLectura(fixture: { nativeElement: HTMLElement; detectChanges: () => void }) {
+    const boton = Array.from(fixture.nativeElement.querySelectorAll('button')).find(
+      (candidato) => candidato.textContent?.trim() === 'Vista lectura',
+    ) as HTMLButtonElement;
+    boton.click();
+    fixture.detectChanges();
+  }
+
   it('precarga la primera campaña y presenta una fila por idea con su estado', () => {
     configurar();
     const fixture = TestBed.createComponent(ResultadosPage);
     fixture.detectChanges();
     fixture.detectChanges();
+    verEnLectura(fixture);
 
     const element = fixture.nativeElement as HTMLElement;
     expect((fixture.componentInstance as unknown as { campaniaId: string }).campaniaId).toBe(
@@ -152,6 +163,7 @@ describe('ResultadosPage', () => {
     const fixture = TestBed.createComponent(ResultadosPage);
     fixture.detectChanges();
 
+    verEnLectura(fixture);
     const ideaBoton = fixture.nativeElement.querySelector('.resultados-idea') as HTMLButtonElement;
     ideaBoton.click();
     fixture.detectChanges();
@@ -214,6 +226,7 @@ describe('ResultadosPage', () => {
     const fixture = TestBed.createComponent(ResultadosPage);
     fixture.detectChanges();
 
+    verEnLectura(fixture);
     const element = fixture.nativeElement as HTMLElement;
     const aviso = element.querySelector('.resultados-aviso-usuarios');
     expect(aviso?.textContent).toContain('No se pudo cargar la lista de participantes');
@@ -243,6 +256,7 @@ describe('ResultadosPage', () => {
     const fixture = TestBed.createComponent(ResultadosPage);
     fixture.detectChanges();
 
+    verEnLectura(fixture);
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.resultados-resumen')?.textContent).toContain('137 ideas');
     expect(element.querySelector('.resultados-resumen')?.textContent).toContain(
@@ -271,6 +285,7 @@ describe('ResultadosPage', () => {
     const fixture = TestBed.createComponent(ResultadosPage);
     fixture.detectChanges();
 
+    verEnLectura(fixture);
     const filas = fixture.nativeElement.querySelectorAll('.resultados-idea strong');
     expect(filas[0].textContent.trim()).toBe('Ana (Producto)');
     expect(filas[1].textContent.trim()).toBe('Participante no identificado · U-000099');
@@ -317,6 +332,124 @@ describe('ResultadosPage', () => {
     fixture.detectChanges();
     expect(filtrosVistos[filtrosVistos.length - 1]['q']).toBeUndefined();
     expect(filtrosVistos[filtrosVistos.length - 1]['area']).toBe('Operaciones');
+  });
+
+  // P-34 §4.3: la tabla es la vista por defecto y el orden lo resuelve el servidor.
+  it('presenta la tabla por defecto y manda el orden pedido al servidor', () => {
+    const ordenes: Record<string, string>[] = [];
+    configurar(undefined, {
+      ideasTodas: (_campaniaId: string, filtros: Record<string, string>) => {
+        ordenes.push(filtros);
+        return of({ items: [idea, ideaEnCurso], total: 2 });
+      },
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const tabla = element.querySelector('.resultados-tabla') as HTMLTableElement;
+    expect(tabla).not.toBeNull();
+    expect(tabla.querySelectorAll('tbody tr').length).toBe(2);
+    // Encabezado accesible: ordenable, anunciado y sin orden al principio.
+    const encabezados = Array.from(tabla.querySelectorAll('thead th'));
+    const calificacion = encabezados.find((th) => th.textContent?.includes('Calificación'))!;
+    expect(calificacion.getAttribute('aria-sort')).toBe('none');
+
+    (calificacion.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(ordenes[ordenes.length - 1]['orden']).toBe('calificacion');
+    expect(ordenes[ordenes.length - 1]['dir']).toBe('asc');
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.resultados-tabla thead th[aria-sort="ascending"]')
+        ?.textContent?.trim(),
+    ).toContain('Calificación');
+
+    // Segundo clic invierte; el tercero vuelve al orden natural en vez de dejarlo pegado.
+    const mismoEncabezado = () =>
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.resultados-tabla thead th'),
+      ).find((th) => th.textContent?.includes('Calificación'))!;
+    (mismoEncabezado().querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(ordenes[ordenes.length - 1]['dir']).toBe('desc');
+
+    (mismoEncabezado().querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(ordenes[ordenes.length - 1]['orden']).toBeUndefined();
+    expect(mismoEncabezado().getAttribute('aria-sort')).toBe('none');
+  });
+
+  // P-34 §4.3 (H-04): la paginación dice qué se ve, qué dejó el filtro y qué tiene la campaña.
+  it('pagina en la tabla y describe el conteo sin insinuar que la página es todo', () => {
+    const muchas = Array.from({ length: 30 }, (_, indice) => ({
+      ...idea,
+      id: `idea-${indice}`,
+    })) as IdeaConsolidada[];
+    configurar(undefined, {
+      ideasTodas: () => of({ items: muchas, total: muchas.length }),
+      conteoIdeasCampania: () => of({ items: [], total: 120 }),
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelectorAll('.resultados-tabla tbody tr').length).toBe(25);
+    expect(element.querySelector('.panel-heading .muted')?.textContent).toContain(
+      'Mostrando 1–25 de 30 filtradas · 120 en la campaña',
+    );
+
+    const siguiente = Array.from(element.querySelectorAll('button')).find(
+      (boton) => boton.textContent?.trim() === 'Siguiente',
+    ) as HTMLButtonElement;
+    siguiente.click();
+    fixture.detectChanges();
+
+    expect(element.querySelectorAll('.resultados-tabla tbody tr').length).toBe(5);
+    expect(element.querySelector('.panel-heading .muted')?.textContent).toContain(
+      'Mostrando 26–30 de 30 filtradas',
+    );
+  });
+
+  // P-34 §4.3: la vista lectura de P-23 se conserva y se recuerda durante la sesión.
+  it('conserva el maestro-detalle como vista lectura y recuerda la elección', () => {
+    configurar();
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const lectura = Array.from(element.querySelectorAll('button')).find(
+      (boton) => boton.textContent?.trim() === 'Vista lectura',
+    ) as HTMLButtonElement;
+    lectura.click();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.resultados-master-detail')).not.toBeNull();
+    expect(element.querySelector('.resultados-tabla')).toBeNull();
+    expect(element.querySelectorAll('.resultados-idea').length).toBe(2);
+    expect(TestBed.inject(ResultadosSesionService).vista).toBe('lectura');
+  });
+
+  // P-34 §4.4 (H-05): la ficha muestra la metadata que la API ya devolvía y no se pintaba.
+  it('abre la ficha con la metadata y la línea de tiempo de la idea', () => {
+    configurar();
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const fila = fixture.nativeElement.querySelector(
+      '.resultados-tabla tbody th button',
+    ) as HTMLButtonElement;
+    fila.click();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('U-000042');
+    expect(element.textContent).toContain('Idea número');
+    expect(element.textContent).toContain('Línea de tiempo de la idea');
+    expect(element.textContent).toContain('Aporte inicial');
+    expect(element.textContent).toContain('Identificador técnico');
+    // La fila queda marcada como la actual sin perder la tabla (P-18/P-19).
+    expect(element.querySelector('.resultados-tabla tbody tr[aria-current="true"]')).not.toBeNull();
   });
 
   it('muestra una guía educada cuando no hay campañas que consultar', () => {
