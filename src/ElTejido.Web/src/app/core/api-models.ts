@@ -364,6 +364,33 @@ export interface ParticipanteIdea {
   resuelto: boolean;
 }
 
+/** P-34 §4.6 (04 §5.8): resumen de campaña sobre el mismo conjunto filtrado que la tabla. */
+export interface ResumenCampania {
+  totalIdeas: number;
+  participacion: { convocados: number; conIdeas: number; promedioIdeasPorActivo: number };
+  embudo: { iniciadas: number; confirmadas: number; conEvaluacion: number; maduras: number };
+  calificaciones: {
+    evaluadas: number;
+    mediana: number | null;
+    minima: number | null;
+    maxima: number | null;
+    umbralMadurez: number | null;
+    /** `false` = la marca del umbral no aplica a todas las barras y no debe dibujarse. */
+    umbralUniforme: boolean;
+    escala: { min: number; max: number } | null;
+    tramos: { desde: number; hasta: number; conteo: number }[];
+  };
+  coberturaPorPregunta: {
+    preguntaId: string;
+    total: number;
+    maduras: number;
+    pendientes: number;
+    rechazadas: number;
+    enCurso: number;
+  }[];
+  temas: { tema: string; conteo: number }[];
+}
+
 /** I-19: versión inmutable de una idea; el historial nunca se sobrescribe. */
 export interface VersionIdea {
   id: string;

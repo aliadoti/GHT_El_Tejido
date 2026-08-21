@@ -102,6 +102,36 @@ describe('ResultadosPage', () => {
             markdownTodo: () => of({ items: [markdown, markdownIdea], total: 2 }),
             ideasTodas: () => of({ items: [idea, ideaEnCurso], total: 2 }),
             conteoIdeasCampania: () => of({ items: [], total: 2 }),
+            resumenCampania: () =>
+              of({
+                totalIdeas: 2,
+                participacion: { convocados: 10, conIdeas: 2, promedioIdeasPorActivo: 1 },
+                embudo: { iniciadas: 2, confirmadas: 1, conEvaluacion: 1, maduras: 1 },
+                calificaciones: {
+                  evaluadas: 1,
+                  mediana: 4.5,
+                  minima: 4.5,
+                  maxima: 4.5,
+                  umbralMadurez: 4,
+                  umbralUniforme: true,
+                  escala: { min: 1, max: 5 },
+                  tramos: [
+                    { desde: 1, hasta: 2, conteo: 0 },
+                    { desde: 4, hasta: 5, conteo: 1 },
+                  ],
+                },
+                coberturaPorPregunta: [
+                  {
+                    preguntaId: 'p_1',
+                    total: 2,
+                    maduras: 1,
+                    pendientes: 0,
+                    rechazadas: 0,
+                    enCurso: 1,
+                  },
+                ],
+                temas: [{ tema: 'riego', conteo: 3 }],
+              }),
             idea: () => of(detalleIdea),
             respuesta: () =>
               of({
@@ -513,6 +543,63 @@ describe('ResultadosPage', () => {
     expect(descargas).toEqual(['Convencion_ideas_2026-08-21.xlsx']);
 
     HTMLAnchorElement.prototype.click = clicOriginal;
+  });
+
+  // P-34 §4.6: plegado por defecto, con las cinco cifras visibles y una tabla por cada gráfico.
+  it('resume la campaña con las cifras visibles y una tabla equivalente por gráfico', () => {
+    configurar();
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    const panel = element.querySelector('.resultados-resumen-campania') as HTMLDetailsElement;
+    expect(panel).not.toBeNull();
+    // Plegado por defecto, pero el encabezado ya dice lo esencial sin abrirlo (§3.1).
+    expect(panel.open).toBe(false);
+    const encabezado = panel.querySelector('summary')?.textContent ?? '';
+    expect(encabezado).toContain('2 de 10 participaron');
+    expect(encabezado).toContain('1 confirmadas');
+    expect(encabezado).toContain('1 maduras');
+
+    // Cada gráfico tiene su tabla: el dato se lee sin ver la barra (P-18/P-19).
+    expect(panel.querySelectorAll('table').length).toBe(3);
+    expect(panel.textContent).toContain('Con evaluación');
+    expect(panel.textContent).toContain('umbral de madurez');
+    expect(panel.textContent).toContain('riego');
+  });
+
+  // El umbral solo se marca cuando el servidor lo declara aplicable a todas las barras.
+  it('no marca el umbral cuando el servidor dice que no es uniforme', () => {
+    configurar(undefined, {
+      resumenCampania: () =>
+        of({
+          totalIdeas: 1,
+          participacion: { convocados: 3, conIdeas: 1, promedioIdeasPorActivo: 1 },
+          embudo: { iniciadas: 1, confirmadas: 1, conEvaluacion: 1, maduras: 0 },
+          calificaciones: {
+            evaluadas: 1,
+            mediana: 3,
+            minima: 3,
+            maxima: 3,
+            umbralMadurez: 4,
+            umbralUniforme: false,
+            escala: null,
+            tramos: [{ desde: 3, hasta: 4, conteo: 1 }],
+          },
+          coberturaPorPregunta: [],
+          temas: [],
+        }),
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector(
+      '.resultados-resumen-campania',
+    ) as HTMLElement;
+    expect(panel.textContent).not.toContain('umbral de madurez');
+    expect(panel.textContent).toContain(
+      'Las evaluaciones de este filtro todavía no reportan temas.',
+    );
   });
 
   it('muestra una guía educada cuando no hay campañas que consultar', () => {

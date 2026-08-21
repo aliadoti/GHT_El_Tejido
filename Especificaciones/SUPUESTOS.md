@@ -1766,3 +1766,42 @@
   leer la pantalla. Hay prueba de que un anónimo recibe `401` y de que el visor recibe `200`.
 - Rollback: revertir el commit quita las dos rutas; nada más las consume y no hay dato ni
   configuración involucrados.
+
+### resumen-campania-p-34 — El resumen describe exactamente lo que muestra la tabla
+
+- Fecha: 2026-08-21 - Agente/Rol: Claude Opus 5 - Backend senior/Frontend/UX-A11Y/SDET (P-34 corte
+  6/6, el último). Contrato en `04 §5.8`, commit documental `267c0b7`, previo al código.
+- Decisión 1 — **mismo alcance que la tabla** (§8.9): el resumen pasa por el mismo
+  `ConsultaResultadosCompartida`, así que `totalIdeas` coincide siempre con el `total` del listado
+  para el mismo filtro. Es la propiedad que hace confiable el panel: si divergiera, sería peor que no
+  tenerlo.
+- Decisión 2 — **`convocados` es la campaña completa**, no el subconjunto filtrado: es el denominador
+  que responde «¿cuánta gente participó?». `conIdeas` sí sale del alcance filtrado, y el contrato lo
+  dice para que nadie lea la razón como otra cosa.
+- Decisión 3 — **el umbral se marca solo si aplica a todas las barras.** `umbralUniforme` es `false`
+  cuando alguna pregunta sobrescribe el umbral de la campaña o cuando las evaluaciones no comparten
+  escala de rúbrica; el portal entonces **no dibuja la marca**. Dibujar una línea que no vale para
+  parte del histograma es peor que no dibujar ninguna.
+- Decisión 4 — **tramos sobre la escala declarada.** Con snapshot de rúbrica, los tramos cubren
+  `escala.min..escala.max` en pasos de un punto y el último incluye su extremo, para que la nota
+  máxima no desaparezca. Sin snapshot —evaluaciones históricas— se usan los valores observados y
+  `escala` viaja en `null`, en vez de inventar un rango que nadie declaró.
+- Decisión 5 — **sin librería de gráficos** (`01 §11`, `11 §5`): cada «gráfico» es una tabla con una
+  barra CSS al lado del número. Cumple de entrada el requisito de `§4.6` —tooltip con el valor exacto
+  y vista de tabla equivalente, el color nunca solo— y evita una dependencia nueva.
+- `temas` se ordena por conteo y **desempata alfabéticamente**, con tope de 20: sin el desempate, dos
+  llamadas iguales podían devolver listas distintas.
+- Panel **plegado por defecto** con las cinco cifras en el encabezado (§3.1): se ve lo esencial sin
+  abrirlo y sin ocupar la pantalla que necesita la tabla.
+- Rollback: revertir el commit quita la ruta y el panel; nada más los consume.
+
+### cierre-p-34 — Qué quedó fuera de la iniciativa
+
+- P-34 se cierra **6/6 el 2026-08-21**. Quedaron **deliberadamente fuera**, cada una anotada en su
+  corte: las columnas «versiones» y «aportes» de la tabla (`§4.3`), cuyos conteos exigirían otro
+  cambio aditivo de `04 §5.8` —la ficha y la exportación sí los traen—; los filtros «con/sin
+  documento» y «con/sin evaluación» (`§4.2`), que no entraron al contrato del corte 3; y la curaduría
+  accionable (D4), que toca el dominio y por eso solo se dejó prevista la columna de selección.
+- Sigue pendiente, como puerta **operativa** y no de código: la medición de **RU y latencia reales
+  contra Cosmos** del listado a escala (`§6`), que necesita ambiente y credenciales. Las mediciones
+  de operaciones —el factor que las gobierna— están fijadas por prueba en CI.

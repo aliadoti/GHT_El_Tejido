@@ -4,7 +4,18 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-21 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET): **`P-34` CORTE
+- Ultima actualizacion: 2026-08-21 (Claude Opus 5, Backend/Frontend/UX-A11Y/SDET): **`P-34` COMPLETA
+  6/6 — DONE LOCAL.** Cierra con el **resumen de campaña**: `GET /admin/campanias/{id}/resumen`
+  (`04 §5.8` en commit previo `267c0b7`) devuelve participación, embudo, distribución de
+  calificaciones, cobertura por pregunta y temas **sobre el mismo conjunto filtrado que la tabla** —
+  `totalIdeas` coincide siempre con el `total` del listado (§8.9)—. El panel va **plegado** con las
+  cinco cifras visibles, cada gráfico es una **tabla con barra** (sin librerías nuevas, el color nunca
+  va solo) y la marca del umbral **solo se dibuja si aplica a todas las barras**. Backend **1095
+  unitarias + 145 de integración**; portal **89 pruebas en 11 archivos**; build, format, diff,
+  `ng build` producción y Prettier verdes. **P-34 queda completa (6/6) y sin trabajo de código
+  pendiente**; lo que sigue lo define el usuario. Puerta operativa abierta: medición de RU/latencia
+  reales contra Cosmos.
+- Actualizacion anterior: 2026-08-21 (Claude Opus 5, Arquitecto/Backend/Frontend/SDET): **`P-34` CORTE
   5/6 — DONE LOCAL.** **Exportación con alcance explícito.** Dos rutas nuevas de solo lectura
   (`04 §5.8` en commit previo `c9181a6`): `GET /admin/campanias/{id}/exportar` —`ideas|aportes|
   evaluaciones` en `xlsx|csv`, con `anonimizado` y **los mismos filtros de la pantalla**— y
@@ -1420,15 +1431,22 @@
 - **Despliegue real:** App Service Linux .NET 8 en `https://app-eltejido-mvp-evd8ffcgd3fthshw.eastus-01.azurewebsites.net` (hostname unico; el clasico `<name>.azurewebsites.net` NO resuelve). CD por OIDC (`deploy.yml`). `/health` 200, portal Angular servido por la API, login OTP (via simulacion), CRUD y persistencia Cosmos/Blob/Key Vault verificados. **WhatsApp real OPERATIVO (confirmado 2026-07-20, P-01/P-02 completas):** billing resuelto, plantilla de inicio aprobada por Meta y flujo E2E real validado (envio→ventana 24h→evaluacion→Markdown) con entregas monitoreadas; la simulacion sigue disponible para pruebas sin costo.
 
 ## Proximo paso (lo primero que debe hacer quien retome)
-- [ ] **IMPLEMENTAR `P-34` CORTE 6/6 — RESUMEN DE CAMPAÑA (último).** Leer
-  `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §4.6 y §5. Endpoint nuevo
-  `GET /admin/campanias/{id}/resumen` que acepte **los mismos filtros** y devuelva participación,
-  embudo, histograma de calificación, cobertura y temas —calcularlo en el navegador obligaría a
-  descargar las 1.000 ideas (D5)—; panel plegable por defecto con las cinco cifras siempre visibles
-  (§3.1), tooltips y **tabla equivalente por cada gráfico** para que el dato sea legible sin ver el
-  gráfico (P-18/P-19). El contrato `04 §5.8` va en **commit aparte y previo**. Criterio de aceptación
-  §8.9: el resumen coincide con lo que muestra la tabla para el mismo filtro. Con este corte P-34
-  queda completa y toca cerrar la iniciativa en el tablero.
+- [ ] **DEFINIR EL SIGUIENTE OBJETIVO CON EL USUARIO.** `P-34` quedó **completa 6/6** y no hay
+  trabajo de código en curso. Candidatos ya identificados, ninguno iniciado: (a) el **robustecimiento
+  semántico integral `DT-P33-01`** que sigue en backlog —banco semántico, corrida QAS/25
+  abierto/cerrado/mixto, D5 `n=3`, costo/latencia y acta—; (b) las **puertas operativas de la
+  convención** (parametrización, usuarios reales, D5, smoke/UAT bilingüe, costo/latencia, readiness y
+  acta de flags), que no son código; (c) la deuda de **P-34 anotada en su cierre**: columnas
+  «versiones»/«aportes» de la tabla y filtros «con/sin documento» y «con/sin evaluación», ambas con
+  cambio aditivo de `04 §5.8`. **No empezar ninguna sin decisión explícita del usuario.** Siguen sin
+  publicar los commits locales de P-34: el push a `main` despliega y es decisión suya.
+- [x] **(HECHO 2026-08-21, Claude Opus 5 — backend 1095 unitarias + 145 integración; portal 89 pruebas
+  en 11 archivos; build, format, diff, `ng build` producción y Prettier verdes) `P-34` corte 6/6 —
+  COMPLETA.** `/resumen` con los mismos filtros (participación sobre la convocatoria, embudo
+  acumulativo, histograma sobre la escala de la rúbrica, cobertura por pregunta y temas estables),
+  panel plegado con las cinco cifras visibles y una tabla equivalente por gráfico, y marca de umbral
+  solo cuando es uniforme. Contrato en commit previo `267c0b7`. Supuestos en
+  `SUPUESTOS.md#resumen-campania-p-34` y `#cierre-p-34`.
 - [x] **(HECHO 2026-08-21, Claude Opus 5 — backend 1088 unitarias + 141 integración; portal 87 pruebas
   en 11 archivos; build, format, diff, `ng build` producción y Prettier verdes) `P-34` corte 5/6.**
   `/exportar` (ideas/aportes/evaluaciones en xlsx/csv, anonimizado y filtros de la pantalla) y
@@ -1832,7 +1850,7 @@
 | P-32 | Conversación multidioma y catálogo | DONE local 4/4; D5/UAT/Meta/costo pendientes | cambios locales | backend 858 no-Calibración tras correcciones; portal 43/43 previo | Runtime `es/en`, catálogo Cosmos/portal, localizaciones, envío mixto y rollback; gate OFF. P-33 extiende de forma compatible el registro 24/13 a 29/16. |
 | P-33 | Consulta y cierre visible de la idea | DONE local 3/3; D5/UAT/acta de flags pendiente | cambios locales | build Release, 789 unitarias + 87 integración | Consulta pura activo→última sin menú; versión exacta al consultar/cerrar; afinidad y reapertura de la misma cerrada ante corrección. Gate OFF, opt-outs por campaña, seguridad y `es/en`. Siguiente: validar en ambiente aislado; sin activar remoto. |
 | DT-P33-01 | Clasificación semántica de consulta de idea | HOTFIX DESPLEGADO; robustecimiento semántico integral en backlog | `85b78f8` / `v1.0.3-convencion` | build Release, 1053 unitarias + 121 integración, formato/diff y workflow verdes; `/health/ready` ok | Gates semántico/visibilidad ON, inglés v3 activo. Afinidad P-33 + alias exacto prevalecen antes del LLM. Pendiente posterior: banco semántico, QAS/25 abierto/cerrado/mixto, D5, costo/latencia y acta. No bloquea el inicio de P-34. |
-| P-34 | Resultados: identidad, filtros, tabla, exportación y resumen | **CORTES 1-5/6 DONE local; siguiente corte 6/6 (último)** | cambios locales + `98b8bca` (contrato) | portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122) | Corte 1: paginación completa de usuarios/Markdown/respuestas/conversaciones hasta el `total` del servidor, contadores tomados de `total` con aviso cuando el desglose por estado es parcial, y fallo del maestro de participantes visible y reintentable con «Participante no identificado · código» en vez del id técnico. Sin contratos ni datos; P-23 intacto. Corte 2: el listado pagina **antes** de resolver versiones y pide las de la página en una sola consulta por ids; el detalle trae los aportes por `ideaId`. Medido con 1.000 ideas: 1.000 → **0** lecturas puntuales y 5.000 → **5** documentos de respuesta. Corte 3: `participante` embebido y calificación vigente en `/admin/ideas`, filtros de servidor (`q`, área, empresa, sede, fechas, calificación, confirmada) y `orden`/`dir` con `400` ante consulta inválida; portal con barra de dos niveles, chips, filtro en la URL y vacío que nombra el filtro; `04 §5.8` en commit previo `98b8bca`. Corte 4 (solo portal): vista tabla ordenable como principal con orden resuelto en el servidor y anunciado con `aria-sort`, agrupación por participante, columnas/densidad/tamaño de página configurables, paginación honesta, vista lectura conservada, ficha con toda la metadata (H-05) y línea de tiempo única. Corte 5: `/exportar` (ideas/aportes/evaluaciones en xlsx/csv, con anonimizado y los filtros de la pantalla) y `documentos.zip`, con «Filtros aplicados» dentro del archivo, tope de 10.000 filas y escritura sin sincronía sobre el socket; `04 §5.8` en commit previo `c9181a6`. Supuestos `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`, `#escala-listado-ideas-p-34`, `#identidad-y-filtros-servidor-p-34`, `#tabla-y-ficha-resultados-p-34` y `#exportacion-resultados-p-34`. **Cómo probarlo:** abre Resultados con una campaña que tenga más de 25 documentos y comprueba que «Descargar .md» aparece también en las ideas del final de la lista, que el número de ideas del encabezado coincide con el de la campaña y que, si la lista de participantes falla, la pantalla lo dice y ofrece «Reintentar». Siguiente: corte 2/6 (escala a 1.000 ideas, backend). |
+| P-34 | Resultados: identidad, filtros, tabla, exportación y resumen | **COMPLETA 6/6 local — 2026-08-21** | cambios locales + `98b8bca` (contrato) | portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios (1053 + 122) | Corte 1: paginación completa de usuarios/Markdown/respuestas/conversaciones hasta el `total` del servidor, contadores tomados de `total` con aviso cuando el desglose por estado es parcial, y fallo del maestro de participantes visible y reintentable con «Participante no identificado · código» en vez del id técnico. Sin contratos ni datos; P-23 intacto. Corte 2: el listado pagina **antes** de resolver versiones y pide las de la página en una sola consulta por ids; el detalle trae los aportes por `ideaId`. Medido con 1.000 ideas: 1.000 → **0** lecturas puntuales y 5.000 → **5** documentos de respuesta. Corte 3: `participante` embebido y calificación vigente en `/admin/ideas`, filtros de servidor (`q`, área, empresa, sede, fechas, calificación, confirmada) y `orden`/`dir` con `400` ante consulta inválida; portal con barra de dos niveles, chips, filtro en la URL y vacío que nombra el filtro; `04 §5.8` en commit previo `98b8bca`. Corte 4 (solo portal): vista tabla ordenable como principal con orden resuelto en el servidor y anunciado con `aria-sort`, agrupación por participante, columnas/densidad/tamaño de página configurables, paginación honesta, vista lectura conservada, ficha con toda la metadata (H-05) y línea de tiempo única. Corte 5: `/exportar` (ideas/aportes/evaluaciones en xlsx/csv, con anonimizado y los filtros de la pantalla) y `documentos.zip`, con «Filtros aplicados» dentro del archivo, tope de 10.000 filas y escritura sin sincronía sobre el socket; `04 §5.8` en commit previo `c9181a6`. Corte 6: `/resumen` con los mismos filtros —participación, embudo, histograma, cobertura y temas—, panel plegado con las cinco cifras visibles y tabla equivalente por gráfico; `04 §5.8` en commit previo `267c0b7`. Supuestos `SUPUESTOS.md#paginacion-y-contadores-resultados-p-34`, `#escala-listado-ideas-p-34`, `#identidad-y-filtros-servidor-p-34`, `#tabla-y-ficha-resultados-p-34`, `#exportacion-resultados-p-34`, `#resumen-campania-p-34` y `#cierre-p-34`. **Cómo probarlo:** abre Resultados con una campaña que tenga más de 25 documentos y comprueba que «Descargar .md» aparece también en las ideas del final de la lista, que el número de ideas del encabezado coincide con el de la campaña y que, si la lista de participantes falla, la pantalla lo dice y ofrece «Reintentar». Siguiente: corte 2/6 (escala a 1.000 ideas, backend). |
 | DT-P27-01 | Configuración versionada de expresiones determinísticas P-27 | DONE local 2/2 | pendiente | backend 821/821 (736+85), build/focalizadas verdes | Validación normalizada de vacío/duplicado/límite, descarte completo y fallback; auditoría append-only de versión aplicada/default/descartada sin aliases, rollback desde el origen de configuración o al default. Sin alias, flags ni configuración remota. |
 | DT-I20-01 | Variación y no duplicación en la redacción conversacional | DONE local 5/5; D5 pendiente | pendiente | backend 785 unitarias (766 sin Calibración) + 88 integración, build/format/diff verdes | Reglas de variedad en evaluación y redactor (la fórmula de reconocimiento sigue permitida, deja de ser obligatoria), indicación estructural cuando hay retroalimentación validada, guarda pura `FiltroDuplicacionTurno` que omite el puente equivalente/prefijo del cuerpo, `ExigePregunta` por acto y auditoría `ajuste:<motivo>` sin texto. Sin flag, contratos, portal ni migración. **Cómo probarlo:** conversar dos o tres veces en dos campañas distintas y comprobar que los mensajes no arrancan siempre igual y que nunca repiten el mismo reconocimiento dentro de un envío (`QAS/19`). |
 | DT-P32-02 | Semillas seguras, edición masiva JSON y readiness | **COMPLETA local 3/3**; falta corrida autorizada | `77377ec` (contrato 04) + pendientes | build Release `-warnaserror`, 817 unitarias + 103 integración, format y `git diff --check` verdes; portal 57/57, `ng build` y Prettier verdes | Corte 1: base curada `es/en` que ya no lee App Settings, fotografía legacy separada y sin truncar, límite de frases por grupo operativo (`100`, techo `500`) más `MaxBytesImportacionJson` (256 KiB, techo 1 MiB), prevalidación pura compartida y rutas `/semillas/{idioma}/base` y `/legacy/{preview,exportar}`. Corte 2: descarga editable canónica `*-editable.json`, `POST /importar/prevalidar` sin escritura, `/importar` sobre el mismo validador con tamaño verificado antes de deserializar y `v+1` siempre borrador, `GET /readiness` con gate real y campañas bloqueadas, y catálogo global activo obligatorio por idioma al activar campaña bilingüe. Corte 3: portal con semilla base y configuración anterior separadas, flujo descargar → editar → revisar → confirmar, readiness visible, comparación contra la activa y reintento del mismo archivo corregido. Gate OFF, sin despliegue ni configuración remota. **Cómo probarlo:** crear la semilla base `es`, descargar su JSON, cambiar dos mensajes y volver a subirlo; debe mostrarse el resumen con conteos y cero errores y, al confirmar, aparecer una versión nueva en borrador seleccionada y comparada con la activa (`QAS/22`). **Pendiente: `QAS/22` y `QAS/17` en ambiente aislado autorizado.** |
@@ -2014,6 +2032,32 @@
 
 ## Log cronologico (append-only)
 
+- 2026-08-21 - Claude Opus 5 - **`P-34` corte 6/6 — resumen de campaña; la iniciativa queda
+  COMPLETA.** Rol: Backend senior .NET para el endpoint, Frontend + UX/A11Y para el panel, SDET para
+  las regresiones. Cubre `P-34 §4.6`, `§3.1` y `§8.9`; contrato `04 §5.8` en **commit aparte y previo**
+  (`267c0b7`), `03` sin cambios. **Qué entra:** `GET /admin/campanias/{id}/resumen` con los mismos
+  filtros del listado —participación sobre la convocatoria completa, embudo acumulativo, distribución
+  de calificaciones, cobertura por pregunta y temas—, resuelto en el servidor porque calcularlo en el
+  navegador obligaría a descargar las 1.000 ideas (D5). Pasa por el mismo
+  `ConsultaResultadosCompartida` que la tabla y la exportación, así que **`totalIdeas` coincide
+  siempre con el `total` del listado** (§8.9): es la propiedad que hace confiable el panel.
+  `ResumenCampaniaResultados` (Application, puro) calcula mediana, tramos y conteos sin tocar E/S.
+  **Decisiones que no son obvias:** `convocados` es la campaña completa —el denominador de «¿cuánta
+  gente participó?»— mientras `conIdeas` sale del filtro; los tramos cubren la escala declarada por el
+  snapshot de rúbrica y el último incluye su extremo para no perder la nota máxima, y sin snapshot se
+  usan los valores observados en vez de inventar un rango; `temas` desempata alfabéticamente para que
+  dos llamadas iguales devuelvan lo mismo; y la **marca del umbral solo se dibuja cuando es uniforme**
+  —ninguna pregunta lo sobrescribe y todas las evaluaciones comparten escala—, porque una línea que no
+  vale para parte del histograma es peor que ninguna. **Portal:** panel **plegado por defecto** con
+  las cinco cifras en el encabezado (§3.1) y, dentro, una **tabla con barra CSS** por cada gráfico:
+  sin librerías nuevas (`01 §11`), con tooltip del valor exacto y el dato legible sin ver el color
+  (P-18/P-19). **Pruebas:** 7 unitarias del cálculo puro y 4 de integración —incluida la de §8.9, que
+  compara el `total` del listado con el `totalIdeas` del resumen para el mismo filtro— más 2 de
+  componente. Backend **1095 unitarias + 145 de integración**; portal **89 pruebas en 11 archivos**;
+  build Release `-warnaserror`, `dotnet format`, `git diff --check`, `ng build --configuration
+  production` y Prettier verdes. Decisiones en `SUPUESTOS.md#resumen-campania-p-34` y `#cierre-p-34`,
+  que además deja anotado lo que quedó deliberadamente fuera de P-34 y la puerta operativa abierta
+  (RU/latencia reales contra Cosmos). **P-34 queda completa 6/6**; sin push ni despliegue.
 - 2026-08-21 - Claude Opus 5 - **`P-34` corte 5/6 — exportación con alcance explícito.** Rol:
   Arquitecto para la frontera del puerto de escritura, Backend senior .NET para endpoints y adaptador,
   Frontend para el menú de descarga, SDET para las regresiones. Cubre `P-34 §4.5`, `§5` y `§7`;

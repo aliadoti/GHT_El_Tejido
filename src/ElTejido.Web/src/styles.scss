@@ -318,6 +318,39 @@ th {
   align-items: start;
 }
 
+/* P-34 §4.6: panel de resumen; la barra acompaña al número, nunca lo reemplaza. */
+.resultados-resumen-campania summary {
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+
+.resultados-resumen-campania h4 {
+  margin: 16px 0 6px;
+}
+
+.resultados-barra {
+  display: inline-block;
+  height: 10px;
+  min-width: 2px;
+  margin-right: 6px;
+  border-radius: 4px;
+  background: var(--ght-verde-claro);
+  vertical-align: middle;
+}
+
+.resultados-temas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resultados-temas li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* P-34 §4.3: barra de vistas, tabla ordenable y agrupación por participante. */
 .resultados-barra-vistas {
   display: grid;
@@ -342,14 +375,17 @@ th {
   overflow-x: auto;
 }
 
-.resultados-tabla {
+.resultados-tabla,
+.resultados-tabla-resumen {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
 .resultados-tabla th,
-.resultados-tabla td {
+.resultados-tabla td,
+.resultados-tabla-resumen th,
+.resultados-tabla-resumen td {
   text-align: left;
   padding: 10px 8px;
   border-bottom: 1px solid var(--ght-borde);
@@ -361,7 +397,8 @@ th {
   padding: 5px 8px;
 }
 
-.resultados-tabla thead th {
+.resultados-tabla thead th,
+.resultados-tabla-resumen thead th {
   font-size: 0.8rem;
   color: var(--ght-texto-secundario);
   white-space: nowrap;

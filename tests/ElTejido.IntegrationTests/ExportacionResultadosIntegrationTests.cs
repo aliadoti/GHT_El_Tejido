@@ -1,15 +1,18 @@
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using ClosedXML.Excel;
 using ElTejido.Application.Auth;
 using ElTejido.Application.Campanas;
+using ElTejido.Application.Participantes;
 using ElTejido.Application.Respuestas;
 using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Evaluacion;
 using ElTejido.Domain.Identidad;
+using ElTejido.Domain.Participantes;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
@@ -202,6 +205,85 @@ public sealed class ExportacionResultadosIntegrationTests
         zip.Entries.Should().NotContain(entrada => entrada.FullName.Contains("Ana", StringComparison.Ordinal));
     }
 
+    // P-34 §8.9: el resumen describe exactamente el conjunto que muestra la tabla para el mismo filtro.
+    [Fact]
+    public async Task Resumen_CoincideConElListadoParaElMismoFiltro()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var listado = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}&area=Operaciones");
+        using var resumen = await client.GetAsync($"/api/admin/campanias/{CampaniaId}/resumen?area=Operaciones");
+
+        resumen.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listadoJson = await listado.Content.ReadAsStringAsync();
+        var resumenJson = await resumen.Content.ReadAsStringAsync();
+
+        listadoJson.Should().Contain("\"total\":1");
+        resumenJson.Should().Contain("\"totalIdeas\":1");
+        resumenJson.Should().Contain("\"iniciadas\":1");
+    }
+
+    [Fact]
+    public async Task Resumen_TraeParticipacionEmbudoHistogramaCoberturaYTemas()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync($"/api/admin/campanias/{CampaniaId}/resumen");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await respuesta.Content.ReadAsStringAsync();
+        using var documento = JsonDocument.Parse(json);
+        var raiz = documento.RootElement;
+
+        raiz.GetProperty("totalIdeas").GetInt32().Should().Be(2);
+        // La convocatoria es la de la campaña completa, no el subconjunto filtrado.
+        raiz.GetProperty("participacion").GetProperty("convocados").GetInt32().Should().Be(3);
+        raiz.GetProperty("participacion").GetProperty("conIdeas").GetInt32().Should().Be(2);
+
+        var embudo = raiz.GetProperty("embudo");
+        embudo.GetProperty("iniciadas").GetInt32().Should().Be(2);
+        embudo.GetProperty("confirmadas").GetInt32().Should().Be(1);
+        embudo.GetProperty("conEvaluacion").GetInt32().Should().Be(1);
+
+        var calificaciones = raiz.GetProperty("calificaciones");
+        calificaciones.GetProperty("evaluadas").GetInt32().Should().Be(1);
+        calificaciones.GetProperty("mediana").GetDecimal().Should().Be(4.5m);
+        calificaciones.GetProperty("tramos").GetArrayLength().Should().BeGreaterThan(0);
+
+        raiz.GetProperty("coberturaPorPregunta")[0].GetProperty("preguntaId").GetString().Should().Be("p_1");
+        raiz.GetProperty("temas")[0].GetProperty("tema").GetString().Should().Be("riego");
+    }
+
+    // Sin escala compartida no se puede dibujar una marca que valga para todas las barras.
+    [Fact]
+    public async Task Resumen_SinSnapshotDeRubrica_NoDeclaraUmbralUniforme()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync($"/api/admin/campanias/{CampaniaId}/resumen");
+
+        var json = await respuesta.Content.ReadAsStringAsync();
+        using var documento = JsonDocument.Parse(json);
+        var calificaciones = documento.RootElement.GetProperty("calificaciones");
+        calificaciones.GetProperty("umbralUniforme").GetBoolean().Should().BeFalse();
+        calificaciones.GetProperty("umbralMadurez").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Resumen_FiltroInvalido_Responde400()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync($"/api/admin/campanias/{CampaniaId}/resumen?desde=ayer");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await respuesta.Content.ReadAsStringAsync()).Should().Contain("formato_invalido");
+    }
+
     [Fact]
     public async Task Exportar_ExigeSesionAdministrativa()
     {
@@ -260,8 +342,10 @@ public sealed class ExportacionResultadosIntegrationTests
         var versionBeto = VersionIdeaConsolidada.Crear(
             "idea_beto_v1", CampaniaId, "idea_beto", 1, null, "Turnos rotativos", ["resp_beto"], ["resp_beto"],
             TipoAporteIdea.Inicial, EstadoConfirmacionVersionIdea.Propuesta, null, null, null, null, Epoca);
+        // Cerrada como madura con su evaluación vigente: es la que alimenta el embudo del resumen.
         var ideaAna = IdeaConsolidada.Crear("idea_ana", CampaniaId, "u_ana", "p_1", "conv_ana", "resp_ana", 1, Epoca)
-            .ConfirmarVersion(versionAna.Id, Epoca);
+            .ConfirmarVersion(versionAna.Id, Epoca)
+            .Cerrar(EstadoResultadoIdeaConsolidada.Madura, "eval_ana", "umbral", Epoca);
         var ideaBeto = IdeaConsolidada.Crear("idea_beto", CampaniaId, "u_beto", "p_1", "conv_beto", "resp_beto", 1, Epoca)
             .ConPropuesta(versionBeto.Id, Epoca);
 
@@ -308,6 +392,21 @@ public sealed class ExportacionResultadosIntegrationTests
                 Epoca, Epoca, ideaRef: "idea_ana", versionIdeaRef: "idea_ana_v1"),
         });
 
+        // P-34 §4.6: la convocatoria de la campaña, denominador de la participación.
+        var participantes = Substitute.For<IRepositorioParticipantes>();
+        participantes.ListarParticipantesAsync(CampaniaId, Arg.Any<CancellationToken>()).Returns(new[]
+        {
+            ParticipanteCampania.Crear(
+                "p_ana", CampaniaId, "u_ana", NumeroWhatsApp.FromNormalized("573001112233"),
+                EstadoRegistro.Activo, EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta, Epoca, null, null),
+            ParticipanteCampania.Crear(
+                "p_beto", CampaniaId, "u_beto", NumeroWhatsApp.FromNormalized("573001112244"),
+                EstadoRegistro.Activo, EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta, Epoca, null, null),
+            ParticipanteCampania.Crear(
+                "p_caro", CampaniaId, "u_caro", NumeroWhatsApp.FromNormalized("573001112255"),
+                EstadoRegistro.Activo, EstadoEnvio.Pendiente, EstadoRespuestaParticipante.SinRespuesta, Epoca, null, null),
+        });
+
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
@@ -316,6 +415,7 @@ public sealed class ExportacionResultadosIntegrationTests
                 services.AddSingleton(respuestas);
                 services.AddSingleton(usuarios);
                 services.AddSingleton(campanias);
+                services.AddSingleton(participantes);
                 services.AddSingleton<IServicioSesion, SesionesFake>();
             });
         });

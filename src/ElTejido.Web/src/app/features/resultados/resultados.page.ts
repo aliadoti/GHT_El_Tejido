@@ -14,6 +14,7 @@ import {
   Evaluacion,
   IdeaConsolidada,
   Respuesta,
+  ResumenCampania,
   UsuarioAdmin,
 } from '../../core/api-models';
 import { AuthService } from '../../core/auth.service';
@@ -281,6 +282,167 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
           </p>
         </section>
       } @else {
+        <!-- P-34 §4.6: plegado por defecto, con las cinco cifras siempre visibles en el encabezado.
+             Cada gráfico es una tabla con barras: el color nunca va solo (P-18/P-19). -->
+        @if (resumen(); as datos) {
+          <details class="panel resultados-resumen-campania">
+            <summary>
+              <strong>Resumen de la campaña</strong>
+              <span class="muted">
+                {{ datos.participacion.conIdeas }} de
+                {{ datos.participacion.convocados }} participaron ·
+                {{ datos.embudo.iniciadas }} ideas · {{ datos.embudo.confirmadas }} confirmadas ·
+                {{ datos.embudo.conEvaluacion }} evaluadas · {{ datos.embudo.maduras }} maduras
+              </span>
+            </summary>
+
+            <p class="muted">
+              Calculado sobre el mismo filtro que la tabla. «Participaron» se mide sobre la
+              convocatoria completa de la campaña; el promedio es de
+              {{ datos.participacion.promedioIdeasPorActivo }} ideas por participante activo.
+            </p>
+
+            <section aria-labelledby="resumen-embudo">
+              <h4 id="resumen-embudo">Embudo</h4>
+              <table class="resultados-tabla-resumen">
+                <caption class="sr-only">
+                  Ideas iniciadas, confirmadas, evaluadas y maduras
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Etapa</th>
+                    <th scope="col">Ideas</th>
+                    <th scope="col">Proporción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (etapa of etapasEmbudo(datos); track etapa.nombre) {
+                    <tr>
+                      <th scope="row">{{ etapa.nombre }}</th>
+                      <td>{{ etapa.valor }}</td>
+                      <td>
+                        <span
+                          class="resultados-barra"
+                          [style.width.%]="etapa.porcentaje"
+                          [title]="etapa.valor + ' de ' + datos.embudo.iniciadas"
+                        ></span>
+                        {{ etapa.porcentaje }}%
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+
+            <section aria-labelledby="resumen-calificaciones">
+              <h4 id="resumen-calificaciones">Distribución de calificaciones</h4>
+              @if (!datos.calificaciones.evaluadas) {
+                <p class="muted">Todavía no hay ideas con evaluación vigente en este filtro.</p>
+              } @else {
+                <p class="muted">
+                  {{ datos.calificaciones.evaluadas }} evaluadas · mediana
+                  {{ datos.calificaciones.mediana }} · entre {{ datos.calificaciones.minima }} y
+                  {{ datos.calificaciones.maxima }}
+                  @if (
+                    datos.calificaciones.umbralUniforme &&
+                    datos.calificaciones.umbralMadurez !== null
+                  ) {
+                    · umbral de madurez {{ datos.calificaciones.umbralMadurez }}
+                  }
+                </p>
+                <table class="resultados-tabla-resumen">
+                  <caption class="sr-only">
+                    Cantidad de ideas por rango de calificación
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Rango</th>
+                      <th scope="col">Ideas</th>
+                      <th scope="col">Distribución</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (tramo of datos.calificaciones.tramos; track tramo.desde) {
+                      <tr>
+                        <th scope="row">
+                          {{ tramo.desde }} a {{ tramo.hasta }}
+                          @if (esTramoDelUmbral(datos, tramo)) {
+                            <span class="status-badge">umbral de madurez</span>
+                          }
+                        </th>
+                        <td>{{ tramo.conteo }}</td>
+                        <td>
+                          <span
+                            class="resultados-barra"
+                            [style.width.%]="
+                              porcentaje(tramo.conteo, datos.calificaciones.evaluadas)
+                            "
+                            [title]="
+                              tramo.conteo + ' ideas entre ' + tramo.desde + ' y ' + tramo.hasta
+                            "
+                          ></span>
+                          {{ porcentaje(tramo.conteo, datos.calificaciones.evaluadas) }}%
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <section aria-labelledby="resumen-cobertura">
+              <h4 id="resumen-cobertura">Cobertura por pregunta</h4>
+              <table class="resultados-tabla-resumen">
+                <caption class="sr-only">
+                  Estado de las ideas de cada pregunta
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Pregunta</th>
+                    <th scope="col">Total</th>
+                    <th scope="col">Maduras</th>
+                    <th scope="col">Pendientes</th>
+                    <th scope="col">Rechazadas</th>
+                    <th scope="col">En curso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (cobertura of datos.coberturaPorPregunta; track cobertura.preguntaId) {
+                    <tr>
+                      <th scope="row">{{ cobertura.preguntaId }}</th>
+                      <td>{{ cobertura.total }}</td>
+                      <td>{{ cobertura.maduras }}</td>
+                      <td>{{ cobertura.pendientes }}</td>
+                      <td>{{ cobertura.rechazadas }}</td>
+                      <td>{{ cobertura.enCurso }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td class="muted" colspan="6">Sin ideas para este filtro.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </section>
+
+            <section aria-labelledby="resumen-temas">
+              <h4 id="resumen-temas">Temas más frecuentes</h4>
+              @if (!datos.temas.length) {
+                <p class="muted">Las evaluaciones de este filtro todavía no reportan temas.</p>
+              } @else {
+                <ul class="compact-list resultados-temas">
+                  @for (tema of datos.temas; track tema.tema) {
+                    <li>
+                      <span class="status-badge">{{ tema.tema }}</span>
+                      <span class="muted">{{ tema.conteo }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+            </section>
+          </details>
+        }
+
         <!-- P-34 §4.3: la tabla compara, el maestro-detalle lee. La vista elegida vive en sesión. -->
         <section class="panel resultados-barra-vistas">
           <div class="actions-row" role="group" aria-label="Vista de resultados">
@@ -1034,6 +1196,8 @@ export class ResultadosPage {
   /** P-34 §4.5 (D1): la casilla de anonimizado está disponible desde el primer día. */
   protected readonly anonimizado = signal(false);
   protected readonly exportando = signal(false);
+  /** P-34 §4.6: resumen del mismo conjunto filtrado; `null` mientras no haya respuesta. */
+  protected readonly resumen = signal<ResumenCampania | null>(null);
   protected nivelMadurezFiltro = '';
   private cargasPendientes = 0;
   private urlAplicada = '';
@@ -1343,6 +1507,37 @@ export class ResultadosPage {
     return this.artefactos().some((artefacto) => artefacto.ideaRef === ideaId);
   }
 
+  // ---- P-34 §4.6: resumen de campaña ------------------------------------------------------------
+
+  /** Proporciones del embudo sobre las ideas iniciadas; con cero ideas no hay nada que repartir. */
+  etapasEmbudo(datos: ResumenCampania): { nombre: string; valor: number; porcentaje: number }[] {
+    const base = datos.embudo.iniciadas;
+    return [
+      { nombre: 'Iniciadas', valor: datos.embudo.iniciadas },
+      { nombre: 'Confirmadas', valor: datos.embudo.confirmadas },
+      { nombre: 'Con evaluación', valor: datos.embudo.conEvaluacion },
+      { nombre: 'Maduras', valor: datos.embudo.maduras },
+    ].map((etapa) => ({ ...etapa, porcentaje: this.porcentaje(etapa.valor, base) }));
+  }
+
+  porcentaje(valor: number, total: number): number {
+    return total ? Math.round((valor / total) * 100) : 0;
+  }
+
+  /**
+   * La marca del umbral solo se muestra cuando el servidor la declara uniforme: si alguna pregunta lo
+   * sobrescribe o las escalas difieren, señalar un tramo sería dibujar una línea que miente.
+   */
+  esTramoDelUmbral(datos: ResumenCampania, tramo: { desde: number; hasta: number }): boolean {
+    const umbral = datos.calificaciones.umbralMadurez;
+    return (
+      datos.calificaciones.umbralUniforme &&
+      umbral !== null &&
+      umbral >= tramo.desde &&
+      umbral <= tramo.hasta
+    );
+  }
+
   // ---- P-34 §4.5: exportación -------------------------------------------------------------------
 
   alternarAnonimizado() {
@@ -1535,6 +1730,11 @@ export class ResultadosPage {
     this.evaluacion.set(null);
     this.markdown.set(null);
 
+    // P-34 §4.6: el resumen viaja con el mismo filtro, así que describe lo mismo que la tabla (§8.9).
+    this.api.resumenCampania(this.campaniaId, this.filtrosParaApi()).subscribe({
+      next: (datos) => this.resumen.set(datos),
+      error: () => this.resumen.set(null),
+    });
     // El total sin filtros es lo que permite decir «… · N en la campaña» sin inventar (§4.3).
     this.api.conteoIdeasCampania(this.campaniaId).subscribe({
       next: (page) => this.totalCampania.set(page.total ?? 0),

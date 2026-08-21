@@ -25,6 +25,7 @@ import {
   ResolucionConflictoTitular,
   Respuesta,
   ResultadoReasignacionNumero,
+  ResumenCampania,
   Rubrica,
   TagAdmin,
   UsuarioAdmin,
@@ -583,6 +584,17 @@ export class AdminApiService {
       ...limpiarFiltros(filtros),
       anonimizado: anonimizado ? 'true' : undefined,
     });
+  }
+
+  /**
+   * P-34 §4.6: el resumen lo calcula el servidor sobre el mismo conjunto filtrado que la tabla; con
+   * 1.000 ideas, hacerlo en el navegador obligaría a descargarlas todas (D5).
+   */
+  resumenCampania(campaniaId: string, filtros: FiltrosIdeas = {}) {
+    return this.api.get<ResumenCampania>(
+      `/api/admin/campanias/${campaniaId}/resumen`,
+      limpiarFiltros(filtros),
+    );
   }
 
   /** I-19: detalle auditable con versiones, aportes y evaluación vigente. */
