@@ -152,6 +152,8 @@ public sealed class ResultadosIntegrationTests
         json.Should().Contain("\"resuelto\":true");
         json.Should().Contain("\"calificacionTotal\":4");
         json.Should().Contain("\"evaluadaEn\"");
+        json.Should().Contain("\"preguntaSeguimiento\":\"¿Qué impacto tendría esta idea en el equipo?\"");
+        json.Should().Contain("\"preguntaSeguimiento\":null");
         // El participante que ya no existe viaja marcado, nunca omitido.
         json.Should().Contain("\"usuarioId\":\"u_2\"");
         json.Should().Contain("\"resuelto\":false");
@@ -415,7 +417,9 @@ public sealed class ResultadosIntegrationTests
         // P-34 §6: el detalle pide los aportes por ideaId en vez de leer la particion completa.
         respuestas.ListarRespuestasPorIdeaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>())
             .Returns(new[] { respuesta });
-        var evaluacionIdea = CrearEvaluacion(fecha: Epoca.AddMinutes(60));
+        var evaluacionIdea = CrearEvaluacion(
+            fecha: Epoca.AddMinutes(60),
+            repreguntaSugerida: "¿Qué impacto tendría esta idea en el equipo?");
         respuestas.ObtenerEvaluacionPorIdAsync(CampaniaId, "eval_1", Arg.Any<CancellationToken>()).Returns(evaluacionIdea);
         // P-34 §5: la calificacion vigente del listado se pide en bloque por ids.
         respuestas
@@ -483,13 +487,16 @@ public sealed class ResultadosIntegrationTests
         string respuestaId = "resp_1",
         DateTimeOffset? fecha = null,
         string? ideaId = null,
-        string? versionIdeaId = null)
+        string? versionIdeaId = null,
+        string? repreguntaSugerida = null)
         => DominioEvaluacion.Crear(
             id, CampaniaId, respuestaId, "u_1", "p_1", "rub_1", 1, "pr_eval", 1, "llm_1",
             new ConfigLlmSnapshot("AzureOpenAI", "gpt-4o-mini", "https://x", new Dictionary<string, object?>()),
             new Dictionary<string, decimal> { ["claridad"] = 1m },
             new[] { CalificacionCriterio.Crear("claridad", 4m, "clara") },
-            4m, "explica", "Buena idea", RecomendacionEvaluacion.Cerrar, null,
+            4m, "explica", "Buena idea",
+            repreguntaSugerida is null ? RecomendacionEvaluacion.Cerrar : RecomendacionEvaluacion.Repreguntar,
+            repreguntaSugerida,
             new[] { "tema" }, new[] { "ent" }, false, fecha ?? Epoca, ideaId: ideaId, versionIdeaId: versionIdeaId);
 
     private static ArtefactoMarkdown CrearArtefacto(int version)

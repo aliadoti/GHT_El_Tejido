@@ -378,6 +378,7 @@ internal static class EndpointsAdminResultados
             },
             calificacionTotal = evaluacion?.CalificacionTotal,
             evaluadaEn = evaluacion?.Fecha,
+            preguntaSeguimiento = evaluacion?.RepreguntaSugerida,
             idea.Id,
             idea.CampaniaId,
             idea.UsuarioId,

@@ -197,6 +197,7 @@ Todo aditivo. `03` no cambia. `04 §5.8` se actualiza en commit aparte, con su e
 |----------|--------|------|
 | `GET /admin/ideas` | Objeto `participante` embebido (código legible, nombre, área, empresa, sede, estado, `resuelto`). **Implementado (corte 3)** | aditivo |
 | `GET /admin/ideas` | `calificacionTotal` y `evaluadaEn` de la evaluación vigente. **Implementado (corte 3)** | aditivo |
+| `GET /admin/ideas` | `preguntaSeguimiento` de la evaluación vigente; es la repregunta generada por el agente, no `preguntaId`. **Corrección puntual 2026-08-21** | aditivo |
 | `GET /admin/ideas` | Filtros `q`, `area`, `empresa`, `sede`, `desde`, `hasta`, `calificacionMin`, `calificacionMax`, `confirmada`. **Implementado (corte 3)** | aditivo |
 | `GET /admin/ideas` | `orden` = `participante\|calificacion\|creada\|actualizada\|pregunta` + `dir` = `asc\|desc`. **Implementado en el servidor (corte 3); la UI llega con la tabla del corte 4** | aditivo |
 | `GET /admin/ideas/{id}` | Traer los aportes por `ideaId` en vez de cargar la partición de respuestas | interno |

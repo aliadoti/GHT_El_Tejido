@@ -34,6 +34,7 @@ describe('ResultadosPage', () => {
   const idea = {
     id: 'idea-1',
     usuarioId: 'usuario-1',
+    preguntaId: 'p_1',
     participante: {
       usuarioId: 'usuario-1',
       codigoUsuarioLegible: 'U-000042',
@@ -42,6 +43,7 @@ describe('ResultadosPage', () => {
       resuelto: true,
     },
     calificacionTotal: 9,
+    preguntaSeguimiento: '¿Cómo podemos mejorar el trabajo en equipo?',
     texto: 'Idea consolidada y confirmada por el participante.',
     confirmada: true,
     estadoFlujo: 'cerrada',
@@ -380,6 +382,9 @@ describe('ResultadosPage', () => {
     const tabla = element.querySelector('.resultados-tabla') as HTMLTableElement;
     expect(tabla).not.toBeNull();
     expect(tabla.querySelectorAll('tbody tr').length).toBe(2);
+    expect(tabla.textContent).toContain('¿Cómo podemos mejorar el trabajo en equipo?');
+    expect(tabla.textContent).toContain('Sin pregunta de seguimiento');
+    expect(tabla.textContent).not.toContain('p_1');
     // Encabezado accesible: ordenable, anunciado y sin orden al principio.
     const encabezados = Array.from(tabla.querySelectorAll('thead th'));
     const calificacion = encabezados.find((th) => th.textContent?.includes('Calificación'))!;

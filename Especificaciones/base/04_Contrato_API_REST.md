@@ -702,7 +702,8 @@ Campos nuevos en cada elemento de `items`:
     "resuelto": true
   },
   "calificacionTotal": 4.1,
-  "evaluadaEn": "2026-06-11T14:05:10Z"
+  "evaluadaEn": "2026-06-11T14:05:10Z",
+  "preguntaSeguimiento": "¿Cuánto tiempo ahorraría esta mejora cada semana?"
 }
 ```
 
@@ -712,6 +713,9 @@ Campos nuevos en cada elemento de `items`:
   `GET /api/admin/usuarios`; en particular **no** lleva número de WhatsApp, email ni tags.
 - `calificacionTotal`/`evaluadaEn` son los de la **evaluación vigente** (`evaluacionVigenteRef`);
   `null` cuando la idea todavía no tiene una.
+- `preguntaSeguimiento` es la `repreguntaSugerida` de esa misma evaluación vigente: representa la
+  pregunta que el agente generó para continuar madurando la idea, no la pregunta administrativa de
+  la campaña identificada por `preguntaId`. Llega `null` si la evaluación cerró la idea o no existe.
 
 **Query aditiva** (todos opcionales; se combinan con `AND` con los filtros I-19 ya existentes):
 

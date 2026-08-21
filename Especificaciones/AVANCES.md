@@ -4,7 +4,16 @@
 > Es la fuente del estado real del desarrollo y debe coincidir con el codigo.
 
 ## Estado global
-- Ultima actualizacion: 2026-08-21 (Codex, Frontend/SDET/Operación): **`P-35` COMPLEMENTO LOCAL.**
+- Ultima actualizacion: 2026-08-21 (Codex, Backend/Frontend/SDET): **CORRECCIÓN PUNTUAL EN
+  RESULTADOS — PREGUNTA DE SEGUIMIENTO.** La columna deja de presentar `preguntaId` y tampoco usa el
+  texto base de la campaña: muestra `preguntaSeguimiento`, proyección aditiva de
+  `Evaluacion.repreguntaSugerida` vigente, es decir, la pregunta que el agente generó para continuar
+  madurando la idea. Si no existe, dice «Sin pregunta de seguimiento». No cambia persistencia,
+  permisos ni configuración y reutiliza la evaluación que el listado ya consulta en bloque. La
+  validación cerró con build Release `-warnaserror`, **1105 unitarias + 145 integraciones** sin
+  Calibración, formato .NET, portal **89/89**, build Angular de producción, Prettier y diff verdes.
+  El siguiente paso operativo de P-35 no cambia.
+- Actualizacion anterior: 2026-08-21 (Codex, Frontend/SDET/Operación): **`P-35` COMPLEMENTO LOCAL.**
   La tabla de Usuarios compara `nombre` y `nombreSaludo`; un administrador ve el conteo de documentos
   sin la propiedad física y dispone de una acción confirmada para completar solo faltantes en Cosmos
   usando la sesión/CSRF normal. Los valores existentes y las correcciones manuales no se sobrescriben.

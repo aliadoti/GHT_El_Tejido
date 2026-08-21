@@ -348,6 +348,8 @@ export interface IdeaConsolidada {
   /** P-34: calificación de la evaluación vigente; `null` si la idea aún no tiene una. */
   calificacionTotal?: number | null;
   evaluadaEn?: string | null;
+  /** Pregunta generada por el agente en la evaluación vigente; no es la pregunta base de campaña. */
+  preguntaSeguimiento?: string | null;
 }
 
 /**

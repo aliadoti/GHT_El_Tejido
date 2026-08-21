@@ -15,7 +15,7 @@ export type ColumnaResultados =
 
 export const COLUMNAS_RESULTADOS: { clave: ColumnaResultados; etiqueta: string }[] = [
   { clave: 'area', etiqueta: 'Área' },
-  { clave: 'pregunta', etiqueta: 'Pregunta' },
+  { clave: 'pregunta', etiqueta: 'Pregunta de seguimiento' },
   { clave: 'estado', etiqueta: 'Estado' },
   { clave: 'calificacion', etiqueta: 'Calificación' },
   { clave: 'creada', etiqueta: 'Creada' },

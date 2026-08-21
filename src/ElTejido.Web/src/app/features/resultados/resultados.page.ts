@@ -621,15 +621,7 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
                         <th scope="col">Área</th>
                       }
                       @if (columnaVisible('pregunta')) {
-                        <th scope="col" [attr.aria-sort]="ordenDe('pregunta')">
-                          <button
-                            type="button"
-                            class="resultados-orden"
-                            (click)="ordenarPor('pregunta')"
-                          >
-                            Pregunta
-                          </button>
-                        </th>
+                        <th scope="col">Pregunta de seguimiento</th>
                       }
                       <th scope="col">Idea</th>
                       @if (columnaVisible('estado')) {
@@ -724,7 +716,9 @@ const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
                               <td>{{ idea.participante?.area ?? '-' }}</td>
                             }
                             @if (columnaVisible('pregunta')) {
-                              <td>{{ idea.preguntaId }}</td>
+                              <td>
+                                {{ idea.preguntaSeguimiento || 'Sin pregunta de seguimiento' }}
+                              </td>
                             }
                             <td class="resultados-col-idea">{{ extracto(idea.texto ?? '') }}</td>
                             @if (columnaVisible('estado')) {
