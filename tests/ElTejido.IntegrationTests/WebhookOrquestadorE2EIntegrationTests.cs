@@ -150,6 +150,10 @@ public sealed class WebhookOrquestadorE2EIntegrationTests
 
         await EnviarSimulacionAsync(client, "wamid.P31.3", "Agrego responsables y un plazo para cada respuesta");
         await EsperarAsync(() => contextos.Count >= 2);
+        await EsperarAsync(() => logs.ReceivedCalls().Any(llamada =>
+            llamada.GetArguments().FirstOrDefault() is LogSeguridad log
+            && log.TipoEvento == TipoEventoSeguridad.ResumenConsolidacion
+            && log.Resultado == "omitidoYaEnviado"));
 
         gateway.Enviados.Count(envio => envio.Tipo == TipoEnvioMensaje.Repregunta && envio.Texto.Contains("Asi va tu idea", StringComparison.Ordinal))
             .Should().Be(1);

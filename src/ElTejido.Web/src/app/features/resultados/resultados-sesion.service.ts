@@ -5,7 +5,13 @@ export type VistaResultados = 'tabla' | 'lectura';
 
 /** Columnas opcionales de la tabla; participante y idea son fijas y no se ocultan. */
 export type ColumnaResultados =
-  'area' | 'pregunta' | 'estado' | 'calificacion' | 'creada' | 'actualizada' | 'documento';
+  | 'area'
+  | 'pregunta'
+  | 'estado'
+  | 'calificacion'
+  | 'creada'
+  | 'actualizada'
+  | 'documento';
 
 export const COLUMNAS_RESULTADOS: { clave: ColumnaResultados; etiqueta: string }[] = [
   { clave: 'area', etiqueta: 'Área' },
