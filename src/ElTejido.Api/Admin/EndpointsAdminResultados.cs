@@ -3,8 +3,10 @@ using ElTejido.Application.Common;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Markdown;
 using ElTejido.Application.Respuestas;
+using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Respuestas;
+using ElTejido.Domain.Usuarios;
 using Microsoft.Extensions.Primitives;
 using DominioEvaluacion = ElTejido.Domain.Evaluacion.Evaluacion;
 
@@ -69,38 +71,63 @@ internal static class EndpointsAdminResultados
     }
 
     /// <summary>
-    /// I-19 (04 §5.8): una fila por idea lógica. Los filtros opcionales se aplican en memoria como el
-    /// resto de resultados; el extracto usa la versión confirmada y, si aún no hay, la propuesta marcada.
-    /// P-34 §6 (H-10): el orden no depende del texto de la versión, así que la página se recorta
-    /// <b>antes</b> de resolver versiones y estas se piden en una sola consulta para las ideas de esa
-    /// página — no una lectura puntual por idea de toda la campaña.
+    /// I-19 (04 §5.8): una fila por idea lógica. P-34 §4.1/§4.2 suma la identidad del participante
+    /// resuelta por el servidor, la calificación vigente, los filtros de área/empresa/sede/texto/
+    /// fecha/calificación/confirmada y el orden configurable.
+    /// <para>
+    /// Orden de lectura pensado para no repetir H-10: primero los filtros que solo miran la idea,
+    /// luego una consulta de identidad acotada a esos participantes, y el texto o la calificación
+    /// <b>solo</b> si algún criterio los necesita antes de paginar. Cuando no hacen falta para
+    /// filtrar u ordenar, se resuelven únicamente para la página devuelta.
+    /// </para>
     /// </summary>
     private static async Task<IResult> ListarIdeasAsync(HttpContext contexto, CancellationToken ct)
     {
         var query = contexto.Request.Query;
         var campaniaId = RequerirCampania(query);
+        var criterios = ConsultaIdeasResultados.Interpretar(LeerCriterios(query));
         var repo = Respuestas(contexto);
         var ideas = await repo.ListarIdeasConsolidadasAsync(campaniaId, ct);
 
-        var filtradas = ideas
+        var candidatas = ideas
             .Where(i => CoincideOpcional(query["usuarioId"], i.UsuarioId)
                 && CoincideOpcional(query["preguntaId"], i.PreguntaId)
                 && CoincideEnum(query["estadoResultado"], i.EstadoResultado?.ToString())
                 && CoincideEnum(query["estadoFlujo"], i.EstadoFlujo.ToString())
                 && CoincideEnum(query["estadoCuraduria"], i.EstadoCuraduria?.ToString()))
-            .OrderBy(i => i.PreguntaId, StringComparer.Ordinal)
-            .ThenBy(i => i.IdeaIndice)
-            .ThenBy(i => i.CreadaEn)
             .ToArray();
+
+        // P-34 §4.1: la identidad la resuelve el servidor. Es lo que permite filtrar y ordenar por
+        // área, empresa o sede sin mentir sobre el `total`, y lo que elimina el join del maestro de
+        // usuarios en el navegador (origen de H-01/H-02).
+        var participantes = await ParticipantesDeAsync(Usuarios(contexto), candidatas, ct);
+
+        var textos = criterios.NecesitaTexto
+            ? TextosDe(candidatas, await VersionesDeAsync(repo, campaniaId, candidatas, ct))
+            : SinTextos;
+        var evaluaciones = criterios.NecesitaCalificacion
+            ? await EvaluacionesDeAsync(repo, campaniaId, candidatas, ct)
+            : SinEvaluaciones;
+
+        var filtradas = ConsultaIdeasResultados.FiltrarYOrdenar(
+            candidatas, criterios, participantes, textos, CalificacionesDe(evaluaciones));
 
         var (page, pageSize) = LeerPaginacion(query);
         var pagina = filtradas.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
-        var versiones = await VersionesDeAsync(repo, campaniaId, pagina, ct);
+        var versionesPagina = await VersionesDeAsync(repo, campaniaId, pagina, ct);
+        var evaluacionesPagina = criterios.NecesitaCalificacion
+            ? evaluaciones
+            : await EvaluacionesDeAsync(repo, campaniaId, pagina, ct);
+
         var resumenes = pagina
-            .Select(idea => MapearIdeaResumen(idea, VersionVigente(idea, versiones)))
+            .Select(idea => MapearIdeaResumen(
+                idea,
+                VersionVigente(idea, versionesPagina),
+                participantes.GetValueOrDefault(idea.UsuarioId),
+                evaluacionesPagina.GetValueOrDefault(idea.Id)))
             .ToArray();
 
-        return Results.Ok(Envolver(resumenes, page, pageSize, filtradas.Length));
+        return Results.Ok(Envolver(resumenes, page, pageSize, filtradas.Count));
     }
 
     /// <summary>
@@ -129,9 +156,13 @@ internal static class EndpointsAdminResultados
             .Select(MapearRespuesta)
             .ToArray();
 
+        // P-34 §4.1: el detalle usa el mismo DTO enriquecido, con la identidad resuelta por el
+        // servidor; es una lectura puntual para una sola idea, no un join en el navegador.
+        var participante = await Usuarios(contexto).ObtenerUsuarioPorIdAsync(idea.UsuarioId, ct);
+
         return Results.Ok(new
         {
-            idea = MapearIdeaResumen(idea, confirmada ?? propuesta),
+            idea = MapearIdeaResumen(idea, confirmada ?? propuesta, participante, evaluacion),
             versionConfirmada = confirmada is null ? null : MapearVersionIdea(confirmada),
             versionPropuesta = propuesta is null ? null : MapearVersionIdea(propuesta),
             evaluacion = evaluacion is null ? null : MapearEvaluacion(evaluacion),
@@ -139,6 +170,108 @@ internal static class EndpointsAdminResultados
             aportes,
         });
     }
+
+    private static readonly IReadOnlyDictionary<string, string> SinTextos =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
+    private static readonly IReadOnlyDictionary<string, DominioEvaluacion> SinEvaluaciones =
+        new Dictionary<string, DominioEvaluacion>(StringComparer.Ordinal);
+
+    /// <summary>Traduce la query string a los criterios crudos de P-34 (04 §5.8).</summary>
+    private static CriteriosIdeasCrudos LeerCriterios(IQueryCollection query)
+        => new(
+            Q: query["q"].ToString(),
+            Area: query["area"].ToString(),
+            Empresa: query["empresa"].ToString(),
+            Sede: query["sede"].ToString(),
+            Desde: query["desde"].ToString(),
+            Hasta: query["hasta"].ToString(),
+            CalificacionMin: query["calificacionMin"].ToString(),
+            CalificacionMax: query["calificacionMax"].ToString(),
+            Confirmada: query["confirmada"].ToString(),
+            Orden: query["orden"].ToString(),
+            Dir: query["dir"].ToString());
+
+    /// <summary>
+    /// P-34 §4.1: identidad de los participantes de un conjunto de ideas, en una consulta acotada por
+    /// ids. Un id sin usuario no entra al índice y la fila se presenta como no identificada.
+    /// </summary>
+    private static async Task<IReadOnlyDictionary<string, Usuario>> ParticipantesDeAsync(
+        IRepositorioUsuarios usuarios, IReadOnlyCollection<IdeaConsolidada> ideas, CancellationToken ct)
+    {
+        var ids = ideas
+            .Select(idea => idea.UsuarioId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (ids.Length == 0)
+        {
+            return new Dictionary<string, Usuario>(StringComparer.Ordinal);
+        }
+
+        var encontrados = await usuarios.ListarUsuariosPorIdsAsync(ids, ct);
+        var indice = new Dictionary<string, Usuario>(encontrados.Count, StringComparer.Ordinal);
+        foreach (var usuario in encontrados)
+        {
+            indice[usuario.Id] = usuario;
+        }
+
+        return indice;
+    }
+
+    /// <summary>P-34 §4.2: texto vigente por idea, para la búsqueda libre.</summary>
+    private static IReadOnlyDictionary<string, string> TextosDe(
+        IReadOnlyCollection<IdeaConsolidada> ideas, IReadOnlyDictionary<string, VersionIdeaConsolidada> versiones)
+    {
+        var textos = new Dictionary<string, string>(ideas.Count, StringComparer.Ordinal);
+        foreach (var idea in ideas)
+        {
+            var texto = VersionVigente(idea, versiones)?.Texto;
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                textos[idea.Id] = texto;
+            }
+        }
+
+        return textos;
+    }
+
+    /// <summary>
+    /// P-34 §5: evaluación vigente por idea, en una sola consulta por ids (mismo patrón que las
+    /// versiones). Una idea sin `evaluacionVigenteRef` no consume nada.
+    /// </summary>
+    private static async Task<IReadOnlyDictionary<string, DominioEvaluacion>> EvaluacionesDeAsync(
+        IRepositorioRespuestas repo, string campaniaId, IReadOnlyCollection<IdeaConsolidada> ideas, CancellationToken ct)
+    {
+        var referencias = ideas
+            .Select(idea => idea.EvaluacionVigenteRef)
+            .Where(referencia => !string.IsNullOrWhiteSpace(referencia))
+            .Select(referencia => referencia!.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (referencias.Length == 0)
+        {
+            return SinEvaluaciones;
+        }
+
+        var evaluaciones = await repo.ListarEvaluacionesPorIdsAsync(campaniaId, referencias, ct);
+        var porId = evaluaciones.ToDictionary(evaluacion => evaluacion.Id, StringComparer.Ordinal);
+        var porIdea = new Dictionary<string, DominioEvaluacion>(ideas.Count, StringComparer.Ordinal);
+        foreach (var idea in ideas)
+        {
+            if (!string.IsNullOrWhiteSpace(idea.EvaluacionVigenteRef)
+                && porId.TryGetValue(idea.EvaluacionVigenteRef.Trim(), out var evaluacion))
+            {
+                porIdea[idea.Id] = evaluacion;
+            }
+        }
+
+        return porIdea;
+    }
+
+    private static IReadOnlyDictionary<string, decimal> CalificacionesDe(
+        IReadOnlyDictionary<string, DominioEvaluacion> evaluaciones)
+        => evaluaciones.ToDictionary(par => par.Key, par => par.Value.CalificacionTotal, StringComparer.Ordinal);
 
     /// <summary>
     /// P-34 §6 (H-10): una sola consulta con las versiones referidas por las ideas de la página.
@@ -312,6 +445,9 @@ internal static class EndpointsAdminResultados
     private static IRepositorioConversaciones Conversaciones(HttpContext contexto)
         => contexto.RequestServices.GetRequiredService<IRepositorioConversaciones>();
 
+    private static IRepositorioUsuarios Usuarios(HttpContext contexto)
+        => contexto.RequestServices.GetRequiredService<IRepositorioUsuarios>();
+
     private static object MapearConversacion(Conversacion c)
         => new
         {
@@ -359,8 +495,34 @@ internal static class EndpointsAdminResultados
         };
 
     private static object MapearIdeaResumen(IdeaConsolidada idea, VersionIdeaConsolidada? vigente)
+        => MapearIdeaResumen(idea, vigente, participante: null, evaluacion: null);
+
+    /// <summary>
+    /// P-34 §4.1 (04 §5.8): el DTO incorpora la identidad resuelta por el servidor y la calificación
+    /// vigente. `participante` viaja siempre —con `resuelto=false` cuando el usuario ya no existe—
+    /// para que el cliente nunca tenga que presentar un id técnico como si fuera un nombre, y no
+    /// expone número, email ni tags.
+    /// </summary>
+    private static object MapearIdeaResumen(
+        IdeaConsolidada idea,
+        VersionIdeaConsolidada? vigente,
+        Usuario? participante,
+        DominioEvaluacion? evaluacion)
         => new
         {
+            participante = new
+            {
+                usuarioId = idea.UsuarioId,
+                codigoUsuarioLegible = participante?.CodigoUsuarioLegible,
+                nombre = participante?.Nombre,
+                area = participante?.Area,
+                empresa = participante?.Empresa,
+                sede = participante?.Sede,
+                estado = participante is null ? null : MinusculaInicial(participante.Estado.ToString()),
+                resuelto = participante is not null,
+            },
+            calificacionTotal = evaluacion?.CalificacionTotal,
+            evaluadaEn = evaluacion?.Fecha,
             idea.Id,
             idea.CampaniaId,
             idea.UsuarioId,

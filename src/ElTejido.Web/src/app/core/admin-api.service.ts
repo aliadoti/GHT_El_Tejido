@@ -121,6 +121,36 @@ export interface ReadinessCatalogosTextos {
 /** El servidor recorta cualquier `pageSize` mayor a este tope (04 §5.8). */
 const TAMANO_PAGINA_MAXIMO = 100;
 
+/**
+ * P-34 (04 §5.8): filtros y orden del listado de ideas. Todos son opcionales y el servidor los aplica
+ * antes de paginar, así que el `total` que devuelve corresponde siempre al filtro pedido.
+ */
+export interface FiltrosIdeas {
+  q?: string;
+  estadoResultado?: string;
+  estadoFlujo?: string;
+  estadoCuraduria?: string;
+  usuarioId?: string;
+  preguntaId?: string;
+  area?: string;
+  empresa?: string;
+  sede?: string;
+  desde?: string;
+  hasta?: string;
+  calificacionMin?: string;
+  calificacionMax?: string;
+  confirmada?: string;
+  orden?: string;
+  dir?: string;
+}
+
+/** Un filtro vacío no viaja: el servidor distingue «sin filtro» de «filtro con valor vacío». */
+function limpiarFiltros(filtros: FiltrosIdeas): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(filtros).filter(([, valor]) => (valor ?? '').toString().trim() !== ''),
+  ) as Record<string, string>;
+}
+
 /** Red de seguridad: 100 páginas son 10.000 filas, muy por encima de la escala prevista (P-34 §6). */
 const MAXIMO_PAGINAS = 100;
 
@@ -508,11 +538,11 @@ export class AdminApiService {
    * recorrer completo sin multiplicar lecturas puntuales. Es lo que hace exactos los contadores por
    * estado de Resultados (H-04) en una campaña de 1.000 ideas.
    */
-  ideasTodas(campaniaId: string, estadoResultado?: string) {
+  ideasTodas(campaniaId: string, filtros: FiltrosIdeas = {}) {
     return this.paginarTodo<IdeaConsolidada>((page) =>
       this.api.get<PagedResult<IdeaConsolidada>>('/api/admin/ideas', {
         campaniaId,
-        estadoResultado: estadoResultado || undefined,
+        ...limpiarFiltros(filtros),
         page,
         pageSize: TAMANO_PAGINA_MAXIMO,
       }),

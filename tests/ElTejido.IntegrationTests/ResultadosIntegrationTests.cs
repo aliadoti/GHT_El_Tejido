@@ -3,10 +3,12 @@ using ElTejido.Application.Auth;
 using ElTejido.Application.Conversacion;
 using ElTejido.Application.Markdown;
 using ElTejido.Application.Respuestas;
+using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Campanas;
 using ElTejido.Domain.Common;
 using ElTejido.Domain.Conversaciones;
 using ElTejido.Domain.Evaluacion;
+using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
@@ -128,6 +130,104 @@ public sealed class ResultadosIntegrationTests
         // P-34 §6: los aportes llegan de la consulta por `ideaId`; el doble no responde el listado
         // completo de la campaña, así que este texto solo aparece si se usó la ruta nueva.
         json.Should().Contain("Mi idea");
+    }
+
+    // P-34 §4.1 (04 §5.8): la identidad la resuelve el servidor y viaja embebida, con la calificación
+    // vigente. Sin usuario, la fila lo dice en vez de dejar un id técnico haciéndose pasar por nombre.
+    [Fact]
+    public async Task P34_Ideas_EmbebeParticipanteYCalificacionVigente()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var lista = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}");
+
+        lista.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await lista.Content.ReadAsStringAsync();
+        json.Should().Contain("\"nombre\":\"Ana Perez\"");
+        json.Should().Contain("\"codigoUsuarioLegible\":\"U-000042\"");
+        json.Should().Contain("\"area\":\"Operaciones\"");
+        json.Should().Contain("\"sede\":\"AL\"");
+        json.Should().Contain("\"estado\":\"activo\"");
+        json.Should().Contain("\"resuelto\":true");
+        json.Should().Contain("\"calificacionTotal\":4");
+        json.Should().Contain("\"evaluadaEn\"");
+        // El participante que ya no existe viaja marcado, nunca omitido.
+        json.Should().Contain("\"usuarioId\":\"u_2\"");
+        json.Should().Contain("\"resuelto\":false");
+        // No se filtra PII que el listado no necesita.
+        json.Should().NotContain("573001112233");
+        json.Should().NotContain("\"email\"");
+    }
+
+    [Fact]
+    public async Task P34_Ideas_FiltraPorAtributosDelParticipante()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var operaciones = await client.GetAsync(
+            $"/api/admin/ideas?campaniaId={CampaniaId}&area=OPERACIONES");
+        using var otraArea = await client.GetAsync(
+            $"/api/admin/ideas?campaniaId={CampaniaId}&area=Comercial");
+
+        var operacionesJson = await operaciones.Content.ReadAsStringAsync();
+        var otraAreaJson = await otraArea.Content.ReadAsStringAsync();
+        operacionesJson.Should().Contain("\"total\":1").And.Contain("idea_1").And.NotContain("idea_2");
+        otraAreaJson.Should().Contain("\"total\":0");
+    }
+
+    [Fact]
+    public async Task P34_Ideas_BusquedaLibreMiraNombreCodigoYTexto()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var porNombre = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}&q=p%C3%A9rez");
+        // «consolidada» solo aparece en el texto vigente de idea_1, no en el nombre ni en el código.
+        using var porTexto = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}&q=consolidada");
+        using var sinCoincidencia = await client.GetAsync($"/api/admin/ideas?campaniaId={CampaniaId}&q=zzzz");
+
+        (await porNombre.Content.ReadAsStringAsync()).Should().Contain("idea_1").And.NotContain("idea_2");
+        (await porTexto.Content.ReadAsStringAsync()).Should().Contain("\"id\":\"idea_1\"").And.NotContain("\"id\":\"idea_2\"");
+        (await sinCoincidencia.Content.ReadAsStringAsync()).Should().Contain("\"total\":0");
+    }
+
+    [Fact]
+    public async Task P34_Ideas_OrdenaPorCalificacionDejandoSinEvaluarAlFinal()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync(
+            $"/api/admin/ideas?campaniaId={CampaniaId}&orden=calificacion&dir=desc");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await respuesta.Content.ReadAsStringAsync();
+        json.IndexOf("idea_1", StringComparison.Ordinal)
+            .Should().BeLessThan(json.IndexOf("idea_2", StringComparison.Ordinal));
+        json.Should().Contain("\"total\":2");
+    }
+
+    // Un rango o un orden mal escritos se rechazan: devolver una lista vacía seria decir que no hay
+    // datos cuando lo que hay es una consulta invalida.
+    [Fact]
+    public async Task P34_Ideas_CriteriosInvalidos_Responde400ConTodosLosMotivos()
+    {
+        using var fabrica = Construir();
+        using var client = ClienteAdmin(fabrica);
+
+        using var respuesta = await client.GetAsync(
+            $"/api/admin/ideas?campaniaId={CampaniaId}&desde=ayer&orden=magia&calificacionMin=5&calificacionMax=1");
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await respuesta.Content.ReadAsStringAsync();
+        json.Should().Contain("VALIDATION_ERROR");
+        json.Should().Contain("desde");
+        json.Should().Contain("formato_invalido");
+        json.Should().Contain("orden");
+        json.Should().Contain("valor_invalido");
+        json.Should().Contain("rango_invalido");
     }
 
     [Fact]
@@ -315,7 +415,25 @@ public sealed class ResultadosIntegrationTests
         // P-34 §6: el detalle pide los aportes por ideaId en vez de leer la particion completa.
         respuestas.ListarRespuestasPorIdeaAsync(CampaniaId, "idea_1", Arg.Any<CancellationToken>())
             .Returns(new[] { respuesta });
-        respuestas.ObtenerEvaluacionPorIdAsync(CampaniaId, "eval_1", Arg.Any<CancellationToken>()).Returns(CrearEvaluacion());
+        var evaluacionIdea = CrearEvaluacion(fecha: Epoca.AddMinutes(60));
+        respuestas.ObtenerEvaluacionPorIdAsync(CampaniaId, "eval_1", Arg.Any<CancellationToken>()).Returns(evaluacionIdea);
+        // P-34 §5: la calificacion vigente del listado se pide en bloque por ids.
+        respuestas
+            .ListarEvaluacionesPorIdsAsync(CampaniaId, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => ((IReadOnlyCollection<string>)llamada[1]).Contains("eval_1")
+                ? new[] { evaluacionIdea }
+                : []);
+
+        // P-34 §4.1: la identidad la resuelve el servidor. `u_2` no existe a proposito: es el caso de
+        // participante no identificado que antes se colaba como un id tecnico en pantalla.
+        var usuarios = Substitute.For<IRepositorioUsuarios>();
+        var ana = Usuario.Crear(
+            "u_1", 42, "Ana Perez", NumeroWhatsApp.FromNormalized("573001112233"), RolUsuario.Participante,
+            EstadoRegistro.Activo, "Operaciones", "Flores El Aljibe", null, null, Epoca, Epoca, sede: "AL");
+        usuarios
+            .ListarUsuariosPorIdsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(llamada => ((IReadOnlyCollection<string>)llamada[0]).Contains("u_1") ? new[] { ana } : []);
+        usuarios.ObtenerUsuarioPorIdAsync("u_1", Arg.Any<CancellationToken>()).Returns(ana);
 
         var conversaciones = Substitute.For<IRepositorioConversaciones>();
         var cola = new PoliticaColaCoachingIdeas().Crear(
@@ -338,6 +456,7 @@ public sealed class ResultadosIntegrationTests
             builder.ConfigureTestServices(services =>
             {
                 services.AddSingleton(respuestas);
+                services.AddSingleton(usuarios);
                 services.AddSingleton(conversaciones);
                 services.AddSingleton(compilador);
                 services.AddSingleton<IServicioSesion, SesionesFake>();

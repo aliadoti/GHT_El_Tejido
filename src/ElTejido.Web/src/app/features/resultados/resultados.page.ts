@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
-import { AdminApiService } from '../../core/admin-api.service';
+import { AdminApiService, FiltrosIdeas } from '../../core/admin-api.service';
 import {
   ArtefactoMarkdown,
   Campania,
@@ -17,6 +18,55 @@ import { AuthService } from '../../core/auth.service';
 import { EstadoAccesibleComponent } from '../../shared/estado-accesible.component';
 import { formatApiError } from '../../shared-error';
 import { ResultadosSesionService } from './resultados-sesion.service';
+
+/** P-34 (04 §5.8): filtros que el servidor entiende y que el portal serializa en la URL. */
+const LLAVES_FILTRO = [
+  'q',
+  'estadoResultado',
+  'desde',
+  'hasta',
+  'area',
+  'empresa',
+  'sede',
+  'usuarioId',
+  'preguntaId',
+  'estadoFlujo',
+  'estadoCuraduria',
+  'confirmada',
+  'calificacionMin',
+  'calificacionMax',
+] as const satisfies readonly (keyof FiltrosIdeas)[];
+
+/** Los del panel desplegable (nivel 2), que alimentan el contador de «Más filtros». */
+const LLAVES_AVANZADAS = [
+  'area',
+  'empresa',
+  'sede',
+  'usuarioId',
+  'preguntaId',
+  'estadoFlujo',
+  'estadoCuraduria',
+  'confirmada',
+  'calificacionMin',
+  'calificacionMax',
+] as const satisfies readonly (keyof FiltrosIdeas)[];
+
+const ETIQUETAS_FILTRO: Record<(typeof LLAVES_FILTRO)[number], string> = {
+  q: 'Búsqueda',
+  estadoResultado: 'Estado',
+  desde: 'Desde',
+  hasta: 'Hasta',
+  area: 'Área',
+  empresa: 'Empresa',
+  sede: 'Sede',
+  usuarioId: 'Participante',
+  preguntaId: 'Pregunta',
+  estadoFlujo: 'Flujo',
+  estadoCuraduria: 'Curaduría',
+  confirmada: 'Confirmada',
+  calificacionMin: 'Calificación mín.',
+  calificacionMax: 'Calificación máx.',
+};
 
 @Component({
   selector: 'app-resultados-page',
@@ -53,7 +103,8 @@ import { ResultadosSesionService } from './resultados-sesion.service';
       }
 
       <section class="panel">
-        <div class="filters-grid">
+        <!-- P-34 §4.2: nivel 1 siempre visible; el resto vive en el panel desplegable. -->
+        <form class="filters-grid" (ngSubmit)="aplicarFiltros()">
           <label>
             Campaña
             <select name="campaniaId" [(ngModel)]="campaniaId" (ngModelChange)="cambiarCampania()">
@@ -64,14 +115,136 @@ import { ResultadosSesionService } from './resultados-sesion.service';
             </select>
           </label>
           <label>
+            Buscar
+            <input
+              type="search"
+              name="q"
+              [(ngModel)]="filtros.q"
+              placeholder="Nombre, código o texto de la idea"
+            />
+          </label>
+          <label>
             Estado de la idea
-            <select name="estadoIdea" [(ngModel)]="estadoIdeaFiltro" (ngModelChange)="loadAll()">
+            <select name="estadoResultado" [(ngModel)]="filtros.estadoResultado">
               <option value="">Todas</option>
               <option value="madura">Maduras</option>
               <option value="pendiente">Pendientes</option>
               <option value="rechazada">Rechazadas</option>
             </select>
           </label>
+          <label>
+            Desde
+            <input type="date" name="desde" [(ngModel)]="filtros.desde" />
+          </label>
+          <label>
+            Hasta
+            <input type="date" name="hasta" [(ngModel)]="filtros.hasta" />
+          </label>
+          <div class="actions-row">
+            <button type="submit" class="ghost-button">Aplicar filtros</button>
+            <button
+              type="button"
+              class="ghost-button"
+              [attr.aria-expanded]="masFiltros()"
+              (click)="alternarMasFiltros()"
+            >
+              Más filtros{{ conteoFiltrosAvanzados() ? ' · ' + conteoFiltrosAvanzados() : '' }}
+            </button>
+          </div>
+        </form>
+
+        @if (masFiltros()) {
+          <form class="filters-grid resultados-filtros-avanzados" (ngSubmit)="aplicarFiltros()">
+            <label>
+              Área
+              <input type="text" name="area" [(ngModel)]="filtros.area" />
+            </label>
+            <label>
+              Empresa
+              <input type="text" name="empresa" [(ngModel)]="filtros.empresa" />
+            </label>
+            <label>
+              Sede
+              <input type="text" name="sede" [(ngModel)]="filtros.sede" />
+            </label>
+            <label>
+              Participante (id)
+              <input type="text" name="usuarioId" [(ngModel)]="filtros.usuarioId" />
+            </label>
+            <label>
+              Pregunta (id)
+              <input type="text" name="preguntaId" [(ngModel)]="filtros.preguntaId" />
+            </label>
+            <label>
+              Estado del flujo
+              <select name="estadoFlujo" [(ngModel)]="filtros.estadoFlujo">
+                <option value="">Todos</option>
+                <option value="pendienteConfirmacion">Pendiente de confirmación</option>
+                <option value="enMejora">En mejora</option>
+                <option value="enRevision">En revisión</option>
+                <option value="cerrada">Cerrada</option>
+              </select>
+            </label>
+            <label>
+              Curaduría
+              <select name="estadoCuraduria" [(ngModel)]="filtros.estadoCuraduria">
+                <option value="">Todas</option>
+                <option value="pendiente">Pendiente de curaduría</option>
+              </select>
+            </label>
+            <label>
+              Confirmada
+              <select name="confirmada" [(ngModel)]="filtros.confirmada">
+                <option value="">Todas</option>
+                <option value="true">Solo confirmadas</option>
+                <option value="false">Sin confirmar</option>
+              </select>
+            </label>
+            <label>
+              Calificación mínima
+              <input
+                type="number"
+                step="0.1"
+                name="calificacionMin"
+                [(ngModel)]="filtros.calificacionMin"
+              />
+            </label>
+            <label>
+              Calificación máxima
+              <input
+                type="number"
+                step="0.1"
+                name="calificacionMax"
+                [(ngModel)]="filtros.calificacionMax"
+              />
+            </label>
+            <div class="actions-row">
+              <button type="submit" class="ghost-button">Aplicar filtros</button>
+            </div>
+          </form>
+        }
+
+        <!-- Chips: el usuario ve por qué la lista muestra lo que muestra y lo desarma de a uno. -->
+        @if (chipsFiltros().length) {
+          <div class="resultados-chips" aria-label="Filtros aplicados">
+            @for (chip of chipsFiltros(); track chip.clave) {
+              <button
+                type="button"
+                class="status-badge resultados-chip"
+                (click)="quitarFiltro(chip.clave)"
+              >
+                {{ chip.etiqueta }}: {{ chip.valor }}
+                <span aria-hidden="true">×</span>
+                <span class="sr-only">Quitar filtro {{ chip.etiqueta }}</span>
+              </button>
+            }
+            <button type="button" class="ghost-button" (click)="limpiarFiltros()">
+              Limpiar todo
+            </button>
+          </div>
+        }
+
+        <div class="filters-grid">
           <!-- P-34 H-04: el conteo es el de la campaña completa, no el del arreglo cargado. -->
           <div class="resultados-resumen" aria-label="Resumen de ideas">
             <strong>{{ totalIdeas() }} ideas</strong>
@@ -123,7 +296,7 @@ import { ResultadosSesionService } from './resultados-sesion.service';
                       (click)="abrirIdea(idea.id)"
                     >
                       <span class="resultados-respuesta-titulo">
-                        <strong>{{ nombreUsuario(idea.usuarioId) }}</strong>
+                        <strong>{{ nombreParticipante(idea) }}</strong>
                         <span
                           class="status-badge"
                           [class.badge-ok]="idea.estadoResultado === 'madura'"
@@ -148,10 +321,7 @@ import { ResultadosSesionService } from './resultados-sesion.service';
                     </button>
                   </li>
                 } @empty {
-                  <li class="muted">
-                    Esta campaña aún no tiene ideas con ese filtro. Cambia el estado o revisa que la
-                    campaña haya recibido mensajes.
-                  </li>
+                  <li class="muted">{{ mensajeSinIdeas() }}</li>
                 }
               </ul>
             }
@@ -164,7 +334,7 @@ import { ResultadosSesionService } from './resultados-sesion.service';
               </div>
             } @else if (detalleIdea(); as detalle) {
               <div class="panel-heading">
-                <h3>Detalle de {{ nombreUsuario(detalle.idea.usuarioId) }}</h3>
+                <h3>Detalle de {{ nombreParticipante(detalle.idea) }}</h3>
                 <span
                   class="status-badge"
                   [class.badge-ok]="detalle.idea.estadoResultado === 'madura'"
@@ -440,6 +610,8 @@ import { ResultadosSesionService } from './resultados-sesion.service';
 export class ResultadosPage {
   private readonly api = inject(AdminApiService);
   private readonly sesion = inject(ResultadosSesionService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly auth = inject(AuthService);
   protected readonly conversaciones = signal<Conversacion[]>([]);
   protected readonly ideas = signal<IdeaConsolidada[]>([]);
@@ -461,11 +633,34 @@ export class ResultadosPage {
   /** P-34 H-04: total declarado por el servidor para la campaña y el filtro vigentes. */
   protected readonly totalIdeas = signal(0);
   protected campaniaId = '';
-  protected estadoIdeaFiltro = '';
+  /** P-34 §4.2: los filtros del servidor, tal como viajan en la query y en la URL del portal. */
+  protected filtros: FiltrosIdeas = {};
+  protected readonly masFiltros = signal(false);
   protected nivelMadurezFiltro = '';
   private cargasPendientes = 0;
+  private urlAplicada = '';
 
   constructor() {
+    // P-34 H-09: la vista vive en la URL, así que se puede compartir, recargar y volver atrás.
+    this.route.queryParamMap.subscribe((parametros) => {
+      const serializada = parametros.keys
+        .map((clave) => `${clave}=${parametros.get(clave)}`)
+        .sort()
+        .join('&');
+      if (serializada === this.urlAplicada) return;
+      this.urlAplicada = serializada;
+      this.filtros = LLAVES_FILTRO.reduce((acumulado: FiltrosIdeas, clave) => {
+        const valor = parametros.get(clave);
+        if (valor) acumulado[clave] = valor;
+        return acumulado;
+      }, {});
+      this.masFiltros.set(this.conteoFiltrosAvanzados() > 0);
+      const campaniaDeUrl = parametros.get('campaniaId');
+      if (campaniaDeUrl && campaniaDeUrl !== this.campaniaId) {
+        this.campaniaId = campaniaDeUrl;
+      }
+      if (this.campaniaId && this.campanias().length) this.loadAll();
+    });
     this.api.campanias({ pageSize: 100 }).subscribe({
       next: (page) => {
         this.campanias.set(page.items);
@@ -506,6 +701,24 @@ export class ResultadosPage {
   reintentarUsuarios() {
     if (this.cargandoUsuarios()) return;
     this.cargarUsuarios();
+  }
+
+  /**
+   * P-34 §4.1: la identidad la resuelve el servidor. Si el backend es anterior a P-34 y no manda
+   * `participante`, se cae al maestro descargado —el comportamiento previo— y, si tampoco está,
+   * al texto legible con el código corto.
+   */
+  nombreParticipante(idea: IdeaConsolidada): string {
+    const participante = idea.participante;
+    if (participante?.resuelto && participante.nombre) {
+      return participante.area
+        ? `${participante.nombre} (${participante.area})`
+        : participante.nombre;
+    }
+    if (participante && !participante.resuelto) {
+      return `Participante no identificado · ${this.codigoCorto(participante.codigoUsuarioLegible ?? idea.usuarioId)}`;
+    }
+    return this.nombreUsuario(idea.usuarioId);
   }
 
   /** P-34 H-01: nunca un id técnico pelado; el código corto queda visible para poder rastrear. */
@@ -594,7 +807,67 @@ export class ResultadosPage {
   }
 
   cambiarCampania() {
+    this.aplicarFiltros();
+  }
+
+  /** Escribe el estado en la URL; la suscripción a la query es la que dispara la recarga. */
+  aplicarFiltros() {
+    const queryParams: Record<string, string> = {};
+    if (this.campaniaId) queryParams['campaniaId'] = this.campaniaId;
+    for (const clave of LLAVES_FILTRO) {
+      const valor = (this.filtros[clave] ?? '').toString().trim();
+      if (valor) queryParams[clave] = valor;
+    }
+
+    const serializada = Object.entries(queryParams)
+      .map(([clave, valor]) => `${clave}=${valor}`)
+      .sort()
+      .join('&');
+    // La suscripción a la query ignora esta emisión porque el estado ya quedó registrado aquí.
+    this.urlAplicada = serializada;
+    this.router.navigate([], { relativeTo: this.route, queryParams, replaceUrl: true });
     this.loadAll();
+  }
+
+  alternarMasFiltros() {
+    this.masFiltros.update((visible) => !visible);
+  }
+
+  /** Cuántos filtros del nivel 2 están puestos, para el contador del botón «Más filtros». */
+  conteoFiltrosAvanzados(): number {
+    return LLAVES_AVANZADAS.filter((clave) => (this.filtros[clave] ?? '').toString().trim()).length;
+  }
+
+  /** Un chip por filtro aplicado: se ve por qué la lista muestra lo que muestra. */
+  chipsFiltros(): { clave: keyof FiltrosIdeas; etiqueta: string; valor: string }[] {
+    return LLAVES_FILTRO.filter((clave) => (this.filtros[clave] ?? '').toString().trim()).map(
+      (clave) => ({
+        clave,
+        etiqueta: ETIQUETAS_FILTRO[clave],
+        valor: (this.filtros[clave] ?? '').toString(),
+      }),
+    );
+  }
+
+  quitarFiltro(clave: keyof FiltrosIdeas) {
+    delete this.filtros[clave];
+    this.aplicarFiltros();
+  }
+
+  limpiarFiltros() {
+    this.filtros = {};
+    this.aplicarFiltros();
+  }
+
+  /** El vacío nombra el filtro que lo produjo, en vez de sugerir que la campaña está vacía. */
+  mensajeSinIdeas(): string {
+    const chips = this.chipsFiltros();
+    if (!chips.length) {
+      return 'Esta campaña todavía no tiene ideas registradas. Revisa que haya recibido mensajes.';
+    }
+
+    const descripcion = chips.map((chip) => `${chip.etiqueta} «${chip.valor}»`).join(', ');
+    return `Ninguna idea coincide con los filtros aplicados (${descripcion}). Quita alguno para ver más.`;
   }
 
   loadAll() {
@@ -616,7 +889,7 @@ export class ResultadosPage {
     this.markdown.set(null);
 
     this.api
-      .ideasTodas(this.campaniaId, this.estadoIdeaFiltro)
+      .ideasTodas(this.campaniaId, this.filtrosParaApi())
       .pipe(finalize(() => this.finalizarCarga()))
       .subscribe({
         next: (page) => {
@@ -730,6 +1003,17 @@ export class ResultadosPage {
     anchor.click();
     URL.revokeObjectURL(url);
     this.informacion.set('Descarga iniciada.');
+  }
+
+  /**
+   * El selector de fecha da `aaaa-mm-dd`; el rango se manda como instantes para que «hasta» incluya
+   * el día completo y no corte en su medianoche.
+   */
+  private filtrosParaApi(): FiltrosIdeas {
+    const parametros: FiltrosIdeas = { ...this.filtros };
+    if (parametros.desde) parametros.desde = `${parametros.desde}T00:00:00Z`;
+    if (parametros.hasta) parametros.hasta = `${parametros.hasta}T23:59:59Z`;
+    return parametros;
   }
 
   private campaniaDisponible(campanias: Campania[]): string {

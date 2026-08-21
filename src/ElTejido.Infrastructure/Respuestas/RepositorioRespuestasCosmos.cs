@@ -170,6 +170,35 @@ public sealed class RepositorioRespuestasCosmos : IRepositorioRespuestas
         return documento?.ToDomain();
     }
 
+    /// <summary>
+    /// P-34 §5: calificaciones vigentes en una sola consulta por particion, con el mismo patron de
+    /// ids que las versiones. Sin ids no consulta nada.
+    /// </summary>
+    public async Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesPorIdsAsync(
+        string campaniaId,
+        IReadOnlyCollection<string> evaluacionIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(campaniaId);
+        ArgumentNullException.ThrowIfNull(evaluacionIds);
+
+        var ids = evaluacionIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (ids.Length == 0)
+        {
+            return Array.Empty<DominioEvaluacion>();
+        }
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.type = @type AND ARRAY_CONTAINS(@evaluacionIds, c.id)")
+            .WithParameter("@type", EvaluacionCosmosDocument.DocumentType)
+            .WithParameter("@evaluacionIds", ids);
+        var documentos = await _container.QueryAsync<EvaluacionCosmosDocument>(query, campaniaId.Trim(), cancellationToken);
+        return documentos.Select(documento => documento.ToDomain()).ToArray();
+    }
+
     public async Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(
         string campaniaId,
         CancellationToken cancellationToken)

@@ -1656,3 +1656,45 @@
     operaciones son el factor que las gobierna, y son las que quedan fijadas por prueba en CI.
 - Rollback: revertir el commit restaura el comportamiento anterior; no hay contrato, dato, índice ni
   configuración involucrados.
+
+### identidad-y-filtros-servidor-p-34 — El servidor resuelve quién es, el portal solo lo muestra
+
+- Fecha: 2026-08-21 - Agente/Rol: Claude Opus 5 - Arquitecto/Backend senior/Frontend senior/SDET
+  (P-34 corte 3/6). Contrato en `04 §5.8`, commit documental `98b8bca`, previo al código.
+- Hallazgo: el portal descargaba el maestro de usuarios y hacía el *join* en el navegador. Ese join
+  era el origen de H-01/H-02 y, sobre todo, impedía filtrar u ordenar por área, empresa o sede: el
+  servidor paginaba sin conocer esos campos, así que cualquier refinamiento posterior en cliente
+  mentía sobre el `total`.
+- Decisión 1 — **`participante` embebido y siempre presente.** Con `resuelto=false` y el resto en
+  `null` cuando el usuario ya no existe. No expone número, email ni tags: solo lo que la pantalla
+  necesita y que el mismo rol ya podía leer en `/usuarios`. La lectura es una consulta acotada por
+  ids (bloques de 200 dentro de la partición de usuarios), no una lectura puntual por participante.
+- Decisión 2 — **orden de lectura para no repetir H-10.** Primero los filtros que solo miran la idea,
+  después la identidad, y el texto de la versión o la calificación **solo** si algún criterio los
+  necesita antes de paginar (`q`, rango de calificación u `orden=calificacion`). Si no hacen falta
+  para filtrar u ordenar, se resuelven únicamente para la página devuelta.
+- Decisión 3 — **la consulta inválida falla.** Un `desde` no interpretable, un rango al revés o un
+  `orden` desconocido responden `400 VALIDATION_ERROR` con todos los motivos juntos, en vez de
+  devolver una lista vacía que se leería como «esta campaña no tiene ideas».
+- Decisión 4 — **semántica de los bordes, escrita porque no es obvia:** filtrar por calificación
+  excluye las ideas sin evaluación vigente (no hay número que comparar); ordenar por participante o
+  por calificación deja las filas sin ese dato **al final en ambas direcciones**; todo orden desempata
+  por el orden natural de I-19 para que paginar sea estable; el rango de fechas es inclusivo sobre
+  `creadaEn` y el portal manda `hasta` como fin del día para que el día elegido entre completo.
+- Portal: barra de dos niveles (campaña · buscar · estado · rango de fechas · «Más filtros · N»),
+  panel desplegable con los filtros del participante, la pregunta, el flujo, la curaduría, la
+  confirmación y el rango de calificación; chips removibles con «Limpiar todo»; **estado del filtro en
+  la URL** (H-09: la vista se comparte, sobrevive a F5 y respeta el botón atrás); y el estado vacío
+  **nombra los filtros aplicados** en vez de sugerir que la campaña está vacía.
+- Degradación (`P-34 §9`): si `participante` no viaja —servidor anterior—, el portal cae al maestro
+  descargado y, si tampoco está, al texto «Participante no identificado · código». Hay regresión de
+  ambos caminos.
+- Fuera de alcance a propósito: los filtros «con/sin documento» y «con/sin evaluación» de `§4.2` —no
+  están en el contrato del corte 3— y la **UI de ordenamiento**, que pertenece a la tabla del corte 4;
+  el servidor ya acepta `orden`/`dir`.
+- Medición (`ListadoIdeasEscalaP34IntegrationTests`, 1.000 ideas y 50 participantes): el listado con
+  `q` + `area` + `orden=participante` gasta **1 consulta de ideas + 1 de identidad (50 ids) + 2 de
+  versiones (candidatas y página) y 0 lecturas puntuales**, 342 ms. Los filtros no reintroducen el
+  costo por idea de H-10. Sigue pendiente la medición de RU reales contra Cosmos.
+- Rollback: revertir el commit devuelve el listado de I-19 con el join en el navegador; no hay dato,
+  índice ni configuración involucrados, y `03` no cambió.

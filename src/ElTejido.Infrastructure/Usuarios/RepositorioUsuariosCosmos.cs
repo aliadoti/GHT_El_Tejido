@@ -17,6 +17,9 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
     /// <summary>Reintentos de la reserva de codigos ante 412/409 del contador (03 §3.1.1).</summary>
     private const int MaxIntentosSecuencia = 8;
 
+    /// <summary>P-34 §4.1: ids por consulta al resolver identidades en bloque.</summary>
+    private const int TamanoBloqueIds = 200;
+
     private readonly IUsersCosmosContainer _container;
     private readonly TimeProvider _tiempo;
 
@@ -152,6 +155,40 @@ public sealed class RepositorioUsuariosCosmos : IRepositorioUsuarios
         return documents
             .Select(document => document.ToDomain())
             .ToArray();
+    }
+
+    /// <summary>
+    /// P-34 §4.1: identidad del listado de resultados. Los ids viajan en bloques para que la consulta
+    /// no crezca sin limite: con las 1.000 ideas previstas para la convencion son a lo sumo cinco
+    /// consultas dentro de la particion de usuarios, en vez de una lectura puntual por participante.
+    /// </summary>
+    public async Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorIdsAsync(
+        IReadOnlyCollection<string> ids,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        var unicos = ids
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unicos.Length == 0)
+        {
+            return [];
+        }
+
+        var encontrados = new List<Usuario>(unicos.Length);
+        for (var inicio = 0; inicio < unicos.Length; inicio += TamanoBloqueIds)
+        {
+            var bloque = unicos.Skip(inicio).Take(TamanoBloqueIds).ToArray();
+            var documents = await _container.QueryUsuariosAsync(
+                new FiltroUsuariosCosmos(null, null, null, null, null, [], null, Ids: bloque),
+                cancellationToken);
+            encontrados.AddRange(documents.Select(document => document.ToDomain()));
+        }
+
+        return encontrados;
     }
 
     public async Task GuardarTagAsync(Tag tag, CancellationToken cancellationToken)

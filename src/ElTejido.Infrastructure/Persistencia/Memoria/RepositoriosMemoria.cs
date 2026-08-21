@@ -65,6 +65,16 @@ internal sealed class RepositorioUsuariosMemoria : IRepositorioUsuarios
         return Task.FromResult(ultimoValor - cantidad + 1);
     }
 
+    /// <summary>P-34 §4.1: identidad del listado de resultados, resuelta por ids.</summary>
+    public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorIdsAsync(
+        IReadOnlyCollection<string> ids, CancellationToken cancellationToken)
+    {
+        var buscados = ids.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+        return Task.FromResult<IReadOnlyCollection<Usuario>>(buscados.Count == 0
+            ? []
+            : _usuarios.Values.Where(usuario => buscados.Contains(usuario.Id)).ToArray());
+    }
+
     public Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(FiltroUsuarios filtro, CancellationToken cancellationToken)
     {
         IEnumerable<Usuario> query = _usuarios.Values;
@@ -475,6 +485,18 @@ internal sealed class RepositorioRespuestasMemoria : IRepositorioRespuestas
 
     public Task<DominioEvaluacion?> ObtenerEvaluacionPorIdAsync(string campaniaId, string evaluacionId, CancellationToken cancellationToken)
         => Task.FromResult(_evaluaciones.Values.FirstOrDefault(e => e.Id == evaluacionId));
+
+    /// <summary>P-34 §5: calificaciones vigentes pedidas en bloque.</summary>
+    public Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesPorIdsAsync(
+        string campaniaId, IReadOnlyCollection<string> evaluacionIds, CancellationToken cancellationToken)
+    {
+        var buscadas = evaluacionIds.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+        return Task.FromResult<IReadOnlyCollection<DominioEvaluacion>>(buscadas.Count == 0
+            ? []
+            : _evaluaciones.Values
+                .Where(e => e.CampaniaId == campaniaId && buscadas.Contains(e.Id))
+                .ToArray());
+    }
 
     public Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesAsync(string campaniaId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyCollection<DominioEvaluacion>>(_evaluaciones.Values

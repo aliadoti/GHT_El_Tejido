@@ -342,6 +342,26 @@ export interface IdeaConsolidada {
   evaluacionVigenteRef?: string | null;
   creadaEn: string;
   actualizadaEn: string;
+  /** P-34: identidad resuelta por el servidor; ausente si el backend es anterior a P-34. */
+  participante?: ParticipanteIdea | null;
+  /** P-34: calificación de la evaluación vigente; `null` si la idea aún no tiene una. */
+  calificacionTotal?: number | null;
+  evaluadaEn?: string | null;
+}
+
+/**
+ * P-34 (04 §5.8): identidad del participante resuelta por el servidor. Viaja siempre; con
+ * `resuelto=false` el resto llega en `null` y la pantalla lo dice, en vez de mostrar el id técnico.
+ */
+export interface ParticipanteIdea {
+  usuarioId: string;
+  codigoUsuarioLegible?: string | null;
+  nombre?: string | null;
+  area?: string | null;
+  empresa?: string | null;
+  sede?: string | null;
+  estado?: string | null;
+  resuelto: boolean;
 }
 
 /** I-19: versión inmutable de una idea; el historial nunca se sobrescribe. */

@@ -3,7 +3,9 @@ using System.Net;
 using System.Text.Json;
 using ElTejido.Application.Auth;
 using ElTejido.Application.Respuestas;
+using ElTejido.Application.Usuarios;
 using ElTejido.Domain.Common;
+using ElTejido.Domain.Identidad;
 using ElTejido.Domain.Respuestas;
 using ElTejido.Domain.Usuarios;
 using FluentAssertions;
@@ -132,6 +134,72 @@ public sealed class ListadoIdeasEscalaP34IntegrationTests
         repo.DocumentosRespuestaLeidos.Should().Be(AportesPorIdea);
     }
 
+    // P-34 §7: cada filtro nuevo se mide, porque multiplica el costo del listado si se implementa mal.
+    [Fact]
+    public async Task Filtros_Y_Orden_No_Reintroducen_Lecturas_Puntuales()
+    {
+        var repo = SembrarCampania();
+        var usuarios = SembrarParticipantes();
+        using var fabrica = Construir(repo, usuarios);
+        using var client = ClienteAdmin(fabrica);
+
+        var reloj = Stopwatch.StartNew();
+        using var respuesta = await client.GetAsync(
+            $"/api/admin/ideas?campaniaId={CampaniaId}&pageSize=100&q=vigente&area=Operaciones&orden=participante&dir=desc");
+        reloj.Stop();
+
+        respuesta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await respuesta.Content.ReadAsStringAsync();
+        using var documento = JsonDocument.Parse(json);
+        var raiz = documento.RootElement;
+
+        _salida.WriteLine(
+            $"P-34 §7 · {TotalIdeas} ideas con q + area + orden · "
+            + $"lecturas puntuales de version={repo.LecturasPuntualesVersion} · "
+            + $"consultas de versiones en bloque={repo.ConsultasVersionesEnBloque} · "
+            + $"consultas de identidad={usuarios.ConsultasPorIds} (ids={usuarios.IdsPedidos}) · "
+            + $"consultas de ideas={repo.ConsultasIdeas} · "
+            + $"latencia={reloj.ElapsedMilliseconds} ms");
+
+        // El filtro de area deja fuera a la mitad de los participantes sembrados.
+        raiz.GetProperty("total").GetInt32().Should().Be(TotalIdeas / 2);
+        raiz.GetProperty("items").GetArrayLength().Should().Be(100);
+        raiz.GetProperty("items")[0].GetProperty("participante").GetProperty("nombre").GetString()
+            .Should().NotBeNull();
+
+        // Identidad y texto se resuelven en consultas acotadas: ni una lectura puntual por idea.
+        repo.LecturasPuntualesVersion.Should().Be(0);
+        repo.ConsultasIdeas.Should().Be(1);
+        usuarios.ConsultasPorIds.Should().Be(1);
+        usuarios.LecturasPuntuales.Should().Be(0);
+        // Una para el texto de todas las candidatas (lo exige `q`) y otra para la página devuelta.
+        repo.ConsultasVersionesEnBloque.Should().BeLessThanOrEqualTo(2);
+    }
+
+    private static RepositorioUsuariosContador SembrarParticipantes()
+    {
+        var usuarios = new RepositorioUsuariosContador();
+        for (var indice = 0; indice < 50; indice++)
+        {
+            usuarios.Usuarios.Add(Usuario.Crear(
+                $"u_{indice}",
+                indice + 1,
+                $"Participante {indice:D2}",
+                NumeroWhatsApp.FromNormalized($"5730011{indice:D5}"),
+                RolUsuario.Participante,
+                EstadoRegistro.Activo,
+                indice % 2 == 0 ? "Operaciones" : "Comercial",
+                "Flores El Aljibe",
+                null,
+                null,
+                Epoca,
+                Epoca,
+                sede: "AL"));
+        }
+
+        return usuarios;
+    }
+
     private static RepositorioContador SembrarCampania()
     {
         var repo = new RepositorioContador();
@@ -166,16 +234,81 @@ public sealed class ListadoIdeasEscalaP34IntegrationTests
         return repo;
     }
 
-    private static WebApplicationFactory<Program> Construir(IRepositorioRespuestas respuestas)
+    private static WebApplicationFactory<Program> Construir(
+        IRepositorioRespuestas respuestas, IRepositorioUsuarios? usuarios = null)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.ConfigureTestServices(services =>
             {
                 services.AddSingleton(respuestas);
+                if (usuarios is not null)
+                {
+                    services.AddSingleton(usuarios);
+                }
+
                 services.AddSingleton<IServicioSesion, SesionesFake>();
             });
         });
+
+    /// <summary>
+    /// Doble del maestro de usuarios que cuenta como Cosmos: una consulta por bloque de ids y una
+    /// lectura puntual por <c>ObtenerUsuarioPorIdAsync</c>.
+    /// </summary>
+    private sealed class RepositorioUsuariosContador : IRepositorioUsuarios
+    {
+        public List<Usuario> Usuarios { get; } = [];
+
+        public int ConsultasPorIds { get; private set; }
+
+        public int IdsPedidos { get; private set; }
+
+        public int LecturasPuntuales { get; private set; }
+
+        public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorIdsAsync(
+            IReadOnlyCollection<string> ids, CancellationToken cancellationToken)
+        {
+            ConsultasPorIds++;
+            IdsPedidos += ids.Count;
+            var buscados = ids.ToHashSet(StringComparer.Ordinal);
+            return Task.FromResult<IReadOnlyCollection<Usuario>>(
+                Usuarios.Where(usuario => buscados.Contains(usuario.Id)).ToArray());
+        }
+
+        public Task<Usuario?> ObtenerUsuarioPorIdAsync(string id, CancellationToken cancellationToken)
+        {
+            LecturasPuntuales++;
+            return Task.FromResult(Usuarios.FirstOrDefault(usuario => usuario.Id == id));
+        }
+
+        public Task GuardarUsuarioAsync(Usuario usuario, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
+        public Task<Usuario?> ObtenerUsuarioPorNumeroAsync(NumeroWhatsApp numero, CancellationToken cancellationToken)
+            => Task.FromResult<Usuario?>(null);
+
+        public Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorNumeroAsync(
+            NumeroWhatsApp numero, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Usuario>>([]);
+
+        public Task<int> ReservarCodigosUsuarioAsync(int cantidad, CancellationToken cancellationToken)
+            => Task.FromResult(1);
+
+        public Task<IReadOnlyCollection<Usuario>> BuscarUsuariosAsync(
+            FiltroUsuarios filtro, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Usuario>>(Usuarios.ToArray());
+
+        public Task GuardarTagAsync(Tag tag, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task<Tag?> ObtenerTagPorIdAsync(string id, CancellationToken cancellationToken)
+            => Task.FromResult<Tag?>(null);
+
+        public Task<IReadOnlyCollection<Tag>> BuscarTagsAsync(FiltroTags filtro, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyCollection<Tag>>([]);
+
+        public Task<int> EliminarUsuariosNoAdministrativosAsync(CancellationToken cancellationToken)
+            => Task.FromResult(0);
+    }
 
     private static HttpClient ClienteAdmin(WebApplicationFactory<Program> fabrica)
     {

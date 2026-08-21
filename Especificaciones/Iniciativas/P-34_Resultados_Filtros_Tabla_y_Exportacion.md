@@ -1,15 +1,15 @@
 # P-34 — Resultados: identidad, filtros, tabla ordenable, exportación y resumen de campaña
 
-> Estado: **EN CURSO — 2/6 (cortes 1 y 2 DONE local 2026-08-20; siguiente corte 3/6)**
+> Estado: **EN CURSO — 3/6 (cortes 1 y 2 DONE local 2026-08-20; corte 3 DONE local 2026-08-21; siguiente corte 4/6)**
 > Origen: solicitud del usuario (2026-08-20) como especialista en UX/UI sobre la pantalla de Resultados
 > Tipo: Desarrollo **frontend + backend aditivo** · Prioridad: Alta · Ventana: previa a la convención
 > Dependencias: **I-17**, **I-19** (idea consolidada), **P-18/P-19** (accesibilidad), **P-23** (maestro-detalle)
 > Absorbe de **P-04**: filtros de servidor, ranking por calificación y exportación CSV
 > Riesgo: Medio — cambia `04 §5.8` de forma **aditiva**; no toca `03`, ni rutas, ni permisos
-> Handoff: los cortes 1 (H-01/H-02/H-03/H-04) y 2 (escala a 1.000 ideas) quedaron DONE local el
-> 2026-08-20, sin cambios de contrato; sigue el corte 3 (identidad embebida y filtros de servidor),
-> que **sí** cambia `04 §5.8` de forma aditiva y en commit aparte. DT-P33-01 integral queda en backlog
-> y no bloquea esta iniciativa.
+> Handoff: cortes 1, 2 y 3 DONE local. `04 §5.8` ya publica la identidad embebida, la calificación
+> vigente, los filtros y `orden`/`dir` (commit `98b8bca`). Sigue el corte 4 (tabla ordenable y
+> metadata), que es **solo portal**: el servidor ya acepta el orden. DT-P33-01 integral queda en
+> backlog y no bloquea esta iniciativa.
 
 ---
 
@@ -195,16 +195,18 @@ Todo aditivo. `03` no cambia. `04 §5.8` se actualiza en commit aparte, con su e
 
 | Endpoint | Cambio | Tipo |
 |----------|--------|------|
-| `GET /admin/ideas` | Objeto `participante` embebido (código legible, nombre, área, empresa, sede, estado) | aditivo |
-| `GET /admin/ideas` | `calificacionTotal` y `evaluadaEn` de la evaluación vigente | aditivo |
-| `GET /admin/ideas` | Filtros `q`, `area`, `empresa`, `sede`, `desde`, `hasta`, `calificacionMin`, `calificacionMax`, `confirmada` | aditivo |
-| `GET /admin/ideas` | `orden` = `participante\|calificacion\|creada\|actualizada\|pregunta` + `dir` = `asc\|desc` | aditivo |
+| `GET /admin/ideas` | Objeto `participante` embebido (código legible, nombre, área, empresa, sede, estado, `resuelto`). **Implementado (corte 3)** | aditivo |
+| `GET /admin/ideas` | `calificacionTotal` y `evaluadaEn` de la evaluación vigente. **Implementado (corte 3)** | aditivo |
+| `GET /admin/ideas` | Filtros `q`, `area`, `empresa`, `sede`, `desde`, `hasta`, `calificacionMin`, `calificacionMax`, `confirmada`. **Implementado (corte 3)** | aditivo |
+| `GET /admin/ideas` | `orden` = `participante\|calificacion\|creada\|actualizada\|pregunta` + `dir` = `asc\|desc`. **Implementado en el servidor (corte 3); la UI llega con la tabla del corte 4** | aditivo |
 | `GET /admin/ideas/{id}` | Traer los aportes por `ideaId` en vez de cargar la partición de respuestas | interno |
 | `GET /admin/markdown` | Sin cambio de contrato: el portal debe pasar `pageSize` y paginar (corrige H-03) | solo portal |
 | `GET /admin/campanias/{id}/exportar` | **Nuevo.** `recurso` = `ideas\|aportes\|evaluaciones`, `formato` = `xlsx\|csv`, `anonimizado` = `true\|false`, más los filtros del listado | nuevo |
 | `GET /admin/campanias/{id}/documentos.zip` | **Nuevo.** ZIP de los `.md` con nombres legibles | nuevo |
 | `GET /admin/campanias/{id}/resumen` | **Nuevo.** Participación, embudo, histograma, cobertura y temas; acepta los mismos filtros | nuevo |
-| `GET /admin/usuarios` | Subir el tope de `pageSize` o exponer `continuationToken` (red de seguridad para H-02) | aditivo |
+| `GET /admin/usuarios` | Subir el tope de `pageSize` o exponer `continuationToken` (red de seguridad para H-02). **Ya no hace falta para Resultados**: el corte 1 pagina y el corte 3 resuelve la identidad en el servidor | aditivo |
+| `IRepositorioUsuarios` | **Nuevo** `ListarUsuariosPorIdsAsync`: identidad por bloques de ids dentro de la partición de usuarios. **Implementado (corte 3)** | interno |
+| `IRepositorioRespuestas` | **Nuevo** `ListarEvaluacionesPorIdsAsync`: calificación vigente en una consulta por ids. **Implementado (corte 3)** | interno |
 | `IRepositorioRespuestas` | **Nuevo** `ListarVersionesDeCampaniaAsync(campaniaId, versionIds, ct)`: una query por partición (`ARRAY_CONTAINS`) en vez de N lecturas puntuales. Recibe los ids de la página —no toda la campaña— para no traer el texto de ~2.000 documentos; degrada por defecto a lecturas puntuales. **Implementado (corte 2)** | interno |
 | `IRepositorioRespuestas` | **Nuevo** `ListarRespuestasPorIdeaAsync`: aportes por `ideaId`; degrada por defecto al filtro en memoria. **Implementado (corte 2)** | interno |
 
@@ -279,7 +281,7 @@ P-23 sin afectar datos ni contratos.
 |---|-------|-------------|
 | **1** ✅ | **Los cuatro bugs** (frontend) — **DONE local 2026-08-20** | Recorrido de páginas hasta agotar `total` en `/usuarios`, `/markdown`, `/respuestas` y `/conversaciones` con `pageSize` en el tope real (100), degradando a una sola página si el servidor no informa `total`; contadores tomados de `total`, con aviso «(sobre las N primeras)» mientras el listado de ideas siga trayendo una página (se retira con el corte 2); error de `/usuarios` visible en la región asertiva y reintentable; «Participante no identificado · código» en vez del id técnico. Portal 76 pruebas en 10 archivos, `ng build` producción y Prettier verdes; backend sin cambios. |
 | **2** ✅ | **Que aguante 1.000 ideas** (backend) — **DONE local 2026-08-20** | Se filtra, ordena y **pagina antes** de resolver versiones; las de la página se piden en una sola consulta por ids dentro de la partición (`ListarVersionesDeCampaniaAsync`); el detalle trae los aportes por `ideaId` (`ListarRespuestasPorIdeaAsync`); ambos con degradación por defecto en el puerto. El portal recorre además el listado completo de ideas, lo que vuelve exacto el desglose por estado de H-04. Medición con 1.000 ideas y 5.000 aportes: listado de **1.000 lecturas puntuales a 0** (403 → 332 ms) y detalle de **5.000 documentos de respuesta a 5** (701 → 496 ms), en operaciones e in-process; **RU/latencia reales contra Cosmos siguen pendientes como puerta operativa**. |
-| **3** | **Identidad y filtros en el servidor** | `participante` y `calificacionTotal` en `/ideas`; filtros nuevos; barra de dos niveles con chips; estado en la URL; estados vacíos que nombran el filtro. |
+| **3** ✅ | **Identidad y filtros en el servidor** — **DONE local 2026-08-21** | `participante` embebido (con `resuelto`) y `calificacionTotal`/`evaluadaEn` en `/ideas`; filtros `q`, área, empresa, sede, fechas, calificación y confirmada, más `orden`/`dir`, con `400` y todos los motivos ante una consulta inválida; identidad y evaluaciones por consultas acotadas a ids; barra de dos niveles con chips removibles, estado del filtro en la URL y vacío que nombra el filtro. Quedan fuera «con/sin documento» y «con/sin evaluación», y la **UI** de ordenamiento pasa al corte 4. |
 | **4** | **Tabla, orden y metadata** | Vista tabla ordenable, agrupación, selector de columnas, paginación configurable; ficha completa y línea de tiempo; vista lectura conservada; columna de selección prevista (D4). |
 | **5** | **Exportación** | `/exportar` con los tres recursos en xlsx y csv; hoja «Filtros aplicados»; casilla de anonimizado; ZIP de documentos. |
 | **6** | **Resumen de campaña** | `/resumen`; panel plegable que respeta el filtro; tooltips y tabla equivalente por gráfico. |

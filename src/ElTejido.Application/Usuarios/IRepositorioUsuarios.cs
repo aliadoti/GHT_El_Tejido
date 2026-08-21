@@ -39,6 +39,29 @@ public interface IRepositorioUsuarios
         FiltroUsuarios filtro,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// P-34 §4.1: los participantes de un conjunto de ids, para que el servidor resuelva la identidad
+    /// del listado de resultados en vez de que el portal descargue el maestro y haga el join en el
+    /// navegador. Los adaptadores persistentes lo traducen a consultas acotadas por ids dentro de la
+    /// particion de usuarios; la implementacion por defecto lee el maestro y filtra en memoria —el
+    /// comportamiento que tenia el portal—, de modo que un doble sin la consulta nativa devuelve lo
+    /// mismo. Un id sin usuario simplemente no aparece: el llamador decide como presentarlo.
+    /// </summary>
+    async Task<IReadOnlyCollection<Usuario>> ListarUsuariosPorIdsAsync(
+        IReadOnlyCollection<string> ids,
+        CancellationToken cancellationToken)
+    {
+        var buscados = ids.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+        if (buscados.Count == 0)
+        {
+            return [];
+        }
+
+        return (await BuscarUsuariosAsync(new FiltroUsuarios(), cancellationToken))
+            .Where(usuario => buscados.Contains(usuario.Id))
+            .ToArray();
+    }
+
     Task GuardarTagAsync(Tag tag, CancellationToken cancellationToken);
 
     Task<Tag?> ObtenerTagPorIdAsync(string id, CancellationToken cancellationToken);

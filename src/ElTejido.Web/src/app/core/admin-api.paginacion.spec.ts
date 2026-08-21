@@ -83,12 +83,17 @@ describe('AdminApiService · listados completos', () => {
   // es lo que vuelve exacto el desglose por estado de una campaña de 1.000 ideas.
   it('recorre el listado de ideas conservando el filtro de estado', () => {
     let resultado: PagedResult<IdeaConsolidada> | undefined;
-    admin.ideasTodas('campania-1', 'madura').subscribe((p) => (resultado = p));
+    admin
+      .ideasTodas('campania-1', { estadoResultado: 'madura', area: 'Operaciones' })
+      .subscribe((p) => (resultado = p));
 
     const primera = http.expectOne(
       (r) => r.url === '/api/admin/ideas' && r.params.get('page') === '1',
     );
     expect(primera.request.params.get('estadoResultado')).toBe('madura');
+    // P-34 §4.2: los filtros del servidor viajan en cada página; un filtro vacío no viaja.
+    expect(primera.request.params.get('area')).toBe('Operaciones');
+    expect(primera.request.params.has('q')).toBe(false);
     expect(primera.request.params.get('pageSize')).toBe('100');
     primera.flush({
       items: [{ id: 'idea_1' } as IdeaConsolidada],

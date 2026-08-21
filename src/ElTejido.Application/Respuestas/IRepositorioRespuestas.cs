@@ -89,6 +89,30 @@ public interface IRepositorioRespuestas
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// P-34 §5: evaluaciones pedidas <b>en bloque</b> por id dentro de la particion. El listado de
+    /// resultados necesita la calificacion vigente de las ideas que muestra (y, al filtrar u ordenar
+    /// por calificacion, la de todas las filtradas); traerlas una por una repetiria el problema H-10.
+    /// La implementacion por defecto cae a lecturas puntuales, que es el comportamiento equivalente.
+    /// </summary>
+    async Task<IReadOnlyCollection<DominioEvaluacion>> ListarEvaluacionesPorIdsAsync(
+        string campaniaId,
+        IReadOnlyCollection<string> evaluacionIds,
+        CancellationToken cancellationToken)
+    {
+        var encontradas = new List<DominioEvaluacion>(evaluacionIds.Count);
+        foreach (var evaluacionId in evaluacionIds)
+        {
+            var evaluacion = await ObtenerEvaluacionPorIdAsync(campaniaId, evaluacionId, cancellationToken);
+            if (evaluacion is not null)
+            {
+                encontradas.Add(evaluacion);
+            }
+        }
+
+        return encontradas;
+    }
+
+    /// <summary>
     /// Lista las evaluaciones de una campaña en orden descendente por fecha (04 §5.8). No tiene
     /// implementación por defecto: un adaptador sin este diagnóstico no puede informar en silencio
     /// que no existen evaluaciones huérfanas (DT-QA-02).

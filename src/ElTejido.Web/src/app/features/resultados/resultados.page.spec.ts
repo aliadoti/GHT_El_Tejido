@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { AdminApiService } from '../../core/admin-api.service';
@@ -33,6 +34,14 @@ describe('ResultadosPage', () => {
   const idea = {
     id: 'idea-1',
     usuarioId: 'usuario-1',
+    participante: {
+      usuarioId: 'usuario-1',
+      codigoUsuarioLegible: 'U-000042',
+      nombre: 'Ana',
+      area: 'Producto',
+      resuelto: true,
+    },
+    calificacionTotal: 9,
     texto: 'Idea consolidada y confirmada por el participante.',
     confirmada: true,
     estadoFlujo: 'cerrada',
@@ -111,6 +120,7 @@ describe('ResultadosPage', () => {
           },
         },
         { provide: AuthService, useValue: { isAdmin: () => true } },
+        provideRouter([]),
         ResultadosSesionService,
       ],
     });
@@ -184,10 +194,13 @@ describe('ResultadosPage', () => {
     expect(fixture.nativeElement.textContent).toContain('# Documento de prueba');
   });
 
-  // P-34 H-01: con el maestro de usuarios caído la pantalla lo dice y ofrece reintentar.
+  // P-34 H-01 y §9: contra un servidor anterior a P-34 (sin `participante`) el portal conserva el
+  // camino previo —maestro descargado— y, si ese maestro falla, lo dice y ofrece reintentar.
   it('avisa cuando no puede cargar los participantes y no muestra el id técnico', () => {
     let intentos = 0;
+    const ideaLegacy = { ...idea, participante: undefined } as unknown as IdeaConsolidada;
     configurar(undefined, {
+      ideasTodas: () => of({ items: [ideaLegacy], total: 1 }),
       usuariosTodos: () => {
         intentos += 1;
         return intentos === 1
@@ -236,6 +249,74 @@ describe('ResultadosPage', () => {
       'sobre las 2 primeras',
     );
     expect(element.querySelector('.panel-heading .muted')?.textContent).toContain('2 de 137');
+  });
+
+  // P-34 §4.1: la identidad la resuelve el servidor; el maestro descargado solo queda de respaldo.
+  it('usa el participante embebido y marca al que el servidor no pudo identificar', () => {
+    const ideaSinIdentidad = {
+      ...ideaEnCurso,
+      participante: {
+        usuarioId: 'usuario-9',
+        codigoUsuarioLegible: 'U-000099',
+        nombre: null,
+        resuelto: false,
+      },
+    } as unknown as IdeaConsolidada;
+    configurar(undefined, {
+      ideasTodas: () => of({ items: [idea, ideaSinIdentidad], total: 2 }),
+      // El maestro trae otro nombre a propósito: debe ganar el del servidor.
+      usuariosTodos: () =>
+        of({ items: [{ id: 'usuario-1', nombre: 'Nombre viejo' } as UsuarioAdmin], total: 1 }),
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const filas = fixture.nativeElement.querySelectorAll('.resultados-idea strong');
+    expect(filas[0].textContent.trim()).toBe('Ana (Producto)');
+    expect(filas[1].textContent.trim()).toBe('Participante no identificado · U-000099');
+  });
+
+  // P-34 §4.2: los filtros viajan al servidor, se ven como chips y se desarman de a uno.
+  it('envía los filtros al servidor y los muestra como chips removibles', () => {
+    const filtrosVistos: Record<string, string>[] = [];
+    configurar(undefined, {
+      ideasTodas: (_campaniaId: string, filtros: Record<string, string>) => {
+        filtrosVistos.push(filtros);
+        return of({ items: [], total: 0 });
+      },
+    });
+    const fixture = TestBed.createComponent(ResultadosPage);
+    fixture.detectChanges();
+
+    const pagina = fixture.componentInstance as unknown as {
+      filtros: Record<string, string>;
+      aplicarFiltros: () => void;
+      quitarFiltro: (clave: string) => void;
+    };
+    pagina.filtros = { q: 'riego', area: 'Operaciones', hasta: '2026-08-20' };
+    pagina.aplicarFiltros();
+    fixture.detectChanges();
+
+    const ultimo = filtrosVistos[filtrosVistos.length - 1];
+    expect(ultimo['q']).toBe('riego');
+    expect(ultimo['area']).toBe('Operaciones');
+    // El día completo entra en el rango: «hasta» no corta en su medianoche.
+    expect(ultimo['hasta']).toBe('2026-08-20T23:59:59Z');
+
+    const element = fixture.nativeElement as HTMLElement;
+    const chips = Array.from(element.querySelectorAll('.resultados-chip')).map((chip) =>
+      chip.textContent?.trim(),
+    );
+    expect(chips.some((texto) => texto?.includes('Búsqueda: riego'))).toBe(true);
+    expect(chips.some((texto) => texto?.includes('Área: Operaciones'))).toBe(true);
+    // El vacío nombra el filtro que lo produjo.
+    expect(element.textContent).toContain('Ninguna idea coincide con los filtros aplicados');
+    expect(element.textContent).toContain('Búsqueda «riego»');
+
+    pagina.quitarFiltro('q');
+    fixture.detectChanges();
+    expect(filtrosVistos[filtrosVistos.length - 1]['q']).toBeUndefined();
+    expect(filtrosVistos[filtrosVistos.length - 1]['area']).toBe('Operaciones');
   });
 
   it('muestra una guía educada cuando no hay campañas que consultar', () => {

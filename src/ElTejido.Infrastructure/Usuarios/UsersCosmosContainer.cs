@@ -214,6 +214,12 @@ internal sealed class UsersCosmosContainer : IUsersCosmosContainer
             filters.Add("c.idioma = @idioma");
         }
 
+        if (filtro.Ids is not null)
+        {
+            // P-34 §4.1: identidad del listado de resultados, acotada al bloque de ids pedido.
+            filters.Add("ARRAY_CONTAINS(@ids, c.id)");
+        }
+
         if (filtro.Busqueda is not null)
         {
             // Texto libre sobre nombre, numero, email y codigo legible (04 §5.1). El codigo se compara
@@ -278,6 +284,11 @@ internal sealed class UsersCosmosContainer : IUsersCosmosContainer
         if (filtro.Busqueda is not null)
         {
             query.WithParameter("@busqueda", filtro.Busqueda.ToLowerInvariant());
+        }
+
+        if (filtro.Ids is not null)
+        {
+            query.WithParameter("@ids", filtro.Ids.ToArray());
         }
 
         return query;

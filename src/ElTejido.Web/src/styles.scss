@@ -318,6 +318,29 @@ th {
   align-items: start;
 }
 
+/* P-34 §4.2: panel de filtros de nivel 2 y chips de lo aplicado. */
+.resultados-filtros-avanzados {
+  border-top: 1px solid var(--ght-borde);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.resultados-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.resultados-chip {
+  cursor: pointer;
+  border: 1px solid var(--ght-borde);
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
 .resultados-resumen,
 .resultados-leyenda {
   display: grid;
