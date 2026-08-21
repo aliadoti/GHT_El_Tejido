@@ -600,6 +600,8 @@ anterior.
 | GET | `/api/admin/markdown/{id}` | Contenido Markdown + metadatos. |
 | POST | `/api/admin/markdown/{id}/regenerar` | Regenera el artefacto desde datos operativos (`REQ §22.4.6`). |
 | GET | `/api/admin/markdown/{id}/raw` | Descarga el `.md` (text/markdown). |
+| GET | `/api/admin/campanias/{id}/exportar` | **P-34:** exporta `ideas`, `aportes` o `evaluaciones` en `xlsx`/`csv`, con los mismos filtros del listado. Ver sub-sección. |
+| GET | `/api/admin/campanias/{id}/documentos.zip` | **P-34:** ZIP de los `.md` de la campaña, con nombres legibles y el mismo filtro. |
 
 I-05 añade `parafraseoDevuelto` opcional al detalle de evaluación que devuelven
 `/respuestas/{id}` y `/evaluaciones/{id}`. `null`/ausente significa que la campaña no lo tenía
@@ -726,6 +728,50 @@ dir                asc|desc (por defecto `asc`)
   van al final; `calificacion` ordena por la calificación vigente y las ideas sin evaluación van al
   final en ambas direcciones.
 - `total` sigue siendo el del conjunto filtrado completo, nunca el de la página.
+
+#### Exportación de resultados — `P-34` (rutas nuevas, solo lectura)
+> Dos rutas nuevas bajo el mismo guard admin; **son `GET`, y por tanto lectura para `admin`/`visor`**.
+> No modifican `03` ni ninguna ruta existente. Detalle en
+> `Iniciativas/P-34_Resultados_Filtros_Tabla_y_Exportacion.md` §4.5 y §7.
+
+`GET /api/admin/campanias/{campaniaId}/exportar`
+
+```text
+recurso      ideas | aportes | evaluaciones      (por defecto `ideas`)
+formato      xlsx | csv                          (por defecto `xlsx`)
+anonimizado  true | false                        (por defecto `false`)
++ los mismos filtros de `GET /admin/ideas`: q, area, empresa, sede, desde, hasta,
+  calificacionMin, calificacionMax, confirmada, usuarioId, preguntaId, estadoResultado,
+  estadoFlujo, estadoCuraduria, orden, dir
+```
+
+- **El alcance es explícito y lo resuelve el servidor:** mismo filtro y mismo orden que la pantalla,
+  sin techo de página. `page`/`pageSize` se ignoran: exportar media página sería una trampa.
+- **Nombre del archivo** en `Content-Disposition`, derivado de la campaña, el recurso y la fecha:
+  `Convencion-GHT-2026_ideas_2026-08-21.xlsx`.
+- **Auditabilidad:** el archivo abre con **«Filtros aplicados»** —campaña, cada filtro, orden, total
+  de filas, fecha de exportación y quién la pidió—. En `xlsx` es la primera hoja; en `csv`, un bloque
+  de líneas iniciales prefijadas con `#`, que Excel muestra como filas y un parser puede descartar.
+  Sin eso, un archivo suelto en un correo no se puede auditar tres semanas después.
+- `anonimizado=true` sustituye el nombre del participante por su `codigoUsuarioLegible` en **todas**
+  las columnas y en los nombres de archivo del ZIP; el resto de los atributos (área, empresa, sede)
+  se conserva porque no identifican por sí solos. D1 autoriza el nombre en la consulta interna; la
+  casilla existe desde el primer día para el caso en que el archivo salga del guard.
+- `csv` sale en **UTF-8 con BOM** para que Excel no rompa los acentos.
+- **Tope explícito:** `10000` filas por exportación. Al excederlo responde `400 VALIDATION_ERROR` con
+  `recurso: excede_tope` y el total encontrado, en vez de intentar un archivo que nadie va a abrir.
+  El `csv` se escribe fila por fila sobre la respuesta; el `xlsx` lo arma la librería en memoria, y
+  por eso el tope es la protección real (`§7`).
+- Valores inválidos de `recurso`, `formato` o `anonimizado` responden `400 VALIDATION_ERROR` con el
+  campo y `valor_invalido`, como el resto de los criterios del listado.
+
+`GET /api/admin/campanias/{campaniaId}/documentos.zip`
+
+- Acepta `anonimizado` y los mismos filtros; devuelve `application/zip` con un `.md` por idea que
+  tenga documento, nombrado `U-000042_Marta-Rueda_idea-2.md` (con `anonimizado=true`,
+  `U-000042_idea-2.md`). Nombres repetidos se desambiguan con el id de la idea.
+- Se escribe **en streaming** sobre la respuesta, una entrada por vez. Mismo tope de filas.
+- Una campaña sin documentos devuelve un ZIP vacío y `200`: es una respuesta legítima, no un error.
 
 Campos aditivos de respuesta para I-06/I-18:
 ```json

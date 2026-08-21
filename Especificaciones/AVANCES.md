@@ -1905,6 +1905,15 @@
 - 2026-06-14 - Frontend/AppSec/SDET (Codex) - Fase 8: Portal Angular (`11`) construido como SPA standalone con login OTP, `AuthService` con CSRF en memoria, interceptor `withCredentials` + `X-CSRF-Token`, guards de sesion/admin/login, shell autenticado con marca GHT, servicios tipados por feature contra `04`, pantallas de dashboard, usuarios/tags, campanias/participantes, envios/jobs, rubricas, prompts, config-llm y resultados/Markdown. `ng build --configuration production` publica en `src/ElTejido.Api/wwwroot`; `proxy.conf.json` apunta `/api` y `/webhook` a `https://localhost:5001` en dev. Ref: `11`, `04`, `10`, `13`.
 
 ## Contratos: cambios respecto a las specs
+- 2026-08-21 - P-34 (corte 5): `04 §5.8` suma **dos rutas nuevas de solo lectura**, en commit propio y
+  previo al código: `GET /admin/campanias/{id}/exportar` (`recurso` = ideas|aportes|evaluaciones,
+  `formato` = xlsx|csv, `anonimizado`, más los mismos filtros del listado) y
+  `GET /admin/campanias/{id}/documentos.zip`. No cambian `03` ni ninguna ruta existente; son `GET`
+  bajo el mismo guard admin, así que la lectura sigue siendo `admin`/`visor`. Queda documentado lo que
+  no es obvio: `page`/`pageSize` se ignoran —exportar media página sería una trampa—, el archivo abre
+  con «Filtros aplicados» para poder auditarlo semanas después, el `csv` va en UTF-8 con BOM, el
+  anonimizado sustituye el nombre por el código también en los nombres del ZIP, y hay un **tope
+  explícito de 10.000 filas** que responde `400` en vez de intentar un archivo inservible.
 - 2026-08-21 - P-34 (corte 3): `04 §5.8` suma, **de forma aditiva y en commit propio y previo al
   código**, el objeto `participante` embebido en cada elemento de `GET /api/admin/ideas` (con
   `resuelto` para el caso en que el usuario ya no exista), los campos `calificacionTotal`/`evaluadaEn`
