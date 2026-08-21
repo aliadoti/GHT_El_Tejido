@@ -11,11 +11,12 @@
 ## 1. Qué cambió respecto del acta original
 
 El acta congelaba `28c3cb1`. El ambiente de producción se montó en `rg-eltejido-prod-eus2`
-(East US 2) y hoy opera el artefacto `v1.0.2-convencion`. Entre el commit congelado y el desplegado
-hay **19 archivos modificados en `src/` y `tests/`, 985 inserciones y 81 eliminaciones**.
+(East US 2) y hoy opera el artefacto `v1.0.3-convencion`. Entre el commit congelado y el desplegado
+hay **20 archivos modificados en `src/` y `tests/`, 1158 inserciones y 82 eliminaciones**.
 
-Los tres cambios salieron de defectos encontrados durante el piloto controlado en producción, que es
-la función que el acta le asignaba a las puertas operativas. Ninguno responde a alcance nuevo.
+Los tres cambios de código salieron de defectos encontrados durante el piloto controlado en
+producción, que es la función que el acta le asignaba a las puertas operativas. Ninguno responde a
+alcance nuevo.
 
 ## 2. Versiones publicadas en producción
 
@@ -24,7 +25,7 @@ la función que el acta le asignaba a las puertas operativas. Ninguno responde a
 | `v1.0.0-convencion` | `6ba24a6` | Artefacto congelado más los archivos de pipeline. Sin cambios en `src/` ni `tests/` respecto de `1215872`. |
 | `v1.0.1-convencion` | `1b74a9d` | Respaldo del evaluador en el idioma del hilo; reconocimiento de la consulta de idea en inglés. |
 | `v1.0.2-convencion` | `ff54bb0` | `DT-P33-01`: clasificación semántica de consulta y confirmación de idea; `GuardaCuposLlm`. |
-| Pendiente de publicar | Por crear | Hotfix determinista DT-P33-01: afinidad P-33 + alias exacto antes del LLM y catálogo inglés ampliado. |
+| `v1.0.3-convencion` | `85b78f8` | Hotfix determinista DT-P33-01: afinidad P-33 + alias exacto antes del LLM y catálogo inglés ampliado. |
 
 ### 2.1 Observación de trazabilidad sobre `v1.0.1-convencion`
 
@@ -78,7 +79,7 @@ retroalimentación neutra en todas las ideas del piloto. Ninguna evaluación se 
 
 **Corrección.** Cambio de modelo en ConfigLLM. Es parametrización, no código.
 
-### 3.4 Hotfix determinista posterior a `v1.0.2` — pendiente de publicar
+### 3.4 `v1.0.3` — Hotfix determinista posterior a `v1.0.2`
 
 **Defecto.** Con `v1.0.2-convencion` desplegada y los gates semántico/visibilidad activos,
 `How is my idea going?` mostró la idea, pero la respuesta `No is all right for me` fue tratada como
@@ -91,8 +92,9 @@ transición conserva todas las validaciones server-side. Los mensajes mixtos no 
 exacta y siguen como aporte. Se agregaron siete alias a la semilla inglesa y al catálogo v3 importado
 como borrador; el español v3 activo se revisó sin modificarlo.
 
-**Estado.** Código y documentos listos localmente; 1053 unitarias + 121 integración, build Release,
-formato y diff verdes. El hotfix aún no está desplegado y el catálogo inglés v3 aún no está activo.
+**Estado.** `85b78f8` / `v1.0.3-convencion` desplegado; workflow verde, `/health/ready=ok` y catálogo
+inglés v3 activo. El gate local fue 1053 unitarias + 121 integración, build Release, formato y diff
+verdes. La validación conversacional se integra a la corrida final cuando termine el fix completo.
 
 ## 4. Desviaciones de configuración aceptadas
 
@@ -165,8 +167,8 @@ verificar ambos ambientes.
 
 ## 6. Puertas operativas pendientes antes del primer envío
 
-1. Publicar el hotfix de §3.4, activar después el catálogo inglés v3 y repetir el recorrido dirigido
-   abierto/cerrado/mixto; la validación anterior cubría `v1.0.2-convencion` sin esta corrección.
+1. Al terminar el fix completo, ejecutar sobre `v1.0.3-convencion` y el catálogo inglés v3 la corrida
+   integral abierto/cerrado/mixto de QAS/25; la validación anterior cubría `v1.0.2-convencion`.
 2. Sustituir `wa-token` por el de producción (§4.4).
 3. Rotar `diag-key` al cerrar la parametrización.
 4. Alertas de Application Insights, incluida la del endpoint de simulación (§4.1).

@@ -1575,9 +1575,12 @@
   loading order` no activa el fast path y conserva la ruta semántica como aporte. Sin afinidad, un alias
   no gana autoridad para cerrar o confirmar.
 - Catálogo: se agregaron siete variantes inglesas a `continuar`, `confirmar` y `acuseConsultaIdea` en
-  la semilla y en la descarga de la activa inglesa v2. El archivo fue importado como v3 borrador; la
-  activa española v3 se descargó para comparar claves y quedó intacta.
-- Evidencia local: 1053 unitarias + 121 integración sin Calibración, build Release `-warnaserror`,
-  formato y diff verdes. Pendiente commit/deploy, activación inglesa v3 y smoke dirigido.
+  la semilla y en la descarga de la activa inglesa v2. El archivo fue importado inicialmente como v3
+  borrador y activado después de desplegar `v1.0.3-convencion`; la activa española v3 se descargó para
+  comparar claves y quedó intacta.
+- Evidencia: 1053 unitarias + 121 integración sin Calibración, build Release `-warnaserror`, formato
+  y diff verdes; `85b78f8` / `v1.0.3-convencion` desplegado con workflow y `/health/ready` verdes;
+  catálogo inglés v3 activo. La validación conversacional se ejecutará al terminar el fix completo,
+  junto con QAS/25 y las puertas D5/costo/latencia/acta.
 - Rollback: volver la activa inglesa a v2 y apagar el gate semántico; no requiere borrar afinidades,
   ideas, evaluaciones ni historial.

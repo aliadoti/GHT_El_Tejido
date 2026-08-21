@@ -1,10 +1,11 @@
 # P-33 — Consulta y cierre visible de la idea
 
-> Estado: **P-33 base desplegada; hotfix determinista DT-P33-01 listo localmente (2026-08-20)**
+> Estado: **hotfix determinista DT-P33-01 desplegado en `v1.0.3-convencion`; validación integral al
+> cierre del fix completo (2026-08-20)**
 > Origen: retroalimentación de usuario de la convención + REQ-054  
 > Dependencias: I-19, I-20, P-26, P-29, P-30, P-31 y P-32  
-> Alcance operativo: `ff54bb0` desplegado; gates semántico y de visibilidad confirmados ON. Catálogo
-> inglés v3 importado como borrador, pendiente de activación después de desplegar el hotfix.
+> Alcance operativo: `85b78f8` desplegado con workflow/readiness verdes; gates semántico y de
+> visibilidad confirmados ON; catálogo inglés v3 activo.
 
 > **Extensión cerrada 2026-08-20:** `DT-P33-01` reemplazó el patrón puntual por una clasificación
 > semántica única compartida con P-27, manteniendo el catálogo como camino rápido y al servidor como
@@ -54,7 +55,7 @@ breve, pero no elegir ni modificar la idea.
 | Madurez | Consultar o mostrar al cierre es independiente del umbral, de `nivelMadurez` y de P-31. |
 | Cierre | En un cierre normal se muestra la idea antes del agradecimiento o de avanzar. Una idea rechazada explícitamente no se presenta como «así quedó». |
 | Varias campañas | Se consideran únicamente campañas activas y asociaciones vigentes del usuario; entre ellas gana la idea con trabajo más reciente. No hay menú implícito. |
-| Activación | Default global OFF y controles por campaña. En el ambiente revisado, visibilidad y semántica están ON; el hotfix local no modificó configuración remota. |
+| Activación | Default global OFF y controles por campaña. En el ambiente revisado, visibilidad y semántica están ON, el hotfix `v1.0.3-convencion` está desplegado y el catálogo inglés v3 está activo. |
 
 ---
 

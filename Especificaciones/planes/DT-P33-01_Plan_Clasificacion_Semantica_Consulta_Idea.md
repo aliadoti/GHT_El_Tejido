@@ -1,7 +1,7 @@
 # Plan de implementación — DT-P33-01
 
-> **Estado:** base 2/2 desplegada (`ff54bb0`); hotfix determinista completo localmente. Gates semántico
-> y visibilidad ON; catálogo inglés v3 en borrador. Falta publicar y ejecutar el smoke dirigido.
+> **Estado:** hotfix desplegado en `85b78f8` / `v1.0.3-convencion`; workflow/readiness verdes, gates
+> semántico/visibilidad ON y catálogo inglés v3 activo. Validación integral al terminar el fix completo.
 
 ## Corte 1 — clasificador único y candidato transportado — DONE
 
@@ -48,4 +48,6 @@ la misma idea, sin repregunta, reevaluación ni repetición de la versión.
 3. Agregar siete alias ingleses a semilla y catálogo editable; conservar español sin cambios.
 4. Cubrir idea abierta, cerrada y mensaje mixto. Resultado local: 1053 unitarias + 121 integración,
    build Release `-warnaserror`, formato y diff verdes.
-5. Handoff operativo: commit único → deploy → activar inglés v3 → smoke dirigido → QAS/25/D5/acta.
+5. Handoff operativo cerrado: commit `85b78f8`, tag `v1.0.3-convencion`, deploy/readiness verdes e
+   inglés v3 activo. Siguiente: terminar el fix completo y ejecutar QAS/25 abierto/cerrado/mixto,
+   D5, costo/latencia y acta en una corrida integral.

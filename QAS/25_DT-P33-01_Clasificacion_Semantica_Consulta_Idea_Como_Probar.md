@@ -1,7 +1,8 @@
 # QAS 25 — DT-P33-01: clasificación semántica de consulta de idea
 
-> **Estado:** base `ff54bb0` desplegada; hotfix determinista listo localmente. Catálogo inglés v3 en
-> borrador; QAS humana y D5 pendientes.
+> **Estado:** hotfix `85b78f8` / `v1.0.3-convencion` desplegado con workflow/readiness verdes y
+> catálogo inglés v3 activo. Esta guía se ejecutará dentro de la validación integral al terminar el
+> fix completo, junto con D5.
 > **Estado del ambiente informado:** clasificación semántica y visibilidad de idea ON. Verificar además
 > `configConversacional.consultaIdea=true` en la campaña antes de ejecutar.
 
@@ -18,7 +19,7 @@ si la frase también agrega contenido, prevalece el aporte.
 - Ambiente y campaña de QA aislados; nunca campañas o teléfonos reales no autorizados.
 - Salida WhatsApp simulada o canal de prueba expresamente aprobado.
 - P-33 y el nuevo gate semántico ON solo durante la ventana; P-27 se prueba tanto OFF como ON.
-- Desplegar primero el hotfix y activar después el catálogo inglés v3; no invertir este orden.
+- Confirmar que `v1.0.3-convencion` sigue desplegado y el catálogo inglés v3 continúa activo.
 - Catálogo `es/en`, campaña localizada, ConfigLLM y prompt aprobados para QA.
 - Registrar ids/códigos/conteos, nunca secretos, teléfonos completos, mensajes o ideas en logs.
 

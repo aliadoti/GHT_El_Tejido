@@ -1,14 +1,15 @@
 # DT-P33-01 — Clasificación semántica de la consulta de idea
 
-> **Estado:** base `ff54bb0` desplegada; hotfix determinista listo localmente (2026-08-20). Catálogo
-> inglés v3 importado como borrador y pendiente de activación coordinada.
+> **Estado:** hotfix determinista desplegado en `85b78f8` / `v1.0.3-convencion` (2026-08-20), workflow
+> y readiness verdes, catálogo inglés v3 activo. Validación conversacional integral al cierre del fix
+> completo.
 > **Fecha:** 2026-08-20.
 > **Origen:** dos defectos observados en conversación inglesa: `How is my idea coming along so far?`
 > abrió el menú de salida en vez de mostrar la idea, y `I'm satisfied with this` fue tratado como un
 > aporte nuevo después de mostrarla, por lo que el coach siguió preguntando.
 > **Dependencias:** P-10, I-19, I-20, P-26, P-27, P-30, P-32 y P-33.
-> **Alcance del hotfix:** código, regresiones, semilla y JSON editable local. Sin deploy del hotfix,
-> activación del catálogo v3, secretos ni llamadas LLM reales desde el agente.
+> **Alcance del hotfix:** código, regresiones, semilla, catálogo inglés v3 y despliegue. Sin cambios de
+> secretos ni llamadas LLM reales desde el agente.
 
 ## 1. Problema confirmado
 
@@ -42,8 +43,9 @@ La corrección es una precedencia acotada, no un reemplazo del clasificador: cua
 P-33 exacta creada por un envío exitoso y el mensaje completo coincide con `frases.confirmar`, routing
 transporta `ConfirmarIdea` con `LlmInvocado=false`. Si falta afinidad, falta coincidencia o hay contenido
 adicional, se conserva la clasificación semántica y las reglas vigentes. También se agregan siete alias
-ingleses a `continuar`, `confirmar` y `acuseConsultaIdea`; el catálogo activo v2 se descargó, editó e
-importó como v3 borrador. El español activo v3 se usó únicamente como double check y quedó intacto.
+ingleses a `continuar`, `confirmar` y `acuseConsultaIdea`; el catálogo activo v2 se descargó, editó,
+importó inicialmente como v3 borrador y se activó después del despliegue. El español activo v3 se usó
+únicamente como double check y quedó intacto.
 
 ## 2. Resultado obligatorio
 
@@ -379,8 +381,8 @@ No crear un tercer corte salvo bloqueo demostrado. Cada corte debe compilar y qu
 
 ## 10. Activación y rollback
 
-En el ambiente revisado el gate semántico y el gate de visibilidad ya están activos. Antes de publicar
-el hotfix o mantener esa activación como salida operativa:
+En el ambiente revisado el gate semántico, el gate de visibilidad y el catálogo inglés v3 están
+activos. La aceptación funcional se integra a la corrida final del fix completo:
 
 1. ejecutar QAS/25 en ambiente aislado con salida WhatsApp simulada o canal expresamente autorizado;
 2. ejecutar D5 `n=3` con variantes puras, mixtas, controles y falsos positivos en `es/en`;
@@ -389,7 +391,7 @@ el hotfix o mantener esa activación como salida operativa:
 
 Rollback operativo: volver el catálogo inglés activo a v2 y poner el gate semántico en `false`; P-33
 determinista y P-27 conservan su comportamiento anterior. No se borran ideas, afinidades, logs ni
-evaluaciones. El hotfix local no autorizó despliegue, activación ni modificación de ConfigLLM.
+evaluaciones. El despliegue del hotfix no modificó ConfigLLM ni secretos.
 
 ## 11. Evidencia de cierre local
 
@@ -401,12 +403,13 @@ evaluaciones. El hotfix local no autorizó despliegue, activación ni modificaci
   aplica contra el mismo `ideaId`; la mixta permanece como aporte; una idea cerrada no se reabre.
 - La conformidad sobre una idea recién mostrada no repite la versión, no consolida/evalúa otra vez y
   no emite una nueva repregunta.
-- Estado observado: `ff54bb0` desplegado y App Settings semántico/visibilidad ON. El inglés activo v2
-  se descargó y editó; la nueva versión v3 está en borrador. Español v3 activo se revisó sin cambios.
+- Estado observado: `85b78f8` / `v1.0.3-convencion` desplegado con workflow verde y
+  `/health/ready=ok`; App Settings semántico/visibilidad ON. El inglés v3 está activo. Español v3
+  activo se revisó sin cambios.
   No se verificó ni alteró desde código `configConversacional.consultaIdea` en Cosmos.
 - Validación base: build Release `-warnaserror`, **1043 unitarias + 121 de integración** sin Calibración.
 - Validación del hotfix: **1053 unitarias + 121 de integración**, build Release `-warnaserror`,
   `dotnet format --verify-no-changes` y `git diff --check` verdes. Incluye regresiones de idea abierta,
   cerrada y mensaje mixto; cero llamadas LLM para coincidencias exactas y una para el mixto.
-- Pendiente operativo: commit/deploy del hotfix, activar inglés v3, smoke abierto/cerrado/mixto y luego
-  QAS/25, D5 `n=3`, costo/latencia y acta de flags en ambiente aislado.
+- Pendiente operativo: terminar el fix completo y ejecutar en una misma corrida la validación
+  conversacional abierto/cerrado/mixto, QAS/25, D5 `n=3`, costo/latencia y acta de flags.
